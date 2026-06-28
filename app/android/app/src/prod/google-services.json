@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "740379920254",
+    "project_id": "bad-pixel-art-prod",
+    "storage_bucket": "bad-pixel-art-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:740379920254:android:e442ab1e6b4d450906552f",
+        "android_client_info": {
+          "package_name": "com.mweastwood.bad_pixel_art"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANvxKQk3mjsfopILEgEHyr3NoijraAb5c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
