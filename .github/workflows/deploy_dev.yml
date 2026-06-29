@@ -24,7 +24,7 @@ jobs:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
         run: |
           python3 -c '
-          import os, json
+          import os, json, subprocess
           sa_json = os.environ.get("SA_JSON", "")
           print("Length of SA_JSON env var:", len(sa_json))
           try:
@@ -32,10 +32,12 @@ jobs:
               print("JSON keys:", list(data.keys()))
               pk = data.get("private_key", "")
               print("Private key length:", len(pk))
-              print("Count of \\r:", pk.count("\r"))
-              print("Count of \\n:", pk.count("\n"))
-              print("First 30 char codes:", [ord(c) for c in pk[:30]])
-              print("Last 30 char codes:", [ord(c) for c in pk[-30:]])
+              with open("key.pem", "w") as f:
+                  f.write(pk)
+              res = subprocess.run(["openssl", "pkey", "-in", "key.pem", "-noout"], capture_output=True, text=True)
+              print("OpenSSL exit code:", res.returncode)
+              print("OpenSSL stdout:", res.stdout)
+              print("OpenSSL stderr:", res.stderr)
           except Exception as e:
               print("Error:", e)
           '
