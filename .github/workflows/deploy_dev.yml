@@ -11,9 +11,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
-
 jobs:
   deploy_dev_firebase_web:
     runs-on: ubuntu-latest
@@ -50,7 +47,7 @@ jobs:
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}'
           channelId: live
           projectId: bad-pixel-art-dev
-          firebaseToolsVersion: '15.22.2'
+          firebaseToolsVersion: '15.22.3'
         env:
           FIREBASE_CLI_PREVIEWS: hostingchannels
 
