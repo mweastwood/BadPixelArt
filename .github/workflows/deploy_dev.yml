@@ -6,6 +6,7 @@ on:
     branches: [main]
     types: 
       - completed
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -14,7 +15,7 @@ concurrency:
 jobs:
   deploy_dev_firebase_web:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     
     defaults:
       run:
@@ -29,6 +30,33 @@ jobs:
             echo "ERROR: FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV is empty or not configured in GitHub Secrets!"
             exit 1
           fi
+
+      - name: Fix Service Account JSON
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
+        run: |
+          FIXED_JSON=$(python3 -c '\''
+          import os, json, re
+          sa_json = os.environ.get("SA_JSON", "")
+          try:
+              data = json.loads(sa_json)
+              pk = data.get("private_key", "")
+              if pk:
+                  is_rsa = "RSA PRIVATE KEY" in pk
+                  base64_content = re.sub(r"-----\s*BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", pk)
+                  base64_content = re.sub(r"-----\s*END\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", base64_content)
+                  base64_content = re.sub(r"\s+", "", base64_content)
+                  wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
+                  header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
+                  footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
+                  data["private_key"] = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+              print(json.dumps(data))
+          except Exception as e:
+              print(sa_json)
+          '\'' )
+          echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
+          echo "$FIXED_JSON" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - uses: subosito/flutter-action@v2
         with:
@@ -49,7 +77,7 @@ jobs:
         with:
           entryPoint: ./app
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}'
+          firebaseServiceAccount: '${{ env.FIXED_SA_JSON }}'
           channelId: live
           projectId: bad-pixel-art-dev
           firebaseToolsVersion: '15.22.3'
@@ -58,7 +86,7 @@ jobs:
 
   deploy_dev_firebase_android:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     
     defaults:
       run:
@@ -77,6 +105,33 @@ jobs:
             echo "ERROR: ANDROID_KEYSTORE_BASE64 is empty or not configured in GitHub Secrets!"
             exit 1
           fi
+
+      - name: Fix Service Account JSON
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
+        run: |
+          FIXED_JSON=$(python3 -c '\''
+          import os, json, re
+          sa_json = os.environ.get("SA_JSON", "")
+          try:
+              data = json.loads(sa_json)
+              pk = data.get("private_key", "")
+              if pk:
+                  is_rsa = "RSA PRIVATE KEY" in pk
+                  base64_content = re.sub(r"-----\s*BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", pk)
+                  base64_content = re.sub(r"-----\s*END\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", base64_content)
+                  base64_content = re.sub(r"\s+", "", base64_content)
+                  wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
+                  header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
+                  footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
+                  data["private_key"] = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+              print(json.dumps(data))
+          except Exception as e:
+              print(sa_json)
+          '\'' )
+          echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
+          echo "$FIXED_JSON" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Set up Java
         uses: actions/setup-java@v3
@@ -107,6 +162,6 @@ jobs:
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: "1:402346842627:android:d409cb5be6382660ae8c36"
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
+          serviceCredentialsFileContent: ${{ env.FIXED_SA_JSON }}
           groups: testers
           file: app/build/app/outputs/flutter-apk/app-dev-release.apk
