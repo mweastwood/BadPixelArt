@@ -35,7 +35,7 @@ jobs:
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
         run: |
-          FIXED_JSON=$(python3 -c '\''
+          FIXED_JSON=$(python3 -c '
           import os, json, re
           sa_json = os.environ.get("SA_JSON", "")
           try:
@@ -53,7 +53,7 @@ jobs:
               print(json.dumps(data))
           except Exception as e:
               print(sa_json)
-          '\'' )
+          ' )
           echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
           echo "$FIXED_JSON" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
@@ -110,7 +110,7 @@ jobs:
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
         run: |
-          FIXED_JSON=$(python3 -c '\''
+          FIXED_JSON=$(python3 -c '
           import os, json, re
           sa_json = os.environ.get("SA_JSON", "")
           try:
@@ -128,7 +128,7 @@ jobs:
               print(json.dumps(data))
           except Exception as e:
               print(sa_json)
-          '\'' )
+          ' )
           echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
           echo "$FIXED_JSON" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
