@@ -19,22 +19,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Debug Secret Format
+      - name: Inspect Service Account Structure
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
         run: |
-          val="${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}"
-          echo "Secret length: ${#val}"
-          if [[ "$val" =~ ^\{ ]]; then
-            echo "Format: JSON"
-          else
-            echo "Format: NOT JSON"
-            # check if it's base64 encoded
-            decoded=$(echo "$val" | base64 -d 2>/dev/null || echo "failed")
-            if [[ "$decoded" =~ ^\{ ]]; then
-              echo "Format: Base64 Encoded JSON!"
-            else
-              echo "Format: Unknown"
-            fi
-          fi
+          python3 -c '
+          import os, json
+          sa_json = os.environ.get("SA_JSON", "")
+          print("Length of SA_JSON env var:", len(sa_json))
+          try:
+              data = json.loads(sa_json)
+              print("JSON keys:", list(data.keys()))
+              pk = data.get("private_key", "")
+              print("Private key length:", len(pk))
+              masked_pk = "".join("X" if c.isalnum() else c for c in pk)
+              print("Masked private key:")
+              print(repr(masked_pk))
+          except Exception as e:
+              print("Error:", e)
+          '
 
       - name: Verify Firebase Service Account Secret
         run: |
