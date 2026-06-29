@@ -36,7 +36,7 @@ jobs:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
         run: |
           FIXED_JSON=$(python3 -c '
-          import os, json, re
+          import os, json, re, subprocess
           sa_json = os.environ.get("SA_JSON", "")
           try:
               data = json.loads(sa_json)
@@ -49,9 +49,22 @@ jobs:
                   wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
                   header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
                   footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
-                  data["private_key"] = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                  fixed_pk = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                  
+                  # Validate key with OpenSSL
+                  with open("key.pem", "w") as f:
+                      f.write(fixed_pk)
+                  res = subprocess.run(["openssl", "pkey", "-in", "key.pem", "-noout"], capture_output=True, text=True)
+                  print(f"--- OPENSSL VALIDATION: code={res.returncode} ---", file=os.sys.stderr)
+                  print(f"STDOUT: {res.stdout}", file=os.sys.stderr)
+                  print(f"STDERR: {res.stderr}", file=os.sys.stderr)
+                  if os.path.exists("key.pem"):
+                      os.remove("key.pem")
+                  
+                  data["private_key"] = fixed_pk
               print(json.dumps(data))
           except Exception as e:
+              print(f"PARSE ERROR: {e}", file=os.sys.stderr)
               print(sa_json)
           ' )
           echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
@@ -111,7 +124,7 @@ jobs:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
         run: |
           FIXED_JSON=$(python3 -c '
-          import os, json, re
+          import os, json, re, subprocess
           sa_json = os.environ.get("SA_JSON", "")
           try:
               data = json.loads(sa_json)
@@ -124,9 +137,22 @@ jobs:
                   wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
                   header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
                   footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
-                  data["private_key"] = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                  fixed_pk = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                  
+                  # Validate key with OpenSSL
+                  with open("key.pem", "w") as f:
+                      f.write(fixed_pk)
+                  res = subprocess.run(["openssl", "pkey", "-in", "key.pem", "-noout"], capture_output=True, text=True)
+                  print(f"--- OPENSSL VALIDATION: code={res.returncode} ---", file=os.sys.stderr)
+                  print(f"STDOUT: {res.stdout}", file=os.sys.stderr)
+                  print(f"STDERR: {res.stderr}", file=os.sys.stderr)
+                  if os.path.exists("key.pem"):
+                      os.remove("key.pem")
+                  
+                  data["private_key"] = fixed_pk
               print(json.dumps(data))
           except Exception as e:
+              print(f"PARSE ERROR: {e}", file=os.sys.stderr)
               print(sa_json)
           ' )
           echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
