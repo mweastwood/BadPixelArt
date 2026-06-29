@@ -31,6 +31,44 @@ jobs:
             exit 1
           fi
 
+      - name: Diagnostic Secret Check
+        env:
+          DEV_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
+          PROD_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD }}
+        run: |
+          python3 -c '
+          import os, json, re, subprocess
+          for name, sa_json in [("DEV", os.environ.get("DEV_JSON", "")), ("PROD", os.environ.get("PROD_JSON", ""))]:
+              print(f"=== Checking {name} Secret ===", file=os.sys.stderr)
+              print(f"Length of {name} JSON: {len(sa_json)}", file=os.sys.stderr)
+              try:
+                  data = json.loads(sa_json)
+                  print(f"{name} JSON parsed successfully! Keys: {list(data.keys())}", file=os.sys.stderr)
+                  pk = data.get("private_key", "")
+                  if pk:
+                      print(f"{name} Private key field length: {len(pk)}", file=os.sys.stderr)
+                      is_rsa = "RSA PRIVATE KEY" in pk
+                      base64_content = re.sub(r"-----\s*BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", pk)
+                      base64_content = re.sub(r"-----\s*END\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", base64_content)
+                      base64_content = re.sub(r"\s+", "", base64_content)
+                      wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
+                      header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
+                      footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
+                      fixed_pk = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                      
+                      with open("temp.key", "w") as f:
+                          f.write(fixed_pk)
+                      res = subprocess.run(["openssl", "pkey", "-in", "temp.key", "-noout"], capture_output=True, text=True)
+                      print(f"{name} OpenSSL Validation: code={res.returncode}", file=os.sys.stderr)
+                      print(f"{name} OpenSSL Stderr: {res.stderr}", file=os.sys.stderr)
+                      if os.path.exists("temp.key"):
+                          os.remove("temp.key")
+                  else:
+                      print(f"{name} has no private_key field!", file=os.sys.stderr)
+              except Exception as e:
+                  print(f"{name} Parse Error: {e}", file=os.sys.stderr)
+          '
+
       - name: Fix Service Account JSON
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
