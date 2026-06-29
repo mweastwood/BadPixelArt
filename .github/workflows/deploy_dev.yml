@@ -24,7 +24,8 @@ jobs:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}
         run: |
           python3 -c '
-          import os, json, subprocess
+          import os, json
+          from cryptography.hazmat.primitives.serialization import load_pem_private_key
           sa_json = os.environ.get("SA_JSON", "")
           print("Length of SA_JSON env var:", len(sa_json))
           try:
@@ -32,12 +33,13 @@ jobs:
               print("JSON keys:", list(data.keys()))
               pk = data.get("private_key", "")
               print("Private key length:", len(pk))
-              with open("key.pem", "w") as f:
-                  f.write(pk)
-              res = subprocess.run(["openssl", "pkey", "-in", "key.pem", "-noout"], capture_output=True, text=True)
-              print("OpenSSL exit code:", res.returncode)
-              print("OpenSSL stdout:", res.stdout)
-              print("OpenSSL stderr:", res.stderr)
+              try:
+                  key = load_pem_private_key(pk.encode("utf-8"), password=None)
+                  print("Key loaded successfully! Key type:", type(key))
+              except Exception as ex:
+                  print("Load error:", ex)
+                  import traceback
+                  traceback.print_exc()
           except Exception as e:
               print("Error:", e)
           '
