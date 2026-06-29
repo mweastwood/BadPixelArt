@@ -32,9 +32,10 @@ jobs:
               print("JSON keys:", list(data.keys()))
               pk = data.get("private_key", "")
               print("Private key length:", len(pk))
-              masked_pk = "".join("X" if c.isalnum() else c for c in pk)
-              print("Masked private key:")
-              print(repr(masked_pk))
+              print("Count of \\r:", pk.count("\r"))
+              print("Count of \\n:", pk.count("\n"))
+              print("First 30 char codes:", [ord(c) for c in pk[:30]])
+              print("Last 30 char codes:", [ord(c) for c in pk[-30:]])
           except Exception as e:
               print("Error:", e)
           '
