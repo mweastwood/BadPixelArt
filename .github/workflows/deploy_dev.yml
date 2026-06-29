@@ -23,6 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Verify Firebase Service Account Secret
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
@@ -54,6 +61,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify Secrets
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_DEV is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ERROR: ANDROID_KEYSTORE_BASE64 is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
 
       - name: Set up Java
         uses: actions/setup-java@v3
