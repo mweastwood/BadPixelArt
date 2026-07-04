@@ -1,0 +1,331 @@
+name: Deploy (Prod)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy_prod_firebase_web:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Firebase Service Account Secret
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
+      - name: Fix Service Account JSON
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD }}
+        run: |
+          FIXED_JSON=$(python3 -c '
+          import os, json, re, subprocess
+          sa_json = os.environ.get("SA_JSON", "")
+          try:
+              data = json.loads(sa_json)
+              pk = data.get("private_key", "")
+              if pk:
+                  is_rsa = "RSA PRIVATE KEY" in pk
+                  base64_content = re.sub(r"-----\s*BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", pk)
+                  base64_content = re.sub(r"-----\s*END\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", base64_content)
+                  base64_content = re.sub(r"\s+", "", base64_content)
+                  wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
+                  header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
+                  footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
+                  fixed_pk = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                  
+                  # Validate key with OpenSSL
+                  with open("key.pem", "w") as f:
+                      f.write(fixed_pk)
+                  res = subprocess.run(["openssl", "pkey", "-in", "key.pem", "-noout"], capture_output=True, text=True)
+                  print(f"--- OPENSSL VALIDATION: code={res.returncode} ---", file=os.sys.stderr)
+                  print(f"STDOUT: {res.stdout}", file=os.sys.stderr)
+                  print(f"STDERR: {res.stderr}", file=os.sys.stderr)
+                  if os.path.exists("key.pem"):
+                      os.remove("key.pem")
+                  
+                  data["private_key"] = fixed_pk
+              print(json.dumps(data))
+          except Exception as e:
+              print(f"PARSE ERROR: {e}", file=os.sys.stderr)
+              print(sa_json)
+          ' )
+          echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
+          echo "$FIXED_JSON" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Parse Version from Git Tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          IFS='.' read -r -a parts <<< "$VERSION"
+          major="${parts[0]:-0}"
+          minor="${parts[1]:-0}"
+          patch="${parts[2]:-0}"
+          major=$(echo "$major" | grep -oE '^[0-9]+' || echo 0)
+          minor=$(echo "$minor" | grep -oE '^[0-9]+' || echo 0)
+          patch=$(echo "$patch" | grep -oE '^[0-9]+' || echo 0)
+          VERSION_CODE=$((major * 1000000 + minor * 10000 + patch))
+          VERSION_NAME="${major}.${minor}.${patch}"
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Web App
+        run: flutter build web --release --target lib/main_prod.dart --build-name=$VERSION_NAME --build-number=$VERSION_CODE
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          entryPoint: ./app
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ env.FIXED_SA_JSON }}'
+          channelId: live
+          projectId: bad-pixel-art-prod
+          firebaseToolsVersion: '15.22.3'
+        env:
+          FIREBASE_CLI_PREVIEWS: hostingchannels
+
+  deploy_prod_firebase_android:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Secrets
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ERROR: ANDROID_KEYSTORE_BASE64 is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
+      - name: Fix Service Account JSON
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD }}
+        run: |
+          FIXED_JSON=$(python3 -c '
+          import os, json, re, subprocess
+          sa_json = os.environ.get("SA_JSON", "")
+          try:
+              data = json.loads(sa_json)
+              pk = data.get("private_key", "")
+              if pk:
+                  is_rsa = "RSA PRIVATE KEY" in pk
+                  base64_content = re.sub(r"-----\s*BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", pk)
+                  base64_content = re.sub(r"-----\s*END\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", base64_content)
+                  base64_content = re.sub(r"\s+", "", base64_content)
+                  wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
+                  header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
+                  footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
+                  fixed_pk = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                  
+                  # Validate key with OpenSSL
+                  with open("key.pem", "w") as f:
+                      f.write(fixed_pk)
+                  res = subprocess.run(["openssl", "pkey", "-in", "key.pem", "-noout"], capture_output=True, text=True)
+                  print(f"--- OPENSSL VALIDATION: code={res.returncode} ---", file=os.sys.stderr)
+                  print(f"STDOUT: {res.stdout}", file=os.sys.stderr)
+                  print(f"STDERR: {res.stderr}", file=os.sys.stderr)
+                  if os.path.exists("key.pem"):
+                      os.remove("key.pem")
+                  
+                  data["private_key"] = fixed_pk
+              print(json.dumps(data))
+          except Exception as e:
+              print(f"PARSE ERROR: {e}", file=os.sys.stderr)
+              print(sa_json)
+          ' )
+          echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
+          echo "$FIXED_JSON" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Parse Version from Git Tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          IFS='.' read -r -a parts <<< "$VERSION"
+          major="${parts[0]:-0}"
+          minor="${parts[1]:-0}"
+          patch="${parts[2]:-0}"
+          major=$(echo "$major" | grep -oE '^[0-9]+' || echo 0)
+          minor=$(echo "$minor" | grep -oE '^[0-9]+' || echo 0)
+          patch=$(echo "$patch" | grep -oE '^[0-9]+' || echo 0)
+          VERSION_CODE=$((major * 1000000 + minor * 10000 + patch))
+          VERSION_NAME="${major}.${minor}.${patch}"
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Decode Android Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+
+      - name: Build Android APK
+        run: flutter build apk --release --flavor prod --target lib/main_prod.dart --build-name=$VERSION_NAME --build-number=$VERSION_CODE
+        env:
+          ANDROID_KEYSTORE_PATH: "release.keystore"
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: "1:740379920254:android:e442ab1e6b4d450906552f"
+          serviceCredentialsFileContent: ${{ env.FIXED_SA_JSON }}
+          groups: testers
+          file: app/build/app/outputs/flutter-apk/app-prod-release.apk
+
+  deploy_prod_google_play:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify Secrets
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD }}" ]; then
+            echo "ERROR: FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+          if [ -z "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ERROR: ANDROID_KEYSTORE_BASE64 is empty or not configured in GitHub Secrets!"
+            exit 1
+          fi
+
+      - name: Fix Service Account JSON
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BAD_PIXEL_ART_PROD }}
+        run: |
+          FIXED_JSON=$(python3 -c '
+          import os, json, re, subprocess
+          sa_json = os.environ.get("SA_JSON", "")
+          try:
+              data = json.loads(sa_json)
+              pk = data.get("private_key", "")
+              if pk:
+                  is_rsa = "RSA PRIVATE KEY" in pk
+                  base64_content = re.sub(r"-----\s*BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", pk)
+                  base64_content = re.sub(r"-----\s*END\s+(?:RSA\s+)?PRIVATE\s+KEY\s*-----", "", base64_content)
+                  base64_content = re.sub(r"\s+", "", base64_content)
+                  wrapped_lines = [base64_content[i:i+64] for i in range(0, len(base64_content), 64)]
+                  header = "-----BEGIN RSA PRIVATE KEY-----" if is_rsa else "-----BEGIN PRIVATE KEY-----"
+                  footer = "-----END RSA PRIVATE KEY-----" if is_rsa else "-----END PRIVATE KEY-----"
+                  fixed_pk = f"{header}\n" + "\n".join(wrapped_lines) + f"\n{footer}\n"
+                  
+                  # Validate key with OpenSSL
+                  with open("key.pem", "w") as f:
+                      f.write(fixed_pk)
+                  res = subprocess.run(["openssl", "pkey", "-in", "key.pem", "-noout"], capture_output=True, text=True)
+                  print(f"--- OPENSSL VALIDATION: code={res.returncode} ---", file=os.sys.stderr)
+                  print(f"STDOUT: {res.stdout}", file=os.sys.stderr)
+                  print(f"STDERR: {res.stderr}", file=os.sys.stderr)
+                  if os.path.exists("key.pem"):
+                      os.remove("key.pem")
+                  
+                  data["private_key"] = fixed_pk
+              print(json.dumps(data))
+          except Exception as e:
+              print(f"PARSE ERROR: {e}", file=os.sys.stderr)
+              print(sa_json)
+          ' )
+          echo "FIXED_SA_JSON<<EOF" >> $GITHUB_ENV
+          echo "$FIXED_JSON" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Parse Version from Git Tag
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          IFS='.' read -r -a parts <<< "$VERSION"
+          major="${parts[0]:-0}"
+          minor="${parts[1]:-0}"
+          patch="${parts[2]:-0}"
+          major=$(echo "$major" | grep -oE '^[0-9]+' || echo 0)
+          minor=$(echo "$minor" | grep -oE '^[0-9]+' || echo 0)
+          patch=$(echo "$patch" | grep -oE '^[0-9]+' || echo 0)
+          VERSION_CODE=$((major * 1000000 + minor * 10000 + patch))
+          VERSION_NAME="${major}.${minor}.${patch}"
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Decode Android Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
+
+      - name: Build Android AppBundle
+        run: flutter build appbundle --release --flavor prod --target lib/main_prod.dart --build-name=$VERSION_NAME --build-number=$VERSION_CODE
+        env:
+          ANDROID_KEYSTORE_PATH: "release.keystore"
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+      - name: Upload to Google Play (Internal Track)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ env.FIXED_SA_JSON }}
+          packageName: "com.mweastwood.bad_pixel_art"
+          releaseFiles: app/build/app/outputs/bundle/prodRelease/app-prod-release.aab
+          track: internal
+          status: completed
