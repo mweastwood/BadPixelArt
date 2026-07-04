@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, uri_does_not_exist, unnecessary_import
+
 import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:js_util' as js_util;
@@ -92,7 +94,10 @@ class WebAiService implements AiService {
           'Current grid layout serialized: $canvasGridString\n\n'
           'Output the single next stroke JSON now:';
 
-      final promise = js_util.callMethod(chromeAi, 'getNextStroke', [userTextPrompt, systemInstruction]);
+      final promise = js_util.callMethod(chromeAi, 'getNextStroke', [
+        userTextPrompt,
+        systemInstruction,
+      ]);
       final String? response = await js_util.promiseToFuture(promise);
 
       if (response == null) return null;
@@ -101,7 +106,9 @@ class WebAiService implements AiService {
       String sanitized = response.trim();
       if (sanitized.startsWith('```')) {
         final lines = sanitized.split('\n');
-        final filtered = lines.where((line) => !line.trim().startsWith('```')).join('\n');
+        final filtered = lines
+            .where((line) => !line.trim().startsWith('```'))
+            .join('\n');
         sanitized = filtered.trim();
       }
 
