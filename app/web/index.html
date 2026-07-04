@@ -41,6 +41,50 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <script>
+    window.chromeAi = {
+      async checkStatus() {
+        try {
+          if (!window.ai || !window.ai.languageModel) {
+            return 'unavailable';
+          }
+          const capabilities = await window.ai.languageModel.capabilities();
+          return capabilities.available; // 'readily', 'after-download', 'no'
+        } catch (e) {
+          console.error('Error checking window.ai capabilities:', e);
+          return 'unavailable';
+        }
+      },
+      async triggerDownload() {
+        try {
+          if (!window.ai || !window.ai.languageModel) {
+            return;
+          }
+          // Creating a session can trigger download automatically if status is 'after-download'
+          const session = await window.ai.languageModel.create();
+          session.destroy();
+        } catch (e) {
+          console.error('Error triggering download:', e);
+        }
+      },
+      async getNextStroke(prompt, systemInstruction) {
+        try {
+          if (!window.ai || !window.ai.languageModel) {
+            return null;
+          }
+          const session = await window.ai.languageModel.create({
+            systemPrompt: systemInstruction
+          });
+          const response = await session.prompt(prompt);
+          session.destroy();
+          return response;
+        } catch (e) {
+          console.error('Error getting next stroke from window.ai:', e);
+          return null;
+        }
+      }
+    };
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

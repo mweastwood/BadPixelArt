@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'ai_service_stub.dart' if (dart.library.html) 'ai_service_web.dart';
+
 enum AiCoreStatus { unavailable, downloadable, downloading, available }
 
 abstract class AiService {
@@ -142,8 +144,9 @@ class MockAiService implements AiService {
 }
 
 final aiServiceProvider = Provider<AiService>((ref) {
-  // Use platform channel only on Android and not in debug/mock environments
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+  if (kIsWeb) {
+    return getWebAiService();
+  } else if (defaultTargetPlatform == TargetPlatform.android) {
     return MethodChannelAiService();
   }
   return MockAiService();
