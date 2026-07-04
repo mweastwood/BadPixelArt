@@ -1,9 +1,5 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use, uri_does_not_exist, unnecessary_import
-
 import 'dart:convert';
-import 'dart:html' as html;
-import 'dart:js_util' as js_util;
-import 'dart:typed_data';
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'ai_service.dart';
 
@@ -11,15 +7,28 @@ AiService getWebAiService() {
   return WebAiService();
 }
 
+@JS('chromeAi')
+external ChromeAi? get chromeAi;
+
+@JS()
+@staticInterop
+class ChromeAi {}
+
+extension ChromeAiExtension on ChromeAi {
+  external JSPromise checkStatus();
+  external JSPromise triggerDownload();
+  external JSPromise getNextStroke(JSString prompt, JSString systemInstruction);
+}
+
 class WebAiService implements AiService {
   @override
   Future<AiCoreStatus> checkStatus() async {
     try {
-      final chromeAi = js_util.getProperty(html.window, 'chromeAi');
-      if (chromeAi == null) return AiCoreStatus.unavailable;
+      final ai = chromeAi;
+      if (ai == null) return AiCoreStatus.unavailable;
 
-      final promise = js_util.callMethod(chromeAi, 'checkStatus', []);
-      final String result = await js_util.promiseToFuture(promise);
+      final jsStatus = await ai.checkStatus().toDart;
+      final String result = (jsStatus as JSString).toDart;
 
       switch (result) {
         case 'readily':
@@ -38,11 +47,10 @@ class WebAiService implements AiService {
   @override
   Future<void> triggerDownload() async {
     try {
-      final chromeAi = js_util.getProperty(html.window, 'chromeAi');
-      if (chromeAi == null) return;
+      final ai = chromeAi;
+      if (ai == null) return;
 
-      final promise = js_util.callMethod(chromeAi, 'triggerDownload', []);
-      await js_util.promiseToFuture(promise);
+      await ai.triggerDownload().toDart;
     } catch (e) {
       debugPrint('Error triggering download: $e');
     }
@@ -56,8 +64,8 @@ class WebAiService implements AiService {
     required List<String> paletteColors,
   }) async {
     try {
-      final chromeAi = js_util.getProperty(html.window, 'chromeAi');
-      if (chromeAi == null) return null;
+      final ai = chromeAi;
+      if (ai == null) return null;
 
       // 1. Parse current canvas layout
       String canvasGridString = utf8.decode(canvasImage);
@@ -94,11 +102,10 @@ class WebAiService implements AiService {
           'Current grid layout serialized: $canvasGridString\n\n'
           'Output the single next stroke JSON now:';
 
-      final promise = js_util.callMethod(chromeAi, 'getNextStroke', [
-        userTextPrompt,
-        systemInstruction,
-      ]);
-      final String? response = await js_util.promiseToFuture(promise);
+      final jsResponse = await ai
+          .getNextStroke(userTextPrompt.toJS, systemInstruction.toJS)
+          .toDart;
+      final String? response = (jsResponse as JSString?)?.toDart;
 
       if (response == null) return null;
 
