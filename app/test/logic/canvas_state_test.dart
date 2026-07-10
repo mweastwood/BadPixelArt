@@ -214,4 +214,25 @@ void main() {
       );
     });
   });
+
+  group('MethodChannelAiService Fallback Tests', () {
+    test('falls back to MockAiService when channel throws MissingPluginException', () async {
+      final service = MethodChannelAiService();
+      
+      // Initially, since there is no native platform channel registered in the test runner,
+      // it should throw MissingPluginException, set _useFallback to true, and return the mock status.
+      final status = await service.checkStatus();
+      expect(status, equals(AiCoreStatus.available));
+      
+      // The subsequent getNextStroke call should also use the mock fallback and return a valid mock stroke.
+      final result = await service.getNextStroke(
+        referenceImage: null,
+        canvasImage: Uint8List(0),
+        prompt: 'draw a circle',
+        paletteColors: ['#000000', '#ffffff', '#ff0000'],
+      );
+      expect(result, isNotNull);
+      expect(result!['tool'], equals('line'));
+    });
+  });
 }
