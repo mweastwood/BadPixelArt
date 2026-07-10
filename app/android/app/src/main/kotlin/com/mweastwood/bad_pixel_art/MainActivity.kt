@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.collect
 import android.util.Log
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.badpixelart/aicore"
+    private val CHANNEL = "com.mweastwood.bad_pixel_art/aicore"
     private val ioScope = CoroutineScope(Dispatchers.IO)
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

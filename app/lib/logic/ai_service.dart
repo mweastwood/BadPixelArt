@@ -20,7 +20,7 @@ abstract class AiService {
 }
 
 class MethodChannelAiService implements AiService {
-  static const _channel = MethodChannel('com.badpixelart/aicore');
+  static const _channel = MethodChannel('com.mweastwood.bad_pixel_art/aicore');
 
   @override
   Future<AiCoreStatus> checkStatus() async {
