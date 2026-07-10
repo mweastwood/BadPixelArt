@@ -25,10 +25,7 @@ class WebAiService implements AiService {
   Future<AiCoreStatus> checkStatus() async {
     try {
       final ai = chromeAi;
-      if (ai == null) {
-        debugPrint('Web AI checkStatus: window.chromeAi is null (check if script in index.html ran successfully)');
-        return AiCoreStatus.unavailable;
-      }
+      if (ai == null) return AiCoreStatus.unavailable;
 
       final jsStatus = await ai.checkStatus().toDart;
       final String result = (jsStatus as JSString).toDart;

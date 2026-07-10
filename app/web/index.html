@@ -45,19 +45,13 @@
     window.chromeAi = {
       async checkStatus() {
         try {
-          if (!window.ai) {
-            console.warn('[BadPixelArt] window.ai is not defined. Ensure you are using Google Chrome Desktop and have enabled the optimization guide flag at chrome://flags/#optimization-guide-on-device-model.');
-            return 'unavailable';
-          }
-          if (!window.ai.languageModel) {
-            console.warn('[BadPixelArt] window.ai.languageModel is not defined. Ensure you have enabled the Prompt API flag at chrome://flags/#prompt-api-for-sharing (or #prompt-api-for-gemini-nano).');
+          if (!window.ai || !window.ai.languageModel) {
             return 'unavailable';
           }
           const capabilities = await window.ai.languageModel.capabilities();
-          console.log('[BadPixelArt] window.ai.languageModel capabilities:', capabilities);
           return capabilities.available; // 'readily', 'after-download', 'no'
         } catch (e) {
-          console.error('[BadPixelArt] Error checking window.ai capabilities:', e);
+          console.error('Error checking window.ai capabilities:', e);
           return 'unavailable';
         }
       },

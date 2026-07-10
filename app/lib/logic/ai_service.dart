@@ -36,9 +36,7 @@ class MethodChannelAiService implements AiService {
         default:
           return AiCoreStatus.unavailable;
       }
-    } catch (e, stack) {
-      debugPrint('Error invoking checkStatus via MethodChannel: $e');
-      debugPrint(stack.toString());
+    } catch (_) {
       return AiCoreStatus.unavailable;
     }
   }
@@ -47,9 +45,8 @@ class MethodChannelAiService implements AiService {
   Future<void> triggerDownload() async {
     try {
       await _channel.invokeMethod<void>('triggerDownload');
-    } catch (e, stack) {
-      debugPrint('Error invoking triggerDownload via MethodChannel: $e');
-      debugPrint(stack.toString());
+    } catch (_) {
+      // Ignored
     }
   }
 
@@ -74,9 +71,8 @@ class MethodChannelAiService implements AiService {
       if (parsed is Map<String, dynamic>) {
         return parsed;
       }
-    } catch (e, stack) {
-      debugPrint('Error getting next stroke via MethodChannel: $e');
-      debugPrint(stack.toString());
+    } catch (e) {
+      debugPrint('Error getting next stroke: $e');
     }
     return null;
   }
