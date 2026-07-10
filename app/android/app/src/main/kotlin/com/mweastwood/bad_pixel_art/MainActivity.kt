@@ -59,54 +59,17 @@ class MainActivity : FlutterActivity() {
                     result.success(null)
                 }
                 "getNextStroke" -> {
-                    val canvasImageBytes = call.argument<ByteArray>("canvasImage")
-                    val referenceImageBytes = call.argument<ByteArray>("referenceImage")
-                    val promptText = call.argument<String>("prompt") ?: ""
-                    val paletteColors = call.argument<List<String>>("paletteColors") ?: emptyList()
+                    val promptText = call.argument<String>("prompt")
 
-                    if (canvasImageBytes == null) {
-                        result.error("invalid_argument", "canvasImage is missing", null)
+                    if (promptText == null) {
+                        result.error("invalid_argument", "prompt is missing", null)
                         return@setMethodCallHandler
                     }
 
                     ioScope.launch {
                         try {
-                            val canvasGridString = String(canvasImageBytes, Charsets.UTF_8)
-                            val finalCanvasGrid = if (canvasGridString.contains(Regex("[1-9]"))) {
-                                canvasGridString
-                            } else {
-                                "The grid is completely empty (all 0s)."
-                            }
-
-                            var refShapeInstruction = ""
-                            if (referenceImageBytes != null) {
-                                val refString = String(referenceImageBytes, Charsets.UTF_8)
-                                if (refString.startsWith("Sword")) {
-                                    refShapeInstruction = "The user wants to draw a Sword."
-                                } else if (refString.startsWith("Heart")) {
-                                    refShapeInstruction = "The user wants to draw a Heart."
-                                }
-                            }
-
-                            val systemInstruction = "You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n" +
-                                    "Available tools:\n" +
-                                    "- \"line\": params [startX, startY, endX, endY]\n" +
-                                    "- \"circle\": params [centerX, centerY, radius]\n" +
-                                    "- \"fill\": params [startX, startY]\n" +
-                                    "- \"hatch\": params [startX, startY] (alternating checkerboard pattern fill)\n\n" +
-                                    "You must output EXACTLY a valid JSON block and nothing else. No explanation, no markdown tags. Example:\n" +
-                                    "{\"tool\": \"line\", \"params\": [10, 15, 20, 25], \"color\": 2}"
-
-                            val userTextPrompt = "User Instruction: \"$promptText\"\n" +
-                                    "$refShapeInstruction\n" +
-                                    "Color Palette Size: ${paletteColors.size} (Color indices are 0 to ${paletteColors.size - 1}).\n" +
-                                    "Current grid layout serialized: $finalCanvasGrid\n\n" +
-                                    "Output the single next stroke JSON now:"
-
-                            val fullPrompt = "$systemInstruction\n\n$userTextPrompt"
-
                             val response = model.generateContent(
-                                generateContentRequest(TextPart(fullPrompt)) {
+                                generateContentRequest(TextPart(promptText)) {
                                     // Optional config
                                 }
                             )

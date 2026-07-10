@@ -72,40 +72,13 @@ class WebAiService implements AiService {
       final ai = chromeAi;
       if (ai == null) return null;
 
-      // 1. Parse current canvas layout
-      String canvasGridString = utf8.decode(canvasImage);
-      if (!canvasGridString.contains(RegExp(r'[1-9]'))) {
-        canvasGridString = 'The grid is completely empty (all 0s).';
-      }
-
-      // 2. Decode reference image preset instructions
-      String refShapeInstruction = '';
-      if (referenceImage != null) {
-        final refString = utf8.decode(referenceImage);
-        if (refString.startsWith('Sword')) {
-          refShapeInstruction = 'The user wants to draw a Sword.';
-        } else if (refString.startsWith('Heart')) {
-          refShapeInstruction = 'The user wants to draw a Heart.';
-        }
-      }
-
-      // 3. Formulate the system instruction and user prompt for Gemini Nano.
-      const systemInstruction =
-          'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
-          'Available tools:\n'
-          '- "line": params [startX, startY, endX, endY]\n'
-          '- "circle": params [centerX, centerY, radius]\n'
-          '- "fill": params [startX, startY]\n'
-          '- "hatch": params [startX, startY] (alternating checkerboard pattern fill)\n\n'
-          'You must output EXACTLY a valid JSON block and nothing else. No explanation, no markdown tags. Example:\n'
-          '{"tool": "line", "params": [10, 15, 20, 25], "color": 2}';
-
-      final userTextPrompt =
-          'User Instruction: "$prompt"\n'
-          '$refShapeInstruction\n'
-          'Color Palette Size: ${paletteColors.length} (Color indices are 0 to ${paletteColors.length - 1}).\n'
-          'Current grid layout serialized: $canvasGridString\n\n'
-          'Output the single next stroke JSON now:';
+      final systemInstruction = formatSystemInstruction();
+      final userTextPrompt = formatUserPrompt(
+        referenceImage: referenceImage,
+        canvasImage: canvasImage,
+        prompt: prompt,
+        paletteColors: paletteColors,
+      );
 
       final jsResponse = await ai
           .getNextStroke(userTextPrompt.toJS, systemInstruction.toJS)
