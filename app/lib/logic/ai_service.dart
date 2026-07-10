@@ -109,10 +109,10 @@ class MethodChannelAiService implements AiService {
       );
       final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
 
-      final resultString = await _channel
-          .invokeMethod<String>('getNextStroke', {
-            'prompt': fullPrompt,
-          });
+      final resultString = await _channel.invokeMethod<String>(
+        'getNextStroke',
+        {'prompt': fullPrompt},
+      );
 
       if (resultString == null) return null;
       final parsed = jsonDecode(resultString);
