@@ -26,7 +26,9 @@ class WebAiService implements AiService {
     try {
       final ai = chromeAi;
       if (ai == null) {
-        debugPrint('Web AI checkStatus: window.chromeAi is null (check if script in index.html ran successfully)');
+        debugPrint(
+          'Web AI checkStatus: window.chromeAi is null (check if script in index.html ran successfully)',
+        );
         return AiCoreStatus.unavailable;
       }
 
