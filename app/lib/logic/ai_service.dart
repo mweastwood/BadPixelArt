@@ -21,14 +21,9 @@ abstract class AiService {
 
 class MethodChannelAiService implements AiService {
   static const _channel = MethodChannel('com.badpixelart/aicore');
-  final _mockFallback = MockAiService();
-  bool _useFallback = false;
 
   @override
   Future<AiCoreStatus> checkStatus() async {
-    if (_useFallback) {
-      return _mockFallback.checkStatus();
-    }
     try {
       final String? result = await _channel.invokeMethod<String>('checkStatus');
       switch (result) {
@@ -41,9 +36,6 @@ class MethodChannelAiService implements AiService {
         default:
           return AiCoreStatus.unavailable;
       }
-    } on MissingPluginException {
-      _useFallback = true;
-      return _mockFallback.checkStatus();
     } catch (_) {
       return AiCoreStatus.unavailable;
     }
@@ -51,9 +43,6 @@ class MethodChannelAiService implements AiService {
 
   @override
   Future<void> triggerDownload() async {
-    if (_useFallback) {
-      return _mockFallback.triggerDownload();
-    }
     try {
       await _channel.invokeMethod<void>('triggerDownload');
     } catch (_) {
@@ -68,14 +57,6 @@ class MethodChannelAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
   }) async {
-    if (_useFallback) {
-      return _mockFallback.getNextStroke(
-        referenceImage: referenceImage,
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-      );
-    }
     try {
       final resultString = await _channel
           .invokeMethod<String>('getNextStroke', {
