@@ -55,9 +55,11 @@ String formatUserPrompt({
   String canvasGridString;
   if (isMultimodal) {
     if (hasPreviousImage) {
-      canvasGridString = 'The attached image contains the previous canvas state (middle panel) and the current canvas state (right panel).';
+      canvasGridString =
+          'The attached image contains the previous canvas state (middle panel) and the current canvas state (right panel).';
     } else {
-      canvasGridString = 'The current canvas is provided as an image attachment.';
+      canvasGridString =
+          'The current canvas is provided as an image attachment.';
     }
   } else {
     String decodedGrid = utf8.decode(canvasImage);

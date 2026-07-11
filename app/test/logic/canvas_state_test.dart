@@ -256,13 +256,13 @@ void main() {
 
       expect(container.read(canvasStateProvider).grid[10][10], equals(1));
 
-      mockAiService.mockResult = {
-        'tool': 'undo',
-        'params': <int>[],
-      };
+      mockAiService.mockResult = {'tool': 'undo', 'params': <int>[]};
 
       await notifier.triggerAiStroke();
-      expect(container.read(canvasStateProvider).grid[10][10], equals(0)); // reverted
+      expect(
+        container.read(canvasStateProvider).grid[10][10],
+        equals(0),
+      ); // reverted
     });
 
     test('triggerAiStroke applies strokes returned by AI', () async {
@@ -399,21 +399,27 @@ void main() {
       },
     );
 
-    test('triggerAiStroke passes previousBmpBytes to AI service if undo stack is not empty', () async {
-      final notifier = container.read(canvasStateProvider.notifier);
-      notifier.selectColor(1);
-      notifier.drawPixel(10, 10); // push one stroke to undo stack
+    test(
+      'triggerAiStroke passes previousBmpBytes to AI service if undo stack is not empty',
+      () async {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.selectColor(1);
+        notifier.drawPixel(10, 10); // push one stroke to undo stack
 
-      mockAiService.mockResult = {
-        'tool': 'line',
-        'params': [0, 0, 5, 5],
-        'color': 2,
-      };
+        mockAiService.mockResult = {
+          'tool': 'line',
+          'params': [0, 0, 5, 5],
+          'color': 2,
+        };
 
-      await notifier.triggerAiStroke();
-      expect(mockAiService.lastPreviousBmpBytes, isNotNull);
-      expect(mockAiService.lastPreviousBmpBytes!.length, equals(12342)); // 64x64 bmp length
-    });
+        await notifier.triggerAiStroke();
+        expect(mockAiService.lastPreviousBmpBytes, isNotNull);
+        expect(
+          mockAiService.lastPreviousBmpBytes!.length,
+          equals(12342),
+        ); // 64x64 bmp length
+      },
+    );
 
     test('setting reference image to null clears both images', () {
       final notifier = container.read(canvasStateProvider.notifier);

@@ -585,7 +585,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       }
     }
   }
-  void _drawCircleFilledAlg(List<List<int>> grid, int xc, int yc, int r, int color) {
+
+  void _drawCircleFilledAlg(
+    List<List<int>> grid,
+    int xc,
+    int yc,
+    int r,
+    int color,
+  ) {
     for (int y = yc - r; y <= yc + r; y++) {
       for (int x = xc - r; x <= xc + r; x++) {
         if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
@@ -597,7 +604,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     }
   }
 
-  void _drawCircleHatchedAlg(List<List<int>> grid, int xc, int yc, int r, int color) {
+  void _drawCircleHatchedAlg(
+    List<List<int>> grid,
+    int xc,
+    int yc,
+    int r,
+    int color,
+  ) {
     for (int y = yc - r; y <= yc + r; y++) {
       for (int x = xc - r; x <= xc + r; x++) {
         if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
@@ -611,7 +624,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     }
   }
 
-  void _drawRectangleAlg(List<List<int>> grid, int x1, int y1, int x2, int y2, int color) {
+  void _drawRectangleAlg(
+    List<List<int>> grid,
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int color,
+  ) {
     int startX = x1 < x2 ? x1 : x2;
     int endX = x1 < x2 ? x2 : x1;
     int startY = y1 < y2 ? y1 : y2;
@@ -630,7 +650,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     }
   }
 
-  void _drawRectangleFilledAlg(List<List<int>> grid, int x1, int y1, int x2, int y2, int color) {
+  void _drawRectangleFilledAlg(
+    List<List<int>> grid,
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int color,
+  ) {
     int startX = x1 < x2 ? x1 : x2;
     int endX = x1 < x2 ? x2 : x1;
     int startY = y1 < y2 ? y1 : y2;
@@ -644,7 +671,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     }
   }
 
-  void _drawRectangleHatchedAlg(List<List<int>> grid, int x1, int y1, int x2, int y2, int color) {
+  void _drawRectangleHatchedAlg(
+    List<List<int>> grid,
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int color,
+  ) {
     int startX = x1 < x2 ? x1 : x2;
     int endX = x1 < x2 ? x2 : x1;
     int startY = y1 < y2 ? y1 : y2;
@@ -659,6 +693,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       }
     }
   }
+
   // Triggering next stroke from AI service
   Future<void> triggerAiStroke() async {
     if (state.isGenerating) return;
@@ -732,7 +767,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           final params = (result['params'] as List?)?.cast<int>();
           final colorIndex = result['color'] as int?;
 
-          if (tool != null && params != null && (colorIndex != null || tool == 'undo')) {
+          if (tool != null &&
+              params != null &&
+              (colorIndex != null || tool == 'undo')) {
             _applyAiStrokeCommand(tool, params, colorIndex ?? 0);
           } else {
             isError = true;
