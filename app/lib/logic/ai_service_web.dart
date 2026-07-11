@@ -67,6 +67,7 @@ class WebAiService implements AiService {
     required Uint8List canvasImage,
     required String prompt,
     required List<String> paletteColors,
+    Uint8List? canvasBmpBytes,
   }) async {
     try {
       final ai = chromeAi;

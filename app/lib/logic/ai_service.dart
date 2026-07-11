@@ -16,6 +16,7 @@ abstract class AiService {
     required Uint8List canvasImage,
     required String prompt,
     required List<String> paletteColors,
+    Uint8List? canvasBmpBytes,
   });
 }
 
@@ -98,6 +99,7 @@ class MethodChannelAiService implements AiService {
     required Uint8List canvasImage,
     required String prompt,
     required List<String> paletteColors,
+    Uint8List? canvasBmpBytes,
   }) async {
     try {
       final systemInstruction = formatSystemInstruction();
@@ -109,10 +111,12 @@ class MethodChannelAiService implements AiService {
       );
       final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
 
-      final resultString = await _channel.invokeMethod<String>(
-        'getNextStroke',
-        {'prompt': fullPrompt},
-      );
+      final resultString = await _channel
+          .invokeMethod<String>('getNextStroke', {
+            'prompt': fullPrompt,
+            'canvasImage': canvasImage,
+            'referenceImage': referenceImage,
+          });
 
       if (resultString == null) return null;
       final parsed = jsonDecode(resultString);
@@ -156,6 +160,7 @@ class MockAiService implements AiService {
     required Uint8List canvasImage,
     required String prompt,
     required List<String> paletteColors,
+    Uint8List? canvasBmpBytes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     _strokeCount++;
