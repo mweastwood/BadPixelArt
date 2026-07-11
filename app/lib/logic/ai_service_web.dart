@@ -63,30 +63,14 @@ class WebAiService implements AiService {
 
   @override
   Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List? referenceImage,
     required Uint8List canvasImage,
     required String prompt,
-    required List<String> paletteColors,
-    Uint8List? canvasBmpBytes,
-    Uint8List? previousBmpBytes,
   }) async {
     try {
       final ai = chromeAi;
       if (ai == null) return null;
 
-      final systemInstruction = formatSystemInstruction();
-      final userTextPrompt = formatUserPrompt(
-        referenceImage: referenceImage,
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-        isMultimodal: canvasBmpBytes != null,
-        hasPreviousImage: previousBmpBytes != null,
-      );
-
-      final jsResponse = await ai
-          .getNextStroke(userTextPrompt.toJS, systemInstruction.toJS)
-          .toDart;
+      final jsResponse = await ai.getNextStroke(prompt.toJS, ''.toJS).toDart;
       final String? response = (jsResponse as JSString?)?.toDart;
 
       if (response == null) return null;

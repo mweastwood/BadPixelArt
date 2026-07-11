@@ -101,6 +101,66 @@ Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
   return bmp;
 }
 
+Uint8List combineBmps(List<Uint8List> bmps) {
+  final activeBmps = bmps.where((b) => b.isNotEmpty).toList();
+  if (activeBmps.isEmpty) {
+    return generateBmpFromRgba(Uint8List.fromList([0, 0, 0, 255]), 1, 1);
+  }
+  if (activeBmps.length == 1) {
+    return activeBmps.first;
+  }
+
+  final int n = activeBmps.length;
+  final int width = 64 * n;
+  const int height = 64;
+  const int bytesPerPixel = 3;
+  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
+  final int rowStride = width * bytesPerPixel + rowPadding;
+  final int pixelDataSize = rowStride * height;
+  final int fileSize = 54 + pixelDataSize;
+
+  final Uint8List combined = Uint8List(fileSize);
+  final ByteData bd = ByteData.sublistView(combined);
+
+  // BMP Header
+  combined[0] = 0x42; // 'B'
+  combined[1] = 0x4D; // 'M'
+  bd.setUint32(2, fileSize, Endian.little);
+  bd.setUint32(6, 0, Endian.little);
+  bd.setUint32(10, 54, Endian.little);
+
+  // DIB Header (BITMAPINFOHEADER)
+  bd.setUint32(14, 40, Endian.little);
+  bd.setUint32(18, width, Endian.little);
+  bd.setUint32(22, height, Endian.little);
+  bd.setUint16(26, 1, Endian.little);
+  bd.setUint16(28, 24, Endian.little); // 24-bit BGR
+  bd.setUint32(30, 0, Endian.little);
+  bd.setUint32(34, pixelDataSize, Endian.little);
+  bd.setUint32(38, 2835, Endian.little); // 72 DPI
+  bd.setUint32(42, 2835, Endian.little); // 72 DPI
+  bd.setUint32(46, 0, Endian.little);
+  bd.setUint32(50, 0, Endian.little);
+
+  int destOffset = 54;
+  for (int y = 0; y < height; y++) {
+    for (int i = 0; i < n; i++) {
+      final sourceBmp = activeBmps[i];
+      const int sourceRowStride = 64 * 3;
+      final int sourceRowOffset = 54 + y * sourceRowStride;
+
+      for (int x = 0; x < 192; x++) {
+        combined[destOffset++] = sourceBmp[sourceRowOffset + x];
+      }
+    }
+    for (int p = 0; p < rowPadding; p++) {
+      combined[destOffset++] = 0;
+    }
+  }
+
+  return combined;
+}
+
 @immutable
 class CanvasModel {
   final List<List<int>> grid;
@@ -711,15 +771,27 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         ? generateBmp(state.undoStack.last, state.palette)
         : null;
 
+    final List<Uint8List> bmpsToCombine = [];
+    if (state.referenceImage != null) {
+      bmpsToCombine.add(state.referenceImage!);
+    }
+    if (previousBmp != null) {
+      bmpsToCombine.add(previousBmp);
+    }
+    bmpsToCombine.add(canvasBmp);
+
+    final combinedBmp = combineBmps(bmpsToCombine);
+
     // 1. Normal drawing action turn
     final isMultimodal = _aiService is MethodChannelAiService;
     final systemInstruction = formatSystemInstruction();
     final userTextPrompt = formatUserPrompt(
-      referenceImage: state.referenceImage,
       canvasImage: canvasBytes,
       prompt: state.userPrompt,
       paletteColors: paletteHexes,
       isMultimodal: isMultimodal,
+      hasPreviousImage: previousBmp != null,
+      hasReferenceImage: state.referenceImage != null,
     );
 
     // Append recent action history to break repetition loops
@@ -749,12 +821,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
 
     try {
       final result = await _aiService.getNextStroke(
-        referenceImage: state.referenceImage,
-        canvasImage: canvasBytes,
-        prompt: '${state.userPrompt}\n\n$historyPrompt',
-        paletteColors: paletteHexes,
-        canvasBmpBytes: canvasBmp,
-        previousBmpBytes: previousBmp,
+        canvasImage: combinedBmp,
+        prompt: fullPrompt,
       );
 
       if (result != null) {
@@ -791,7 +859,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
             prompt: fullPrompt,
             response: rawResponse,
             isError: isError,
-            canvasImage: canvasBmp,
+            canvasImage: combinedBmp,
           ),
         );
       state = state.copyWith(isGenerating: false, aiHistory: newHistory);
