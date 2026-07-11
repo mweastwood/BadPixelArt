@@ -77,20 +77,20 @@ class MainActivity : FlutterActivity() {
                                 if (canvasBitmap != null) {
                                     model.generateContent(
                                         generateContentRequest(ImagePart(canvasBitmap), TextPart(promptText)) {
-                                            // Optional config
+                                            temperature = 0.7f
                                         }
                                     )
                                 } else {
                                     model.generateContent(
                                         generateContentRequest(TextPart(promptText)) {
-                                            // Optional config
+                                            temperature = 0.7f
                                         }
                                     )
                                 }
                             } else {
                                 model.generateContent(
                                     generateContentRequest(TextPart(promptText)) {
-                                        // Optional config
+                                        temperature = 0.7f
                                     }
                                 )
                             }
