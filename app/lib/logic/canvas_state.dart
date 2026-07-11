@@ -591,8 +591,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
             state = state.copyWith(
               drawingPhase: nextPhase,
               consecutiveActions: 0,
-              autoRun:
-                  nextPhase == AiDrawingPhase.complete ? false : state.autoRun,
+              autoRun: nextPhase == AiDrawingPhase.complete
+                  ? false
+                  : state.autoRun,
               aiHistory: [
                 ...state.aiHistory,
                 AiHistoryEntry(

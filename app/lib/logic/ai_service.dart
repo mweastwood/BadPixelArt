@@ -205,10 +205,7 @@ class MethodChannelAiService implements AiService {
           return parsed;
         }
       } catch (e) {
-        return {
-          'error': e.toString(),
-          'rawResponse': resultString,
-        };
+        return {'error': e.toString(), 'rawResponse': resultString};
       }
     } catch (e, stack) {
       debugPrint('Error getting next stroke via MethodChannel: $e');
