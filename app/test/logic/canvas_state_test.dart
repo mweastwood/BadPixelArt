@@ -6,10 +6,10 @@ import 'package:bad_pixel_art/logic/canvas_state.dart';
 
 class MockTestAiService implements AiService {
   AiCoreStatus status = AiCoreStatus.available;
-  Map<String, dynamic>? mockResult;
   bool triggerDownloadCalled = false;
-  List<String>? lastPaletteColors;
-  Uint8List? lastPreviousBmpBytes;
+  Uint8List? lastCanvasImage;
+  String? lastPrompt;
+  Map<String, dynamic>? mockResult;
 
   @override
   Future<AiCoreStatus> checkStatus() async => status;
@@ -22,15 +22,11 @@ class MockTestAiService implements AiService {
 
   @override
   Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List? referenceImage,
     required Uint8List canvasImage,
     required String prompt,
-    required List<String> paletteColors,
-    Uint8List? canvasBmpBytes,
-    Uint8List? previousBmpBytes,
   }) async {
-    lastPaletteColors = paletteColors;
-    lastPreviousBmpBytes = previousBmpBytes;
+    lastCanvasImage = canvasImage;
+    lastPrompt = prompt;
     return mockResult;
   }
 }
@@ -373,9 +369,12 @@ void main() {
         final notifier = container.read(canvasStateProvider.notifier);
         await notifier.triggerAiStroke();
 
-        expect(mockAiService.lastPaletteColors, isNotNull);
-        // Check that all formatted colors start with # and have exactly 6 hex digits (7 characters total)
-        for (final hex in mockAiService.lastPaletteColors!) {
+        expect(mockAiService.lastPrompt, isNotNull);
+        final hexRegex = RegExp(r'#([0-9a-fA-F]{6})');
+        final matches = hexRegex.allMatches(mockAiService.lastPrompt!);
+        expect(matches.isNotEmpty, isTrue);
+        for (final match in matches) {
+          final hex = match.group(0)!;
           expect(hex, startsWith('#'));
           expect(hex.length, equals(7)); // #RRGGBB
           final hexValue = hex.substring(1);
@@ -400,7 +399,7 @@ void main() {
     );
 
     test(
-      'triggerAiStroke passes previousBmpBytes to AI service if undo stack is not empty',
+      'triggerAiStroke passes combined canvas containing previous canvas to AI service if undo stack is not empty',
       () async {
         final notifier = container.read(canvasStateProvider.notifier);
         notifier.selectColor(1);
@@ -413,11 +412,11 @@ void main() {
         };
 
         await notifier.triggerAiStroke();
-        expect(mockAiService.lastPreviousBmpBytes, isNotNull);
+        expect(mockAiService.lastCanvasImage, isNotNull);
         expect(
-          mockAiService.lastPreviousBmpBytes!.length,
-          equals(12342),
-        ); // 64x64 bmp length
+          mockAiService.lastCanvasImage!.length,
+          equals(24630), // 128x64 bmp length (previous + current canvas)
+        );
       },
     );
 

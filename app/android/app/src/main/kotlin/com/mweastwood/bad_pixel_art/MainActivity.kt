@@ -65,8 +65,6 @@ class MainActivity : FlutterActivity() {
                  "getNextStroke" -> {
                     val promptText = call.argument<String>("prompt")
                     val canvasImageBytes = call.argument<ByteArray>("canvasImage")
-                    val referenceImageBytes = call.argument<ByteArray>("referenceImage")
-                    val previousImageBytes = call.argument<ByteArray>("previousImage")
 
                     if (promptText == null) {
                         result.error("invalid_argument", "prompt is missing", null)
@@ -75,35 +73,16 @@ class MainActivity : FlutterActivity() {
 
                     ioScope.launch {
                         var canvasBitmap: Bitmap? = null
-                        var referenceBitmap: Bitmap? = null
-                        var previousBitmap: Bitmap? = null
-                        var combinedBitmap: Bitmap? = null
                         try {
                             canvasBitmap = if (canvasImageBytes != null && canvasImageBytes.isNotEmpty()) {
                                 BitmapFactory.decodeByteArray(canvasImageBytes, 0, canvasImageBytes.size)
                             } else {
                                 null
                             }
-                            referenceBitmap = if (referenceImageBytes != null && referenceImageBytes.isNotEmpty()) {
-                                BitmapFactory.decodeByteArray(referenceImageBytes, 0, referenceImageBytes.size)
-                            } else {
-                                null
-                            }
-                            previousBitmap = if (previousImageBytes != null && previousImageBytes.isNotEmpty()) {
-                                BitmapFactory.decodeByteArray(previousImageBytes, 0, previousImageBytes.size)
-                            } else {
-                                null
-                            }
 
-                            val list = listOfNotNull(referenceBitmap, previousBitmap, canvasBitmap)
-                            val response = if (list.isNotEmpty()) {
-                                combinedBitmap = combineBitmaps(referenceBitmap, previousBitmap, canvasBitmap)
-                                val combinedPrompt = "$promptText\n\nNote: The attached image is a combined layout. Depending on what is active, it contains from left to right:\n" +
-                                    "1. The reference image (if provided)\n" +
-                                    "2. The previous canvas state before the last action (if available)\n" +
-                                    "3. The current canvas state (always present on the far right)."
+                            val response = if (canvasBitmap != null) {
                                 model.generateContent(
-                                    generateContentRequest(ImagePart(combinedBitmap), TextPart(combinedPrompt)) {
+                                    generateContentRequest(ImagePart(canvasBitmap), TextPart(promptText)) {
                                         temperature = 0.7f
                                     }
                                 )
@@ -127,9 +106,6 @@ class MainActivity : FlutterActivity() {
                             }
                         } finally {
                             canvasBitmap?.recycle()
-                            referenceBitmap?.recycle()
-                            previousBitmap?.recycle()
-                            combinedBitmap?.recycle()
                         }
                     }
                 }
@@ -138,22 +114,5 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
-    }
-
-    private fun combineBitmaps(first: Bitmap?, second: Bitmap?, third: Bitmap?): Bitmap {
-        val list = listOfNotNull(first, second, third)
-        if (list.isEmpty()) {
-            return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-        }
-        val width = list.sumOf { it.width }
-        val height = list.maxOf { it.height }
-        val combined = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(combined)
-        var currentLeft = 0f
-        for (bmp in list) {
-            canvas.drawBitmap(bmp, currentLeft, 0f, null)
-            currentLeft += bmp.width.toFloat()
-        }
-        return combined
     }
 }

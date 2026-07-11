@@ -12,12 +12,8 @@ abstract class AiService {
   Future<AiCoreStatus> checkStatus();
   Future<void> triggerDownload();
   Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List? referenceImage,
     required Uint8List canvasImage,
     required String prompt,
-    required List<String> paletteColors,
-    Uint8List? canvasBmpBytes,
-    Uint8List? previousBmpBytes,
   });
 }
 
@@ -45,18 +41,24 @@ String formatSystemInstruction() {
 }
 
 String formatUserPrompt({
-  required Uint8List? referenceImage,
   required Uint8List canvasImage,
   required String prompt,
   required List<String> paletteColors,
   bool isMultimodal = false,
   bool hasPreviousImage = false,
+  bool hasReferenceImage = false,
 }) {
   String canvasGridString;
   if (isMultimodal) {
-    if (hasPreviousImage) {
+    if (hasReferenceImage && hasPreviousImage) {
       canvasGridString =
-          'The attached image contains the previous canvas state (middle panel) and the current canvas state (right panel).';
+          'The attached image contains the reference image (left panel), previous canvas state (middle panel), and current canvas state (right panel).';
+    } else if (hasReferenceImage) {
+      canvasGridString =
+          'The attached image contains the reference image (left panel) and current canvas state (right panel).';
+    } else if (hasPreviousImage) {
+      canvasGridString =
+          'The attached image contains the previous canvas state (left panel) and current canvas state (right panel).';
     } else {
       canvasGridString =
           'The current canvas is provided as an image attachment.';
@@ -70,7 +72,7 @@ String formatUserPrompt({
   }
 
   String refShapeInstruction = '';
-  if (referenceImage != null) {
+  if (hasReferenceImage) {
     refShapeInstruction =
         'Use the provided reference image (sent as an image attachment) to guide your drawings.';
   }
@@ -144,25 +146,10 @@ class MethodChannelAiService implements AiService {
 
   @override
   Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List? referenceImage,
     required Uint8List canvasImage,
     required String prompt,
-    required List<String> paletteColors,
-    Uint8List? canvasBmpBytes,
-    Uint8List? previousBmpBytes,
   }) async {
     try {
-      final systemInstruction = formatSystemInstruction();
-      final userTextPrompt = formatUserPrompt(
-        referenceImage: referenceImage,
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-        isMultimodal: canvasBmpBytes != null,
-        hasPreviousImage: previousBmpBytes != null,
-      );
-      final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
-
       String? resultString;
       dynamic lastError;
       StackTrace? lastStackTrace;
@@ -171,10 +158,8 @@ class MethodChannelAiService implements AiService {
       for (int attempt = 1; attempt <= 4; attempt++) {
         try {
           resultString = await _channel.invokeMethod<String>('getNextStroke', {
-            'prompt': fullPrompt,
-            'canvasImage': canvasBmpBytes ?? canvasImage,
-            'referenceImage': referenceImage,
-            'previousImage': previousBmpBytes,
+            'prompt': prompt,
+            'canvasImage': canvasImage,
           });
           break; // Success! Exit the retry loop.
         } catch (e, stack) {
@@ -249,12 +234,8 @@ class MockAiService implements AiService {
 
   @override
   Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List? referenceImage,
     required Uint8List canvasImage,
     required String prompt,
-    required List<String> paletteColors,
-    Uint8List? canvasBmpBytes,
-    Uint8List? previousBmpBytes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
 
@@ -262,7 +243,7 @@ class MockAiService implements AiService {
 
     // Generate simulated strokes in a circle/line sequence for demo purposes.
     final step = _strokeCount % 4;
-    final colorIdx = paletteColors.length > 2 ? 2 : 1; // Pick red or non-black
+    final colorIdx = 1; // Pick index 1 as a default color index
 
     if (step == 0) {
       return {

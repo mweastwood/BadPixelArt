@@ -28,7 +28,6 @@ void main() {
       final paletteColors = ['#000000', '#ffffff', '#ff0000'];
 
       final userPrompt = formatUserPrompt(
-        referenceImage: null,
         canvasImage: canvasImage,
         prompt: prompt,
         paletteColors: paletteColors,
@@ -47,7 +46,6 @@ void main() {
       final paletteColors = ['#000000', '#ffffff', '#ff0000', '#00ff00'];
 
       final userPrompt = formatUserPrompt(
-        referenceImage: null,
         canvasImage: canvasImage,
         prompt: prompt,
         paletteColors: paletteColors,
@@ -63,17 +61,14 @@ void main() {
 
     test('formatUserPrompt includes generic reference image instructions', () {
       final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
-      final referenceImage = Uint8List.fromList(
-        utf8.encode('Custom reference image bytes'),
-      );
       final prompt = 'draw reference';
       final paletteColors = ['#000000', '#ffffff'];
 
       final userPrompt = formatUserPrompt(
-        referenceImage: referenceImage,
         canvasImage: canvasImage,
         prompt: prompt,
         paletteColors: paletteColors,
+        hasReferenceImage: true,
       );
 
       expect(

@@ -17,12 +17,8 @@ class MockTestAiService implements AiService {
 
   @override
   Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List? referenceImage,
     required Uint8List canvasImage,
     required String prompt,
-    required List<String> paletteColors,
-    Uint8List? canvasBmpBytes,
-    Uint8List? previousBmpBytes,
   }) async => null;
 }
 
