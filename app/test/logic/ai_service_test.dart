@@ -30,7 +30,9 @@ void main() {
 
       expect(userPrompt, contains('User Instruction: "draw a line"'));
       expect(userPrompt, contains('The grid is completely empty (all 0s).'));
-      expect(userPrompt, contains('Color Palette Size: 3'));
+      expect(userPrompt, contains('Available Color Palette'));
+      expect(userPrompt, contains('- Index 0: #000000'));
+      expect(userPrompt, contains('- Index 2: #ff0000'));
     });
 
     test('formatUserPrompt formats active canvas correctly', () {
@@ -48,7 +50,9 @@ void main() {
       expect(userPrompt, contains('User Instruction: "draw a circle"'));
       expect(userPrompt, isNot(contains('The grid is completely empty')));
       expect(userPrompt, contains('01002000'));
-      expect(userPrompt, contains('Color Palette Size: 4'));
+      expect(userPrompt, contains('Available Color Palette'));
+      expect(userPrompt, contains('- Index 0: #000000'));
+      expect(userPrompt, contains('- Index 3: #00ff00'));
     });
 
     test('formatUserPrompt includes Heart shape reference instructions', () {
