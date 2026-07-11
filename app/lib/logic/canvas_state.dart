@@ -109,6 +109,7 @@ class CanvasModel {
   final String paletteName;
   final List<Color> palette;
   final Uint8List? referenceImage;
+  final Uint8List? originalReferenceImage;
   final String userPrompt;
   final AiCoreStatus aiStatus;
   final bool isGenerating;
@@ -127,6 +128,7 @@ class CanvasModel {
     required this.paletteName,
     required this.palette,
     this.referenceImage,
+    this.originalReferenceImage,
     required this.userPrompt,
     required this.aiStatus,
     required this.isGenerating,
@@ -146,6 +148,7 @@ class CanvasModel {
     String? paletteName,
     List<Color>? palette,
     Uint8List? referenceImage,
+    Uint8List? originalReferenceImage,
     bool clearReference = false,
     String? userPrompt,
     AiCoreStatus? aiStatus,
@@ -167,6 +170,9 @@ class CanvasModel {
       referenceImage: clearReference
           ? null
           : (referenceImage ?? this.referenceImage),
+      originalReferenceImage: clearReference
+          ? null
+          : (originalReferenceImage ?? this.originalReferenceImage),
       userPrompt: userPrompt ?? this.userPrompt,
       aiStatus: aiStatus ?? this.aiStatus,
       isGenerating: isGenerating ?? this.isGenerating,
@@ -196,6 +202,7 @@ class CanvasModel {
         consecutiveActions == other.consecutiveActions &&
         listEquals(palette, other.palette) &&
         listEquals(referenceImage, other.referenceImage) &&
+        listEquals(originalReferenceImage, other.originalReferenceImage) &&
         listEquals(aiHistory, other.aiHistory);
   }
 
@@ -213,6 +220,9 @@ class CanvasModel {
     consecutiveActions,
     Object.hashAll(palette),
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
+    originalReferenceImage != null
+        ? Object.hashAll(originalReferenceImage!)
+        : null,
     Object.hashAll(aiHistory),
   );
 }
@@ -258,6 +268,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           redoStack: [],
           aiHistory: const [],
           referenceImage: null,
+          originalReferenceImage: null,
         ),
       ) {
     checkAiStatus();
@@ -304,18 +315,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     state = state.copyWith(userPrompt: prompt);
   }
 
-  void setReferenceImage(Uint8List? bytes) {
+  void setReferenceImage(Uint8List? bytes, {Uint8List? originalBytes}) {
     if (bytes == null) {
       state = state.copyWith(clearReference: true);
     } else {
-      state = state.copyWith(referenceImage: bytes);
+      state = state.copyWith(
+        referenceImage: bytes,
+        originalReferenceImage: originalBytes,
+      );
     }
   }
 
   Future<void> setUploadedReferenceImage(Uint8List rawBytes) async {
     final bmp = await resizeAndConvertToBmp(rawBytes);
     if (bmp != null) {
-      state = state.copyWith(referenceImage: bmp);
+      state = state.copyWith(
+        referenceImage: bmp,
+        originalReferenceImage: rawBytes,
+      );
     }
   }
 
