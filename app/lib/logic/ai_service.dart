@@ -20,6 +20,7 @@ abstract class AiService {
 
 String formatSystemInstruction() {
   return 'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
+      'Note: Each 64x64 canvas panel in your visual input is padded with a black border on the top and left to a size of 80x80 pixels. This border displays a coordinate ruler (tick marks and numbers: 0, 16, 32, 48, 63) to guide your drawing placement.\n'
       'Available tools:\n'
       '- "line": params [startX, startY, endX, endY]\n'
       '- "circle": params [centerX, centerY, radius] (outlined circle)\n'

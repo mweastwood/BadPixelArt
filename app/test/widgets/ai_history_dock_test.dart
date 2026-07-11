@@ -57,10 +57,12 @@ void main() {
         response:
             '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
-        canvasImage: generateBmp(
-          List.generate(64, (_) => List.filled(64, 0)),
-          CanvasNotifier.primaryPalette,
-        ),
+        canvasImage: combineBmps([
+          generateBmp(
+            List.generate(64, (_) => List.filled(64, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+        ]),
       );
 
       final mockService = LocalMockAiService();
@@ -116,10 +118,12 @@ void main() {
         response:
             '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
-        canvasImage: generateBmp(
-          List.generate(64, (_) => List.filled(64, 0)),
-          CanvasNotifier.primaryPalette,
-        ),
+        canvasImage: combineBmps([
+          generateBmp(
+            List.generate(64, (_) => List.filled(64, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+        ]),
       );
 
       final mockService = LocalMockAiService();
@@ -151,10 +155,12 @@ void main() {
         response:
             '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
-        canvasImage: generateBmp(
-          List.generate(64, (_) => List.filled(64, 0)),
-          CanvasNotifier.primaryPalette,
-        ),
+        canvasImage: combineBmps([
+          generateBmp(
+            List.generate(64, (_) => List.filled(64, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+        ]),
       );
 
       final mockService = LocalMockAiService();
