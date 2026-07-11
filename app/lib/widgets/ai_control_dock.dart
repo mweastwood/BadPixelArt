@@ -1,7 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
@@ -17,17 +16,6 @@ class AiControlDock extends ConsumerStatefulWidget {
 class _AiControlDockState extends ConsumerState<AiControlDock> {
   final TextEditingController _promptController = TextEditingController();
   bool _isCollapsed = false;
-
-  // Helper to generate simulated image bytes for presets
-  Uint8List _generateMockImageBytes(String presetName) {
-    // Generate a simple grid string representing a 64x64 shape to mimic real reference image bytes
-    final buffer = StringBuffer();
-    buffer.write(presetName);
-    for (int i = 0; i < 100; i++) {
-      buffer.write('$i,');
-    }
-    return Uint8List.fromList(utf8.encode(buffer.toString()));
-  }
 
   @override
   void initState() {
@@ -99,48 +87,75 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildPresetButton(
-                    label: 'Sword',
-                    icon: Icons.shield_outlined,
-                    isSelected:
-                        canvasModel.referenceImage != null &&
-                        utf8
-                            .decode(canvasModel.referenceImage!)
-                            .startsWith('Sword'),
-                    onTap: () {
-                      notifier.setReferenceImage(
-                        _generateMockImageBytes('Sword'),
-                      );
-                    },
+              if (canvasModel.referenceImage != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant,
+                      width: 1.5,
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(
-                    label: 'Heart',
-                    icon: Icons.favorite_border,
-                    isSelected:
-                        canvasModel.referenceImage != null &&
-                        utf8
-                            .decode(canvasModel.referenceImage!)
-                            .startsWith('Heart'),
-                    onTap: () {
-                      notifier.setReferenceImage(
-                        _generateMockImageBytes('Heart'),
-                      );
-                    },
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.image_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Custom Reference Active',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        tooltip: 'Change reference image',
+                        onPressed: () async {
+                          await _pickAndUploadReferenceImage(context, notifier);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                        tooltip: 'Remove reference image',
+                        onPressed: () {
+                          notifier.setReferenceImage(null);
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(
-                    label: 'Clear',
-                    icon: Icons.clear,
-                    isSelected: canvasModel.referenceImage == null,
-                    onTap: () {
-                      notifier.setReferenceImage(null);
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await _pickAndUploadReferenceImage(context, notifier);
                     },
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Upload Reference Image'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(
+                        color: theme.colorScheme.outlineVariant,
+                        width: 1.5,
+                      ),
+                    ),
                   ),
-                ],
-              ),
+                ),
               const SizedBox(height: 16),
 
               // Prompt Box
@@ -343,57 +358,30 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
     );
   }
 
-  Widget _buildPresetButton({
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.secondaryContainer
-                : theme.colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outlineVariant,
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
-                size: 20,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected
-                      ? theme.colorScheme.onSecondaryContainer
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _pickAndUploadReferenceImage(
+    BuildContext context,
+    CanvasNotifier notifier,
+  ) async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final bytes = file.bytes;
+        if (bytes != null) {
+          await notifier.setUploadedReferenceImage(bytes);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
+      }
+    }
   }
 }

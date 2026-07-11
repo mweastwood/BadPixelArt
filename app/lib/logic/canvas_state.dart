@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -145,6 +146,7 @@ class CanvasModel {
     String? paletteName,
     List<Color>? palette,
     Uint8List? referenceImage,
+    bool clearReference = false,
     String? userPrompt,
     AiCoreStatus? aiStatus,
     bool? isGenerating,
@@ -162,7 +164,9 @@ class CanvasModel {
       selectedTool: selectedTool ?? this.selectedTool,
       paletteName: paletteName ?? this.paletteName,
       palette: palette ?? this.palette,
-      referenceImage: referenceImage ?? this.referenceImage,
+      referenceImage: clearReference
+          ? null
+          : (referenceImage ?? this.referenceImage),
       userPrompt: userPrompt ?? this.userPrompt,
       aiStatus: aiStatus ?? this.aiStatus,
       isGenerating: isGenerating ?? this.isGenerating,
@@ -253,6 +257,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           undoStack: [],
           redoStack: [],
           aiHistory: const [],
+          referenceImage: null,
         ),
       ) {
     checkAiStatus();
@@ -300,7 +305,18 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
   }
 
   void setReferenceImage(Uint8List? bytes) {
-    state = state.copyWith(referenceImage: bytes);
+    if (bytes == null) {
+      state = state.copyWith(clearReference: true);
+    } else {
+      state = state.copyWith(referenceImage: bytes);
+    }
+  }
+
+  Future<void> setUploadedReferenceImage(Uint8List rawBytes) async {
+    final bmp = await resizeAndConvertToBmp(rawBytes);
+    if (bmp != null) {
+      state = state.copyWith(referenceImage: bmp);
+    }
   }
 
   void resetCanvas() {
@@ -816,3 +832,86 @@ final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
   final aiService = ref.watch(aiServiceProvider);
   return CanvasNotifier(aiService);
 });
+
+Future<Uint8List?> resizeAndConvertToBmp(Uint8List imageBytes) async {
+  try {
+    final codec = await ui.instantiateImageCodec(imageBytes);
+    final frameInfo = await codec.getNextFrame();
+    final originalImage = frameInfo.image;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    paintImage(
+      canvas: canvas,
+      rect: const Rect.fromLTWH(0, 0, 64, 64),
+      image: originalImage,
+      fit: BoxFit.cover,
+    );
+
+    final picture = recorder.endRecording();
+    final resizedImage = await picture.toImage(64, 64);
+
+    final byteData = await resizedImage.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    if (byteData == null) return null;
+
+    final rgbaBytes = byteData.buffer.asUint8List();
+    return generateBmpFromRgba(rgbaBytes, 64, 64);
+  } catch (e) {
+    debugPrint('Error resizing image: $e');
+    return null;
+  }
+}
+
+Uint8List generateBmpFromRgba(Uint8List rgbaBytes, int width, int height) {
+  const int bytesPerPixel = 3;
+  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
+  final int rowStride = width * bytesPerPixel + rowPadding;
+  final int pixelDataSize = rowStride * height;
+  final int fileSize = 54 + pixelDataSize;
+
+  final Uint8List bmp = Uint8List(fileSize);
+  final ByteData bd = ByteData.sublistView(bmp);
+
+  // BMP Header
+  bmp[0] = 0x42; // 'B'
+  bmp[1] = 0x4D; // 'M'
+  bd.setUint32(2, fileSize, Endian.little);
+  bd.setUint32(6, 0, Endian.little);
+  bd.setUint32(10, 54, Endian.little);
+
+  // DIB Header (BITMAPINFOHEADER)
+  bd.setUint32(14, 40, Endian.little);
+  bd.setUint32(18, width, Endian.little);
+  bd.setUint32(22, height, Endian.little);
+  bd.setUint16(26, 1, Endian.little);
+  bd.setUint16(28, 24, Endian.little); // 24-bit BGR
+  bd.setUint32(30, 0, Endian.little);
+  bd.setUint32(34, pixelDataSize, Endian.little);
+  bd.setUint32(38, 2835, Endian.little); // 72 DPI
+  bd.setUint32(42, 2835, Endian.little); // 72 DPI
+  bd.setUint32(46, 0, Endian.little);
+  bd.setUint32(50, 0, Endian.little);
+
+  int offset = 54;
+  for (int y = height - 1; y >= 0; y--) {
+    for (int x = 0; x < width; x++) {
+      final int rgbaOffset = (y * width + x) * 4;
+      final int r = rgbaBytes[rgbaOffset];
+      final int g = rgbaBytes[rgbaOffset + 1];
+      final int b = rgbaBytes[rgbaOffset + 2];
+
+      bmp[offset] = b;
+      bmp[offset + 1] = g;
+      bmp[offset + 2] = r;
+      offset += 3;
+    }
+    for (int p = 0; p < rowPadding; p++) {
+      bmp[offset++] = 0;
+    }
+  }
+
+  return bmp;
+}
