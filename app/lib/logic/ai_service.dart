@@ -36,10 +36,17 @@ String formatUserPrompt({
   required Uint8List canvasImage,
   required String prompt,
   required List<String> paletteColors,
+  bool isMultimodal = false,
 }) {
-  String canvasGridString = utf8.decode(canvasImage);
-  if (!canvasGridString.contains(RegExp(r'[1-9]'))) {
-    canvasGridString = 'The grid is completely empty (all 0s).';
+  String canvasGridString;
+  if (isMultimodal) {
+    canvasGridString = 'The current canvas is provided as an image attachment.';
+  } else {
+    String decodedGrid = utf8.decode(canvasImage);
+    if (!decodedGrid.contains(RegExp(r'[1-9]'))) {
+      decodedGrid = 'The grid is completely empty (all 0s).';
+    }
+    canvasGridString = 'Current grid layout serialized: $decodedGrid';
   }
 
   String refShapeInstruction = '';
@@ -55,7 +62,7 @@ String formatUserPrompt({
   return 'User Instruction: "$prompt"\n'
       '$refShapeInstruction\n'
       'Color Palette Size: ${paletteColors.length} (Color indices are 0 to ${paletteColors.length - 1}).\n'
-      'Current grid layout serialized: $canvasGridString\n\n'
+      '$canvasGridString\n\n'
       'Output the single next stroke JSON now:';
 }
 
@@ -108,13 +115,14 @@ class MethodChannelAiService implements AiService {
         canvasImage: canvasImage,
         prompt: prompt,
         paletteColors: paletteColors,
+        isMultimodal: canvasBmpBytes != null,
       );
       final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
 
       final resultString = await _channel
           .invokeMethod<String>('getNextStroke', {
             'prompt': fullPrompt,
-            'canvasImage': canvasImage,
+            'canvasImage': canvasBmpBytes ?? canvasImage,
             'referenceImage': referenceImage,
           });
 
