@@ -55,12 +55,12 @@ void main() {
       expect(userPrompt, contains('- Index 3: #00ff00'));
     });
 
-    test('formatUserPrompt includes Heart shape reference instructions', () {
+    test('formatUserPrompt includes generic reference image instructions', () {
       final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
       final referenceImage = Uint8List.fromList(
-        utf8.encode('Heart shape reference'),
+        utf8.encode('Custom reference image bytes'),
       );
-      final prompt = 'draw a heart';
+      final prompt = 'draw reference';
       final paletteColors = ['#000000', '#ffffff'];
 
       final userPrompt = formatUserPrompt(
@@ -70,25 +70,12 @@ void main() {
         paletteColors: paletteColors,
       );
 
-      expect(userPrompt, contains('The user wants to draw a Heart.'));
-    });
-
-    test('formatUserPrompt includes Sword shape reference instructions', () {
-      final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
-      final referenceImage = Uint8List.fromList(
-        utf8.encode('Sword shape reference'),
+      expect(
+        userPrompt,
+        contains(
+          'Use the provided reference image (sent as an image attachment) to guide your drawings.',
+        ),
       );
-      final prompt = 'draw a sword';
-      final paletteColors = ['#000000', '#ffffff'];
-
-      final userPrompt = formatUserPrompt(
-        referenceImage: referenceImage,
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-      );
-
-      expect(userPrompt, contains('The user wants to draw a Sword.'));
     });
 
     test('cleanJsonString strips markdown blocks correctly', () {

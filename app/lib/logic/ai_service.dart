@@ -96,12 +96,8 @@ String formatUserPrompt({
 
   String refShapeInstruction = '';
   if (referenceImage != null) {
-    final refString = utf8.decode(referenceImage);
-    if (refString.startsWith('Sword')) {
-      refShapeInstruction = 'The user wants to draw a Sword.';
-    } else if (refString.startsWith('Heart')) {
-      refShapeInstruction = 'The user wants to draw a Heart.';
-    }
+    refShapeInstruction =
+        'Use the provided reference image (sent as an image attachment) to guide your drawings.';
   }
 
   final colorList = paletteColors

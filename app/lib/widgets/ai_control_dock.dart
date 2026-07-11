@@ -87,47 +87,75 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                 ),
               ),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildPresetButton(
-                    label: 'Sword',
-                    icon: Icons.shield_outlined,
-                    isSelected: canvasModel.referencePresetName == 'Sword',
-                    onTap: () {
-                      notifier.setReferencePreset('Sword');
-                    },
+              if (canvasModel.referenceImage != null)
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant,
+                      width: 1.5,
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(
-                    label: 'Heart',
-                    icon: Icons.favorite_border,
-                    isSelected: canvasModel.referencePresetName == 'Heart',
-                    onTap: () {
-                      notifier.setReferencePreset('Heart');
-                    },
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.image_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Custom Reference Active',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        tooltip: 'Change reference image',
+                        onPressed: () async {
+                          await _pickAndUploadReferenceImage(context, notifier);
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.red,
+                        ),
+                        tooltip: 'Remove reference image',
+                        onPressed: () {
+                          notifier.setReferenceImage(null);
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(
-                    label: canvasModel.referencePresetName == 'Uploaded'
-                        ? 'Uploaded'
-                        : 'Upload',
-                    icon: Icons.upload_file,
-                    isSelected: canvasModel.referencePresetName == 'Uploaded',
-                    onTap: () async {
+                )
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
                       await _pickAndUploadReferenceImage(context, notifier);
                     },
+                    icon: const Icon(Icons.upload_file),
+                    label: const Text('Upload Reference Image'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(
+                        color: theme.colorScheme.outlineVariant,
+                        width: 1.5,
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  _buildPresetButton(
-                    label: 'Clear',
-                    icon: Icons.clear,
-                    isSelected: canvasModel.referencePresetName == null,
-                    onTap: () {
-                      notifier.setReferencePreset(null);
-                    },
-                  ),
-                ],
-              ),
+                ),
               const SizedBox(height: 16),
 
               // Prompt Box
@@ -330,60 +358,6 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
     );
   }
 
-  Widget _buildPresetButton({
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final theme = Theme.of(context);
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? theme.colorScheme.secondaryContainer
-                : theme.colorScheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outlineVariant,
-              width: 1.5,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
-                size: 20,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected
-                      ? theme.colorScheme.onSecondaryContainer
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _pickAndUploadReferenceImage(
     BuildContext context,
     CanvasNotifier notifier,
@@ -404,9 +378,9 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
     } catch (e) {
       debugPrint('Error picking file: $e');
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
       }
     }
   }
