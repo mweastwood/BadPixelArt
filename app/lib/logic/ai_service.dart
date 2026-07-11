@@ -163,15 +163,46 @@ class MethodChannelAiService implements AiService {
       );
       final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
 
-      final resultString = await _channel
-          .invokeMethod<String>('getNextStroke', {
+      String? resultString;
+      dynamic lastError;
+      StackTrace? lastStackTrace;
+      final List<String> attemptErrors = [];
+
+      for (int attempt = 1; attempt <= 4; attempt++) {
+        try {
+          resultString = await _channel.invokeMethod<String>('getNextStroke', {
             'prompt': fullPrompt,
             'canvasImage': canvasBmpBytes ?? canvasImage,
             'referenceImage': referenceImage,
             'previousImage': previousBmpBytes,
           });
+          break; // Success! Exit the retry loop.
+        } catch (e, stack) {
+          lastError = e;
+          lastStackTrace = stack;
+          attemptErrors.add('Attempt $attempt: $e');
+          debugPrint(
+            'Error getting next stroke (attempt $attempt/4) via MethodChannel: $e',
+          );
+          if (attempt < 4) {
+            final backoffMs = attempt * 500; // 500ms, 1000ms, 1500ms
+            await Future.delayed(Duration(milliseconds: backoffMs));
+          }
+        }
+      }
 
-      if (resultString == null) return null;
+      if (resultString == null) {
+        if (lastError != null) {
+          debugPrint(lastStackTrace.toString());
+          return {
+            'error': lastError.toString(),
+            'rawResponse':
+                'MethodChannel invocation error:\n${attemptErrors.join('\n')}',
+          };
+        }
+        return null;
+      }
+
       final cleanedString = cleanJsonString(resultString);
       try {
         final parsed = jsonDecode(cleanedString);
@@ -186,7 +217,7 @@ class MethodChannelAiService implements AiService {
       debugPrint(stack.toString());
       return {
         'error': e.toString(),
-        'rawResponse': 'MethodChannel invocation error',
+        'rawResponse': 'MethodChannel invocation error: $e',
       };
     }
     return null;
