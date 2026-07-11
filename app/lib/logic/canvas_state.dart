@@ -9,6 +9,20 @@ import 'ai_service.dart';
 
 enum CanvasTool { line, circle, fill, hatch }
 
+class AiHistoryEntry {
+  final DateTime timestamp;
+  final String prompt;
+  final String response;
+  final bool isError;
+
+  const AiHistoryEntry({
+    required this.timestamp,
+    required this.prompt,
+    required this.response,
+    this.isError = false,
+  });
+}
+
 @immutable
 class CanvasModel {
   final List<List<int>> grid;
@@ -24,6 +38,7 @@ class CanvasModel {
   final double autoRunSpeed; // in seconds
   final List<List<List<int>>> undoStack;
   final List<List<List<int>>> redoStack;
+  final List<AiHistoryEntry> aiHistory;
 
   const CanvasModel({
     required this.grid,
@@ -39,6 +54,7 @@ class CanvasModel {
     required this.autoRunSpeed,
     required this.undoStack,
     required this.redoStack,
+    required this.aiHistory,
   });
 
   CanvasModel copyWith({
@@ -55,6 +71,7 @@ class CanvasModel {
     double? autoRunSpeed,
     List<List<List<int>>>? undoStack,
     List<List<List<int>>>? redoStack,
+    List<AiHistoryEntry>? aiHistory,
   }) {
     return CanvasModel(
       grid: grid ?? this.grid,
@@ -70,6 +87,7 @@ class CanvasModel {
       autoRunSpeed: autoRunSpeed ?? this.autoRunSpeed,
       undoStack: undoStack ?? this.undoStack,
       redoStack: redoStack ?? this.redoStack,
+      aiHistory: aiHistory ?? this.aiHistory,
     );
   }
 
@@ -86,7 +104,8 @@ class CanvasModel {
         autoRun == other.autoRun &&
         autoRunSpeed == other.autoRunSpeed &&
         listEquals(palette, other.palette) &&
-        listEquals(referenceImage, other.referenceImage);
+        listEquals(referenceImage, other.referenceImage) &&
+        listEquals(aiHistory, other.aiHistory);
   }
 
   @override
@@ -101,6 +120,7 @@ class CanvasModel {
     autoRunSpeed,
     Object.hashAll(palette),
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
+    Object.hashAll(aiHistory),
   );
 }
 
@@ -143,6 +163,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           autoRunSpeed: 1.5,
           undoStack: [],
           redoStack: [],
+          aiHistory: const [],
         ),
       ) {
     checkAiStatus();
@@ -425,17 +446,23 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     if (state.isGenerating) return;
     state = state.copyWith(isGenerating: true);
 
-    try {
-      // In a real application, the canvasImage would be compiled from the current grid.
-      // We will compile the current grid to a mock PNG byte representation for native integration
-      // or pass the grid serialized or just dummy canvas image bytes.
-      final canvasBytes = Uint8List.fromList(
-        utf8.encode(state.grid.toString()),
-      );
-      final paletteHexes = state.palette
-          .map((c) => '#${c.value.toRadixString(16).padLeft(8, '0')}')
-          .toList();
+    final canvasBytes = Uint8List.fromList(utf8.encode(state.grid.toString()));
+    final paletteHexes = state.palette
+        .map((c) => '#${c.value.toRadixString(16).padLeft(8, '0')}')
+        .toList();
 
+    final systemInstruction = formatSystemInstruction();
+    final userTextPrompt = formatUserPrompt(
+      referenceImage: state.referenceImage,
+      canvasImage: canvasBytes,
+      prompt: state.userPrompt,
+      paletteColors: paletteHexes,
+    );
+    final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
+    String rawResponse = '';
+    bool isError = false;
+
+    try {
       final result = await _aiService.getNextStroke(
         referenceImage: state.referenceImage,
         canvasImage: canvasBytes,
@@ -444,6 +471,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       );
 
       if (result != null) {
+        rawResponse = jsonEncode(result);
         final tool = result['tool'] as String?;
         final params = (result['params'] as List?)?.cast<int>();
         final colorIndex = result['color'] as int?;
@@ -451,12 +479,29 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         if (tool != null && params != null && colorIndex != null) {
           _applyAiStrokeCommand(tool, params, colorIndex);
         }
+      } else {
+        rawResponse = 'No stroke returned by the model.';
       }
     } catch (e) {
+      isError = true;
+      rawResponse = 'Error: $e';
       debugPrint('Error triggering AI stroke: $e');
     } finally {
-      state = state.copyWith(isGenerating: false);
+      final newHistory = List<AiHistoryEntry>.from(state.aiHistory)
+        ..add(
+          AiHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: fullPrompt,
+            response: rawResponse,
+            isError: isError,
+          ),
+        );
+      state = state.copyWith(isGenerating: false, aiHistory: newHistory);
     }
+  }
+
+  void clearAiHistory() {
+    state = state.copyWith(aiHistory: const []);
   }
 
   void _applyAiStrokeCommand(
