@@ -118,8 +118,6 @@ class CanvasModel {
   final List<List<List<int>>> undoStack;
   final List<List<List<int>>> redoStack;
   final List<AiHistoryEntry> aiHistory;
-  final AiDrawingPhase drawingPhase;
-  final int consecutiveActions;
 
   const CanvasModel({
     required this.grid,
@@ -137,8 +135,6 @@ class CanvasModel {
     required this.undoStack,
     required this.redoStack,
     required this.aiHistory,
-    this.drawingPhase = AiDrawingPhase.broadShapes,
-    this.consecutiveActions = 0,
   });
 
   CanvasModel copyWith({
@@ -158,8 +154,6 @@ class CanvasModel {
     List<List<List<int>>>? undoStack,
     List<List<List<int>>>? redoStack,
     List<AiHistoryEntry>? aiHistory,
-    AiDrawingPhase? drawingPhase,
-    int? consecutiveActions,
   }) {
     return CanvasModel(
       grid: grid ?? this.grid,
@@ -181,8 +175,6 @@ class CanvasModel {
       undoStack: undoStack ?? this.undoStack,
       redoStack: redoStack ?? this.redoStack,
       aiHistory: aiHistory ?? this.aiHistory,
-      drawingPhase: drawingPhase ?? this.drawingPhase,
-      consecutiveActions: consecutiveActions ?? this.consecutiveActions,
     );
   }
 
@@ -198,8 +190,6 @@ class CanvasModel {
         isGenerating == other.isGenerating &&
         autoRun == other.autoRun &&
         autoRunSpeed == other.autoRunSpeed &&
-        drawingPhase == other.drawingPhase &&
-        consecutiveActions == other.consecutiveActions &&
         listEquals(palette, other.palette) &&
         listEquals(referenceImage, other.referenceImage) &&
         listEquals(originalReferenceImage, other.originalReferenceImage) &&
@@ -216,8 +206,6 @@ class CanvasModel {
     isGenerating,
     autoRun,
     autoRunSpeed,
-    drawingPhase,
-    consecutiveActions,
     Object.hashAll(palette),
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
     originalReferenceImage != null
@@ -341,8 +329,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       grid: List.generate(gridSize, (_) => List.filled(gridSize, 0)),
       undoStack: [],
       redoStack: [],
-      drawingPhase: AiDrawingPhase.broadShapes,
-      consecutiveActions: 0,
     );
   }
 
@@ -690,118 +676,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         ? generateBmp(state.undoStack.last, state.palette)
         : null;
 
-    // 1. Check if we need to do phase transition evaluation
-    if (state.consecutiveActions >= 5 &&
-        state.drawingPhase != AiDrawingPhase.complete) {
-      final evalPrompt = formatPhaseEvaluationPrompt(
-        currentPhase: state.drawingPhase,
-        userPrompt: state.userPrompt,
-      );
-
-      String rawResponse = '';
-      bool isError = false;
-
-      try {
-        final result = await _aiService.getNextStroke(
-          referenceImage: state.referenceImage,
-          canvasImage: canvasBytes,
-          prompt: evalPrompt,
-          paletteColors: paletteHexes,
-          canvasBmpBytes: canvasBmp,
-          previousBmpBytes: previousBmp,
-        );
-
-        if (result != null) {
-          if (result.containsKey('rawResponse')) {
-            rawResponse = result['rawResponse'] as String;
-            isError = true;
-          } else {
-            rawResponse = jsonEncode(result);
-            final ready = result['ready'] == true;
-
-            AiDrawingPhase nextPhase = state.drawingPhase;
-            if (ready) {
-              switch (state.drawingPhase) {
-                case AiDrawingPhase.broadShapes:
-                  nextPhase = AiDrawingPhase.outlining;
-                  break;
-                case AiDrawingPhase.outlining:
-                  nextPhase = AiDrawingPhase.detailing;
-                  break;
-                case AiDrawingPhase.detailing:
-                default:
-                  nextPhase = AiDrawingPhase.complete;
-                  break;
-              }
-            }
-
-            state = state.copyWith(
-              drawingPhase: nextPhase,
-              consecutiveActions: 0,
-              autoRun: nextPhase == AiDrawingPhase.complete
-                  ? false
-                  : state.autoRun,
-              aiHistory: [
-                ...state.aiHistory,
-                AiHistoryEntry(
-                  timestamp: DateTime.now(),
-                  prompt: evalPrompt,
-                  response: rawResponse,
-                  isError: false,
-                  canvasImage: canvasBmp,
-                ),
-              ],
-            );
-          }
-        } else {
-          isError = true;
-          rawResponse = 'Invalid evaluation response returned by the model.';
-        }
-      } catch (e) {
-        isError = true;
-        rawResponse = 'Error: $e';
-        debugPrint('Error evaluating phase transition: $e');
-      } finally {
-        if (isError) {
-          state = state.copyWith(
-            aiHistory: [
-              ...state.aiHistory,
-              AiHistoryEntry(
-                timestamp: DateTime.now(),
-                prompt: evalPrompt,
-                response: rawResponse,
-                isError: true,
-                canvasImage: canvasBmp,
-              ),
-            ],
-          );
-        }
-        state = state.copyWith(isGenerating: false);
-      }
-      return; // End the turn!
-    }
-
-    // 2. Normal drawing action turn
-    String phaseInstruction = '';
-    switch (state.drawingPhase) {
-      case AiDrawingPhase.broadShapes:
-        phaseInstruction =
-            'Drawing Phase: BROAD SHAPES. Focus on drawing large primary shapes, block colors, and basic layout structures using the "circle" or "line" tool. Do not add fine details yet.';
-        break;
-      case AiDrawingPhase.outlining:
-        phaseInstruction =
-            'Drawing Phase: OUTLINING & REFINEMENT. Focus on outlining shapes, connecting lines, and establishing structural boundaries. Start refining the layout.';
-        break;
-      case AiDrawingPhase.detailing:
-        phaseInstruction =
-            'Drawing Phase: DETAILING & SHADING. Focus on adding fine details, shading, pixel highlights, and texture (e.g., using "hatch" or "fill" tools in small areas). Do not modify the broad layout.';
-        break;
-      case AiDrawingPhase.complete:
-        phaseInstruction =
-            'Drawing Phase: COMPLETE. The artwork is complete. Output a simple empty stroke suggestion or highlight finished details.';
-        break;
-    }
-
+    // 1. Normal drawing action turn
     final isMultimodal = _aiService is MethodChannelAiService;
     final systemInstruction = formatSystemInstruction();
     final userTextPrompt = formatUserPrompt(
@@ -833,7 +708,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     }
 
     final fullPrompt =
-        '$systemInstruction\n\n$userTextPrompt\n\n$phaseInstruction$historyPrompt';
+        '$systemInstruction\n\n$userTextPrompt\n\n$historyPrompt';
     String rawResponse = '';
     bool isError = false;
 
@@ -841,7 +716,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       final result = await _aiService.getNextStroke(
         referenceImage: state.referenceImage,
         canvasImage: canvasBytes,
-        prompt: '${state.userPrompt}\n\n$phaseInstruction$historyPrompt',
+        prompt: '${state.userPrompt}\n\n$historyPrompt',
         paletteColors: paletteHexes,
         canvasBmpBytes: canvasBmp,
         previousBmpBytes: previousBmp,
@@ -859,9 +734,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
 
           if (tool != null && params != null && (colorIndex != null || tool == 'undo')) {
             _applyAiStrokeCommand(tool, params, colorIndex ?? 0);
-            state = state.copyWith(
-              consecutiveActions: state.consecutiveActions + 1,
-            );
           } else {
             isError = true;
           }
