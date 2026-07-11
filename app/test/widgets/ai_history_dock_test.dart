@@ -22,6 +22,7 @@ class LocalMockAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   }) async {
     return null;
   }

@@ -9,6 +9,7 @@ class MockTestAiService implements AiService {
   Map<String, dynamic>? mockResult;
   bool triggerDownloadCalled = false;
   List<String>? lastPaletteColors;
+  Uint8List? lastPreviousBmpBytes;
 
   @override
   Future<AiCoreStatus> checkStatus() async => status;
@@ -26,8 +27,10 @@ class MockTestAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   }) async {
     lastPaletteColors = paletteColors;
+    lastPreviousBmpBytes = previousBmpBytes;
     return mockResult;
   }
 }
@@ -395,6 +398,22 @@ void main() {
         expect(state.referenceImage, equals(modelBmpBytes));
       },
     );
+
+    test('triggerAiStroke passes previousBmpBytes to AI service if undo stack is not empty', () async {
+      final notifier = container.read(canvasStateProvider.notifier);
+      notifier.selectColor(1);
+      notifier.drawPixel(10, 10); // push one stroke to undo stack
+
+      mockAiService.mockResult = {
+        'tool': 'line',
+        'params': [0, 0, 5, 5],
+        'color': 2,
+      };
+
+      await notifier.triggerAiStroke();
+      expect(mockAiService.lastPreviousBmpBytes, isNotNull);
+      expect(mockAiService.lastPreviousBmpBytes!.length, equals(12342)); // 64x64 bmp length
+    });
 
     test('setting reference image to null clears both images', () {
       final notifier = container.read(canvasStateProvider.notifier);

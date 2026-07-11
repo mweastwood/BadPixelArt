@@ -19,6 +19,7 @@ abstract class AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   });
 }
 
@@ -88,10 +89,15 @@ String formatUserPrompt({
   required String prompt,
   required List<String> paletteColors,
   bool isMultimodal = false,
+  bool hasPreviousImage = false,
 }) {
   String canvasGridString;
   if (isMultimodal) {
-    canvasGridString = 'The current canvas is provided as an image attachment.';
+    if (hasPreviousImage) {
+      canvasGridString = 'The attached image contains the previous canvas state (middle panel) and the current canvas state (right panel).';
+    } else {
+      canvasGridString = 'The current canvas is provided as an image attachment.';
+    }
   } else {
     String decodedGrid = utf8.decode(canvasImage);
     if (!decodedGrid.contains(RegExp(r'[1-9]'))) {
@@ -180,6 +186,7 @@ class MethodChannelAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   }) async {
     try {
       final systemInstruction = formatSystemInstruction();
@@ -189,6 +196,7 @@ class MethodChannelAiService implements AiService {
         prompt: prompt,
         paletteColors: paletteColors,
         isMultimodal: canvasBmpBytes != null,
+        hasPreviousImage: previousBmpBytes != null,
       );
       final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
 
@@ -197,6 +205,7 @@ class MethodChannelAiService implements AiService {
             'prompt': fullPrompt,
             'canvasImage': canvasBmpBytes ?? canvasImage,
             'referenceImage': referenceImage,
+            'previousImage': previousBmpBytes,
           });
 
       if (resultString == null) return null;
@@ -251,6 +260,7 @@ class MockAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
 

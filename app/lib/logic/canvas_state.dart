@@ -686,6 +686,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         .toList();
 
     final canvasBmp = generateBmp(state.grid, state.palette);
+    final previousBmp = state.undoStack.isNotEmpty
+        ? generateBmp(state.undoStack.last, state.palette)
+        : null;
 
     // 1. Check if we need to do phase transition evaluation
     if (state.consecutiveActions >= 5 &&
@@ -705,6 +708,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           prompt: evalPrompt,
           paletteColors: paletteHexes,
           canvasBmpBytes: canvasBmp,
+          previousBmpBytes: previousBmp,
         );
 
         if (result != null) {
@@ -840,6 +844,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         prompt: '${state.userPrompt}\n\n$phaseInstruction$historyPrompt',
         paletteColors: paletteHexes,
         canvasBmpBytes: canvasBmp,
+        previousBmpBytes: previousBmp,
       );
 
       if (result != null) {
