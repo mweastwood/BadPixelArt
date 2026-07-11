@@ -182,17 +182,21 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                                 clipBehavior: Clip.antiAlias,
                                 child:
                                     canvasModel.originalReferenceImage != null
-                                    ? (canvasModel.originalReferenceImage!.length < 10
-                                        ? const Center(
-                                            child: Icon(
-                                              Icons.image_outlined,
-                                              size: 32,
-                                            ),
-                                          )
-                                        : Image.memory(
-                                            canvasModel.originalReferenceImage!,
-                                            fit: BoxFit.contain,
-                                          ))
+                                    ? (canvasModel
+                                                  .originalReferenceImage!
+                                                  .length <
+                                              10
+                                          ? const Center(
+                                              child: Icon(
+                                                Icons.image_outlined,
+                                                size: 32,
+                                              ),
+                                            )
+                                          : Image.memory(
+                                              canvasModel
+                                                  .originalReferenceImage!,
+                                              fit: BoxFit.contain,
+                                            ))
                                     : const Center(
                                         child: Icon(
                                           Icons.broken_image_outlined,
