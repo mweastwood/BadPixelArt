@@ -8,6 +8,8 @@ import 'ai_service_stub.dart' if (dart.library.html) 'ai_service_web.dart';
 
 enum AiCoreStatus { unavailable, downloadable, downloading, available }
 
+enum AiDrawingPhase { broadShapes, outlining, detailing, complete }
+
 abstract class AiService {
   Future<AiCoreStatus> checkStatus();
   Future<void> triggerDownload();
@@ -18,6 +20,38 @@ abstract class AiService {
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
   });
+}
+
+String formatPhaseEvaluationPrompt({
+  required AiDrawingPhase currentPhase,
+  required String userPrompt,
+}) {
+  String transitionQuestion;
+  switch (currentPhase) {
+    case AiDrawingPhase.broadShapes:
+      transitionQuestion =
+          'We started in the BROAD_SHAPES phase (drawing large shapes/block structures). Are we ready to move to the OUTLINING phase (refining boundaries and connecting outlines)?';
+      break;
+    case AiDrawingPhase.outlining:
+      transitionQuestion =
+          'We are in the OUTLINING phase (refining outlines and layout). Are we ready to move to the DETAILING phase (fine details, shading, pixel highlights, textures)?';
+      break;
+    case AiDrawingPhase.detailing:
+      transitionQuestion =
+          'We are in the DETAILING phase (fine details, highlights). Is the artwork COMPLETE according to the user instruction?';
+      break;
+    case AiDrawingPhase.complete:
+      transitionQuestion = 'Is the artwork complete?';
+      break;
+  }
+
+  return 'User Instruction: "$userPrompt"\n\n'
+      'Evaluation Question: $transitionQuestion\n\n'
+      'You must output EXACTLY a valid JSON block containing your evaluation. No markdown tags, no extra text. Example:\n'
+      '{\n'
+      '  "ready": true,\n'
+      '  "reason": "Brief explanation of why we are ready or not"\n'
+      '}';
 }
 
 String formatSystemInstruction() {
@@ -40,53 +74,6 @@ String formatSystemInstruction() {
       '  "params": [10, 15, 20, 25],\n'
       '  "color": 2\n'
       '}';
-}
-
-String getColorName(String hex) {
-  final cleanHex = hex.replaceAll('#', '').toLowerCase();
-  switch (cleanHex) {
-    case 'ff1e1e1e':
-    case '1e1e1e':
-      return 'Dark Grey (Background)';
-    case 'ffffffff':
-    case 'ffffff':
-      return 'White';
-    case 'ff000000':
-    case '000000':
-      return 'Black';
-    case 'ffff0000':
-    case 'ff0000':
-      return 'Red';
-    case 'ff00ff00':
-    case '00ff00':
-      return 'Green';
-    case 'ff0000ff':
-    case '0000ff':
-      return 'Blue';
-    case 'ffffff00':
-    case 'ffff00':
-      return 'Yellow';
-    case 'ffffa500':
-    case 'ffa500':
-      return 'Orange';
-    case 'ff800080':
-    case '800080':
-      return 'Purple';
-    case 'ff00ffff':
-    case '00ffff':
-      return 'Cyan';
-    case 'ffffc0cb':
-    case 'ffc0cb':
-      return 'Pink';
-    case 'ff8b4513':
-    case '8b4513':
-      return 'Brown';
-    case 'ff808080':
-    case '808080':
-      return 'Grey';
-    default:
-      return 'Hex #$cleanHex';
-  }
 }
 
 String formatUserPrompt({
@@ -123,8 +110,7 @@ String formatUserPrompt({
       .map((e) {
         final index = e.key;
         final hex = e.value;
-        final name = getColorName(hex);
-        return '- Index $index: $hex ($name)';
+        return '- Index $index: $hex';
       })
       .join('\n');
 
@@ -241,6 +227,15 @@ class MockAiService implements AiService {
     Uint8List? canvasBmpBytes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
+
+    if (prompt.contains('Evaluation Question:')) {
+      return {
+        'ready': true,
+        'reason':
+            'The current phase is complete and we are ready to move to the next phase.',
+      };
+    }
+
     _strokeCount++;
 
     // Generate simulated strokes in a circle/line sequence for demo purposes.
