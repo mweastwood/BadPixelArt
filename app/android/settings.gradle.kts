@@ -21,7 +21,22 @@ plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "9.0.1" apply false
     id("com.google.gms.google-services") version "4.3.15" apply false
-    id("org.jetbrains.kotlin.android") version "2.3.20" apply false
+    id("org.jetbrains.kotlin.android") version "2.0.20" apply false
 }
 
 include(":app")
+
+gradle.beforeProject {
+    if (path != ":app") {
+        plugins.withId("com.android.library") {
+            if (!plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+                plugins.apply("org.jetbrains.kotlin.android")
+            }
+        }
+        plugins.withId("com.android.application") {
+            if (!plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+                plugins.apply("org.jetbrains.kotlin.android")
+            }
+        }
+    }
+}
