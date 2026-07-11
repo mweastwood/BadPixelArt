@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'screens/pixel_art_screen.dart';
 
 void main() {
@@ -21,22 +22,40 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'BadPixelArt',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: Colors.blueAccent,
-        scaffoldBackgroundColor: const Color(0xFF0F0F0F),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.blueAccent,
-          brightness: Brightness.dark,
-          primary: Colors.blueAccent,
-          secondary: Colors.amberAccent,
-        ),
-        useMaterial3: true,
-      ),
-      home: const PixelArtScreen(),
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        ColorScheme lightScheme;
+        ColorScheme darkScheme;
+
+        if (lightDynamic != null && darkDynamic != null) {
+          lightScheme = lightDynamic;
+          darkScheme = darkDynamic;
+        } else {
+          lightScheme = ColorScheme.fromSeed(
+            seedColor: Colors.blueAccent,
+            brightness: Brightness.light,
+          );
+          darkScheme = ColorScheme.fromSeed(
+            seedColor: Colors.blueAccent,
+            brightness: Brightness.dark,
+          );
+        }
+
+        return MaterialApp(
+          title: 'BadPixelArt',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: lightScheme,
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: darkScheme,
+            useMaterial3: true,
+          ),
+          themeMode: ThemeMode.system,
+          home: const PixelArtScreen(),
+        );
+      },
     );
   }
 }

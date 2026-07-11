@@ -10,24 +10,8 @@ class PixelArtScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0F0F),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF070707),
-        elevation: 0,
-        title: Row(
-          children: [
-            const Icon(Icons.palette_outlined, color: Colors.blueAccent),
-            const SizedBox(width: 8),
-            const Text(
-              'BadPixelArt Co-Creator',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
+        title: const Text('Bad Pixel Art'),
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
@@ -40,23 +24,25 @@ class PixelArtScreen extends ConsumerWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Left side: Canvas + Palette
-                  Expanded(
+                  // Left side: Just the Canvas
+                  const Expanded(
                     flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Expanded(child: CanvasGrid()),
-                        const SizedBox(height: 16),
-                        const ColorPaletteBar(),
-                      ],
-                    ),
+                    child: CanvasGrid(),
                   ),
                   const SizedBox(width: 24),
-                  // Right side: AI Controls
+                  // Right side: Controls (Palette & AI)
                   const Expanded(
                     flex: 2,
-                    child: SingleChildScrollView(child: AiControlDock()),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ColorPaletteBar(),
+                          SizedBox(height: 16),
+                          AiControlDock(),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
