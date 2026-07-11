@@ -73,20 +73,23 @@ class MainActivity : FlutterActivity() {
                     }
 
                     ioScope.launch {
+                        var canvasBitmap: Bitmap? = null
+                        var referenceBitmap: Bitmap? = null
+                        var combinedBitmap: Bitmap? = null
                         try {
-                            val canvasBitmap = if (canvasImageBytes != null && canvasImageBytes.isNotEmpty()) {
+                            canvasBitmap = if (canvasImageBytes != null && canvasImageBytes.isNotEmpty()) {
                                 BitmapFactory.decodeByteArray(canvasImageBytes, 0, canvasImageBytes.size)
                             } else {
                                 null
                             }
-                            val referenceBitmap = if (referenceImageBytes != null && referenceImageBytes.isNotEmpty()) {
+                            referenceBitmap = if (referenceImageBytes != null && referenceImageBytes.isNotEmpty()) {
                                 BitmapFactory.decodeByteArray(referenceImageBytes, 0, referenceImageBytes.size)
                             } else {
                                 null
                             }
 
                             val response = if (canvasBitmap != null && referenceBitmap != null) {
-                                val combinedBitmap = combineBitmaps(canvasBitmap, referenceBitmap)
+                                combinedBitmap = combineBitmaps(canvasBitmap, referenceBitmap)
                                 val combinedPrompt = "$promptText\n\nNote: The attached image shows the current canvas on the left, and the reference image on the right."
                                 model.generateContent(
                                     generateContentRequest(ImagePart(combinedBitmap), TextPart(combinedPrompt)) {
@@ -118,11 +121,15 @@ class MainActivity : FlutterActivity() {
                             withContext(Dispatchers.Main) {
                                 result.success(responseText)
                             }
-                        } catch (e: Exception) {
+                        } catch (e: Throwable) {
                             Log.e("MainActivity", "Error generating content: ${e.message}", e)
                             withContext(Dispatchers.Main) {
                                 result.error("generation_failed", e.message, null)
                             }
+                        } finally {
+                            canvasBitmap?.recycle()
+                            referenceBitmap?.recycle()
+                            combinedBitmap?.recycle()
                         }
                     }
                 }
