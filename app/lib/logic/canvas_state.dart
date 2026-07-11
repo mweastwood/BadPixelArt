@@ -964,6 +964,18 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     final List<Uint8List> bmpsToCombine = [];
     if (state.referenceImage != null) {
       bmpsToCombine.add(state.referenceImage!);
+
+      // Generate visual guide panels
+      final refGrid = _bmpToColorGrid(state.referenceImage!);
+
+      final edgesGrid = _applyEdgeDetection(refGrid);
+      final edgesBmp = _bmpFromColorGrid(edgesGrid);
+      bmpsToCombine.add(edgesBmp);
+
+      final blurredGrid = _applyGaussianBlur(refGrid);
+      final quantizedGrid = _applyColorQuantization(blurredGrid, state.palette);
+      final quantizedBmp = _bmpFromColorGrid(quantizedGrid);
+      bmpsToCombine.add(quantizedBmp);
     }
     if (previousBmp != null) {
       bmpsToCombine.add(previousBmp);
@@ -1241,4 +1253,175 @@ Uint8List generateBmpFromRgba(Uint8List rgbaBytes, int width, int height) {
   }
 
   return bmp;
+}
+
+List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes) {
+  final List<List<Color>> grid = List.generate(
+    64,
+    (_) => List.filled(64, const Color(0xFF000000)),
+  );
+  if (bmpBytes.length >= 54 + 64 * 64 * 3) {
+    int offset = 54;
+    for (int y = 63; y >= 0; y--) {
+      for (int x = 0; x < 64; x++) {
+        final b = bmpBytes[offset];
+        final g = bmpBytes[offset + 1];
+        final r = bmpBytes[offset + 2];
+        grid[y][x] = Color(0xFF000000 | (r << 16) | (g << 8) | b);
+        offset += 3;
+      }
+    }
+  }
+  return grid;
+}
+
+Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
+  const int width = 64;
+  const int height = 64;
+  const int bytesPerPixel = 3;
+  const int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
+  const int rowStride = width * bytesPerPixel + rowPadding;
+  const int pixelDataSize = rowStride * height;
+  const int fileSize = 54 + pixelDataSize;
+
+  final Uint8List bmp = Uint8List(fileSize);
+  final ByteData bd = ByteData.sublistView(bmp);
+
+  bmp[0] = 0x42; // 'B'
+  bmp[1] = 0x4D; // 'M'
+  bd.setUint32(2, fileSize, Endian.little);
+  bd.setUint32(6, 0, Endian.little);
+  bd.setUint32(10, 54, Endian.little);
+
+  bd.setUint32(14, 40, Endian.little);
+  bd.setUint32(18, width, Endian.little);
+  bd.setUint32(22, height, Endian.little);
+  bd.setUint16(26, 1, Endian.little);
+  bd.setUint16(28, 24, Endian.little);
+  bd.setUint32(30, 0, Endian.little);
+  bd.setUint32(34, pixelDataSize, Endian.little);
+  bd.setUint32(38, 2835, Endian.little);
+  bd.setUint32(42, 2835, Endian.little);
+  bd.setUint32(46, 0, Endian.little);
+  bd.setUint32(50, 0, Endian.little);
+
+  int offset = 54;
+  for (int y = height - 1; y >= 0; y--) {
+    for (int x = 0; x < width; x++) {
+      final color = grid[y][x];
+      bmp[offset] = color.blue;
+      bmp[offset + 1] = color.green;
+      bmp[offset + 2] = color.red;
+      offset += 3;
+    }
+    for (int p = 0; p < rowPadding; p++) {
+      bmp[offset++] = 0;
+    }
+  }
+  return bmp;
+}
+
+List<List<Color>> _applyGaussianBlur(List<List<Color>> src) {
+  final List<List<Color>> dest = List.generate(
+    64,
+    (_) => List.filled(64, const Color(0xFF000000)),
+  );
+  final List<int> kernel = [1, 2, 1, 2, 4, 2, 1, 2, 1];
+  const int kernelWeight = 16;
+
+  for (int y = 0; y < 64; y++) {
+    for (int x = 0; x < 64; x++) {
+      int sumR = 0;
+      int sumG = 0;
+      int sumB = 0;
+
+      for (int ky = -1; ky <= 1; ky++) {
+        for (int kx = -1; kx <= 1; kx++) {
+          final px = (x + kx).clamp(0, 63);
+          final py = (y + ky).clamp(0, 63);
+          final color = src[py][px];
+          final weight = kernel[(ky + 1) * 3 + (kx + 1)];
+          sumR += color.red * weight;
+          sumG += color.green * weight;
+          sumB += color.blue * weight;
+        }
+      }
+
+      dest[y][x] = Color.fromARGB(
+        255,
+        (sumR ~/ kernelWeight).clamp(0, 255),
+        (sumG ~/ kernelWeight).clamp(0, 255),
+        (sumB ~/ kernelWeight).clamp(0, 255),
+      );
+    }
+  }
+  return dest;
+}
+
+List<List<Color>> _applyColorQuantization(
+  List<List<Color>> src,
+  List<Color> palette,
+) {
+  final List<List<Color>> dest = List.generate(
+    64,
+    (_) => List.filled(64, const Color(0xFF000000)),
+  );
+  for (int y = 0; y < 64; y++) {
+    for (int x = 0; x < 64; x++) {
+      final color = src[y][x];
+      Color closestColor = palette.first;
+      double minDistance = double.infinity;
+      for (final pColor in palette) {
+        final dr = color.red - pColor.red;
+        final dg = color.green - pColor.green;
+        final db = color.blue - pColor.blue;
+        final dist = dr * dr + dg * dg + db * db;
+        if (dist < minDistance) {
+          minDistance = dist.toDouble();
+          closestColor = pColor;
+        }
+      }
+      dest[y][x] = closestColor;
+    }
+  }
+  return dest;
+}
+
+List<List<Color>> _applyEdgeDetection(List<List<Color>> src) {
+  final List<List<Color>> dest = List.generate(
+    64,
+    (_) => List.filled(64, const Color(0xFF000000)),
+  );
+  final List<List<int>> gray = List.generate(64, (_) => List.filled(64, 0));
+  for (int y = 0; y < 64; y++) {
+    for (int x = 0; x < 64; x++) {
+      final color = src[y][x];
+      gray[y][x] =
+          (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue)
+              .round();
+    }
+  }
+
+  for (int y = 1; y < 63; y++) {
+    for (int x = 1; x < 63; x++) {
+      final val00 = gray[y - 1][x - 1];
+      final val01 = gray[y - 1][x];
+      final val02 = gray[y - 1][x + 1];
+      final val10 = gray[y][x - 1];
+      final val12 = gray[y][x + 1];
+      final val20 = gray[y + 1][x - 1];
+      final val21 = gray[y + 1][x];
+      final val22 = gray[y + 1][x + 1];
+
+      final gx = (val02 + 2 * val12 + val22) - (val00 + 2 * val10 + val20);
+      final gy = (val20 + 2 * val21 + val22) - (val00 + 2 * val01 + val02);
+      final magnitude = (gx * gx + gy * gy);
+      if (magnitude > 900) {
+        dest[y][x] = const Color(0xFFFFFFFF);
+      } else {
+        dest[y][x] = const Color(0xFF000000);
+      }
+    }
+  }
+  return dest;
 }

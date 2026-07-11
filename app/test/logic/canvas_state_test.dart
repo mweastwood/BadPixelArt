@@ -537,6 +537,36 @@ void main() {
       },
     );
 
+    test(
+      'triggerAiStroke generates edges and quantized panels when reference image is present',
+      () async {
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        final refGrid = List.generate(64, (_) => List.filled(64, 0));
+        final refBmp = generateBmp(refGrid, CanvasNotifier.primaryPalette);
+        notifier.setReferenceImage(refBmp, originalBytes: Uint8List(0));
+
+        mockAiService.mockResult = {
+          'tool': 'line',
+          'params': [0, 0, 5, 5],
+          'color': 2,
+        };
+
+        await notifier.triggerAiStroke();
+        expect(mockAiService.lastCanvasImage, isNotNull);
+
+        // 4 panels: Original Ref, Edges, Quantized, Current Canvas
+        // Width = 80 * 4 = 320. Height = 80.
+        // File size = 54 + 320 * 80 * 3 = 76854 bytes.
+        expect(mockAiService.lastCanvasImage!.length, equals(76854));
+        final ByteData bd = ByteData.sublistView(
+          mockAiService.lastCanvasImage!,
+        );
+        expect(bd.getUint32(18, Endian.little), equals(320)); // width
+        expect(bd.getUint32(22, Endian.little), equals(80)); // height
+      },
+    );
+
     test('setting reference image to null clears both images', () {
       final notifier = container.read(canvasStateProvider.notifier);
       final rawPngBytes = Uint8List.fromList([0, 1, 2, 3]);
