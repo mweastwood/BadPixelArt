@@ -110,12 +110,16 @@ class MainActivity : FlutterActivity() {
                     }
                 }
                 "suggestPalette" -> {
+                    val promptText = call.argument<String>("prompt")
                     val referenceImageBytes = call.argument<ByteArray>("referenceImage")
+                    if (promptText == null) {
+                        result.error("invalid_argument", "prompt is missing", null)
+                        return@setMethodCallHandler
+                    }
                     if (referenceImageBytes == null || referenceImageBytes.isEmpty()) {
                         result.error("invalid_argument", "referenceImage is missing or empty", null)
                         return@setMethodCallHandler
                     }
-                    val promptText = "Analyze this reference image and suggest a palette of exactly 16 colors. Output a JSON array containing exactly 16 hex color strings (e.g. [\"#ff0000\", \"#00ff00\", ...]). Output nothing else."
 
                     ioScope.launch {
                         var referenceBitmap: Bitmap? = null

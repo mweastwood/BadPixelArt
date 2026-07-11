@@ -41,6 +41,12 @@ String formatSystemInstruction() {
       '}';
 }
 
+String formatPalettePrompt() {
+  return 'Analyze this reference image and suggest a palette of exactly 16 colors. '
+      'Output a JSON array containing exactly 16 hex color strings (e.g. ["#ff0000", "#00ff00", ...]). '
+      'Output nothing else.';
+}
+
 String formatUserPrompt({
   required Uint8List canvasImage,
   required String prompt,
@@ -214,7 +220,7 @@ class MethodChannelAiService implements AiService {
     try {
       final String? resultString = await _channel.invokeMethod<String>(
         'suggestPalette',
-        {'referenceImage': referenceImage},
+        {'referenceImage': referenceImage, 'prompt': formatPalettePrompt()},
       );
       if (resultString == null) return null;
       return parsePaletteColors(resultString);
