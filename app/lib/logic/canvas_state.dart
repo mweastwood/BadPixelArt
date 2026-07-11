@@ -530,27 +530,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
 
     final canvasBmp = generateBmp(state.grid, state.palette);
 
-    // Calculate grid fill percentage to select drawing phase instructions
-    int paintedPixels = 0;
-    for (final row in state.grid) {
-      for (final cell in row) {
-        if (cell != 0) paintedPixels++;
-      }
-    }
-    final fillPercentage = (paintedPixels / (64 * 64)) * 100;
-
-    String phaseInstruction = '';
-    if (fillPercentage < 10) {
-      phaseInstruction =
-          'Drawing Phase: BROAD SHAPES. Focus on drawing large primary shapes, block colors, and basic layout structures using the "circle" or "line" tool. Do not add fine details yet.';
-    } else if (fillPercentage < 35) {
-      phaseInstruction =
-          'Drawing Phase: OUTLINING & REFINEMENT. Focus on outlining shapes, connecting lines, and establishing structural boundaries. Start refining the layout.';
-    } else {
-      phaseInstruction =
-          'Drawing Phase: DETAILING & SHADING. Focus on adding fine details, shading, pixel highlights, and texture (e.g., using "hatch" or "fill" tools in small areas). Do not modify the broad layout.';
-    }
-
     final isMultimodal = _aiService is MethodChannelAiService;
     final systemInstruction = formatSystemInstruction();
     final userTextPrompt = formatUserPrompt(
@@ -581,8 +560,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           'Avoid repeating these exact strokes and coordinates. Try drawing something new or in a different location.';
     }
 
-    final fullPrompt =
-        '$systemInstruction\n\n$userTextPrompt\n\n$phaseInstruction$historyPrompt';
+    final fullPrompt = '$systemInstruction\n\n$userTextPrompt$historyPrompt';
     String rawResponse = '';
     bool isError = false;
 
@@ -590,7 +568,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       final result = await _aiService.getNextStroke(
         referenceImage: state.referenceImage,
         canvasImage: canvasBytes,
-        prompt: '${state.userPrompt}\n\n$phaseInstruction$historyPrompt',
+        prompt: '${state.userPrompt}$historyPrompt',
         paletteColors: paletteHexes,
         canvasBmpBytes: canvasBmp,
       );

@@ -22,13 +22,18 @@ abstract class AiService {
 
 String formatSystemInstruction() {
   return 'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
+      'Drawing Phases:\n'
+      '- "BROAD_SHAPES": Canvas is mostly empty/incomplete. Focus on block colors, primary shapes, and basic layout structures using "circle" or "line". No fine details.\n'
+      '- "OUTLINING": Base shapes are established. Focus on outlines, connecting lines, and refinement of structural boundaries.\n'
+      '- "DETAILING": Shapes and outlines are complete. Focus on adding fine details, highlights, shading, and texture (e.g., checkerboard hatch patterns or fill in small regions).\n\n'
       'Available tools:\n'
       '- "line": params [startX, startY, endX, endY]\n'
       '- "circle": params [centerX, centerY, radius]\n'
       '- "fill": params [startX, startY]\n'
       '- "hatch": params [startX, startY] (alternating checkerboard pattern fill)\n\n'
-      'You must output EXACTLY a valid JSON block containing your current understanding of the image, your reasoning for the next stroke, and the next stroke itself. No explanation, no markdown tags. Example:\n'
+      'You must output EXACTLY a valid JSON block containing your selected phase (based on current image/progress), your understanding of the image, your reasoning for the next stroke, and the next stroke itself. No explanation, no markdown tags. Example:\n'
       '{\n'
+      '  "phase": "OUTLINING",\n'
       '  "understanding": "Brief description of what you see on the canvas right now",\n'
       '  "reasoning": "Explanation of why you are suggesting this stroke",\n'
       '  "tool": "line",\n'
@@ -112,12 +117,16 @@ String formatUserPrompt({
     }
   }
 
-  final colorList = paletteColors.asMap().entries.map((e) {
-    final index = e.key;
-    final hex = e.value;
-    final name = getColorName(hex);
-    return '- Index $index: $hex ($name)';
-  }).join('\n');
+  final colorList = paletteColors
+      .asMap()
+      .entries
+      .map((e) {
+        final index = e.key;
+        final hex = e.value;
+        final name = getColorName(hex);
+        return '- Index $index: $hex ($name)';
+      })
+      .join('\n');
 
   return 'User Instruction: "$prompt"\n'
       '$refShapeInstruction\n'
@@ -240,6 +249,7 @@ class MockAiService implements AiService {
 
     if (step == 0) {
       return {
+        'phase': 'BROAD_SHAPES',
         'understanding': 'The canvas is currently empty.',
         'reasoning': 'Creating a central circular shape to start the drawing.',
         'tool': 'circle',
@@ -248,6 +258,7 @@ class MockAiService implements AiService {
       };
     } else if (step == 1) {
       return {
+        'phase': 'OUTLINING',
         'understanding': 'I see a circle in the center of the grid.',
         'reasoning':
             'Drawing a diagonal line crossing the canvas for structure.',
@@ -257,6 +268,7 @@ class MockAiService implements AiService {
       };
     } else if (step == 2) {
       return {
+        'phase': 'OUTLINING',
         'understanding': 'I see a circle and a diagonal line.',
         'reasoning':
             'Performing a flood fill at the center to add solid color.',
@@ -266,6 +278,7 @@ class MockAiService implements AiService {
       };
     } else {
       return {
+        'phase': 'DETAILING',
         'understanding': 'I see a filled circle and a line.',
         'reasoning': 'Applying a checkerboard hatch pattern to create texture.',
         'tool': 'hatch',
