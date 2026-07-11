@@ -48,9 +48,7 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
     final theme = Theme.of(context);
 
     return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -135,14 +133,20 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
               style: TextStyle(color: theme.colorScheme.onSurface),
               decoration: InputDecoration(
                 labelText: 'User Instructions / Prompt',
-                labelStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
+                labelStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                ),
                 hintText: 'e.g., Draw a red sword outlined in black...',
-                hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6)),
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                ),
                 filled: true,
                 fillColor: theme.colorScheme.surfaceContainerHigh,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.outlineVariant,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -218,11 +222,18 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Icon(Icons.speed, color: theme.colorScheme.onSurfaceVariant, size: 20),
+                  Icon(
+                    Icons.speed,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Speed:',
-                    style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
                   ),
                   Expanded(
                     child: Slider(
@@ -325,10 +336,14 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? theme.colorScheme.secondaryContainer : theme.colorScheme.surfaceContainerHigh,
+            color: isSelected
+                ? theme.colorScheme.secondaryContainer
+                : theme.colorScheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outlineVariant,
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
               width: 1.5,
             ),
           ),
@@ -337,14 +352,18 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             children: [
               Icon(
                 icon,
-                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
                 size: 20,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant,
+                  color: isSelected
+                      ? theme.colorScheme.onSecondaryContainer
+                      : theme.colorScheme.onSurfaceVariant,
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),

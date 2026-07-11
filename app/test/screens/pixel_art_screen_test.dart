@@ -32,10 +32,7 @@ void main() {
         tester,
         'pixel_art_screen_landscape',
         devices: [
-          const Device(
-            name: 'landscape_tablet',
-            size: Size(1280, 800),
-          ),
+          const Device(name: 'landscape_tablet', size: Size(1280, 800)),
         ],
       );
     });

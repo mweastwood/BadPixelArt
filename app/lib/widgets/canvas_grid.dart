@@ -37,94 +37,94 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-              child: GestureDetector(
-                onPanStart: (details) {
-                  final renderBox = context.findRenderObject() as RenderBox;
-                  final localPos = renderBox.globalToLocal(
-                    details.globalPosition,
-                  );
-                  setState(() {
-                    _dragStart = localPos;
-                    _dragCurrent = localPos;
-                  });
-                },
-                onPanUpdate: (details) {
-                  final renderBox = context.findRenderObject() as RenderBox;
-                  final localPos = renderBox.globalToLocal(
-                    details.globalPosition,
-                  );
-                  setState(() {
-                    _dragCurrent = localPos;
-                  });
-                },
-                onPanEnd: (details) {
-                  if (_dragStart == null || _dragCurrent == null) return;
+                child: GestureDetector(
+                  onPanStart: (details) {
+                    final renderBox = context.findRenderObject() as RenderBox;
+                    final localPos = renderBox.globalToLocal(
+                      details.globalPosition,
+                    );
+                    setState(() {
+                      _dragStart = localPos;
+                      _dragCurrent = localPos;
+                    });
+                  },
+                  onPanUpdate: (details) {
+                    final renderBox = context.findRenderObject() as RenderBox;
+                    final localPos = renderBox.globalToLocal(
+                      details.globalPosition,
+                    );
+                    setState(() {
+                      _dragCurrent = localPos;
+                    });
+                  },
+                  onPanEnd: (details) {
+                    if (_dragStart == null || _dragCurrent == null) return;
 
-                  final cellWidth = size / 64;
-                  final cellHeight = size / 64;
+                    final cellWidth = size / 64;
+                    final cellHeight = size / 64;
 
-                  final startX = (_dragStart!.dx / cellWidth).floor().clamp(
-                    0,
-                    63,
-                  );
-                  final startY = (_dragStart!.dy / cellHeight).floor().clamp(
-                    0,
-                    63,
-                  );
-                  final currX = (_dragCurrent!.dx / cellWidth).floor().clamp(
-                    0,
-                    63,
-                  );
-                  final currY = (_dragCurrent!.dy / cellHeight).floor().clamp(
-                    0,
-                    63,
-                  );
+                    final startX = (_dragStart!.dx / cellWidth).floor().clamp(
+                      0,
+                      63,
+                    );
+                    final startY = (_dragStart!.dy / cellHeight).floor().clamp(
+                      0,
+                      63,
+                    );
+                    final currX = (_dragCurrent!.dx / cellWidth).floor().clamp(
+                      0,
+                      63,
+                    );
+                    final currY = (_dragCurrent!.dy / cellHeight).floor().clamp(
+                      0,
+                      63,
+                    );
 
-                  switch (canvasModel.selectedTool) {
-                    case CanvasTool.line:
-                      notifier.applyLine(startX, startY, currX, currY);
-                      break;
-                    case CanvasTool.circle:
-                      final dx = currX - startX;
-                      final dy = currY - startY;
-                      final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 30);
-                      notifier.applyCircle(startX, startY, r);
-                      break;
-                    case CanvasTool.fill:
-                      notifier.applyFill(startX, startY);
-                      break;
-                    case CanvasTool.hatch:
-                      notifier.applyHatch(startX, startY);
-                      break;
-                  }
+                    switch (canvasModel.selectedTool) {
+                      case CanvasTool.line:
+                        notifier.applyLine(startX, startY, currX, currY);
+                        break;
+                      case CanvasTool.circle:
+                        final dx = currX - startX;
+                        final dy = currY - startY;
+                        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 30);
+                        notifier.applyCircle(startX, startY, r);
+                        break;
+                      case CanvasTool.fill:
+                        notifier.applyFill(startX, startY);
+                        break;
+                      case CanvasTool.hatch:
+                        notifier.applyHatch(startX, startY);
+                        break;
+                    }
 
-                  setState(() {
-                    _dragStart = null;
-                    _dragCurrent = null;
-                  });
-                },
-                child: CustomPaint(
-                  painter: CanvasPainter(
-                    grid: canvasModel.grid,
-                    palette: canvasModel.palette,
-                    dragStart: _dragStart,
-                    dragCurrent: _dragCurrent,
-                    activeTool: canvasModel.selectedTool,
-                    activeColorIndex: canvasModel.selectedColorIndex,
-                  ),
-                  child: GridPaper(
-                    color: Colors.grey[800]!.withOpacity(0.2),
-                    divisions: 1,
-                    subdivisions: 1,
-                    interval: size / 16, // Visual helper gridlines
-                    child: Container(),
+                    setState(() {
+                      _dragStart = null;
+                      _dragCurrent = null;
+                    });
+                  },
+                  child: CustomPaint(
+                    painter: CanvasPainter(
+                      grid: canvasModel.grid,
+                      palette: canvasModel.palette,
+                      dragStart: _dragStart,
+                      dragCurrent: _dragCurrent,
+                      activeTool: canvasModel.selectedTool,
+                      activeColorIndex: canvasModel.selectedColorIndex,
+                    ),
+                    child: GridPaper(
+                      color: Colors.grey[800]!.withOpacity(0.2),
+                      divisions: 1,
+                      subdivisions: 1,
+                      interval: size / 16, // Visual helper gridlines
+                      child: Container(),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      );
+        );
       },
     );
   }

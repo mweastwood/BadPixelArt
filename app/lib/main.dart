@@ -44,14 +44,8 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'BadPixelArt',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorScheme: lightScheme,
-            useMaterial3: true,
-          ),
-          darkTheme: ThemeData(
-            colorScheme: darkScheme,
-            useMaterial3: true,
-          ),
+          theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
+          darkTheme: ThemeData(colorScheme: darkScheme, useMaterial3: true),
           themeMode: ThemeMode.system,
           home: const PixelArtScreen(),
         );

@@ -10,9 +10,7 @@ class PixelArtScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bad Pixel Art'),
-      ),
+      appBar: AppBar(title: const Text('Bad Pixel Art')),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final isLandscape = constraints.maxWidth > 800;
@@ -25,10 +23,7 @@ class PixelArtScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Left side: Just the Canvas
-                  const Expanded(
-                    flex: 3,
-                    child: CanvasGrid(),
-                  ),
+                  const Expanded(flex: 3, child: CanvasGrid()),
                   const SizedBox(width: 24),
                   // Right side: Controls (Palette & AI)
                   const Expanded(
