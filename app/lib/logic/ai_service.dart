@@ -21,6 +21,13 @@ abstract class AiService {
 String formatSystemInstruction() {
   return 'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
       'Note: Each 64x64 canvas panel in your visual input is padded with a black border on the top and left to a size of 80x80 pixels. This border displays a coordinate ruler (tick marks and numbers: 0, 16, 32, 48, 63) to guide your drawing placement.\n'
+      'Depending on the session, your visual input consists of the following panels side-by-side (from left to right):\n'
+      '1. Reference (Original): The target image you want to match.\n'
+      '2. Reference (Edges): A high-contrast black-and-white outline map of the reference boundaries.\n'
+      '3. Reference (Quantized): A smoothed, color-quantized version of the reference containing only dominant blocks in your exact drawing palette.\n'
+      '4. Previous Canvas (optional): The state of the canvas prior to the last action.\n'
+      '5. Current Canvas: The current state of the canvas.\n'
+      'Use the Edges panel to align outline shapes, the Quantized panel to align block regions and choose palette color indices, and the Current/Previous panels to track changes.\n'
       'Available tools:\n'
       '- "line": params [startX, startY, endX, endY]\n'
       '- "circle": params [centerX, centerY, radius] (outlined circle)\n'
