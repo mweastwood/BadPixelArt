@@ -555,7 +555,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
 
     final canvasBytes = Uint8List.fromList(utf8.encode(state.grid.toString()));
     final paletteHexes = state.palette
-        .map((c) => '#${c.value.toRadixString(16).padLeft(8, '0')}')
+        .map(
+          (c) => '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
+        )
         .toList();
 
     final canvasBmp = generateBmp(state.grid, state.palette);

@@ -8,6 +8,7 @@ class MockTestAiService implements AiService {
   AiCoreStatus status = AiCoreStatus.available;
   Map<String, dynamic>? mockResult;
   bool triggerDownloadCalled = false;
+  List<String>? lastPaletteColors;
 
   @override
   Future<AiCoreStatus> checkStatus() async => status;
@@ -26,6 +27,7 @@ class MockTestAiService implements AiService {
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
   }) async {
+    lastPaletteColors = paletteColors;
     return mockResult;
   }
 }
@@ -283,5 +285,28 @@ void main() {
       // Compression (0 = BI_RGB)
       expect(bd.getUint32(30, Endian.little), equals(0));
     });
+
+    test(
+      'triggerAiStroke formats paletteColors as 6-character hex values (RGB)',
+      () async {
+        mockAiService.mockResult = {
+          'tool': 'line',
+          'params': [0, 0, 5, 5],
+          'color': 2,
+        };
+
+        final notifier = container.read(canvasStateProvider.notifier);
+        await notifier.triggerAiStroke();
+
+        expect(mockAiService.lastPaletteColors, isNotNull);
+        // Check that all formatted colors start with # and have exactly 6 hex digits (7 characters total)
+        for (final hex in mockAiService.lastPaletteColors!) {
+          expect(hex, startsWith('#'));
+          expect(hex.length, equals(7)); // #RRGGBB
+          final hexValue = hex.substring(1);
+          expect(int.tryParse(hexValue, radix: 16), isNotNull);
+        }
+      },
+    );
   });
 }
