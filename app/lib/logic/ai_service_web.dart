@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'ai_service.dart';
 
@@ -93,5 +94,11 @@ class WebAiService implements AiService {
       debugPrint('Error getting next stroke from Web AI: $e');
     }
     return null;
+  }
+
+  @override
+  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return List.generate(16, (i) => Color(0xFF000000 | (i * 0x111111)));
   }
 }

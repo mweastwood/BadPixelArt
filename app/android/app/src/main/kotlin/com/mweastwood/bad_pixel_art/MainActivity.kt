@@ -109,6 +109,43 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                 }
+                "suggestPalette" -> {
+                    val referenceImageBytes = call.argument<ByteArray>("referenceImage")
+                    if (referenceImageBytes == null || referenceImageBytes.isEmpty()) {
+                        result.error("invalid_argument", "referenceImage is missing or empty", null)
+                        return@setMethodCallHandler
+                    }
+                    val promptText = "Analyze this reference image and suggest a palette of exactly 16 colors. Output a JSON array containing exactly 16 hex color strings (e.g. [\"#ff0000\", \"#00ff00\", ...]). Output nothing else."
+
+                    ioScope.launch {
+                        var referenceBitmap: Bitmap? = null
+                        try {
+                            referenceBitmap = BitmapFactory.decodeByteArray(referenceImageBytes, 0, referenceImageBytes.size)
+                            if (referenceBitmap == null) {
+                                withContext(Dispatchers.Main) {
+                                    result.error("invalid_argument", "Failed to decode referenceImage bytes", null)
+                                }
+                                return@launch
+                            }
+                            val response = model.generateContent(
+                                generateContentRequest(ImagePart(referenceBitmap), TextPart(promptText)) {
+                                    temperature = 0.5f
+                                }
+                            )
+                            val responseText = response.candidates.firstOrNull()?.text ?: ""
+                            withContext(Dispatchers.Main) {
+                                result.success(responseText)
+                            }
+                        } catch (e: Throwable) {
+                            Log.e("MainActivity", "Error suggesting palette: ${e.message}", e)
+                            withContext(Dispatchers.Main) {
+                                result.error("generation_failed", e.message, null)
+                            }
+                        } finally {
+                            referenceBitmap?.recycle()
+                        }
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
