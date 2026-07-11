@@ -27,104 +27,98 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
         final size = min(constraints.maxWidth, constraints.maxHeight);
 
         return Center(
-          child: Container(
+          child: SizedBox(
             width: size,
             height: size,
-            decoration: BoxDecoration(
-              color: Colors.grey[900],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[800]!, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: GestureDetector(
-                onPanStart: (details) {
-                  final renderBox = context.findRenderObject() as RenderBox;
-                  final localPos = renderBox.globalToLocal(
-                    details.globalPosition,
-                  );
-                  setState(() {
-                    _dragStart = localPos;
-                    _dragCurrent = localPos;
-                  });
-                },
-                onPanUpdate: (details) {
-                  final renderBox = context.findRenderObject() as RenderBox;
-                  final localPos = renderBox.globalToLocal(
-                    details.globalPosition,
-                  );
-                  setState(() {
-                    _dragCurrent = localPos;
-                  });
-                },
-                onPanEnd: (details) {
-                  if (_dragStart == null || _dragCurrent == null) return;
+            child: Card(
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: GestureDetector(
+                  onPanStart: (details) {
+                    final renderBox = context.findRenderObject() as RenderBox;
+                    final localPos = renderBox.globalToLocal(
+                      details.globalPosition,
+                    );
+                    setState(() {
+                      _dragStart = localPos;
+                      _dragCurrent = localPos;
+                    });
+                  },
+                  onPanUpdate: (details) {
+                    final renderBox = context.findRenderObject() as RenderBox;
+                    final localPos = renderBox.globalToLocal(
+                      details.globalPosition,
+                    );
+                    setState(() {
+                      _dragCurrent = localPos;
+                    });
+                  },
+                  onPanEnd: (details) {
+                    if (_dragStart == null || _dragCurrent == null) return;
 
-                  final cellWidth = size / 64;
-                  final cellHeight = size / 64;
+                    final cellWidth = size / 64;
+                    final cellHeight = size / 64;
 
-                  final startX = (_dragStart!.dx / cellWidth).floor().clamp(
-                    0,
-                    63,
-                  );
-                  final startY = (_dragStart!.dy / cellHeight).floor().clamp(
-                    0,
-                    63,
-                  );
-                  final currX = (_dragCurrent!.dx / cellWidth).floor().clamp(
-                    0,
-                    63,
-                  );
-                  final currY = (_dragCurrent!.dy / cellHeight).floor().clamp(
-                    0,
-                    63,
-                  );
+                    final startX = (_dragStart!.dx / cellWidth).floor().clamp(
+                      0,
+                      63,
+                    );
+                    final startY = (_dragStart!.dy / cellHeight).floor().clamp(
+                      0,
+                      63,
+                    );
+                    final currX = (_dragCurrent!.dx / cellWidth).floor().clamp(
+                      0,
+                      63,
+                    );
+                    final currY = (_dragCurrent!.dy / cellHeight).floor().clamp(
+                      0,
+                      63,
+                    );
 
-                  switch (canvasModel.selectedTool) {
-                    case CanvasTool.line:
-                      notifier.applyLine(startX, startY, currX, currY);
-                      break;
-                    case CanvasTool.circle:
-                      final dx = currX - startX;
-                      final dy = currY - startY;
-                      final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 30);
-                      notifier.applyCircle(startX, startY, r);
-                      break;
-                    case CanvasTool.fill:
-                      notifier.applyFill(startX, startY);
-                      break;
-                    case CanvasTool.hatch:
-                      notifier.applyHatch(startX, startY);
-                      break;
-                  }
+                    switch (canvasModel.selectedTool) {
+                      case CanvasTool.line:
+                        notifier.applyLine(startX, startY, currX, currY);
+                        break;
+                      case CanvasTool.circle:
+                        final dx = currX - startX;
+                        final dy = currY - startY;
+                        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 30);
+                        notifier.applyCircle(startX, startY, r);
+                        break;
+                      case CanvasTool.fill:
+                        notifier.applyFill(startX, startY);
+                        break;
+                      case CanvasTool.hatch:
+                        notifier.applyHatch(startX, startY);
+                        break;
+                    }
 
-                  setState(() {
-                    _dragStart = null;
-                    _dragCurrent = null;
-                  });
-                },
-                child: CustomPaint(
-                  painter: CanvasPainter(
-                    grid: canvasModel.grid,
-                    palette: canvasModel.palette,
-                    dragStart: _dragStart,
-                    dragCurrent: _dragCurrent,
-                    activeTool: canvasModel.selectedTool,
-                    activeColorIndex: canvasModel.selectedColorIndex,
-                  ),
-                  child: GridPaper(
-                    color: Colors.grey[800]!.withOpacity(0.2),
-                    divisions: 1,
-                    subdivisions: 1,
-                    interval: size / 16, // Visual helper gridlines
-                    child: Container(),
+                    setState(() {
+                      _dragStart = null;
+                      _dragCurrent = null;
+                    });
+                  },
+                  child: CustomPaint(
+                    painter: CanvasPainter(
+                      grid: canvasModel.grid,
+                      palette: canvasModel.palette,
+                      dragStart: _dragStart,
+                      dragCurrent: _dragCurrent,
+                      activeTool: canvasModel.selectedTool,
+                      activeColorIndex: canvasModel.selectedColorIndex,
+                    ),
+                    child: GridPaper(
+                      color: Colors.grey[800]!.withOpacity(0.2),
+                      divisions: 1,
+                      subdivisions: 1,
+                      interval: size / 16, // Visual helper gridlines
+                      child: Container(),
+                    ),
                   ),
                 ),
               ),
@@ -158,10 +152,18 @@ class CanvasPainter extends CustomPainter {
     final cellWidth = size.width / 64;
     final cellHeight = size.height / 64;
 
+    // Draw solid background to prevent subpixel outline bleeding from the Card background
+    final bgBasePaint = Paint()..color = const Color(0xFF1E1E1E);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgBasePaint);
+
     // Draw background grid pixels
     // We treat 0 as transparent and draw a checkerboard transparent background
-    final bgPaint1 = Paint()..color = const Color(0xFF262626);
-    final bgPaint2 = Paint()..color = const Color(0xFF1E1E1E);
+    final bgPaint1 = Paint()
+      ..color = const Color(0xFF262626)
+      ..isAntiAlias = false;
+    final bgPaint2 = Paint()
+      ..color = const Color(0xFF1E1E1E)
+      ..isAntiAlias = false;
 
     for (int y = 0; y < 64; y++) {
       for (int x = 0; x < 64; x++) {
@@ -179,7 +181,9 @@ class CanvasPainter extends CustomPainter {
           canvas.drawRect(rect, paint);
         } else {
           // Draw painted pixel
-          final paint = Paint()..color = palette[colorIndex];
+          final paint = Paint()
+            ..color = palette[colorIndex]
+            ..isAntiAlias = false;
           canvas.drawRect(rect, paint);
         }
       }
@@ -194,7 +198,8 @@ class CanvasPainter extends CustomPainter {
 
       final previewPaint = Paint()
         ..color = palette[activeColorIndex].withOpacity(0.5)
-        ..style = PaintingStyle.fill;
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = false;
 
       if (activeTool == CanvasTool.line) {
         final points = _getLinePoints(startX, startY, currX, currY);

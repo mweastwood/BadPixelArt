@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
@@ -11,15 +12,29 @@ void main() {
       );
 
       // Verify the appBar title is visible
-      expect(find.text('BadPixelArt Co-Creator'), findsOneWidget);
+      expect(find.text('Bad Pixel Art'), findsOneWidget);
     });
 
-    testGoldens('PixelArtScreen golden render', (tester) async {
+    testGoldens('PixelArtScreen portrait golden render', (tester) async {
       await tester.pumpWidgetBuilder(
         const PixelArtScreen(),
         wrapper: testMaterialAppWrapper(),
       );
-      await screenMatchesGolden(tester, 'pixel_art_screen');
+      await screenMatchesGolden(tester, 'pixel_art_screen_portrait');
+    });
+
+    testGoldens('PixelArtScreen landscape golden render', (tester) async {
+      await tester.pumpWidgetBuilder(
+        const PixelArtScreen(),
+        wrapper: testMaterialAppWrapper(),
+      );
+      await multiScreenGolden(
+        tester,
+        'pixel_art_screen_landscape',
+        devices: [
+          const Device(name: 'landscape_tablet', size: Size(1280, 800)),
+        ],
+      );
     });
   });
 }

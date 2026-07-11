@@ -11,13 +11,10 @@ class ColorPaletteBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasModel = ref.watch(canvasStateProvider);
     final notifier = ref.read(canvasStateProvider.notifier);
+    final theme = Theme.of(context);
 
     return Card(
-      color: Colors.grey[950],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey[850]!, width: 1.5),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
         child: Column(
@@ -31,7 +28,7 @@ class ColorPaletteBar extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.grey[900],
+                    color: theme.colorScheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -56,14 +53,14 @@ class ColorPaletteBar extends ConsumerWidget {
                   children: [
                     IconButton(
                       tooltip: 'Undo',
-                      icon: const Icon(Icons.undo, color: Colors.white70),
+                      icon: const Icon(Icons.undo),
                       onPressed: canvasModel.undoStack.isNotEmpty
                           ? notifier.undo
                           : null,
                     ),
                     IconButton(
                       tooltip: 'Redo',
-                      icon: const Icon(Icons.redo, color: Colors.white70),
+                      icon: const Icon(Icons.redo),
                       onPressed: canvasModel.redoStack.isNotEmpty
                           ? notifier.redo
                           : null,
@@ -104,14 +101,16 @@ class ColorPaletteBar extends ConsumerWidget {
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: isSelected
-                              ? Colors.amberAccent
-                              : Colors.grey[800]!,
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.outlineVariant,
                           width: isSelected ? 3 : 1.5,
                         ),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: Colors.amberAccent.withOpacity(0.4),
+                                  color: theme.colorScheme.primary.withOpacity(
+                                    0.4,
+                                  ),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 ),
@@ -186,19 +185,24 @@ class _PaletteTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.grey[850] : Colors.transparent,
+          color: isSelected
+              ? theme.colorScheme.secondaryContainer
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white54,
+            color: isSelected
+                ? theme.colorScheme.onSecondaryContainer
+                : theme.colorScheme.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             fontSize: 13,
           ),
@@ -223,6 +227,7 @@ class _BrushToolButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -231,12 +236,12 @@ class _BrushToolButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.blueAccent.withOpacity(0.15)
+              ? theme.colorScheme.primary.withOpacity(0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? Colors.blueAccent.withOpacity(0.5)
+                ? theme.colorScheme.primary.withOpacity(0.5)
                 : Colors.transparent,
             width: 1.5,
           ),
@@ -246,14 +251,18 @@ class _BrushToolButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? Colors.blueAccent : Colors.white60,
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
               size: 24,
             ),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? Colors.blueAccent : Colors.white60,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),

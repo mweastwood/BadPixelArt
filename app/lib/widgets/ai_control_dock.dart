@@ -45,13 +45,10 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
   Widget build(BuildContext context) {
     final canvasModel = ref.watch(canvasStateProvider);
     final notifier = ref.read(canvasStateProvider.notifier);
+    final theme = Theme.of(context);
 
     return Card(
-      color: Colors.grey[950],
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey[850]!, width: 1.5),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -62,10 +59,10 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'AICore Gemini Nano',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
@@ -76,10 +73,10 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             const SizedBox(height: 16),
 
             // Reference Image Preset Selector
-            const Text(
+            Text(
               'Reference Image Presets',
               style: TextStyle(
-                color: Colors.white70,
+                color: theme.colorScheme.onSurfaceVariant,
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
@@ -133,21 +130,27 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             TextField(
               controller: _promptController,
               onChanged: notifier.updatePrompt,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: theme.colorScheme.onSurface),
               decoration: InputDecoration(
                 labelText: 'User Instructions / Prompt',
-                labelStyle: const TextStyle(color: Colors.white30),
+                labelStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                ),
                 hintText: 'e.g., Draw a red sword outlined in black...',
-                hintStyle: const TextStyle(color: Colors.white30),
+                hintStyle: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                ),
                 filled: true,
-                fillColor: Colors.grey[900],
+                fillColor: theme.colorScheme.surfaceContainerHigh,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[800]!),
+                  borderSide: BorderSide(
+                    color: theme.colorScheme.outlineVariant,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.blueAccent),
+                  borderSide: BorderSide(color: theme.colorScheme.primary),
                 ),
               ),
             ),
@@ -160,19 +163,19 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                 Expanded(
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      foregroundColor: Colors.white,
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     icon: canvasModel.isGenerating
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                              color: Colors.white,
+                              color: theme.colorScheme.onPrimary,
                               strokeWidth: 2,
                             ),
                           )
@@ -194,9 +197,9 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                 // Auto Run Toggle
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.grey[900],
+                    color: theme.colorScheme.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[800]!),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
                   ),
                   child: IconButton(
                     tooltip: canvasModel.autoRun
@@ -219,11 +222,18 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Icon(Icons.speed, color: Colors.white54, size: 20),
+                  Icon(
+                    Icons.speed,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Speed:',
-                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 13,
+                    ),
                   ),
                   Expanded(
                     child: Slider(
@@ -237,8 +247,8 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                   ),
                   Text(
                     '${canvasModel.autoRunSpeed}s',
-                    style: const TextStyle(
-                      color: Colors.white70,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
                       fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
@@ -317,6 +327,7 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
     required bool isSelected,
     required VoidCallback onTap,
   }) {
+    final theme = Theme.of(context);
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -325,10 +336,14 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.grey[800] : Colors.grey[900],
+            color: isSelected
+                ? theme.colorScheme.secondaryContainer
+                : theme.colorScheme.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: isSelected ? Colors.blueAccent : Colors.grey[800]!,
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outlineVariant,
               width: 1.5,
             ),
           ),
@@ -337,14 +352,18 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             children: [
               Icon(
                 icon,
-                color: isSelected ? Colors.blueAccent : Colors.white60,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
                 size: 20,
               ),
               const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white60,
+                  color: isSelected
+                      ? theme.colorScheme.onSecondaryContainer
+                      : theme.colorScheme.onSurfaceVariant,
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
