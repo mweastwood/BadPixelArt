@@ -122,6 +122,21 @@ String formatUserPrompt({
       'Output the single next stroke JSON now:';
 }
 
+String cleanJsonString(String input) {
+  var cleaned = input.trim();
+  if (cleaned.startsWith('```')) {
+    final lines = cleaned.split('\n');
+    if (lines.first.startsWith('```')) {
+      lines.removeAt(0);
+    }
+    if (lines.isNotEmpty && lines.last.startsWith('```')) {
+      lines.removeLast();
+    }
+    cleaned = lines.join('\n').trim();
+  }
+  return cleaned;
+}
+
 class MethodChannelAiService implements AiService {
   static const _channel = MethodChannel('com.mweastwood.bad_pixel_art/aicore');
 
@@ -183,13 +198,22 @@ class MethodChannelAiService implements AiService {
           });
 
       if (resultString == null) return null;
-      final parsed = jsonDecode(resultString);
-      if (parsed is Map<String, dynamic>) {
-        return parsed;
+      final cleanedString = cleanJsonString(resultString);
+      try {
+        final parsed = jsonDecode(cleanedString);
+        if (parsed is Map<String, dynamic>) {
+          return parsed;
+        }
+      } catch (e) {
+        return {'error': e.toString(), 'rawResponse': resultString};
       }
     } catch (e, stack) {
       debugPrint('Error getting next stroke via MethodChannel: $e');
       debugPrint(stack.toString());
+      return {
+        'error': e.toString(),
+        'rawResponse': 'MethodChannel invocation error',
+      };
     }
     return null;
   }
