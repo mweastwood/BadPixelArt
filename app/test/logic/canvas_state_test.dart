@@ -357,6 +357,111 @@ void main() {
       expect(bd.getUint32(30, Endian.little), equals(0));
     });
 
+    group('combineBmps tests', () {
+      test('combineBmps with empty list returns 1x1 dummy BMP', () {
+        final combined = combineBmps([]);
+        expect(
+          combined.length,
+          equals(58),
+        ); // 54 header + 1 * 1 * 3 bytes + 1 padding byte = 58
+        final ByteData bd = ByteData.sublistView(combined);
+        expect(bd.getUint32(18, Endian.little), equals(1)); // width
+        expect(bd.getUint32(22, Endian.little), equals(1)); // height
+      });
+
+      test('combineBmps with single BMP returns the original BMP', () {
+        final grid = List.generate(64, (_) => List.filled(64, 0));
+        final bmp = generateBmp(grid, CanvasNotifier.primaryPalette);
+        final combined = combineBmps([bmp]);
+        expect(combined, equals(bmp));
+      });
+
+      test('combineBmps with two BMPs concatenates side-by-side correctly', () {
+        final grid1 = List.generate(
+          64,
+          (_) => List.filled(64, 2),
+        ); // Filled with red (index 2)
+        final grid2 = List.generate(
+          64,
+          (_) => List.filled(64, 4),
+        ); // Filled with blue (index 4)
+
+        final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
+        final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
+
+        final combined = combineBmps([bmp1, bmp2]);
+
+        // File size should be 24630 (54 header + 128 * 64 * 3)
+        expect(combined.length, equals(24630));
+
+        final ByteData bd = ByteData.sublistView(combined);
+        expect(bd.getUint32(18, Endian.little), equals(128)); // width
+        expect(bd.getUint32(22, Endian.little), equals(64)); // height
+
+        // Stride is 128 * 3 = 384. Pixel (10, 10) in left panel (grid1)
+        final offsetLeft = 54 + 10 * 384 + 10 * 3;
+        expect(combined[offsetLeft], equals(0)); // blue
+        expect(combined[offsetLeft + 1], equals(0)); // green
+        expect(combined[offsetLeft + 2], equals(255)); // red
+
+        // Pixel (10, 10) in right panel (grid2), combined coordinate x = 74
+        final offsetRight = 54 + 10 * 384 + 74 * 3;
+        expect(combined[offsetRight], equals(255)); // blue
+        expect(combined[offsetRight + 1], equals(0)); // green
+        expect(combined[offsetRight + 2], equals(0)); // red
+      });
+
+      test(
+        'combineBmps with three BMPs concatenates side-by-side correctly',
+        () {
+          final grid1 = List.generate(
+            64,
+            (_) => List.filled(64, 2),
+          ); // Red (index 2)
+          final grid2 = List.generate(
+            64,
+            (_) => List.filled(64, 3),
+          ); // Green (index 3)
+          final grid3 = List.generate(
+            64,
+            (_) => List.filled(64, 4),
+          ); // Blue (index 4)
+
+          final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
+          final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
+          final bmp3 = generateBmp(grid3, CanvasNotifier.primaryPalette);
+
+          final combined = combineBmps([bmp1, bmp2, bmp3]);
+
+          // File size should be 36918 (54 header + 192 * 64 * 3)
+          expect(combined.length, equals(36918));
+
+          final ByteData bd = ByteData.sublistView(combined);
+          expect(bd.getUint32(18, Endian.little), equals(192)); // width
+          expect(bd.getUint32(22, Endian.little), equals(64)); // height
+
+          // Stride is 192 * 3 = 576.
+          // Left panel (grid1): pixel (10, 10) -> combined x = 10
+          final offsetLeft = 54 + 10 * 576 + 10 * 3;
+          expect(combined[offsetLeft], equals(0)); // blue
+          expect(combined[offsetLeft + 1], equals(0)); // green
+          expect(combined[offsetLeft + 2], equals(255)); // red
+
+          // Middle panel (grid2): pixel (10, 10) -> combined x = 74
+          final offsetMiddle = 54 + 10 * 576 + 74 * 3;
+          expect(combined[offsetMiddle], equals(0)); // blue
+          expect(combined[offsetMiddle + 1], equals(255)); // green
+          expect(combined[offsetMiddle + 2], equals(0)); // red
+
+          // Right panel (grid3): pixel (10, 10) -> combined x = 138
+          final offsetRight = 54 + 10 * 576 + 138 * 3;
+          expect(combined[offsetRight], equals(255)); // blue
+          expect(combined[offsetRight + 1], equals(0)); // green
+          expect(combined[offsetRight + 2], equals(0)); // red
+        },
+      );
+    });
+
     test(
       'triggerAiStroke formats paletteColors as 6-character hex values (RGB)',
       () async {
