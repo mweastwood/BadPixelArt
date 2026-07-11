@@ -77,9 +77,9 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             if (!_isCollapsed) ...[
               const SizedBox(height: 12),
 
-              // Reference Image Preset Selector
+              // Reference Image Selector
               Text(
-                'Reference Image Presets',
+                'Reference Image',
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 13,
@@ -182,10 +182,17 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                                 clipBehavior: Clip.antiAlias,
                                 child:
                                     canvasModel.originalReferenceImage != null
-                                    ? Image.memory(
-                                        canvasModel.originalReferenceImage!,
-                                        fit: BoxFit.contain,
-                                      )
+                                    ? (canvasModel.originalReferenceImage!.length < 10
+                                        ? const Center(
+                                            child: Icon(
+                                              Icons.image_outlined,
+                                              size: 32,
+                                            ),
+                                          )
+                                        : Image.memory(
+                                            canvasModel.originalReferenceImage!,
+                                            fit: BoxFit.contain,
+                                          ))
                                     : const Center(
                                         child: Icon(
                                           Icons.broken_image_outlined,
@@ -224,12 +231,19 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                                   ),
                                 ),
                                 clipBehavior: Clip.antiAlias,
-                                child: Image.memory(
-                                  canvasModel.referenceImage!,
-                                  fit: BoxFit.contain,
-                                  filterQuality:
-                                      FilterQuality.none, // Pixelated
-                                ),
+                                child: canvasModel.referenceImage!.length < 10
+                                    ? const Center(
+                                        child: Icon(
+                                          Icons.image_aspect_ratio_outlined,
+                                          size: 32,
+                                        ),
+                                      )
+                                    : Image.memory(
+                                        canvasModel.referenceImage!,
+                                        fit: BoxFit.contain,
+                                        filterQuality:
+                                            FilterQuality.none, // Pixelated
+                                      ),
                               ),
                             ],
                           ),
