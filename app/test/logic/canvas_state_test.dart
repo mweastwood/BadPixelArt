@@ -213,5 +213,39 @@ void main() {
         equals(AiCoreStatus.available),
       );
     });
+
+    test('triggerAiStroke logs prompt and response in history', () async {
+      mockAiService.mockResult = {
+        'tool': 'line',
+        'params': [0, 0, 5, 5],
+        'color': 2,
+      };
+
+      final notifier = container.read(canvasStateProvider.notifier);
+      expect(container.read(canvasStateProvider).aiHistory, isEmpty);
+
+      await notifier.triggerAiStroke();
+
+      final model = container.read(canvasStateProvider);
+      expect(model.aiHistory, hasLength(1));
+      expect(model.aiHistory.first.isError, isFalse);
+      expect(model.aiHistory.first.prompt, contains('AI pixel art assistant'));
+      expect(model.aiHistory.first.response, contains('"tool":"line"'));
+    });
+
+    test('clearAiHistory clears the logs', () async {
+      mockAiService.mockResult = {
+        'tool': 'line',
+        'params': [0, 0, 5, 5],
+        'color': 2,
+      };
+
+      final notifier = container.read(canvasStateProvider.notifier);
+      await notifier.triggerAiStroke();
+      expect(container.read(canvasStateProvider).aiHistory, isNotEmpty);
+
+      notifier.clearAiHistory();
+      expect(container.read(canvasStateProvider).aiHistory, isEmpty);
+    });
   });
 }

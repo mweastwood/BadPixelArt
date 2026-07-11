@@ -18,7 +18,28 @@ void main() {
       expect(find.byIcon(Icons.redo), findsOneWidget);
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
     });
+    testWidgets('collapses and expands on header tap', (tester) async {
+      await tester.pumpWidget(
+        buildTestableWidget(child: const Scaffold(body: ColorPaletteBar())),
+      );
 
+      // Verify started as expanded (elements are visible)
+      expect(find.text('Primary 8'), findsOneWidget);
+
+      // Tap header to collapse
+      await tester.tap(find.text('Manual Drawing Controls'));
+      await tester.pumpAndSettle();
+
+      // Verify elements are now hidden
+      expect(find.text('Primary 8'), findsNothing);
+
+      // Tap header to expand again
+      await tester.tap(find.text('Manual Drawing Controls'));
+      await tester.pumpAndSettle();
+
+      // Verify elements are visible again
+      expect(find.text('Primary 8'), findsOneWidget);
+    });
     testGoldens('ColorPaletteBar renders correctly', (tester) async {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 3)
         ..addScenario('Primary Palette Selected', const ColorPaletteBar());
