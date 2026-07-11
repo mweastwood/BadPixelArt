@@ -77,9 +77,9 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             if (!_isCollapsed) ...[
               const SizedBox(height: 12),
 
-              // Reference Image Preset Selector
+              // Reference Image Selector
               Text(
-                'Reference Image Presets',
+                'Reference Image',
                 style: TextStyle(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontSize: 13,
@@ -89,48 +89,169 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
               const SizedBox(height: 8),
               if (canvasModel.referenceImage != null)
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: theme.colorScheme.outlineVariant,
                       width: 1.5,
                     ),
                   ),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.image_outlined,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Custom Reference Active',
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurface,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.image_outlined,
+                                color: theme.colorScheme.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Reference Image Active',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 20),
+                                tooltip: 'Change reference image',
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(8),
+                                onPressed: () async {
+                                  await _pickAndUploadReferenceImage(
+                                    context,
+                                    notifier,
+                                  );
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                tooltip: 'Remove reference image',
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(8),
+                                onPressed: () {
+                                  notifier.setReferenceImage(null);
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        tooltip: 'Change reference image',
-                        onPressed: () async {
-                          await _pickAndUploadReferenceImage(context, notifier);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                        ),
-                        tooltip: 'Remove reference image',
-                        onPressed: () {
-                          notifier.setReferenceImage(null);
-                        },
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Original Preview
+                          Column(
+                            children: [
+                              Text(
+                                'Original',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: theme.colorScheme.outlineVariant,
+                                  ),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child:
+                                    canvasModel.originalReferenceImage != null
+                                    ? (canvasModel
+                                                  .originalReferenceImage!
+                                                  .length <
+                                              10
+                                          ? const Center(
+                                              child: Icon(
+                                                Icons.image_outlined,
+                                                size: 32,
+                                              ),
+                                            )
+                                          : Image.memory(
+                                              canvasModel
+                                                  .originalReferenceImage!,
+                                              fit: BoxFit.contain,
+                                            ))
+                                    : const Center(
+                                        child: Icon(
+                                          Icons.broken_image_outlined,
+                                          size: 24,
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
+                          // Arrow
+                          Icon(
+                            Icons.arrow_forward_rounded,
+                            color: theme.colorScheme.onSurfaceVariant
+                                .withOpacity(0.5),
+                          ),
+                          // Model Input Preview (64x64)
+                          Column(
+                            children: [
+                              Text(
+                                'Model Input (64x64)',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: theme.colorScheme.outlineVariant,
+                                  ),
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: canvasModel.referenceImage!.length < 10
+                                    ? const Center(
+                                        child: Icon(
+                                          Icons.image_aspect_ratio_outlined,
+                                          size: 32,
+                                        ),
+                                      )
+                                    : Image.memory(
+                                        canvasModel.referenceImage!,
+                                        fit: BoxFit.contain,
+                                        filterQuality:
+                                            FilterQuality.none, // Pixelated
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),

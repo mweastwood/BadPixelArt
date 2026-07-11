@@ -1,8 +1,29 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/widgets/ai_control_dock.dart';
+import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/ai_service.dart';
 import '../test_helper.dart';
+
+class MockTestAiService implements AiService {
+  @override
+  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
+
+  @override
+  Future<void> triggerDownload() async {}
+
+  @override
+  Future<Map<String, dynamic>?> getNextStroke({
+    required Uint8List? referenceImage,
+    required Uint8List canvasImage,
+    required String prompt,
+    required List<String> paletteColors,
+    Uint8List? canvasBmpBytes,
+  }) async => null;
+}
 
 void main() {
   group('AiControlDock Widget & Golden Tests', () {
@@ -13,8 +34,8 @@ void main() {
         buildTestableWidget(child: const Scaffold(body: AiControlDock())),
       );
 
-      // Verify started as expanded (Reference Image Presets should be visible)
-      expect(find.text('Reference Image Presets'), findsOneWidget);
+      // Verify started as expanded (Reference Image Selector should be visible)
+      expect(find.text('Reference Image'), findsOneWidget);
       expect(find.text('User Instructions / Prompt'), findsOneWidget);
 
       // Tap header to collapse
@@ -22,19 +43,36 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify controls are hidden
-      expect(find.text('Reference Image Presets'), findsNothing);
+      expect(find.text('Reference Image'), findsNothing);
 
       // Tap header to expand
       await tester.tap(find.text('AI Assistant Controls'));
       await tester.pumpAndSettle();
 
       // Verify controls are visible again
-      expect(find.text('Reference Image Presets'), findsOneWidget);
+      expect(find.text('Reference Image'), findsOneWidget);
     });
 
     testGoldens('AiControlDock renders correctly', (tester) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
-        ..addScenario('AI Control Dock Default', const AiControlDock());
+      final mockAiService = MockTestAiService();
+      final mockNotifier = CanvasNotifier(mockAiService);
+
+      // Simple mock bytes (length < 10) to trigger safe preview placeholders under test
+      final mockBytes = Uint8List.fromList([0, 1, 2, 3]);
+
+      mockNotifier.setReferenceImage(mockBytes, originalBytes: mockBytes);
+
+      final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 0.55)
+        ..addScenario('AI Control Dock Default', const AiControlDock())
+        ..addScenario(
+          'AI Control Dock Active Reference',
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+            child: const AiControlDock(),
+          ),
+        );
 
       await tester.pumpWidgetBuilder(
         builder.build(),

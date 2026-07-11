@@ -308,5 +308,40 @@ void main() {
         }
       },
     );
+
+    test(
+      'setReferenceImage with originalBytes sets both referenceImage and originalReferenceImage',
+      () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        final rawPngBytes = Uint8List.fromList([0, 1, 2, 3]);
+        final modelBmpBytes = Uint8List.fromList([4, 5, 6, 7]);
+
+        notifier.setReferenceImage(modelBmpBytes, originalBytes: rawPngBytes);
+
+        final state = container.read(canvasStateProvider);
+        expect(state.originalReferenceImage, equals(rawPngBytes));
+        expect(state.referenceImage, equals(modelBmpBytes));
+      },
+    );
+
+    test('setting reference image to null clears both images', () {
+      final notifier = container.read(canvasStateProvider.notifier);
+      final rawPngBytes = Uint8List.fromList([0, 1, 2, 3]);
+      final modelBmpBytes = Uint8List.fromList([4, 5, 6, 7]);
+
+      notifier.setReferenceImage(modelBmpBytes, originalBytes: rawPngBytes);
+      expect(container.read(canvasStateProvider).referenceImage, isNotNull);
+      expect(
+        container.read(canvasStateProvider).originalReferenceImage,
+        isNotNull,
+      );
+
+      notifier.setReferenceImage(null);
+      expect(container.read(canvasStateProvider).referenceImage, isNull);
+      expect(
+        container.read(canvasStateProvider).originalReferenceImage,
+        isNull,
+      );
+    });
   });
 }
