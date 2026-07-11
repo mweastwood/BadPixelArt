@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
@@ -103,6 +104,17 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                     isSelected: canvasModel.referencePresetName == 'Heart',
                     onTap: () {
                       notifier.setReferencePreset('Heart');
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildPresetButton(
+                    label: canvasModel.referencePresetName == 'Uploaded'
+                        ? 'Uploaded'
+                        : 'Upload',
+                    icon: Icons.upload_file,
+                    isSelected: canvasModel.referencePresetName == 'Uploaded',
+                    onTap: () async {
+                      await _pickAndUploadReferenceImage(context, notifier);
                     },
                   ),
                   const SizedBox(width: 8),
@@ -370,5 +382,32 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
         ),
       ),
     );
+  }
+
+  Future<void> _pickAndUploadReferenceImage(
+    BuildContext context,
+    CanvasNotifier notifier,
+  ) async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final bytes = file.bytes;
+        if (bytes != null) {
+          await notifier.setUploadedReferenceImage(bytes);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking file: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
+    }
   }
 }
