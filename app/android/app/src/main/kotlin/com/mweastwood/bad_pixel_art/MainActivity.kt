@@ -5,8 +5,11 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.common.FeatureStatus
+import com.google.mlkit.genai.prompt.Part
 import com.google.mlkit.genai.prompt.TextPart
+import com.google.mlkit.genai.prompt.ImagePart
 import com.google.mlkit.genai.prompt.generateContentRequest
+import android.graphics.BitmapFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -60,6 +63,8 @@ class MainActivity : FlutterActivity() {
                 }
                 "getNextStroke" -> {
                     val promptText = call.argument<String>("prompt")
+                    val canvasImageBytes = call.argument<ByteArray>("canvasImage")
+                    val referenceImageBytes = call.argument<ByteArray>("referenceImage")
 
                     if (promptText == null) {
                         result.error("invalid_argument", "prompt is missing", null)
@@ -68,8 +73,26 @@ class MainActivity : FlutterActivity() {
 
                     ioScope.launch {
                         try {
+                            val parts = mutableListOf<Part>()
+
+                            if (canvasImageBytes != null && canvasImageBytes.isNotEmpty()) {
+                                val canvasBitmap = BitmapFactory.decodeByteArray(canvasImageBytes, 0, canvasImageBytes.size)
+                                if (canvasBitmap != null) {
+                                    parts.add(ImagePart(canvasBitmap))
+                                }
+                            }
+
+                            if (referenceImageBytes != null && referenceImageBytes.isNotEmpty()) {
+                                val referenceBitmap = BitmapFactory.decodeByteArray(referenceImageBytes, 0, referenceImageBytes.size)
+                                if (referenceBitmap != null) {
+                                    parts.add(ImagePart(referenceBitmap))
+                                }
+                            }
+
+                            parts.add(TextPart(promptText))
+
                             val response = model.generateContent(
-                                generateContentRequest(TextPart(promptText)) {
+                                generateContentRequest(*parts.toTypedArray()) {
                                     // Optional config
                                 }
                             )
