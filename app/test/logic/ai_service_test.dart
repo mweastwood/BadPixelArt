@@ -90,5 +90,16 @@ void main() {
 
       expect(userPrompt, contains('The user wants to draw a Sword.'));
     });
+
+    test('cleanJsonString strips markdown blocks correctly', () {
+      final input = '```json\n{"tool": "line"}\n```';
+      expect(cleanJsonString(input), equals('{"tool": "line"}'));
+
+      final inputNoLang = '```\n{"tool": "circle"}\n```';
+      expect(cleanJsonString(inputNoLang), equals('{"tool": "circle"}'));
+
+      final inputNoMarkdown = '{"tool": "fill"}';
+      expect(cleanJsonString(inputNoMarkdown), equals('{"tool": "fill"}'));
+    });
   });
 }

@@ -565,42 +565,46 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         );
 
         if (result != null) {
-          rawResponse = jsonEncode(result);
-          final ready = result['ready'] == true;
+          if (result.containsKey('rawResponse')) {
+            rawResponse = result['rawResponse'] as String;
+            isError = true;
+          } else {
+            rawResponse = jsonEncode(result);
+            final ready = result['ready'] == true;
 
-          AiDrawingPhase nextPhase = state.drawingPhase;
-          if (ready) {
-            switch (state.drawingPhase) {
-              case AiDrawingPhase.broadShapes:
-                nextPhase = AiDrawingPhase.outlining;
-                break;
-              case AiDrawingPhase.outlining:
-                nextPhase = AiDrawingPhase.detailing;
-                break;
-              case AiDrawingPhase.detailing:
-              default:
-                nextPhase = AiDrawingPhase.complete;
-                break;
+            AiDrawingPhase nextPhase = state.drawingPhase;
+            if (ready) {
+              switch (state.drawingPhase) {
+                case AiDrawingPhase.broadShapes:
+                  nextPhase = AiDrawingPhase.outlining;
+                  break;
+                case AiDrawingPhase.outlining:
+                  nextPhase = AiDrawingPhase.detailing;
+                  break;
+                case AiDrawingPhase.detailing:
+                default:
+                  nextPhase = AiDrawingPhase.complete;
+                  break;
+              }
             }
-          }
 
-          state = state.copyWith(
-            drawingPhase: nextPhase,
-            consecutiveActions: 0,
-            autoRun: nextPhase == AiDrawingPhase.complete
-                ? false
-                : state.autoRun,
-            aiHistory: [
-              ...state.aiHistory,
-              AiHistoryEntry(
-                timestamp: DateTime.now(),
-                prompt: evalPrompt,
-                response: rawResponse,
-                isError: false,
-                canvasImage: canvasBmp,
-              ),
-            ],
-          );
+            state = state.copyWith(
+              drawingPhase: nextPhase,
+              consecutiveActions: 0,
+              autoRun:
+                  nextPhase == AiDrawingPhase.complete ? false : state.autoRun,
+              aiHistory: [
+                ...state.aiHistory,
+                AiHistoryEntry(
+                  timestamp: DateTime.now(),
+                  prompt: evalPrompt,
+                  response: rawResponse,
+                  isError: false,
+                  canvasImage: canvasBmp,
+                ),
+              ],
+            );
+          }
         } else {
           isError = true;
           rawResponse = 'Invalid evaluation response returned by the model.';
@@ -695,18 +699,23 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       );
 
       if (result != null) {
-        rawResponse = jsonEncode(result);
-        final tool = result['tool'] as String?;
-        final params = (result['params'] as List?)?.cast<int>();
-        final colorIndex = result['color'] as int?;
-
-        if (tool != null && params != null && colorIndex != null) {
-          _applyAiStrokeCommand(tool, params, colorIndex);
-          state = state.copyWith(
-            consecutiveActions: state.consecutiveActions + 1,
-          );
-        } else {
+        if (result.containsKey('rawResponse')) {
+          rawResponse = result['rawResponse'] as String;
           isError = true;
+        } else {
+          rawResponse = jsonEncode(result);
+          final tool = result['tool'] as String?;
+          final params = (result['params'] as List?)?.cast<int>();
+          final colorIndex = result['color'] as int?;
+
+          if (tool != null && params != null && colorIndex != null) {
+            _applyAiStrokeCommand(tool, params, colorIndex);
+            state = state.copyWith(
+              consecutiveActions: state.consecutiveActions + 1,
+            );
+          } else {
+            isError = true;
+          }
         }
       } else {
         isError = true;
