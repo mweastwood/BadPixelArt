@@ -68,6 +68,7 @@ class WebAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   }) async {
     try {
       final ai = chromeAi;
@@ -79,6 +80,8 @@ class WebAiService implements AiService {
         canvasImage: canvasImage,
         prompt: prompt,
         paletteColors: paletteColors,
+        isMultimodal: canvasBmpBytes != null,
+        hasPreviousImage: previousBmpBytes != null,
       );
 
       final jsResponse = await ai

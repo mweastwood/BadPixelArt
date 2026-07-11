@@ -8,8 +8,6 @@ import 'ai_service_stub.dart' if (dart.library.html) 'ai_service_web.dart';
 
 enum AiCoreStatus { unavailable, downloadable, downloading, available }
 
-enum AiDrawingPhase { broadShapes, outlining, detailing, complete }
-
 abstract class AiService {
   Future<AiCoreStatus> checkStatus();
   Future<void> triggerDownload();
@@ -19,55 +17,25 @@ abstract class AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   });
-}
-
-String formatPhaseEvaluationPrompt({
-  required AiDrawingPhase currentPhase,
-  required String userPrompt,
-}) {
-  String transitionQuestion;
-  switch (currentPhase) {
-    case AiDrawingPhase.broadShapes:
-      transitionQuestion =
-          'We started in the BROAD_SHAPES phase (drawing large shapes/block structures). Are we ready to move to the OUTLINING phase (refining boundaries and connecting outlines)?';
-      break;
-    case AiDrawingPhase.outlining:
-      transitionQuestion =
-          'We are in the OUTLINING phase (refining outlines and layout). Are we ready to move to the DETAILING phase (fine details, shading, pixel highlights, textures)?';
-      break;
-    case AiDrawingPhase.detailing:
-      transitionQuestion =
-          'We are in the DETAILING phase (fine details, highlights). Is the artwork COMPLETE according to the user instruction?';
-      break;
-    case AiDrawingPhase.complete:
-      transitionQuestion = 'Is the artwork complete?';
-      break;
-  }
-
-  return 'User Instruction: "$userPrompt"\n\n'
-      'Evaluation Question: $transitionQuestion\n\n'
-      'You must output EXACTLY a valid JSON block containing your evaluation. No markdown tags, no extra text. Example:\n'
-      '{\n'
-      '  "ready": true,\n'
-      '  "reason": "Brief explanation of why we are ready or not"\n'
-      '}';
 }
 
 String formatSystemInstruction() {
   return 'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
-      'Drawing Phases:\n'
-      '- "BROAD_SHAPES": Canvas is mostly empty/incomplete. Focus on block colors, primary shapes, and basic layout structures using "circle" or "line". No fine details.\n'
-      '- "OUTLINING": Base shapes are established. Focus on outlines, connecting lines, and refinement of structural boundaries.\n'
-      '- "DETAILING": Shapes and outlines are complete. Focus on adding fine details, highlights, shading, and texture (e.g., checkerboard hatch patterns or fill in small regions).\n\n'
       'Available tools:\n'
       '- "line": params [startX, startY, endX, endY]\n'
-      '- "circle": params [centerX, centerY, radius]\n'
+      '- "circle": params [centerX, centerY, radius] (outlined circle)\n'
+      '- "circle_filled": params [centerX, centerY, radius]\n'
+      '- "circle_hatched": params [centerX, centerY, radius] (alternating checkerboard pattern filled circle)\n'
+      '- "rectangle": params [startX, startY, endX, endY] (outlined rectangle)\n'
+      '- "rectangle_filled": params [startX, startY, endX, endY]\n'
+      '- "rectangle_hatched": params [startX, startY, endX, endY] (alternating checkerboard pattern filled rectangle)\n'
       '- "fill": params [startX, startY]\n'
-      '- "hatch": params [startX, startY] (alternating checkerboard pattern fill)\n\n'
-      'You must output EXACTLY a valid JSON block containing your selected phase (based on current image/progress), your understanding of the image, your reasoning for the next stroke, and the next stroke itself. No explanation, no markdown tags. Example:\n'
+      '- "hatch": params [startX, startY] (alternating checkerboard pattern flood fill)\n'
+      '- "undo": params [] (reverts the last AI or user action if the AI thinks the last stroke was a mistake)\n\n'
+      'You must output EXACTLY a valid JSON block containing your understanding of the image, your reasoning for the next stroke, and the next stroke itself. No explanation, no markdown tags. Example:\n'
       '{\n'
-      '  "phase": "OUTLINING",\n'
       '  "understanding": "Brief description of what you see on the canvas right now",\n'
       '  "reasoning": "Explanation of why you are suggesting this stroke",\n'
       '  "tool": "line",\n'
@@ -82,10 +50,17 @@ String formatUserPrompt({
   required String prompt,
   required List<String> paletteColors,
   bool isMultimodal = false,
+  bool hasPreviousImage = false,
 }) {
   String canvasGridString;
   if (isMultimodal) {
-    canvasGridString = 'The current canvas is provided as an image attachment.';
+    if (hasPreviousImage) {
+      canvasGridString =
+          'The attached image contains the previous canvas state (middle panel) and the current canvas state (right panel).';
+    } else {
+      canvasGridString =
+          'The current canvas is provided as an image attachment.';
+    }
   } else {
     String decodedGrid = utf8.decode(canvasImage);
     if (!decodedGrid.contains(RegExp(r'[1-9]'))) {
@@ -174,6 +149,7 @@ class MethodChannelAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   }) async {
     try {
       final systemInstruction = formatSystemInstruction();
@@ -183,6 +159,7 @@ class MethodChannelAiService implements AiService {
         prompt: prompt,
         paletteColors: paletteColors,
         isMultimodal: canvasBmpBytes != null,
+        hasPreviousImage: previousBmpBytes != null,
       );
       final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
 
@@ -191,6 +168,7 @@ class MethodChannelAiService implements AiService {
             'prompt': fullPrompt,
             'canvasImage': canvasBmpBytes ?? canvasImage,
             'referenceImage': referenceImage,
+            'previousImage': previousBmpBytes,
           });
 
       if (resultString == null) return null;
@@ -245,16 +223,9 @@ class MockAiService implements AiService {
     required String prompt,
     required List<String> paletteColors,
     Uint8List? canvasBmpBytes,
+    Uint8List? previousBmpBytes,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
-
-    if (prompt.contains('Evaluation Question:')) {
-      return {
-        'ready': true,
-        'reason':
-            'The current phase is complete and we are ready to move to the next phase.',
-      };
-    }
 
     _strokeCount++;
 
@@ -264,7 +235,6 @@ class MockAiService implements AiService {
 
     if (step == 0) {
       return {
-        'phase': 'BROAD_SHAPES',
         'understanding': 'The canvas is currently empty.',
         'reasoning': 'Creating a central circular shape to start the drawing.',
         'tool': 'circle',
@@ -273,7 +243,6 @@ class MockAiService implements AiService {
       };
     } else if (step == 1) {
       return {
-        'phase': 'OUTLINING',
         'understanding': 'I see a circle in the center of the grid.',
         'reasoning':
             'Drawing a diagonal line crossing the canvas for structure.',
@@ -283,7 +252,6 @@ class MockAiService implements AiService {
       };
     } else if (step == 2) {
       return {
-        'phase': 'OUTLINING',
         'understanding': 'I see a circle and a diagonal line.',
         'reasoning':
             'Performing a flood fill at the center to add solid color.',
@@ -293,7 +261,6 @@ class MockAiService implements AiService {
       };
     } else {
       return {
-        'phase': 'DETAILING',
         'understanding': 'I see a filled circle and a line.',
         'reasoning': 'Applying a checkerboard hatch pattern to create texture.',
         'tool': 'hatch',
