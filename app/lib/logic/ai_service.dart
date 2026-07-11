@@ -27,8 +27,14 @@ String formatSystemInstruction() {
       '- "circle": params [centerX, centerY, radius]\n'
       '- "fill": params [startX, startY]\n'
       '- "hatch": params [startX, startY] (alternating checkerboard pattern fill)\n\n'
-      'You must output EXACTLY a valid JSON block and nothing else. No explanation, no markdown tags. Example:\n'
-      '{"tool": "line", "params": [10, 15, 20, 25], "color": 2}';
+      'You must output EXACTLY a valid JSON block containing your current understanding of the image, your reasoning for the next stroke, and the next stroke itself. No explanation, no markdown tags. Example:\n'
+      '{\n'
+      '  "understanding": "Brief description of what you see on the canvas right now",\n'
+      '  "reasoning": "Explanation of why you are suggesting this stroke",\n'
+      '  "tool": "line",\n'
+      '  "params": [10, 15, 20, 25],\n'
+      '  "color": 2\n'
+      '}';
 }
 
 String formatUserPrompt({
@@ -179,24 +185,34 @@ class MockAiService implements AiService {
 
     if (step == 0) {
       return {
+        'understanding': 'The canvas is currently empty.',
+        'reasoning': 'Creating a central circular shape to start the drawing.',
         'tool': 'circle',
         'params': [32, 32, 10],
         'color': colorIdx,
       };
     } else if (step == 1) {
       return {
+        'understanding': 'I see a circle in the center of the grid.',
+        'reasoning':
+            'Drawing a diagonal line crossing the canvas for structure.',
         'tool': 'line',
         'params': [10, 10, 54, 54],
         'color': colorIdx,
       };
     } else if (step == 2) {
       return {
+        'understanding': 'I see a circle and a diagonal line.',
+        'reasoning':
+            'Performing a flood fill at the center to add solid color.',
         'tool': 'fill',
         'params': [32, 32],
         'color': colorIdx == 2 ? 3 : 0,
       };
     } else {
       return {
+        'understanding': 'I see a filled circle and a line.',
+        'reasoning': 'Applying a checkerboard hatch pattern to create texture.',
         'tool': 'hatch',
         'params': [16, 16],
         'color': colorIdx,
