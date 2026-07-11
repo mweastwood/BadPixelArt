@@ -248,5 +248,40 @@ void main() {
       notifier.clearAiHistory();
       expect(container.read(canvasStateProvider).aiHistory, isEmpty);
     });
+
+    test('generateBmp produces valid 24-bit BMP header and data', () {
+      final grid = List.generate(64, (_) => List.filled(64, 0));
+      grid[0][0] = 2;
+
+      final bmp = generateBmp(grid, CanvasNotifier.primaryPalette);
+
+      // Verify file size is 12342 bytes (54 header + 64 * 64 * 3)
+      expect(bmp.length, equals(12342));
+
+      // BM signature
+      expect(bmp[0], equals(0x42)); // 'B'
+      expect(bmp[1], equals(0x4D)); // 'M'
+
+      final ByteData bd = ByteData.sublistView(bmp);
+
+      // Offset to pixel data
+      expect(bd.getUint32(10, Endian.little), equals(54));
+
+      // DIB header size (40)
+      expect(bd.getUint32(14, Endian.little), equals(40));
+
+      // Width and Height (64)
+      expect(bd.getUint32(18, Endian.little), equals(64));
+      expect(bd.getUint32(22, Endian.little), equals(64));
+
+      // Color planes (1)
+      expect(bd.getUint16(26, Endian.little), equals(1));
+
+      // Bits per pixel (24)
+      expect(bd.getUint16(28, Endian.little), equals(24));
+
+      // Compression (0 = BI_RGB)
+      expect(bd.getUint32(30, Endian.little), equals(0));
+    });
   });
 }
