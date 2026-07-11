@@ -16,6 +16,7 @@ class AiControlDock extends ConsumerStatefulWidget {
 
 class _AiControlDockState extends ConsumerState<AiControlDock> {
   final TextEditingController _promptController = TextEditingController();
+  bool _isCollapsed = false;
 
   // Helper to generate simulated image bytes for presets
   Uint8List _generateMockImageBytes(String presetName) {
@@ -55,206 +56,227 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Model Status and Trigger download if needed
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'AICore Gemini Nano',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
+            // Header Row (Tappable to expand/collapse)
+            InkWell(
+              onTap: () => setState(() => _isCollapsed = !_isCollapsed),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 4.0,
+                  horizontal: 4.0,
                 ),
-                _buildStatusChip(canvasModel.aiStatus, notifier),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Reference Image Preset Selector
-            Text(
-              'Reference Image Presets',
-              style: TextStyle(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildPresetButton(
-                  label: 'Sword',
-                  icon: Icons.shield_outlined,
-                  isSelected:
-                      canvasModel.referenceImage != null &&
-                      utf8
-                          .decode(canvasModel.referenceImage!)
-                          .startsWith('Sword'),
-                  onTap: () {
-                    notifier.setReferenceImage(
-                      _generateMockImageBytes('Sword'),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                _buildPresetButton(
-                  label: 'Heart',
-                  icon: Icons.favorite_border,
-                  isSelected:
-                      canvasModel.referenceImage != null &&
-                      utf8
-                          .decode(canvasModel.referenceImage!)
-                          .startsWith('Heart'),
-                  onTap: () {
-                    notifier.setReferenceImage(
-                      _generateMockImageBytes('Heart'),
-                    );
-                  },
-                ),
-                const SizedBox(width: 8),
-                _buildPresetButton(
-                  label: 'Clear',
-                  icon: Icons.clear,
-                  isSelected: canvasModel.referenceImage == null,
-                  onTap: () {
-                    notifier.setReferenceImage(null);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Prompt Box
-            TextField(
-              controller: _promptController,
-              onChanged: notifier.updatePrompt,
-              style: TextStyle(color: theme.colorScheme.onSurface),
-              decoration: InputDecoration(
-                labelText: 'User Instructions / Prompt',
-                labelStyle: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
-                ),
-                hintText: 'e.g., Draw a red sword outlined in black...',
-                hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
-                ),
-                filled: true,
-                fillColor: theme.colorScheme.surfaceContainerHigh,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: theme.colorScheme.outlineVariant,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: theme.colorScheme.primary),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // AI Controls (Suggest, Auto-Run, Speed)
-            Row(
-              children: [
-                // Suggest Next Stroke Button
-                Expanded(
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                child: Row(
+                  children: [
+                    Text(
+                      'AI Assistant Controls',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
                       ),
                     ),
-                    icon: canvasModel.isGenerating
-                        ? SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              color: theme.colorScheme.onPrimary,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.psychology),
-                    label: Text(
-                      canvasModel.isGenerating
-                          ? 'AI Drawing...'
-                          : 'Suggest Stroke',
+                    const Spacer(),
+                    _buildStatusChip(canvasModel.aiStatus, notifier),
+                    const SizedBox(width: 8),
+                    Icon(
+                      _isCollapsed ? Icons.expand_more : Icons.expand_less,
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    onPressed:
-                        canvasModel.isGenerating ||
-                            canvasModel.aiStatus != AiCoreStatus.available
-                        ? null
-                        : notifier.triggerAiStroke,
-                  ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-
-                // Auto Run Toggle
-                Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
-                  ),
-                  child: IconButton(
-                    tooltip: canvasModel.autoRun
-                        ? 'Pause Auto-Run'
-                        : 'Start Auto-Run',
-                    icon: Icon(
-                      canvasModel.autoRun ? Icons.pause : Icons.play_arrow,
-                      color: canvasModel.autoRun ? Colors.amber : Colors.green,
-                      size: 28,
-                    ),
-                    onPressed: canvasModel.aiStatus == AiCoreStatus.available
-                        ? notifier.toggleAutoRun
-                        : null,
-                  ),
-                ),
-              ],
+              ),
             ),
+            if (!_isCollapsed) ...[
+              const SizedBox(height: 12),
 
-            if (canvasModel.autoRun) ...[
-              const SizedBox(height: 16),
+              // Reference Image Preset Selector
+              Text(
+                'Reference Image Presets',
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(
-                    Icons.speed,
-                    color: theme.colorScheme.onSurfaceVariant,
-                    size: 20,
+                  _buildPresetButton(
+                    label: 'Sword',
+                    icon: Icons.shield_outlined,
+                    isSelected:
+                        canvasModel.referenceImage != null &&
+                        utf8
+                            .decode(canvasModel.referenceImage!)
+                            .startsWith('Sword'),
+                    onTap: () {
+                      notifier.setReferenceImage(
+                        _generateMockImageBytes('Sword'),
+                      );
+                    },
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    'Speed:',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 13,
+                  _buildPresetButton(
+                    label: 'Heart',
+                    icon: Icons.favorite_border,
+                    isSelected:
+                        canvasModel.referenceImage != null &&
+                        utf8
+                            .decode(canvasModel.referenceImage!)
+                            .startsWith('Heart'),
+                    onTap: () {
+                      notifier.setReferenceImage(
+                        _generateMockImageBytes('Heart'),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildPresetButton(
+                    label: 'Clear',
+                    icon: Icons.clear,
+                    isSelected: canvasModel.referenceImage == null,
+                    onTap: () {
+                      notifier.setReferenceImage(null);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Prompt Box
+              TextField(
+                controller: _promptController,
+                onChanged: notifier.updatePrompt,
+                style: TextStyle(color: theme.colorScheme.onSurface),
+                decoration: InputDecoration(
+                  labelText: 'User Instructions / Prompt',
+                  labelStyle: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                  hintText: 'e.g., Draw a red sword outlined in black...',
+                  hintStyle: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                  ),
+                  filled: true,
+                  fillColor: theme.colorScheme.surfaceContainerHigh,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: theme.colorScheme.outlineVariant,
                     ),
                   ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: theme.colorScheme.primary),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // AI Controls (Suggest, Auto-Run, Speed)
+              Row(
+                children: [
+                  // Suggest Next Stroke Button
                   Expanded(
-                    child: Slider(
-                      min: 0.5,
-                      max: 3.0,
-                      divisions: 5,
-                      value: canvasModel.autoRunSpeed,
-                      label: '${canvasModel.autoRunSpeed}s',
-                      onChanged: notifier.updateSpeed,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: canvasModel.isGenerating
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: theme.colorScheme.onPrimary,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.psychology),
+                      label: Text(
+                        canvasModel.isGenerating
+                            ? 'AI Drawing...'
+                            : 'Suggest Stroke',
+                      ),
+                      onPressed:
+                          canvasModel.isGenerating ||
+                              canvasModel.aiStatus != AiCoreStatus.available
+                          ? null
+                          : notifier.triggerAiStroke,
                     ),
                   ),
-                  Text(
-                    '${canvasModel.autoRunSpeed}s',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 12),
+
+                  // Auto Run Toggle
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: IconButton(
+                      tooltip: canvasModel.autoRun
+                          ? 'Pause Auto-Run'
+                          : 'Start Auto-Run',
+                      icon: Icon(
+                        canvasModel.autoRun ? Icons.pause : Icons.play_arrow,
+                        color: canvasModel.autoRun
+                            ? Colors.amber
+                            : Colors.green,
+                        size: 28,
+                      ),
+                      onPressed: canvasModel.aiStatus == AiCoreStatus.available
+                          ? notifier.toggleAutoRun
+                          : null,
                     ),
                   ),
                 ],
               ),
+
+              if (canvasModel.autoRun) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.speed,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Speed:',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Expanded(
+                      child: Slider(
+                        min: 0.5,
+                        max: 3.0,
+                        divisions: 5,
+                        value: canvasModel.autoRunSpeed,
+                        label: '${canvasModel.autoRunSpeed}s',
+                        onChanged: notifier.updateSpeed,
+                      ),
+                    ),
+                    Text(
+                      '${canvasModel.autoRunSpeed}s',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ],
         ),
