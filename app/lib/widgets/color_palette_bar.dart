@@ -82,6 +82,19 @@ class _ColorPaletteBarState extends ConsumerState<ColorPaletteBar> {
                           isSelected: canvasModel.paletteName == 'grayscale',
                           onTap: () => notifier.selectPalette('grayscale'),
                         ),
+                        if (canvasModel.paletteName == 'suggested' ||
+                            canvasModel.suggestedPalette != null) ...[
+                          const SizedBox(width: 4),
+                          _PaletteTabButton(
+                            label: 'AI 16',
+                            isSelected: canvasModel.paletteName == 'suggested',
+                            onTap: () {
+                              if (canvasModel.suggestedPalette != null) {
+                                notifier.acceptSuggestedPalette();
+                              }
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),

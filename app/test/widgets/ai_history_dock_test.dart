@@ -22,6 +22,10 @@ class LocalMockAiService implements AiService {
   }) async {
     return null;
   }
+
+  @override
+  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async =>
+      List.generate(16, (i) => Color(0xFF000000 + i));
 }
 
 void main() {

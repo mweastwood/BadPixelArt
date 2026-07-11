@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,11 @@ class MockTestAiService implements AiService {
   Uint8List? lastCanvasImage;
   String? lastPrompt;
   Map<String, dynamic>? mockResult;
+
+  @override
+  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
+    return List.generate(16, (i) => Color(0xFF000000 + i));
+  }
 
   @override
   Future<AiCoreStatus> checkStatus() async => status;
@@ -543,6 +549,77 @@ void main() {
         container.read(canvasStateProvider).originalReferenceImage,
         isNull,
       );
+    });
+
+    group('AI Suggested Palette tests', () {
+      test('parsePaletteColors parses clean JSON list correctly', () {
+        const jsonResponse = '["#ff0000", "#00ff00", "#0000ff"]';
+        final colors = parsePaletteColors(jsonResponse);
+        expect(colors.length, equals(16));
+        expect(colors[0], equals(const Color(0xFFFF0000)));
+        expect(colors[1], equals(const Color(0xFF00FF00)));
+        expect(colors[2], equals(const Color(0xFF0000FF)));
+      });
+
+      test('parsePaletteColors extracts colors via regex fallback', () {
+        const textResponse =
+            'Here are the suggested colors: #ff55aa and #00bbcc.';
+        final colors = parsePaletteColors(textResponse);
+        expect(colors.length, equals(16));
+        expect(colors[0], equals(const Color(0xFFFF55AA)));
+        expect(colors[1], equals(const Color(0xFF00BBCC)));
+      });
+
+      test(
+        'suggestPaletteFromReference triggers suggestion and shows palette',
+        () async {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final refBmp = Uint8List.fromList([1, 2, 3]);
+          notifier.setReferenceImage(refBmp);
+
+          // Await the asynchronous trigger to complete
+          await Future.delayed(const Duration(milliseconds: 10));
+
+          final state = container.read(canvasStateProvider);
+          expect(state.suggestedPalette, isNotNull);
+          expect(state.suggestedPalette!.length, equals(16));
+          expect(state.showPaletteSuggestion, isTrue);
+        },
+      );
+
+      test('acceptSuggestedPalette updates palette and resets canvas', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        final suggested = List.generate(16, (i) => Color(0xFF000000 + i));
+
+        notifier.state = notifier.state.copyWith(
+          suggestedPalette: suggested,
+          showPaletteSuggestion: true,
+        );
+
+        notifier.acceptSuggestedPalette();
+
+        final state = container.read(canvasStateProvider);
+        expect(state.paletteName, equals('suggested'));
+        expect(state.palette, equals(suggested));
+        expect(state.showPaletteSuggestion, isFalse);
+        expect(state.selectedColorIndex, equals(0));
+      });
+
+      test('rejectSuggestedPalette clears suggestion', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        final suggested = List.generate(16, (i) => Color(0xFF000000 + i));
+
+        notifier.state = notifier.state.copyWith(
+          suggestedPalette: suggested,
+          showPaletteSuggestion: true,
+        );
+
+        notifier.rejectSuggestedPalette();
+
+        final state = container.read(canvasStateProvider);
+        expect(state.showPaletteSuggestion, isFalse);
+        expect(state.suggestedPalette, isNull);
+      });
     });
   });
 }

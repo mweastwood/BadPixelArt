@@ -15,6 +15,7 @@ abstract class AiService {
     required Uint8List canvasImage,
     required String prompt,
   });
+  Future<List<Color>?> suggestPalette(Uint8List referenceImage);
 }
 
 String formatSystemInstruction() {
@@ -38,6 +39,12 @@ String formatSystemInstruction() {
       '  "params": [10, 15, 20, 25],\n'
       '  "color": 2\n'
       '}';
+}
+
+String formatPalettePrompt() {
+  return 'Analyze this reference image and suggest a palette of exactly 16 colors. '
+      'Output a JSON array containing exactly 16 hex color strings (e.g. ["#ff0000", "#00ff00", ...]). '
+      'Output nothing else.';
 }
 
 String formatUserPrompt({
@@ -207,11 +214,89 @@ class MethodChannelAiService implements AiService {
     }
     return null;
   }
+
+  @override
+  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
+    try {
+      final String? resultString = await _channel.invokeMethod<String>(
+        'suggestPalette',
+        {'referenceImage': referenceImage, 'prompt': formatPalettePrompt()},
+      );
+      if (resultString == null) return null;
+      return parsePaletteColors(resultString);
+    } catch (e, stack) {
+      debugPrint('Error invoking suggestPalette via MethodChannel: $e');
+      debugPrint(stack.toString());
+      return null;
+    }
+  }
+}
+
+const List<Color> _fallbackColors = [
+  Color(0xFF000000), // Black
+  Color(0xFFFFFFFF), // White
+  Color(0xFFFF0000), // Red
+  Color(0xFF00FF00), // Green
+  Color(0xFF0000FF), // Blue
+  Color(0xFFFFFF00), // Yellow
+  Color(0xFFFF00FF), // Magenta
+  Color(0xFF00FFFF), // Cyan
+];
+
+List<Color> parsePaletteColors(String responseText) {
+  final List<Color> colors = [];
+  try {
+    final cleaned = cleanJsonString(responseText);
+    final decoded = jsonDecode(cleaned);
+    if (decoded is List) {
+      for (final item in decoded) {
+        if (item is String) {
+          final hex = item.trim().replaceFirst('#', '');
+          final colorVal = int.tryParse(hex, radix: 16);
+          if (colorVal != null) {
+            if (hex.length == 6) {
+              colors.add(Color(0xFF000000 | colorVal));
+            } else if (hex.length == 8) {
+              colors.add(Color(colorVal));
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    debugPrint('Error parsing suggested palette: $e');
+  }
+
+  if (colors.isEmpty) {
+    final hexRegex = RegExp(r'#([0-9a-fA-F]{6})');
+    for (final match in hexRegex.allMatches(responseText)) {
+      final hex = match.group(1)!;
+      final colorVal = int.tryParse(hex, radix: 16);
+      if (colorVal != null) {
+        colors.add(Color(0xFF000000 | colorVal));
+      }
+    }
+  }
+
+  if (colors.length > 16) {
+    return colors.take(16).toList();
+  }
+  while (colors.length < 16) {
+    final idx = colors.length;
+    colors.add(_fallbackColors[idx % _fallbackColors.length]);
+  }
+  return colors;
 }
 
 class MockAiService implements AiService {
   AiCoreStatus _status = AiCoreStatus.available;
   int _strokeCount = 0;
+
+  @override
+  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return List.generate(16, (i) => Color(0xFF000000 | (i * 0x111111)));
+  }
 
   @override
   Future<AiCoreStatus> checkStatus() async {
