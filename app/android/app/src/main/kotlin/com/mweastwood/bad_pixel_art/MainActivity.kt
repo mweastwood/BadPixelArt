@@ -9,6 +9,8 @@ import com.google.mlkit.genai.prompt.TextPart
 import com.google.mlkit.genai.prompt.ImagePart
 import com.google.mlkit.genai.prompt.generateContentRequest
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -84,8 +86,10 @@ class MainActivity : FlutterActivity() {
                             }
 
                             val response = if (canvasBitmap != null && referenceBitmap != null) {
+                                val combinedBitmap = combineBitmaps(canvasBitmap, referenceBitmap)
+                                val combinedPrompt = "$promptText\n\nNote: The attached image shows the current canvas on the left, and the reference image on the right."
                                 model.generateContent(
-                                    generateContentRequest(ImagePart(canvasBitmap), ImagePart(referenceBitmap), TextPart(promptText)) {
+                                    generateContentRequest(ImagePart(combinedBitmap), TextPart(combinedPrompt)) {
                                         temperature = 0.7f
                                     }
                                 )
@@ -127,5 +131,15 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+    }
+
+    private fun combineBitmaps(left: Bitmap, right: Bitmap): Bitmap {
+        val width = left.width + right.width
+        val height = if (left.height > right.height) left.height else right.height
+        val combined = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(combined)
+        canvas.drawBitmap(left, 0f, 0f, null)
+        canvas.drawBitmap(right, left.width.toFloat(), 0f, null)
+        return combined
     }
 }
