@@ -429,6 +429,41 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
     state = state.copyWith(grid: newGrid);
   }
 
+  void applyCircleFilled(int cx, int cy, int r) {
+    _pushToUndo(state.grid);
+    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
+    _drawCircleFilledAlg(newGrid, cx, cy, r, state.selectedColorIndex);
+    state = state.copyWith(grid: newGrid);
+  }
+
+  void applyRectangle(int x1, int y1, int x2, int y2) {
+    _pushToUndo(state.grid);
+    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
+    _drawRectangleAlg(newGrid, x1, y1, x2, y2, state.selectedColorIndex);
+    state = state.copyWith(grid: newGrid);
+  }
+
+  void applyRectangleFilled(int x1, int y1, int x2, int y2) {
+    _pushToUndo(state.grid);
+    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
+    _drawRectangleFilledAlg(newGrid, x1, y1, x2, y2, state.selectedColorIndex);
+    state = state.copyWith(grid: newGrid);
+  }
+
+  void applyCircleHatched(int cx, int cy, int r) {
+    _pushToUndo(state.grid);
+    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
+    _drawCircleHatchedAlg(newGrid, cx, cy, r, state.selectedColorIndex);
+    state = state.copyWith(grid: newGrid);
+  }
+
+  void applyRectangleHatched(int x1, int y1, int x2, int y2) {
+    _pushToUndo(state.grid);
+    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
+    _drawRectangleHatchedAlg(newGrid, x1, y1, x2, y2, state.selectedColorIndex);
+    state = state.copyWith(grid: newGrid);
+  }
+
   // Core algorithms
   void _drawLineAlg(
     List<List<int>> grid,
@@ -564,7 +599,80 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       }
     }
   }
+  void _drawCircleFilledAlg(List<List<int>> grid, int xc, int yc, int r, int color) {
+    for (int y = yc - r; y <= yc + r; y++) {
+      for (int x = xc - r; x <= xc + r; x++) {
+        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+          if ((x - xc) * (x - xc) + (y - yc) * (y - yc) <= r * r) {
+            grid[y][x] = color;
+          }
+        }
+      }
+    }
+  }
 
+  void _drawCircleHatchedAlg(List<List<int>> grid, int xc, int yc, int r, int color) {
+    for (int y = yc - r; y <= yc + r; y++) {
+      for (int x = xc - r; x <= xc + r; x++) {
+        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+          if ((x - xc) * (x - xc) + (y - yc) * (y - yc) <= r * r) {
+            if ((x + y) % 2 == 0) {
+              grid[y][x] = color;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  void _drawRectangleAlg(List<List<int>> grid, int x1, int y1, int x2, int y2, int color) {
+    int startX = x1 < x2 ? x1 : x2;
+    int endX = x1 < x2 ? x2 : x1;
+    int startY = y1 < y2 ? y1 : y2;
+    int endY = y1 < y2 ? y2 : y1;
+    for (int x = startX; x <= endX; x++) {
+      if (x >= 0 && x < gridSize) {
+        if (startY >= 0 && startY < gridSize) grid[startY][x] = color;
+        if (endY >= 0 && endY < gridSize) grid[endY][x] = color;
+      }
+    }
+    for (int y = startY; y <= endY; y++) {
+      if (y >= 0 && y < gridSize) {
+        if (startX >= 0 && startX < gridSize) grid[y][startX] = color;
+        if (endX >= 0 && endX < gridSize) grid[y][endX] = color;
+      }
+    }
+  }
+
+  void _drawRectangleFilledAlg(List<List<int>> grid, int x1, int y1, int x2, int y2, int color) {
+    int startX = x1 < x2 ? x1 : x2;
+    int endX = x1 < x2 ? x2 : x1;
+    int startY = y1 < y2 ? y1 : y2;
+    int endY = y1 < y2 ? y2 : y1;
+    for (int y = startY; y <= endY; y++) {
+      for (int x = startX; x <= endX; x++) {
+        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+          grid[y][x] = color;
+        }
+      }
+    }
+  }
+
+  void _drawRectangleHatchedAlg(List<List<int>> grid, int x1, int y1, int x2, int y2, int color) {
+    int startX = x1 < x2 ? x1 : x2;
+    int endX = x1 < x2 ? x2 : x1;
+    int startY = y1 < y2 ? y1 : y2;
+    int endY = y1 < y2 ? y2 : y1;
+    for (int y = startY; y <= endY; y++) {
+      for (int x = startX; x <= endX; x++) {
+        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+          if ((x + y) % 2 == 0) {
+            grid[y][x] = color;
+          }
+        }
+      }
+    }
+  }
   // Triggering next stroke from AI service
   Future<void> triggerAiStroke() async {
     if (state.isGenerating) return;
@@ -744,8 +852,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           final params = (result['params'] as List?)?.cast<int>();
           final colorIndex = result['color'] as int?;
 
-          if (tool != null && params != null && colorIndex != null) {
-            _applyAiStrokeCommand(tool, params, colorIndex);
+          if (tool != null && params != null && (colorIndex != null || tool == 'undo')) {
+            _applyAiStrokeCommand(tool, params, colorIndex ?? 0);
             state = state.copyWith(
               consecutiveActions: state.consecutiveActions + 1,
             );
@@ -802,6 +910,31 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           applyCircle(params[0], params[1], params[2]);
         }
         break;
+      case 'circle_filled':
+        if (params.length >= 3) {
+          applyCircleFilled(params[0], params[1], params[2]);
+        }
+        break;
+      case 'circle_hatched':
+        if (params.length >= 3) {
+          applyCircleHatched(params[0], params[1], params[2]);
+        }
+        break;
+      case 'rectangle':
+        if (params.length >= 4) {
+          applyRectangle(params[0], params[1], params[2], params[3]);
+        }
+        break;
+      case 'rectangle_filled':
+        if (params.length >= 4) {
+          applyRectangleFilled(params[0], params[1], params[2], params[3]);
+        }
+        break;
+      case 'rectangle_hatched':
+        if (params.length >= 4) {
+          applyRectangleHatched(params[0], params[1], params[2], params[3]);
+        }
+        break;
       case 'fill':
         if (params.length >= 2) {
           applyFill(params[0], params[1]);
@@ -811,6 +944,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         if (params.length >= 2) {
           applyHatch(params[0], params[1]);
         }
+        break;
+      case 'undo':
+        undo();
         break;
     }
   }

@@ -190,6 +190,78 @@ void main() {
       expect(grid[11][11], equals(1));
     });
 
+    test('applyCircleFilled draws filled circle on grid', () {
+      final notifier = container.read(canvasStateProvider.notifier);
+      notifier.selectColor(1);
+      notifier.applyCircleFilled(10, 10, 2);
+
+      final grid = container.read(canvasStateProvider).grid;
+      expect(grid[10][10], equals(1));
+      expect(grid[10][12], equals(1)); // border
+      expect(grid[10][11], equals(1)); // inside
+    });
+
+    test('applyCircleHatched draws hatched circle on grid', () {
+      final notifier = container.read(canvasStateProvider.notifier);
+      notifier.selectColor(1);
+      notifier.applyCircleHatched(10, 10, 2);
+
+      final grid = container.read(canvasStateProvider).grid;
+      expect(grid[10][10], equals(1)); // (10+10)%2 == 0
+      expect(grid[10][11], equals(0)); // (10+11)%2 == 1
+    });
+
+    test('applyRectangle draws outlined rectangle on grid', () {
+      final notifier = container.read(canvasStateProvider.notifier);
+      notifier.selectColor(1);
+      notifier.applyRectangle(10, 10, 15, 15);
+
+      final grid = container.read(canvasStateProvider).grid;
+      expect(grid[10][10], equals(1));
+      expect(grid[10][15], equals(1));
+      expect(grid[15][10], equals(1));
+      expect(grid[15][15], equals(1));
+      expect(grid[12][12], equals(0)); // inside should be empty
+    });
+
+    test('applyRectangleFilled draws filled rectangle on grid', () {
+      final notifier = container.read(canvasStateProvider.notifier);
+      notifier.selectColor(1);
+      notifier.applyRectangleFilled(10, 10, 15, 15);
+
+      final grid = container.read(canvasStateProvider).grid;
+      expect(grid[10][10], equals(1));
+      expect(grid[15][15], equals(1));
+      expect(grid[12][12], equals(1)); // inside should be filled
+    });
+
+    test('applyRectangleHatched draws hatched rectangle on grid', () {
+      final notifier = container.read(canvasStateProvider.notifier);
+      notifier.selectColor(1);
+      notifier.applyRectangleHatched(10, 10, 15, 15);
+
+      final grid = container.read(canvasStateProvider).grid;
+      expect(grid[10][10], equals(1)); // (10+10)%2 == 0
+      expect(grid[10][11], equals(0)); // (10+11)%2 == 1
+      expect(grid[12][12], equals(1)); // (12+12)%2 == 0
+    });
+
+    test('triggerAiStroke handles undo tool successfully', () async {
+      final notifier = container.read(canvasStateProvider.notifier);
+      notifier.selectColor(1);
+      notifier.drawPixel(10, 10); // make a stroke
+
+      expect(container.read(canvasStateProvider).grid[10][10], equals(1));
+
+      mockAiService.mockResult = {
+        'tool': 'undo',
+        'params': <int>[],
+      };
+
+      await notifier.triggerAiStroke();
+      expect(container.read(canvasStateProvider).grid[10][10], equals(0)); // reverted
+    });
+
     test('triggerAiStroke applies strokes returned by AI', () async {
       mockAiService.mockResult = {
         'tool': 'circle',

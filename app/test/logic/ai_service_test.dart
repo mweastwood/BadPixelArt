@@ -11,8 +11,14 @@ void main() {
       expect(sysInstruction, contains('64x64 grid'));
       expect(sysInstruction, contains('"line"'));
       expect(sysInstruction, contains('"circle"'));
+      expect(sysInstruction, contains('"circle_filled"'));
+      expect(sysInstruction, contains('"circle_hatched"'));
+      expect(sysInstruction, contains('"rectangle"'));
+      expect(sysInstruction, contains('"rectangle_filled"'));
+      expect(sysInstruction, contains('"rectangle_hatched"'));
       expect(sysInstruction, contains('"fill"'));
       expect(sysInstruction, contains('"hatch"'));
+      expect(sysInstruction, contains('"undo"'));
       expect(sysInstruction, contains('output EXACTLY a valid JSON block'));
     });
 
