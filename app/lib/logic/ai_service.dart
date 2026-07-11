@@ -166,6 +166,7 @@ class MethodChannelAiService implements AiService {
       String? resultString;
       dynamic lastError;
       StackTrace? lastStackTrace;
+      final List<String> attemptErrors = [];
 
       for (int attempt = 1; attempt <= 4; attempt++) {
         try {
@@ -179,6 +180,7 @@ class MethodChannelAiService implements AiService {
         } catch (e, stack) {
           lastError = e;
           lastStackTrace = stack;
+          attemptErrors.add('Attempt $attempt: $e');
           debugPrint(
             'Error getting next stroke (attempt $attempt/4) via MethodChannel: $e',
           );
@@ -194,7 +196,8 @@ class MethodChannelAiService implements AiService {
           debugPrint(lastStackTrace.toString());
           return {
             'error': lastError.toString(),
-            'rawResponse': 'MethodChannel invocation error: $lastError',
+            'rawResponse':
+                'MethodChannel invocation error:\n${attemptErrors.join('\n')}',
           };
         }
         return null;
