@@ -124,5 +124,38 @@ void main() {
       );
       await screenMatchesGolden(tester, 'ai_history_dock');
     });
+
+    testGoldens('AiHistoryDock renders expanded correctly', (tester) async {
+      final entry = AiHistoryEntry(
+        timestamp: DateTime(2026, 7, 11, 10, 15, 30),
+        prompt: 'System Instructions:\nDraw a test sword.',
+        response: '{"tool": "line", "params": [0,0,5,5]}',
+        isError: false,
+      );
+
+      final mockService = LocalMockAiService();
+      final notifier = CanvasNotifier(mockService);
+      notifier.state = notifier.state.copyWith(aiHistory: [entry]);
+
+      await tester.pumpWidgetBuilder(
+        const Scaffold(body: AiHistoryDock()),
+        wrapper: testMaterialAppWrapper(
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockService),
+            canvasStateProvider.overrideWith((ref) => notifier),
+          ],
+        ),
+      );
+
+      // Expand history dock
+      await tester.tap(find.text('AI History & Debugger'));
+      await tester.pumpAndSettle();
+
+      // Expand history item details so we see prompt/response in the golden
+      await tester.tap(find.text('Stroke suggested successfully'));
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'ai_history_dock_expanded');
+    });
   });
 }
