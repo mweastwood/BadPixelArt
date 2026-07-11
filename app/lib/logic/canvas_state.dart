@@ -537,7 +537,28 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       prompt: state.userPrompt,
       paletteColors: paletteHexes,
     );
-    final fullPrompt = '$systemInstruction\n\n$userTextPrompt';
+
+    // Append recent action history to break repetition loops
+    String historyPrompt = '';
+    if (state.aiHistory.isNotEmpty) {
+      final recentHistory = state.aiHistory.length > 5
+          ? state.aiHistory.skip(state.aiHistory.length - 5).toList()
+          : state.aiHistory;
+      final historyItems = recentHistory
+          .map((entry) {
+            final cleanResponse = entry.response.replaceAll(
+              RegExp(r'\s+'),
+              ' ',
+            );
+            return '- $cleanResponse';
+          })
+          .join('\n');
+      historyPrompt =
+          '\n\nRecent suggestions history:\n$historyItems\n'
+          'Avoid repeating these exact strokes and coordinates. Try drawing something new or in a different location.';
+    }
+
+    final fullPrompt = '$systemInstruction\n\n$userTextPrompt$historyPrompt';
     String rawResponse = '';
     bool isError = false;
 
@@ -545,7 +566,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       final result = await _aiService.getNextStroke(
         referenceImage: state.referenceImage,
         canvasImage: canvasBytes,
-        prompt: state.userPrompt,
+        prompt: '${state.userPrompt}$historyPrompt',
         paletteColors: paletteHexes,
         canvasBmpBytes: canvasBmp,
       );

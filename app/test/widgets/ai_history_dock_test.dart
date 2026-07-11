@@ -53,7 +53,8 @@ void main() {
       final entry = AiHistoryEntry(
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
-        response: '{"tool": "line", "params": [0,0,5,5]}',
+        response:
+            '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
         canvasImage: generateBmp(
           List.generate(64, (_) => List.filled(64, 0)),
@@ -70,7 +71,9 @@ void main() {
           aiServiceProvider.overrideWithValue(mockService),
           canvasStateProvider.overrideWith((ref) => notifier),
         ],
-        child: const MaterialApp(home: Scaffold(body: AiHistoryDock())),
+        child: const MaterialApp(
+          home: Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
+        ),
       );
 
       await tester.pumpWidget(widget);
@@ -98,7 +101,9 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text('{"tool": "line", "params": [0,0,5,5]}'),
+        find.text(
+          '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
+        ),
         findsOneWidget,
       );
     });
@@ -107,7 +112,8 @@ void main() {
       final entry = AiHistoryEntry(
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
-        response: '{"tool": "line", "params": [0,0,5,5]}',
+        response:
+            '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
         canvasImage: generateBmp(
           List.generate(64, (_) => List.filled(64, 0)),
@@ -120,7 +126,10 @@ void main() {
       notifier.state = notifier.state.copyWith(aiHistory: [entry]);
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.5)
-        ..addScenario('History Dock Collapsed', const AiHistoryDock());
+        ..addScenario(
+          'History Dock Collapsed',
+          const SingleChildScrollView(child: AiHistoryDock()),
+        );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
@@ -138,7 +147,8 @@ void main() {
       final entry = AiHistoryEntry(
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
-        response: '{"tool": "line", "params": [0,0,5,5]}',
+        response:
+            '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
         canvasImage: generateBmp(
           List.generate(64, (_) => List.filled(64, 0)),
@@ -151,7 +161,7 @@ void main() {
       notifier.state = notifier.state.copyWith(aiHistory: [entry]);
 
       await tester.pumpWidgetBuilder(
-        const Scaffold(body: AiHistoryDock()),
+        const Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
         wrapper: testMaterialAppWrapper(
           overrides: [
             aiServiceProvider.overrideWithValue(mockService),

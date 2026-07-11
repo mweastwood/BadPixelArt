@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -146,6 +147,17 @@ class _HistoryItemState extends State<_HistoryItem> {
     final timeStr =
         '${widget.entry.timestamp.hour.toString().padLeft(2, '0')}:${widget.entry.timestamp.minute.toString().padLeft(2, '0')}:${widget.entry.timestamp.second.toString().padLeft(2, '0')}';
 
+    Map<String, dynamic>? parsedJson;
+    try {
+      final decoded = jsonDecode(widget.entry.response);
+      if (decoded is Map<String, dynamic>) {
+        parsedJson = decoded;
+      }
+    } catch (_) {}
+
+    final understanding = parsedJson?['understanding'] as String?;
+    final reasoning = parsedJson?['reasoning'] as String?;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -243,6 +255,50 @@ class _HistoryItemState extends State<_HistoryItem> {
                           filterQuality: FilterQuality.none,
                         ),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+                if (understanding != null) ...[
+                  Text(
+                    'AI UNDERSTANDING:',
+                    style: TextStyle(
+                      color: theme.colorScheme.tertiary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    understanding,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+                if (reasoning != null) ...[
+                  Text(
+                    'AI REASONING:',
+                    style: TextStyle(
+                      color: theme.colorScheme.tertiary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    reasoning,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 12),
