@@ -37,6 +37,53 @@ String formatSystemInstruction() {
       '}';
 }
 
+String getColorName(String hex) {
+  final cleanHex = hex.replaceAll('#', '').toLowerCase();
+  switch (cleanHex) {
+    case 'ff1e1e1e':
+    case '1e1e1e':
+      return 'Dark Grey (Background)';
+    case 'ffffffff':
+    case 'ffffff':
+      return 'White';
+    case 'ff000000':
+    case '000000':
+      return 'Black';
+    case 'ffff0000':
+    case 'ff0000':
+      return 'Red';
+    case 'ff00ff00':
+    case '00ff00':
+      return 'Green';
+    case 'ff0000ff':
+    case '0000ff':
+      return 'Blue';
+    case 'ffffff00':
+    case 'ffff00':
+      return 'Yellow';
+    case 'ffffa500':
+    case 'ffa500':
+      return 'Orange';
+    case 'ff800080':
+    case '800080':
+      return 'Purple';
+    case 'ff00ffff':
+    case '00ffff':
+      return 'Cyan';
+    case 'ffffc0cb':
+    case 'ffc0cb':
+      return 'Pink';
+    case 'ff8b4513':
+    case '8b4513':
+      return 'Brown';
+    case 'ff808080':
+    case '808080':
+      return 'Grey';
+    default:
+      return 'Hex #$cleanHex';
+  }
+}
+
 String formatUserPrompt({
   required Uint8List? referenceImage,
   required Uint8List canvasImage,
@@ -65,9 +112,17 @@ String formatUserPrompt({
     }
   }
 
+  final colorList = paletteColors.asMap().entries.map((e) {
+    final index = e.key;
+    final hex = e.value;
+    final name = getColorName(hex);
+    return '- Index $index: $hex ($name)';
+  }).join('\n');
+
   return 'User Instruction: "$prompt"\n'
       '$refShapeInstruction\n'
-      'Color Palette Size: ${paletteColors.length} (Color indices are 0 to ${paletteColors.length - 1}).\n'
+      'Available Color Palette (select the correct index for the "color" field):\n'
+      '$colorList\n'
       '$canvasGridString\n\n'
       'Output the single next stroke JSON now:';
 }
