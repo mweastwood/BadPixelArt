@@ -1,0 +1,317 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../logic/canvas_state.dart';
+
+class AiHistoryDock extends ConsumerStatefulWidget {
+  const AiHistoryDock({super.key});
+
+  @override
+  ConsumerState<AiHistoryDock> createState() => _AiHistoryDockState();
+}
+
+class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
+  bool _isCollapsed = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final canvasModel = ref.watch(canvasStateProvider);
+    final notifier = ref.read(canvasStateProvider.notifier);
+    final theme = Theme.of(context);
+    final history = canvasModel.aiHistory;
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header Row (Tappable to expand/collapse)
+            InkWell(
+              onTap: () => setState(() => _isCollapsed = !_isCollapsed),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 4.0,
+                  horizontal: 4.0,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.bug_report_outlined,
+                      color: theme.colorScheme.secondary,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'AI History & Debugger',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (history.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${history.length}',
+                          style: TextStyle(
+                            color: theme.colorScheme.onSecondaryContainer,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    const Spacer(),
+                    if (!_isCollapsed && history.isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.delete_sweep_outlined),
+                        tooltip: 'Clear History',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: notifier.clearAiHistory,
+                      ),
+                    Icon(
+                      _isCollapsed ? Icons.expand_more : Icons.expand_less,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (!_isCollapsed) ...[
+              const SizedBox(height: 12),
+              if (history.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24.0),
+                  child: Center(
+                    child: Text(
+                      'No AI history logs yet.\nTrigger a suggestion to log prompts/responses.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: history.length,
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 24),
+                  itemBuilder: (context, index) {
+                    final entry =
+                        history[history.length -
+                            1 -
+                            index]; // Show latest first
+                    return _HistoryItem(entry: entry);
+                  },
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HistoryItem extends StatefulWidget {
+  final AiHistoryEntry entry;
+  const _HistoryItem({required this.entry});
+
+  @override
+  State<_HistoryItem> createState() => _HistoryItemState();
+}
+
+class _HistoryItemState extends State<_HistoryItem> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final timeStr =
+        '${widget.entry.timestamp.hour.toString().padLeft(2, '0')}:${widget.entry.timestamp.minute.toString().padLeft(2, '0')}:${widget.entry.timestamp.second.toString().padLeft(2, '0')}';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Log Summary Row
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
+            child: Row(
+              children: [
+                Icon(
+                  widget.entry.isError
+                      ? Icons.error_outline
+                      : Icons.check_circle_outline,
+                  color: widget.entry.isError
+                      ? theme.colorScheme.error
+                      : Colors.green,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  timeStr,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.entry.isError
+                        ? 'AI Generation Error'
+                        : 'Stroke suggested successfully',
+                    style: TextStyle(
+                      color: widget.entry.isError
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurface,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(
+                  _expanded ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Expanded Prompt & Response Detail
+        if (_expanded) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Prompt Detail
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'PROMPT:',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 16),
+                      tooltip: 'Copy Prompt',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        Clipboard.setData(
+                          ClipboardData(text: widget.entry.prompt),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Prompt copied to clipboard'),
+                            duration: Duration(seconds: 1),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 180),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      widget.entry.prompt,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 4),
+
+                // Response Detail
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'RESPONSE:',
+                      style: TextStyle(
+                        color: widget.entry.isError
+                            ? theme.colorScheme.error
+                            : Colors.green,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    widget.entry.response,
+                    style: TextStyle(
+                      color: widget.entry.isError
+                          ? theme.colorScheme.error
+                          : theme.colorScheme.onSurface,
+                      fontSize: 11,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}

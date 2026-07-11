@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/canvas_grid.dart';
 import '../widgets/color_palette_bar.dart';
 import '../widgets/ai_control_dock.dart';
+import '../widgets/ai_history_dock.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -35,6 +36,8 @@ class PixelArtScreen extends ConsumerWidget {
                           ColorPaletteBar(),
                           SizedBox(height: 16),
                           AiControlDock(),
+                          SizedBox(height: 16),
+                          AiHistoryDock(),
                         ],
                       ),
                     ),
@@ -54,6 +57,8 @@ class PixelArtScreen extends ConsumerWidget {
                   const ColorPaletteBar(),
                   const SizedBox(height: 16),
                   const AiControlDock(),
+                  const SizedBox(height: 16),
+                  const AiHistoryDock(),
                 ],
               ),
             );
