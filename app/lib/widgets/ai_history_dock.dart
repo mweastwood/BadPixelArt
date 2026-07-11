@@ -155,6 +155,7 @@ class _HistoryItemState extends State<_HistoryItem> {
       }
     } catch (_) {}
 
+    final phase = parsedJson?['phase'] as String?;
     final understanding = parsedJson?['understanding'] as String?;
     final reasoning = parsedJson?['reasoning'] as String?;
 
@@ -255,6 +256,29 @@ class _HistoryItemState extends State<_HistoryItem> {
                           filterQuality: FilterQuality.none,
                         ),
                       ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+                if (phase != null) ...[
+                  Text(
+                    'AI DRAWING PHASE:',
+                    style: TextStyle(
+                      color: theme.colorScheme.tertiary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    phase,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 12),

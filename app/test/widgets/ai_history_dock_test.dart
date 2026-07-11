@@ -54,7 +54,7 @@ void main() {
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
         response:
-            '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
+            '{"phase":"OUTLINING","understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
         canvasImage: generateBmp(
           List.generate(64, (_) => List.filled(64, 0)),
@@ -102,7 +102,7 @@ void main() {
       );
       expect(
         find.text(
-          '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
+          '{"phase":"OUTLINING","understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         ),
         findsOneWidget,
       );
@@ -113,7 +113,7 @@ void main() {
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
         response:
-            '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
+            '{"phase":"OUTLINING","understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
         canvasImage: generateBmp(
           List.generate(64, (_) => List.filled(64, 0)),
@@ -148,7 +148,7 @@ void main() {
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
         response:
-            '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
+            '{"phase":"OUTLINING","understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
         canvasImage: generateBmp(
           List.generate(64, (_) => List.filled(64, 0)),
