@@ -14,13 +14,90 @@ class AiHistoryEntry {
   final String prompt;
   final String response;
   final bool isError;
+  final Uint8List? canvasImage;
 
   const AiHistoryEntry({
     required this.timestamp,
     required this.prompt,
     required this.response,
     this.isError = false,
+    this.canvasImage,
   });
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! AiHistoryEntry) return false;
+    return timestamp == other.timestamp &&
+        prompt == other.prompt &&
+        response == other.response &&
+        isError == other.isError &&
+        listEquals(canvasImage, other.canvasImage);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    timestamp,
+    prompt,
+    response,
+    isError,
+    canvasImage != null ? Object.hashAll(canvasImage!) : null,
+  );
+}
+
+Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
+  const int width = 64;
+  const int height = 64;
+  const int bytesPerPixel = 3;
+  const int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
+  const int rowStride = width * bytesPerPixel + rowPadding;
+  const int pixelDataSize = rowStride * height;
+  const int fileSize = 54 + pixelDataSize;
+
+  final Uint8List bmp = Uint8List(fileSize);
+  final ByteData bd = ByteData.sublistView(bmp);
+
+  // BMP Header
+  bmp[0] = 0x42; // 'B'
+  bmp[1] = 0x4D; // 'M'
+  bd.setUint32(2, fileSize, Endian.little);
+  bd.setUint32(6, 0, Endian.little);
+  bd.setUint32(10, 54, Endian.little);
+
+  // DIB Header (BITMAPINFOHEADER)
+  bd.setUint32(14, 40, Endian.little);
+  bd.setUint32(18, width, Endian.little);
+  bd.setUint32(22, height, Endian.little);
+  bd.setUint16(26, 1, Endian.little);
+  bd.setUint16(28, 24, Endian.little); // 24-bit BGR
+  bd.setUint32(30, 0, Endian.little);
+  bd.setUint32(34, pixelDataSize, Endian.little);
+  bd.setUint32(38, 2835, Endian.little); // 72 DPI
+  bd.setUint32(42, 2835, Endian.little); // 72 DPI
+  bd.setUint32(46, 0, Endian.little);
+  bd.setUint32(50, 0, Endian.little);
+
+  int offset = 54;
+  for (int y = height - 1; y >= 0; y--) {
+    for (int x = 0; x < width; x++) {
+      final colorIndex = grid[y][x];
+      final color = colorIndex == 0
+          ? ((x + y) % 2 == 0
+                ? const Color(0xFF262626)
+                : const Color(0xFF1E1E1E))
+          : palette[colorIndex];
+
+      bmp[offset] = color.blue;
+      bmp[offset + 1] = color.green;
+      bmp[offset + 2] = color.red;
+      offset += 3;
+    }
+    for (int p = 0; p < rowPadding; p++) {
+      bmp[offset++] = 0;
+    }
+  }
+
+  return bmp;
 }
 
 @immutable
@@ -451,6 +528,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         .map((c) => '#${c.value.toRadixString(16).padLeft(8, '0')}')
         .toList();
 
+    final canvasBmp = generateBmp(state.grid, state.palette);
+
     final systemInstruction = formatSystemInstruction();
     final userTextPrompt = formatUserPrompt(
       referenceImage: state.referenceImage,
@@ -468,6 +547,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         canvasImage: canvasBytes,
         prompt: state.userPrompt,
         paletteColors: paletteHexes,
+        canvasBmpBytes: canvasBmp,
       );
 
       if (result != null) {
@@ -494,6 +574,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
             prompt: fullPrompt,
             response: rawResponse,
             isError: isError,
+            canvasImage: canvasBmp,
           ),
         );
       state = state.copyWith(isGenerating: false, aiHistory: newHistory);

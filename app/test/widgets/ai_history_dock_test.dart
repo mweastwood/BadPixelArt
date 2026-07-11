@@ -21,6 +21,7 @@ class LocalMockAiService implements AiService {
     required Uint8List canvasImage,
     required String prompt,
     required List<String> paletteColors,
+    Uint8List? canvasBmpBytes,
   }) async {
     return null;
   }
@@ -54,6 +55,10 @@ void main() {
         prompt: 'System Instructions:\nDraw a test sword.',
         response: '{"tool": "line", "params": [0,0,5,5]}',
         isError: false,
+        canvasImage: generateBmp(
+          List.generate(64, (_) => List.filled(64, 0)),
+          CanvasNotifier.primaryPalette,
+        ),
       );
 
       final mockService = LocalMockAiService();
@@ -104,6 +109,10 @@ void main() {
         prompt: 'System Instructions:\nDraw a test sword.',
         response: '{"tool": "line", "params": [0,0,5,5]}',
         isError: false,
+        canvasImage: generateBmp(
+          List.generate(64, (_) => List.filled(64, 0)),
+          CanvasNotifier.primaryPalette,
+        ),
       );
 
       final mockService = LocalMockAiService();
@@ -131,6 +140,10 @@ void main() {
         prompt: 'System Instructions:\nDraw a test sword.',
         response: '{"tool": "line", "params": [0,0,5,5]}',
         isError: false,
+        canvasImage: generateBmp(
+          List.generate(64, (_) => List.filled(64, 0)),
+          CanvasNotifier.primaryPalette,
+        ),
       );
 
       final mockService = LocalMockAiService();
