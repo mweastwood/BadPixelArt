@@ -72,21 +72,35 @@ class MainActivity : FlutterActivity() {
 
                     ioScope.launch {
                         try {
-                            val response = if (canvasImageBytes != null && canvasImageBytes.isNotEmpty()) {
-                                val canvasBitmap = BitmapFactory.decodeByteArray(canvasImageBytes, 0, canvasImageBytes.size)
-                                if (canvasBitmap != null) {
-                                    model.generateContent(
-                                        generateContentRequest(ImagePart(canvasBitmap), TextPart(promptText)) {
-                                            temperature = 0.7f
-                                        }
-                                    )
-                                } else {
-                                    model.generateContent(
-                                        generateContentRequest(TextPart(promptText)) {
-                                            temperature = 0.7f
-                                        }
-                                    )
-                                }
+                            val canvasBitmap = if (canvasImageBytes != null && canvasImageBytes.isNotEmpty()) {
+                                BitmapFactory.decodeByteArray(canvasImageBytes, 0, canvasImageBytes.size)
+                            } else {
+                                null
+                            }
+                            val referenceBitmap = if (referenceImageBytes != null && referenceImageBytes.isNotEmpty()) {
+                                BitmapFactory.decodeByteArray(referenceImageBytes, 0, referenceImageBytes.size)
+                            } else {
+                                null
+                            }
+
+                            val response = if (canvasBitmap != null && referenceBitmap != null) {
+                                model.generateContent(
+                                    generateContentRequest(ImagePart(canvasBitmap), ImagePart(referenceBitmap), TextPart(promptText)) {
+                                        temperature = 0.7f
+                                    }
+                                )
+                            } else if (canvasBitmap != null) {
+                                model.generateContent(
+                                    generateContentRequest(ImagePart(canvasBitmap), TextPart(promptText)) {
+                                        temperature = 0.7f
+                                    }
+                                )
+                            } else if (referenceBitmap != null) {
+                                model.generateContent(
+                                    generateContentRequest(ImagePart(referenceBitmap), TextPart(promptText)) {
+                                        temperature = 0.7f
+                                    }
+                                )
                             } else {
                                 model.generateContent(
                                     generateContentRequest(TextPart(promptText)) {

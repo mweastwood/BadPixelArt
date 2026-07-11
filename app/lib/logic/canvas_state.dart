@@ -108,6 +108,7 @@ class CanvasModel {
   final String paletteName;
   final List<Color> palette;
   final Uint8List? referenceImage;
+  final String? referencePresetName;
   final String userPrompt;
   final AiCoreStatus aiStatus;
   final bool isGenerating;
@@ -126,6 +127,7 @@ class CanvasModel {
     required this.paletteName,
     required this.palette,
     this.referenceImage,
+    this.referencePresetName,
     required this.userPrompt,
     required this.aiStatus,
     required this.isGenerating,
@@ -145,6 +147,8 @@ class CanvasModel {
     String? paletteName,
     List<Color>? palette,
     Uint8List? referenceImage,
+    bool clearReference = false,
+    String? referencePresetName,
     String? userPrompt,
     AiCoreStatus? aiStatus,
     bool? isGenerating,
@@ -162,7 +166,12 @@ class CanvasModel {
       selectedTool: selectedTool ?? this.selectedTool,
       paletteName: paletteName ?? this.paletteName,
       palette: palette ?? this.palette,
-      referenceImage: referenceImage ?? this.referenceImage,
+      referenceImage: clearReference
+          ? null
+          : (referenceImage ?? this.referenceImage),
+      referencePresetName: clearReference
+          ? null
+          : (referencePresetName ?? this.referencePresetName),
       userPrompt: userPrompt ?? this.userPrompt,
       aiStatus: aiStatus ?? this.aiStatus,
       isGenerating: isGenerating ?? this.isGenerating,
@@ -192,6 +201,7 @@ class CanvasModel {
         consecutiveActions == other.consecutiveActions &&
         listEquals(palette, other.palette) &&
         listEquals(referenceImage, other.referenceImage) &&
+        referencePresetName == other.referencePresetName &&
         listEquals(aiHistory, other.aiHistory);
   }
 
@@ -207,6 +217,7 @@ class CanvasModel {
     autoRunSpeed,
     drawingPhase,
     consecutiveActions,
+    referencePresetName,
     Object.hashAll(palette),
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
     Object.hashAll(aiHistory),
@@ -253,6 +264,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
           undoStack: [],
           redoStack: [],
           aiHistory: const [],
+          referenceImage: null,
+          referencePresetName: null,
         ),
       ) {
     checkAiStatus();
@@ -283,6 +296,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       selectedColorIndex: 1,
     );
     resetCanvas();
+
+    if (state.referencePresetName != null) {
+      final grid = state.referencePresetName == 'Sword'
+          ? generateSwordGrid()
+          : generateHeartGrid();
+      final bmp = generateBmp(grid, newPalette);
+      state = state.copyWith(referenceImage: bmp);
+    }
   }
 
   void selectColor(int index) {
@@ -300,7 +321,26 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
   }
 
   void setReferenceImage(Uint8List? bytes) {
-    state = state.copyWith(referenceImage: bytes);
+    if (bytes == null) {
+      state = state.copyWith(clearReference: true);
+    } else {
+      state = state.copyWith(referenceImage: bytes);
+    }
+  }
+
+  void setReferencePreset(String? presetName) {
+    if (presetName == null) {
+      state = state.copyWith(clearReference: true);
+    } else {
+      final grid = presetName == 'Sword'
+          ? generateSwordGrid()
+          : generateHeartGrid();
+      final bmp = generateBmp(grid, state.palette);
+      state = state.copyWith(
+        referenceImage: bmp,
+        referencePresetName: presetName,
+      );
+    }
   }
 
   void resetCanvas() {
@@ -816,3 +856,43 @@ final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
   final aiService = ref.watch(aiServiceProvider);
   return CanvasNotifier(aiService);
 });
+
+List<List<int>> generateSwordGrid() {
+  final grid = List.generate(64, (_) => List.filled(64, 0));
+  // Blade: diagonal from coordinate (15, 15) to (48, 48)
+  for (int i = 15; i <= 48; i++) {
+    grid[i][i] = 1;
+    if (i - 1 >= 0) grid[i - 1][i] = 1;
+    if (i + 1 < 64) grid[i + 1][i] = 1;
+  }
+  // Crossguard: perpendicular to blade at (15, 15)
+  for (int d = -6; d <= 6; d++) {
+    final x = 15 + d;
+    final y = 15 - d;
+    if (x >= 0 && x < 64 && y >= 0 && y < 64) {
+      grid[y][x] = 2;
+    }
+  }
+  // Hilt/Handle: extension of diagonal from (8, 8) to (14, 14)
+  for (int i = 8; i <= 14; i++) {
+    grid[i][i] = 2;
+  }
+  return grid;
+}
+
+List<List<int>> generateHeartGrid() {
+  final grid = List.generate(64, (_) => List.filled(64, 0));
+  for (int y = 0; y < 64; y++) {
+    for (int x = 0; x < 64; x++) {
+      // Scale coordinates to fit nicely
+      final nx = (x - 32) / 16.0;
+      final ny = -(y - 28) / 16.0; // Invert y to keep lobes upright
+      final term = nx * nx + ny * ny - 1.0;
+      final val = term * term * term - nx * nx * ny * ny * ny;
+      if (val <= 0.0) {
+        grid[y][x] = 2;
+      }
+    }
+  }
+  return grid;
+}

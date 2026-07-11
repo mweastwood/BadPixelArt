@@ -1,7 +1,5 @@
 // ignore_for_file: deprecated_member_use
 
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
@@ -17,17 +15,6 @@ class AiControlDock extends ConsumerStatefulWidget {
 class _AiControlDockState extends ConsumerState<AiControlDock> {
   final TextEditingController _promptController = TextEditingController();
   bool _isCollapsed = false;
-
-  // Helper to generate simulated image bytes for presets
-  Uint8List _generateMockImageBytes(String presetName) {
-    // Generate a simple grid string representing a 64x64 shape to mimic real reference image bytes
-    final buffer = StringBuffer();
-    buffer.write(presetName);
-    for (int i = 0; i < 100; i++) {
-      buffer.write('$i,');
-    }
-    return Uint8List.fromList(utf8.encode(buffer.toString()));
-  }
 
   @override
   void initState() {
@@ -104,39 +91,27 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                   _buildPresetButton(
                     label: 'Sword',
                     icon: Icons.shield_outlined,
-                    isSelected:
-                        canvasModel.referenceImage != null &&
-                        utf8
-                            .decode(canvasModel.referenceImage!)
-                            .startsWith('Sword'),
+                    isSelected: canvasModel.referencePresetName == 'Sword',
                     onTap: () {
-                      notifier.setReferenceImage(
-                        _generateMockImageBytes('Sword'),
-                      );
+                      notifier.setReferencePreset('Sword');
                     },
                   ),
                   const SizedBox(width: 8),
                   _buildPresetButton(
                     label: 'Heart',
                     icon: Icons.favorite_border,
-                    isSelected:
-                        canvasModel.referenceImage != null &&
-                        utf8
-                            .decode(canvasModel.referenceImage!)
-                            .startsWith('Heart'),
+                    isSelected: canvasModel.referencePresetName == 'Heart',
                     onTap: () {
-                      notifier.setReferenceImage(
-                        _generateMockImageBytes('Heart'),
-                      );
+                      notifier.setReferencePreset('Heart');
                     },
                   ),
                   const SizedBox(width: 8),
                   _buildPresetButton(
                     label: 'Clear',
                     icon: Icons.clear,
-                    isSelected: canvasModel.referenceImage == null,
+                    isSelected: canvasModel.referencePresetName == null,
                     onTap: () {
-                      notifier.setReferenceImage(null);
+                      notifier.setReferencePreset(null);
                     },
                   ),
                 ],
