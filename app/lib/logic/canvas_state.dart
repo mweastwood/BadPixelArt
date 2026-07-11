@@ -178,6 +178,9 @@ class CanvasModel {
   final List<List<List<int>>> undoStack;
   final List<List<List<int>>> redoStack;
   final List<AiHistoryEntry> aiHistory;
+  final List<Color>? suggestedPalette;
+  final bool isSuggestingPalette;
+  final bool showPaletteSuggestion;
 
   const CanvasModel({
     required this.grid,
@@ -195,6 +198,9 @@ class CanvasModel {
     required this.undoStack,
     required this.redoStack,
     required this.aiHistory,
+    this.suggestedPalette,
+    this.isSuggestingPalette = false,
+    this.showPaletteSuggestion = false,
   });
 
   CanvasModel copyWith({
@@ -214,6 +220,10 @@ class CanvasModel {
     List<List<List<int>>>? undoStack,
     List<List<List<int>>>? redoStack,
     List<AiHistoryEntry>? aiHistory,
+    List<Color>? suggestedPalette,
+    bool? isSuggestingPalette,
+    bool? showPaletteSuggestion,
+    bool clearSuggestedPalette = false,
   }) {
     return CanvasModel(
       grid: grid ?? this.grid,
@@ -235,6 +245,12 @@ class CanvasModel {
       undoStack: undoStack ?? this.undoStack,
       redoStack: redoStack ?? this.redoStack,
       aiHistory: aiHistory ?? this.aiHistory,
+      suggestedPalette: clearSuggestedPalette
+          ? null
+          : (suggestedPalette ?? this.suggestedPalette),
+      isSuggestingPalette: isSuggestingPalette ?? this.isSuggestingPalette,
+      showPaletteSuggestion:
+          showPaletteSuggestion ?? this.showPaletteSuggestion,
     );
   }
 
@@ -250,7 +266,10 @@ class CanvasModel {
         isGenerating == other.isGenerating &&
         autoRun == other.autoRun &&
         autoRunSpeed == other.autoRunSpeed &&
+        isSuggestingPalette == other.isSuggestingPalette &&
+        showPaletteSuggestion == other.showPaletteSuggestion &&
         listEquals(palette, other.palette) &&
+        listEquals(suggestedPalette, other.suggestedPalette) &&
         listEquals(referenceImage, other.referenceImage) &&
         listEquals(originalReferenceImage, other.originalReferenceImage) &&
         listEquals(aiHistory, other.aiHistory);
@@ -266,7 +285,10 @@ class CanvasModel {
     isGenerating,
     autoRun,
     autoRunSpeed,
+    isSuggestingPalette,
+    showPaletteSuggestion,
     Object.hashAll(palette),
+    suggestedPalette != null ? Object.hashAll(suggestedPalette!) : null,
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
     originalReferenceImage != null
         ? Object.hashAll(originalReferenceImage!)
@@ -365,12 +387,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
 
   void setReferenceImage(Uint8List? bytes, {Uint8List? originalBytes}) {
     if (bytes == null) {
-      state = state.copyWith(clearReference: true);
+      state = state.copyWith(
+        clearReference: true,
+        clearSuggestedPalette: true,
+        showPaletteSuggestion: false,
+      );
     } else {
       state = state.copyWith(
         referenceImage: bytes,
         originalReferenceImage: originalBytes,
       );
+      suggestPaletteFromReference();
     }
   }
 
@@ -381,7 +408,51 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         referenceImage: bmp,
         originalReferenceImage: rawBytes,
       );
+      await suggestPaletteFromReference();
     }
+  }
+
+  Future<void> suggestPaletteFromReference() async {
+    final refImg = state.referenceImage;
+    if (refImg == null) return;
+
+    state = state.copyWith(
+      isSuggestingPalette: true,
+      showPaletteSuggestion: false,
+    );
+
+    try {
+      final colors = await _aiService.suggestPalette(refImg);
+      if (colors != null) {
+        state = state.copyWith(
+          suggestedPalette: colors,
+          showPaletteSuggestion: true,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error suggesting palette: $e');
+    } finally {
+      state = state.copyWith(isSuggestingPalette: false);
+    }
+  }
+
+  void acceptSuggestedPalette() {
+    if (state.suggestedPalette != null) {
+      state = state.copyWith(
+        paletteName: 'suggested',
+        palette: state.suggestedPalette,
+        showPaletteSuggestion: false,
+        selectedColorIndex: 0,
+      );
+      resetCanvas();
+    }
+  }
+
+  void rejectSuggestedPalette() {
+    state = state.copyWith(
+      showPaletteSuggestion: false,
+      clearSuggestedPalette: true,
+    );
   }
 
   void resetCanvas() {
