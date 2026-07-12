@@ -62,6 +62,8 @@ String formatUserPrompt({
   bool isMultimodal = false,
   bool hasPreviousImage = false,
   bool hasReferenceImage = false,
+  String? currentCanvasTextGrid,
+  String? quantizedReferenceTextGrid,
 }) {
   String canvasGridString;
   if (isMultimodal) {
@@ -102,11 +104,26 @@ String formatUserPrompt({
       })
       .join('\n');
 
+  final textGridSection = StringBuffer();
+  if (quantizedReferenceTextGrid != null) {
+    textGridSection.write(
+      '\nTARGET REFERENCE LAYOUT (quantized to available palette colors):\n',
+    );
+    textGridSection.write(quantizedReferenceTextGrid);
+  }
+  if (currentCanvasTextGrid != null) {
+    textGridSection.write(
+      '\nCURRENT CANVAS STATE (each character represents a palette color index, . = empty):\n',
+    );
+    textGridSection.write(currentCanvasTextGrid);
+  }
+
   return 'User Instruction: "$prompt"\n'
       '$refShapeInstruction\n'
       'Available Color Palette (select the correct index for the "color" field):\n'
       '$colorList\n'
-      '$canvasGridString\n\n'
+      '$canvasGridString\n'
+      '$textGridSection\n\n'
       'Output the single next stroke JSON now:';
 }
 
