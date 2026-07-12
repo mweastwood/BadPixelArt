@@ -64,6 +64,7 @@ String formatUserPrompt({
   bool hasReferenceImage = false,
   String? currentCanvasTextGrid,
   String? quantizedReferenceTextGrid,
+  String? loopHistory,
 }) {
   String canvasGridString;
   if (isMultimodal) {
@@ -116,6 +117,10 @@ String formatUserPrompt({
       '\nCURRENT CANVAS STATE (each character represents a palette color index, . = empty):\n',
     );
     textGridSection.write(currentCanvasTextGrid);
+  }
+  if (loopHistory != null && loopHistory.isNotEmpty) {
+    textGridSection.write('\nAGENT LOOP CONVERSATION HISTORY:\n');
+    textGridSection.write(loopHistory);
   }
 
   return 'User Instruction: "$prompt"\n'

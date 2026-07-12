@@ -10,6 +10,16 @@ import 'ai_service.dart';
 
 enum CanvasTool { line, circle, fill, hatch }
 
+abstract class AgentCanvas {
+  List<List<int>> get grid;
+  List<Color> get palette;
+  void applyCommand(String toolName, List<int> params, int colorIndex);
+  Uint8List generateCombinedVisualInput(
+    Uint8List? referenceBmp,
+    Uint8List? previousBmp,
+  );
+}
+
 class AiHistoryEntry {
   final DateTime timestamp;
   final String prompt;
@@ -416,11 +426,51 @@ class CanvasModel {
   );
 }
 
-class CanvasNotifier extends StateNotifier<CanvasModel> {
+class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   final AiService _aiService;
   Timer? _autoRunTimer;
 
   static const int gridSize = 64;
+
+  @override
+  List<List<int>> get grid => state.grid;
+
+  @override
+  List<Color> get palette => state.palette;
+
+  @override
+  void applyCommand(String toolName, List<int> params, int colorIndex) {
+    _applyAiStrokeCommand(toolName, params, colorIndex);
+  }
+
+  @override
+  Uint8List generateCombinedVisualInput(
+    Uint8List? referenceBmp,
+    Uint8List? previousBmp,
+  ) {
+    final List<Uint8List> bmpsToCombine = [];
+    final currentBmp = generateBmp(state.grid, state.palette);
+
+    if (referenceBmp != null) {
+      bmpsToCombine.add(referenceBmp);
+      final refGrid = _bmpToColorGrid(referenceBmp);
+
+      final edgesGrid = _applyEdgeDetection(refGrid);
+      final edgesBmp = _bmpFromColorGrid(edgesGrid);
+      bmpsToCombine.add(edgesBmp);
+
+      final blurredGrid = _applyGaussianBlur(refGrid);
+      final quantizedGrid = _applyColorQuantization(blurredGrid, state.palette);
+      final quantizedBmp = _bmpFromColorGrid(quantizedGrid);
+      bmpsToCombine.add(quantizedBmp);
+    }
+    if (previousBmp != null) {
+      bmpsToCombine.add(previousBmp);
+    }
+    bmpsToCombine.add(currentBmp);
+
+    return combineBmps(bmpsToCombine);
+  }
 
   static final List<Color> grayscalePalette = [
     const Color(0xFF000000), // Black
@@ -956,33 +1006,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         )
         .toList();
 
-    final canvasBmp = generateBmp(state.grid, state.palette);
     final previousBmp = state.undoStack.isNotEmpty
         ? generateBmp(state.undoStack.last, state.palette)
         : null;
 
-    final List<Uint8List> bmpsToCombine = [];
-    if (state.referenceImage != null) {
-      bmpsToCombine.add(state.referenceImage!);
-
-      // Generate visual guide panels
-      final refGrid = _bmpToColorGrid(state.referenceImage!);
-
-      final edgesGrid = _applyEdgeDetection(refGrid);
-      final edgesBmp = _bmpFromColorGrid(edgesGrid);
-      bmpsToCombine.add(edgesBmp);
-
-      final blurredGrid = _applyGaussianBlur(refGrid);
-      final quantizedGrid = _applyColorQuantization(blurredGrid, state.palette);
-      final quantizedBmp = _bmpFromColorGrid(quantizedGrid);
-      bmpsToCombine.add(quantizedBmp);
-    }
-    if (previousBmp != null) {
-      bmpsToCombine.add(previousBmp);
-    }
-    bmpsToCombine.add(canvasBmp);
-
-    final combinedBmp = combineBmps(bmpsToCombine);
+    final combinedBmp = generateCombinedVisualInput(
+      state.referenceImage,
+      previousBmp,
+    );
 
     // 1. Normal drawing action turn
     final isMultimodal = _aiService is MethodChannelAiService;
