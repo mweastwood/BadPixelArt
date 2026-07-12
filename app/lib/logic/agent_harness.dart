@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'ai_service.dart';
@@ -49,7 +47,7 @@ class AgentHarness {
   }) async {
     final List<AgentStepResult> results = [];
     final List<String> paletteHexes = canvas.palette.map((c) {
-      return '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
+      return '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
     }).toList();
 
     String? quantizedReferenceTextGrid;
