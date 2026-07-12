@@ -2,6 +2,8 @@ import 'base_command.dart';
 
 /// Command to flood fill a region with a single color.
 class FillCommand implements DrawingCommand {
+  static const String usage = 'params [startX, startY]';
+
   final int startX;
   final int startY;
 

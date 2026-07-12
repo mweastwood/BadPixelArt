@@ -2,6 +2,9 @@ import 'base_command.dart';
 
 /// Command to flood fill a region with an alternating checkerboard pattern (hatch).
 class HatchCommand implements DrawingCommand {
+  static const String usage =
+      'params [startX, startY] (alternating checkerboard pattern flood fill)';
+
   final int startX;
   final int startY;
 

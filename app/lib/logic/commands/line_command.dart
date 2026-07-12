@@ -2,6 +2,8 @@ import 'base_command.dart';
 
 /// Command to draw a line between two points using Bresenham's line algorithm.
 class LineCommand implements DrawingCommand {
+  static const String usage = 'params [startX, startY, endX, endY]';
+
   final int x1;
   final int y1;
   final int x2;

@@ -2,6 +2,8 @@ import 'base_command.dart';
 
 /// Command to draw a filled circle.
 class CircleFilledCommand implements DrawingCommand {
+  static const String usage = 'params [centerX, centerY, radius]';
+
   final int xc;
   final int yc;
   final int r;

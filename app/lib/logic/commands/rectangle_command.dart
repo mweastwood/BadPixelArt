@@ -2,6 +2,8 @@ import 'base_command.dart';
 
 /// Command to draw an outlined rectangle.
 class RectangleCommand implements DrawingCommand {
+  static const String usage = 'params [startX, startY, endX, endY] (outline)';
+
   final int x1;
   final int y1;
   final int x2;

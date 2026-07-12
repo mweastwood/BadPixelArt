@@ -2,6 +2,8 @@ import 'base_command.dart';
 
 /// Command to draw an outlined circle using Bresenham's midpoint circle algorithm.
 class CircleCommand implements DrawingCommand {
+  static const String usage = 'params [centerX, centerY, radius] (outline)';
+
   final int xc;
   final int yc;
   final int r;

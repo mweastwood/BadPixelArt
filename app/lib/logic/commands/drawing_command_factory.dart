@@ -11,6 +11,21 @@ import 'hatch_command.dart';
 
 /// Factory class to instantiate DrawingCommands from tool configurations.
 class DrawingCommandFactory {
+  /// Map of tool names to their respective instructions (arguments description).
+  static final Map<String, String> toolInstructions = {
+    'line': LineCommand.usage,
+    'circle': CircleCommand.usage,
+    'circle_filled': CircleFilledCommand.usage,
+    'circle_hatched': CircleHatchedCommand.usage,
+    'rectangle': RectangleCommand.usage,
+    'rectangle_filled': RectangleFilledCommand.usage,
+    'rectangle_hatched': RectangleHatchedCommand.usage,
+    'fill': FillCommand.usage,
+    'hatch': HatchCommand.usage,
+    'undo':
+        'params [] (reverts the last AI or user action if the AI thinks the last stroke was a mistake)',
+  };
+
   /// Returns the matching [DrawingCommand] instance based on the [toolName] and [params].
   /// Returns `null` if the tool configurations are invalid or unsupported.
   static DrawingCommand? create(String toolName, List<int> params) {

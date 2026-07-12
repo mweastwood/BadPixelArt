@@ -2,6 +2,9 @@ import 'base_command.dart';
 
 /// Command to draw a hatched (checkerboard pattern) filled rectangle.
 class RectangleHatchedCommand implements DrawingCommand {
+  static const String usage =
+      'params [startX, startY, endX, endY] (alternating checkerboard pattern fill)';
+
   final int x1;
   final int y1;
   final int x2;

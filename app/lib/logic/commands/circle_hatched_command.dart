@@ -2,6 +2,9 @@ import 'base_command.dart';
 
 /// Command to draw a hatched (checkerboard pattern) filled circle.
 class CircleHatchedCommand implements DrawingCommand {
+  static const String usage =
+      'params [centerX, centerY, radius] (alternating checkerboard pattern fill)';
+
   final int xc;
   final int yc;
   final int r;

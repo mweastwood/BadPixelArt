@@ -2,6 +2,8 @@ import 'base_command.dart';
 
 /// Command to draw a filled rectangle.
 class RectangleFilledCommand implements DrawingCommand {
+  static const String usage = 'params [startX, startY, endX, endY]';
+
   final int x1;
   final int y1;
   final int x2;
