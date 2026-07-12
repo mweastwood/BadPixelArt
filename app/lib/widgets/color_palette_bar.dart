@@ -135,10 +135,13 @@ class _ColorPaletteBarState extends ConsumerState<ColorPaletteBar> {
                 height: 48,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: canvasModel.palette.length,
+                  itemCount: canvasModel.palette.length + 1,
                   separatorBuilder: (_, index) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
-                    final color = canvasModel.palette[index];
+                    final isEraser = index == 0;
+                    final color = isEraser
+                        ? null
+                        : canvasModel.palette[index - 1];
                     final isSelected = canvasModel.selectedColorIndex == index;
 
                     return GestureDetector(
@@ -148,7 +151,7 @@ class _ColorPaletteBarState extends ConsumerState<ColorPaletteBar> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: color,
+                          color: isEraser ? Colors.transparent : color,
                           shape: BoxShape.circle,
                           border: Border.all(
                             color: isSelected
@@ -167,19 +170,39 @@ class _ColorPaletteBarState extends ConsumerState<ColorPaletteBar> {
                                 ]
                               : null,
                         ),
-                        child: isSelected
-                            ? Icon(
-                                Icons.check,
-                                color:
-                                    ThemeData.estimateBrightnessForColor(
-                                          color,
-                                        ) ==
-                                        Brightness.dark
-                                    ? Colors.white
-                                    : Colors.black,
-                                size: 20,
+                        child: isEraser
+                            ? ClipOval(
+                                child: CustomPaint(
+                                  painter: CheckerboardPainter(
+                                    bg1: const Color(0xFF262626),
+                                    bg2: const Color(0xFF1E1E1E),
+                                  ),
+                                  child: isSelected
+                                      ? const Icon(
+                                          Icons.check,
+                                          color: Colors.white,
+                                          size: 20,
+                                        )
+                                      : const Icon(
+                                          Icons.block,
+                                          color: Colors.grey,
+                                          size: 20,
+                                        ),
+                                ),
                               )
-                            : null,
+                            : (isSelected
+                                  ? Icon(
+                                      Icons.check,
+                                      color:
+                                          ThemeData.estimateBrightnessForColor(
+                                                color!,
+                                              ) ==
+                                              Brightness.dark
+                                          ? Colors.white
+                                          : Colors.black,
+                                      size: 20,
+                                    )
+                                  : null),
                       ),
                     );
                   },
@@ -325,4 +348,33 @@ class _BrushToolButton extends StatelessWidget {
       ),
     );
   }
+}
+
+class CheckerboardPainter extends CustomPainter {
+  final Color bg1;
+  final Color bg2;
+
+  CheckerboardPainter({required this.bg1, required this.bg2});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint1 = Paint()..color = bg1;
+    final paint2 = Paint()..color = bg2;
+    const int cells = 4;
+    final cellW = size.width / cells;
+    final cellH = size.height / cells;
+
+    for (int y = 0; y < cells; y++) {
+      for (int x = 0; x < cells; x++) {
+        final paint = (x + y) % 2 == 0 ? paint1 : paint2;
+        canvas.drawRect(
+          Rect.fromLTWH(x * cellW, y * cellH, cellW, cellH),
+          paint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -24,6 +24,9 @@ String formatSystemInstruction() {
       '- "fill": params [startX, startY]\n'
       '- "hatch": params [startX, startY] (alternating checkerboard pattern flood fill)\n'
       '- "undo": params [] (reverts the last AI or user action if the AI thinks the last stroke was a mistake)\n\n'
+      'Color selection:\n'
+      '- Set the "color" field in your JSON output to one of the indices in the Available Color Palette.\n'
+      '- IMPORTANT: Use index 0 to erase/clear pixels back to the transparent background.\n\n'
       'You must output EXACTLY a valid JSON block containing your understanding of the image, your reasoning for the next stroke, and the next stroke itself. No explanation, no markdown tags. Example:\n'
       '{\n'
       '  "understanding": "Brief description of what you see on the canvas right now",\n'
@@ -80,15 +83,13 @@ String formatUserPrompt({
         'Use the provided reference image (sent as an image attachment) to guide your drawings.';
   }
 
-  final colorList = paletteColors
-      .asMap()
-      .entries
-      .map((e) {
-        final index = e.key;
-        final hex = e.value;
-        return '- Index $index: $hex';
-      })
-      .join('\n');
+  final List<String> colorsMap = [
+    '- Index 0: Eraser / Transparent Background (clears pixels)',
+  ];
+  for (int i = 0; i < paletteColors.length; i++) {
+    colorsMap.add('- Index ${i + 1}: ${paletteColors[i]}');
+  }
+  final colorList = colorsMap.join('\n');
 
   final textGridSection = StringBuffer();
   if (quantizedReferenceTextGrid != null) {

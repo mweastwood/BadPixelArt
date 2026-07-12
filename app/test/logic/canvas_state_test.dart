@@ -397,12 +397,12 @@ void main() {
       test('combineBmps with two BMPs concatenates side-by-side correctly', () {
         final grid1 = List.generate(
           64,
-          (_) => List.filled(64, 2),
-        ); // Filled with red (index 2)
+          (_) => List.filled(64, 3),
+        ); // Filled with red (index 3, maps to palette[2])
         final grid2 = List.generate(
           64,
-          (_) => List.filled(64, 4),
-        ); // Filled with blue (index 4)
+          (_) => List.filled(64, 5),
+        ); // Filled with blue (index 5, maps to palette[4])
 
         final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
         final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
@@ -434,16 +434,16 @@ void main() {
         () {
           final grid1 = List.generate(
             64,
-            (_) => List.filled(64, 2),
-          ); // Red (index 2)
+            (_) => List.filled(64, 3),
+          ); // Red (index 3, maps to palette[2])
           final grid2 = List.generate(
             64,
-            (_) => List.filled(64, 3),
-          ); // Green (index 3)
+            (_) => List.filled(64, 4),
+          ); // Green (index 4, maps to palette[3])
           final grid3 = List.generate(
             64,
-            (_) => List.filled(64, 4),
-          ); // Blue (index 4)
+            (_) => List.filled(64, 5),
+          ); // Blue (index 5, maps to palette[4])
 
           final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
           final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);

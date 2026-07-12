@@ -182,7 +182,7 @@ class CanvasPainter extends CustomPainter {
         } else {
           // Draw painted pixel
           final paint = Paint()
-            ..color = palette[colorIndex]
+            ..color = palette[colorIndex - 1]
             ..isAntiAlias = false;
           canvas.drawRect(rect, paint);
         }
@@ -197,7 +197,9 @@ class CanvasPainter extends CustomPainter {
       final currY = (dragCurrent!.dy / cellHeight).floor().clamp(0, 63);
 
       final previewPaint = Paint()
-        ..color = palette[activeColorIndex].withOpacity(0.5)
+        ..color = activeColorIndex == 0
+            ? Colors.redAccent.withOpacity(0.5)
+            : palette[activeColorIndex - 1].withOpacity(0.5)
         ..style = PaintingStyle.fill
         ..isAntiAlias = false;
 

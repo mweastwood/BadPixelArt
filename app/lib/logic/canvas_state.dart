@@ -97,7 +97,7 @@ Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
           ? ((x + y) % 2 == 0
                 ? const Color(0xFF262626)
                 : const Color(0xFF1E1E1E))
-          : palette[colorIndex];
+          : palette[colorIndex - 1];
 
       bmp[offset] = color.blue;
       bmp[offset + 1] = color.green;
@@ -542,7 +542,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void selectColor(int index) {
-    if (index >= 0 && index < state.palette.length) {
+    if (index >= 0 && index <= state.palette.length) {
       state = state.copyWith(selectedColorIndex: index);
     }
   }
@@ -1122,7 +1122,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     int colorIndex,
   ) {
     // Keep color index bounded
-    final boundedColorIndex = colorIndex.clamp(0, state.palette.length - 1);
+    final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
 
     // Set notifier's current drawing color to match AI's stroke color
     state = state.copyWith(selectedColorIndex: boundedColorIndex);
@@ -1491,7 +1491,7 @@ List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
             closestIndex = i;
           }
         }
-        grid[y][x] = closestIndex;
+        grid[y][x] = closestIndex + 1;
       }
     }
   }
