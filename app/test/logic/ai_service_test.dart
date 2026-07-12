@@ -1,112 +1,221 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/ai_service.dart';
 
 void main() {
-  group('AI Service Shared Prompt Formatting Helpers', () {
-    test('formatSystemInstruction returns correct rules and tools', () {
-      final sysInstruction = formatSystemInstruction();
-      expect(sysInstruction, contains('AI pixel art assistant'));
-      expect(sysInstruction, contains('64x64 grid'));
-      expect(sysInstruction, contains('"line"'));
-      expect(sysInstruction, contains('"circle"'));
-      expect(sysInstruction, contains('"circle_filled"'));
-      expect(sysInstruction, contains('"circle_hatched"'));
-      expect(sysInstruction, contains('"rectangle"'));
-      expect(sysInstruction, contains('"rectangle_filled"'));
-      expect(sysInstruction, contains('"rectangle_hatched"'));
-      expect(sysInstruction, contains('"fill"'));
-      expect(sysInstruction, contains('"hatch"'));
-      expect(sysInstruction, contains('"undo"'));
-      expect(sysInstruction, contains('output EXACTLY a valid JSON block'));
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const channel = MethodChannel('com.mweastwood.bad_pixel_art/aicore');
+
+  group('MockAiService Tests', () {
+    late MockAiService mockAiService;
+
+    setUp(() {
+      mockAiService = MockAiService();
     });
 
-    test('formatUserPrompt formats empty canvas correctly', () {
-      final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
-      final prompt = 'draw a line';
-      final paletteColors = ['#000000', '#ffffff', '#ff0000'];
+    test(
+      'checkStatus returns correct status and setMockStatus updates it',
+      () async {
+        expect(
+          await mockAiService.checkStatus(),
+          equals(AiCoreStatus.available),
+        );
+        mockAiService.setMockStatus(AiCoreStatus.downloadable);
+        expect(
+          await mockAiService.checkStatus(),
+          equals(AiCoreStatus.downloadable),
+        );
+      },
+    );
 
-      final userPrompt = formatUserPrompt(
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-      );
-
-      expect(userPrompt, contains('User Instruction: "draw a line"'));
-      expect(userPrompt, contains('The grid is completely empty (all 0s).'));
-      expect(userPrompt, contains('Available Color Palette'));
-      expect(userPrompt, contains('- Index 0: #000000'));
-      expect(userPrompt, contains('- Index 2: #ff0000'));
-    });
-
-    test('formatUserPrompt formats active canvas correctly', () {
-      final canvasImage = Uint8List.fromList(utf8.encode('01002000'));
-      final prompt = 'draw a circle';
-      final paletteColors = ['#000000', '#ffffff', '#ff0000', '#00ff00'];
-
-      final userPrompt = formatUserPrompt(
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-      );
-
-      expect(userPrompt, contains('User Instruction: "draw a circle"'));
-      expect(userPrompt, isNot(contains('The grid is completely empty')));
-      expect(userPrompt, contains('01002000'));
-      expect(userPrompt, contains('Available Color Palette'));
-      expect(userPrompt, contains('- Index 0: #000000'));
-      expect(userPrompt, contains('- Index 3: #00ff00'));
-    });
-
-    test('formatUserPrompt includes generic reference image instructions', () {
-      final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
-      final prompt = 'draw reference';
-      final paletteColors = ['#000000', '#ffffff'];
-
-      final userPrompt = formatUserPrompt(
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-        hasReferenceImage: true,
-      );
-
+    test('triggerDownload transitions status appropriately', () async {
+      mockAiService.setMockStatus(AiCoreStatus.downloadable);
+      await mockAiService.triggerDownload();
       expect(
-        userPrompt,
-        contains(
-          'Use the provided reference image (sent as an image attachment) to guide your drawings.',
-        ),
-      );
-    });
-
-    test('cleanJsonString strips markdown blocks correctly', () {
-      final input = '```json\n{"tool": "line"}\n```';
-      expect(cleanJsonString(input), equals('{"tool": "line"}'));
-
-      final inputNoLang = '```\n{"tool": "circle"}\n```';
-      expect(cleanJsonString(inputNoLang), equals('{"tool": "circle"}'));
-
-      final inputNoMarkdown = '{"tool": "fill"}';
-      expect(cleanJsonString(inputNoMarkdown), equals('{"tool": "fill"}'));
-    });
-
-    test('formatUserPrompt includes custom text grids when provided', () {
-      final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
-      final prompt = 'draw reference';
-      final paletteColors = ['#000000', '#ffffff'];
-
-      final userPrompt = formatUserPrompt(
-        canvasImage: canvasImage,
-        prompt: prompt,
-        paletteColors: paletteColors,
-        currentCanvasTextGrid: 'CANVAS_GRID_MOCK',
-        quantizedReferenceTextGrid: 'REFERENCE_GRID_MOCK',
+        await mockAiService.checkStatus(),
+        equals(AiCoreStatus.downloading),
       );
 
-      expect(userPrompt, contains('CURRENT CANVAS STATE'));
-      expect(userPrompt, contains('CANVAS_GRID_MOCK'));
-      expect(userPrompt, contains('TARGET REFERENCE LAYOUT'));
-      expect(userPrompt, contains('REFERENCE_GRID_MOCK'));
+      // Wait for mock delay to finish transition to available
+      await Future.delayed(const Duration(seconds: 2, milliseconds: 100));
+      expect(await mockAiService.checkStatus(), equals(AiCoreStatus.available));
+    });
+
+    test(
+      'generateContent lowTemperature suggestions are formatted correctly',
+      () async {
+        final response = await mockAiService.generateContent(
+          prompt: 'suggest palette',
+          lowTemperature: true,
+        );
+        expect(response, isNotNull);
+        final decoded = jsonDecode(response!);
+        expect(decoded, isA<List>());
+        expect(decoded.length, equals(16));
+        expect(decoded[0], startsWith('#'));
+      },
+    );
+
+    test('generateContent cyclic stroke suggestions are valid JSON', () async {
+      // Stroke 1
+      final res1 = await mockAiService.generateContent(
+        prompt: 'draw',
+        lowTemperature: false,
+      );
+      expect(res1, isNotNull);
+      final map1 = jsonDecode(res1!);
+      expect(map1['tool'], equals('line'));
+
+      // Stroke 2
+      final res2 = await mockAiService.generateContent(
+        prompt: 'draw',
+        lowTemperature: false,
+      );
+      expect(res2, isNotNull);
+      final map2 = jsonDecode(res2!);
+      expect(map2['tool'], equals('fill'));
+
+      // Stroke 3
+      final res3 = await mockAiService.generateContent(
+        prompt: 'draw',
+        lowTemperature: false,
+      );
+      expect(res3, isNotNull);
+      final map3 = jsonDecode(res3!);
+      expect(map3['tool'], equals('hatch'));
+
+      // Stroke 4 (wrap around)
+      final res4 = await mockAiService.generateContent(
+        prompt: 'draw',
+        lowTemperature: false,
+      );
+      expect(res4, isNotNull);
+      final map4 = jsonDecode(res4!);
+      expect(map4['tool'], equals('circle'));
+    });
+    group('MethodChannelAiService Tests', () {
+      late MethodChannelAiService service;
+      final List<MethodCall> log = [];
+      dynamic mockResponse;
+      int throwCount = 0;
+
+      setUp(() {
+        service = MethodChannelAiService();
+        log.clear();
+        mockResponse = null;
+        throwCount = 0;
+
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+              log.add(methodCall);
+              if (throwCount > 0) {
+                throwCount--;
+                throw PlatformException(code: 'ERROR', message: 'Failed');
+              }
+              return mockResponse;
+            });
+      });
+
+      tearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+
+      test('checkStatus maps values correctly', () async {
+        mockResponse = 'available';
+        expect(await service.checkStatus(), equals(AiCoreStatus.available));
+
+        mockResponse = 'downloadable';
+        expect(await service.checkStatus(), equals(AiCoreStatus.downloadable));
+
+        mockResponse = 'downloading';
+        expect(await service.checkStatus(), equals(AiCoreStatus.downloading));
+
+        mockResponse = 'unavailable';
+        expect(await service.checkStatus(), equals(AiCoreStatus.unavailable));
+
+        mockResponse = null;
+        expect(await service.checkStatus(), equals(AiCoreStatus.unavailable));
+      });
+
+      test('triggerDownload invokes native triggerDownload', () async {
+        await service.triggerDownload();
+        expect(log.length, equals(1));
+        expect(log.first.method, equals('triggerDownload'));
+      });
+
+      test(
+        'generateContent maps parameters correctly when lowTemperature is false',
+        () async {
+          mockResponse = '{"tool": "circle"}';
+          final imageBytes = Uint8List.fromList([1, 2, 3]);
+
+          final result = await service.generateContent(
+            prompt: 'draw something',
+            imageBytes: imageBytes,
+            lowTemperature: false,
+          );
+
+          expect(result, equals('{"tool": "circle"}'));
+          expect(log.length, equals(1));
+          expect(log.first.method, equals('getNextStroke'));
+          expect(log.first.arguments['prompt'], equals('draw something'));
+          expect(log.first.arguments['canvasImage'], equals(imageBytes));
+        },
+      );
+
+      test(
+        'generateContent maps parameters correctly when lowTemperature is true',
+        () async {
+          mockResponse = '["#ff0000"]';
+          final imageBytes = Uint8List.fromList([4, 5, 6]);
+
+          final result = await service.generateContent(
+            prompt: 'suggest palette',
+            imageBytes: imageBytes,
+            lowTemperature: true,
+          );
+
+          expect(result, equals('["#ff0000"]'));
+          expect(log.length, equals(1));
+          expect(log.first.method, equals('suggestPalette'));
+          expect(log.first.arguments['prompt'], equals('suggest palette'));
+          expect(log.first.arguments['referenceImage'], equals(imageBytes));
+        },
+      );
+
+      test('generateContent retries on exception and succeeds', () async {
+        throwCount = 2; // Fail twice, then succeed
+        mockResponse = '{"tool": "fill"}';
+
+        final result = await service.generateContent(
+          prompt: 'retry me',
+          lowTemperature: false,
+        );
+
+        expect(result, equals('{"tool": "fill"}'));
+        expect(log.length, equals(3)); // 2 fails + 1 success
+        expect(log[0].method, equals('getNextStroke'));
+        expect(log[1].method, equals('getNextStroke'));
+        expect(log[2].method, equals('getNextStroke'));
+      });
+
+      test(
+        'generateContent returns error JSON after exhausting retries',
+        () async {
+          throwCount = 4; // Fail all 4 attempts
+
+          final result = await service.generateContent(
+            prompt: 'always fails',
+            lowTemperature: false,
+          );
+
+          expect(result, contains('error'));
+          expect(log.length, equals(4));
+        },
+      );
     });
   });
 }
