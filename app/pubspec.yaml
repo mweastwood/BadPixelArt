@@ -38,6 +38,11 @@ dependencies:
   flutter_riverpod: ^2.5.1
   dynamic_color: ^1.8.1
   file_picker: ^11.0.2
+  local_agent:
+    git:
+      url: git@github.com:mweastwood/flutter-local-agent.git
+      ref: main
+
 
 dev_dependencies:
   flutter_test:
