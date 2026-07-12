@@ -4,7 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
-import '../logic/ai_service.dart';
+import 'package:local_agent/local_agent.dart';
 
 class AiControlDock extends ConsumerStatefulWidget {
   const AiControlDock({super.key});

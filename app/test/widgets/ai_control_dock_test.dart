@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/widgets/ai_control_dock.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
-import 'package:bad_pixel_art/logic/ai_service.dart';
+import 'package:local_agent/local_agent.dart';
 import '../test_helper.dart';
 
 class MockTestAiService implements AiService {

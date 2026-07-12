@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:bad_pixel_art/logic/ai_service.dart';
+import 'package:local_agent/local_agent.dart';
 import 'package:bad_pixel_art/logic/prompts.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 

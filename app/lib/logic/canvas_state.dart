@@ -6,7 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'ai_service.dart';
+import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
 
 enum CanvasTool { line, circle, fill, hatch }

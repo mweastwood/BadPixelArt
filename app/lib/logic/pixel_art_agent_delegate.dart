@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'canvas_state.dart';
-import 'agent_harness.dart';
+import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
 
 class PixelArtAgentDelegate implements AgentDelegate {
