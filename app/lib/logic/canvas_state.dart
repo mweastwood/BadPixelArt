@@ -10,6 +10,16 @@ import 'ai_service.dart';
 
 enum CanvasTool { line, circle, fill, hatch }
 
+abstract class AgentCanvas {
+  List<List<int>> get grid;
+  List<Color> get palette;
+  void applyCommand(String toolName, List<int> params, int colorIndex);
+  Uint8List generateCombinedVisualInput(
+    Uint8List? referenceBmp,
+    Uint8List? previousBmp,
+  );
+}
+
 class AiHistoryEntry {
   final DateTime timestamp;
   final String prompt;
@@ -416,11 +426,51 @@ class CanvasModel {
   );
 }
 
-class CanvasNotifier extends StateNotifier<CanvasModel> {
+class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   final AiService _aiService;
   Timer? _autoRunTimer;
 
   static const int gridSize = 64;
+
+  @override
+  List<List<int>> get grid => state.grid;
+
+  @override
+  List<Color> get palette => state.palette;
+
+  @override
+  void applyCommand(String toolName, List<int> params, int colorIndex) {
+    _applyAiStrokeCommand(toolName, params, colorIndex);
+  }
+
+  @override
+  Uint8List generateCombinedVisualInput(
+    Uint8List? referenceBmp,
+    Uint8List? previousBmp,
+  ) {
+    final List<Uint8List> bmpsToCombine = [];
+    final currentBmp = generateBmp(state.grid, state.palette);
+
+    if (referenceBmp != null) {
+      bmpsToCombine.add(referenceBmp);
+      final refGrid = _bmpToColorGrid(referenceBmp);
+
+      final edgesGrid = _applyEdgeDetection(refGrid);
+      final edgesBmp = _bmpFromColorGrid(edgesGrid);
+      bmpsToCombine.add(edgesBmp);
+
+      final blurredGrid = _applyGaussianBlur(refGrid);
+      final quantizedGrid = _applyColorQuantization(blurredGrid, state.palette);
+      final quantizedBmp = _bmpFromColorGrid(quantizedGrid);
+      bmpsToCombine.add(quantizedBmp);
+    }
+    if (previousBmp != null) {
+      bmpsToCombine.add(previousBmp);
+    }
+    bmpsToCombine.add(currentBmp);
+
+    return combineBmps(bmpsToCombine);
+  }
 
   static final List<Color> grayscalePalette = [
     const Color(0xFF000000), // Black
@@ -956,37 +1006,28 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
         )
         .toList();
 
-    final canvasBmp = generateBmp(state.grid, state.palette);
     final previousBmp = state.undoStack.isNotEmpty
         ? generateBmp(state.undoStack.last, state.palette)
         : null;
 
-    final List<Uint8List> bmpsToCombine = [];
-    if (state.referenceImage != null) {
-      bmpsToCombine.add(state.referenceImage!);
-
-      // Generate visual guide panels
-      final refGrid = _bmpToColorGrid(state.referenceImage!);
-
-      final edgesGrid = _applyEdgeDetection(refGrid);
-      final edgesBmp = _bmpFromColorGrid(edgesGrid);
-      bmpsToCombine.add(edgesBmp);
-
-      final blurredGrid = _applyGaussianBlur(refGrid);
-      final quantizedGrid = _applyColorQuantization(blurredGrid, state.palette);
-      final quantizedBmp = _bmpFromColorGrid(quantizedGrid);
-      bmpsToCombine.add(quantizedBmp);
-    }
-    if (previousBmp != null) {
-      bmpsToCombine.add(previousBmp);
-    }
-    bmpsToCombine.add(canvasBmp);
-
-    final combinedBmp = combineBmps(bmpsToCombine);
+    final combinedBmp = generateCombinedVisualInput(
+      state.referenceImage,
+      previousBmp,
+    );
 
     // 1. Normal drawing action turn
     final isMultimodal = _aiService is MethodChannelAiService;
     final systemInstruction = formatSystemInstruction();
+    final String currentCanvasTextGrid = canvasToTextGrid(state.grid);
+    String? quantizedReferenceTextGrid;
+    if (state.referenceImage != null) {
+      final quantizedGrid = getQuantizedIndexGrid(
+        state.referenceImage!,
+        state.palette,
+      );
+      quantizedReferenceTextGrid = canvasToTextGrid(quantizedGrid);
+    }
+
     final userTextPrompt = formatUserPrompt(
       canvasImage: canvasBytes,
       prompt: state.userPrompt,
@@ -994,6 +1035,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> {
       isMultimodal: isMultimodal,
       hasPreviousImage: previousBmp != null,
       hasReferenceImage: state.referenceImage != null,
+      currentCanvasTextGrid: currentCanvasTextGrid,
+      quantizedReferenceTextGrid: quantizedReferenceTextGrid,
     );
 
     // Append recent action history to break repetition loops
@@ -1424,4 +1467,70 @@ List<List<Color>> _applyEdgeDetection(List<List<Color>> src) {
     }
   }
   return dest;
+}
+
+List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
+  final List<List<int>> grid = List.generate(64, (_) => List.filled(64, 0));
+  if (bmpBytes.length >= 54 + 64 * 64 * 3) {
+    final refGrid = _bmpToColorGrid(bmpBytes);
+    final blurredGrid = _applyGaussianBlur(refGrid);
+    for (int y = 0; y < 64; y++) {
+      for (int x = 0; x < 64; x++) {
+        final color = blurredGrid[y][x];
+        int closestIndex = 0;
+        double minDistance = double.infinity;
+        for (int i = 0; i < palette.length; i++) {
+          final pColor = palette[i];
+          final dr = color.red - pColor.red;
+          final dg = color.green - pColor.green;
+          final db = color.blue - pColor.blue;
+          final dist = dr * dr + dg * dg + db * db;
+          if (dist < minDistance) {
+            minDistance = dist.toDouble();
+            closestIndex = i;
+          }
+        }
+        grid[y][x] = closestIndex;
+      }
+    }
+  }
+  return grid;
+}
+
+String canvasToTextGrid(List<List<int>> grid) {
+  final buffer = StringBuffer();
+
+  // Header: 10s digits
+  buffer.write('    ');
+  for (int x = 0; x < 64; x++) {
+    buffer.write(x >= 10 ? '${x ~/ 10}' : ' ');
+  }
+  buffer.write('\n');
+
+  // Header: 1s digits
+  buffer.write('    ');
+  for (int x = 0; x < 64; x++) {
+    buffer.write('${x % 10}');
+  }
+  buffer.write('\n');
+
+  // Rows
+  for (int y = 0; y < 64; y++) {
+    buffer.write('${y.toString().padLeft(3)} ');
+    for (int x = 0; x < 64; x++) {
+      final val = grid[y][x];
+      if (val == 0) {
+        buffer.write('.');
+      } else if (val < 10) {
+        buffer.write('$val');
+      } else if (val < 36) {
+        buffer.write(String.fromCharCode(65 + val - 10)); // A-Z
+      } else {
+        buffer.write('#');
+      }
+    }
+    buffer.write('\n');
+  }
+
+  return buffer.toString();
 }

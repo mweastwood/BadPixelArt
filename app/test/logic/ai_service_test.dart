@@ -89,5 +89,24 @@ void main() {
       final inputNoMarkdown = '{"tool": "fill"}';
       expect(cleanJsonString(inputNoMarkdown), equals('{"tool": "fill"}'));
     });
+
+    test('formatUserPrompt includes custom text grids when provided', () {
+      final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
+      final prompt = 'draw reference';
+      final paletteColors = ['#000000', '#ffffff'];
+
+      final userPrompt = formatUserPrompt(
+        canvasImage: canvasImage,
+        prompt: prompt,
+        paletteColors: paletteColors,
+        currentCanvasTextGrid: 'CANVAS_GRID_MOCK',
+        quantizedReferenceTextGrid: 'REFERENCE_GRID_MOCK',
+      );
+
+      expect(userPrompt, contains('CURRENT CANVAS STATE'));
+      expect(userPrompt, contains('CANVAS_GRID_MOCK'));
+      expect(userPrompt, contains('TARGET REFERENCE LAYOUT'));
+      expect(userPrompt, contains('REFERENCE_GRID_MOCK'));
+    });
   });
 }
