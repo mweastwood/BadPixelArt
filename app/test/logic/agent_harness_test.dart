@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/ai_service.dart';
+import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/agent_harness.dart';
+import 'package:bad_pixel_art/logic/pixel_art_agent_delegate.dart';
 
 class MockAiService implements AiService {
   final List<Map<String, dynamic>> responses;
@@ -18,19 +21,17 @@ class MockAiService implements AiService {
   Future<void> triggerDownload() async {}
 
   @override
-  Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List canvasImage,
+  Future<String?> generateContent({
     required String prompt,
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
   }) async {
     capturedPrompts.add(prompt);
     if (callCount < responses.length) {
-      return responses[callCount++];
+      return jsonEncode(responses[callCount++]);
     }
-    return {'tool': 'finish', 'reasoning': 'Done'};
+    return jsonEncode({'tool': 'finish', 'reasoning': 'Done'});
   }
-
-  @override
-  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async => null;
 }
 
 class MockAgentCanvas implements AgentCanvas {
@@ -60,6 +61,40 @@ class MockAgentCanvas implements AgentCanvas {
   }
 }
 
+class MockTextAgentDelegate implements AgentDelegate {
+  int counter = 0;
+  final List<String> actionsApplied = [];
+
+  @override
+  String formatPrompt(String userPrompt, List<AgentStepResult> history) {
+    final buffer = StringBuffer();
+    buffer.write('Prompt: $userPrompt. History:');
+    for (var res in history) {
+      buffer.write(' [${res.tool}:${res.feedback}]');
+    }
+    return buffer.toString();
+  }
+
+  @override
+  Uint8List? getVisualInput() => null;
+
+  @override
+  Future<String> applyAction(Map<String, dynamic> actionMap) async {
+    final action = actionMap['action'] as String? ?? '';
+    actionsApplied.add(action);
+    if (action == 'increment') {
+      counter++;
+      return 'Counter is now $counter';
+    }
+    return 'Unknown action';
+  }
+
+  @override
+  bool isFinishAction(Map<String, dynamic> actionMap) {
+    return actionMap['action'] == 'stop';
+  }
+}
+
 void main() {
   group('AgentHarness ReAct Loop Tests', () {
     test('harness executes drawing steps and updates canvas', () async {
@@ -84,12 +119,15 @@ void main() {
         },
       ]);
       final mockCanvas = MockAgentCanvas();
-      final harness = AgentHarness(aiService: mockAi, canvas: mockCanvas);
+      final delegate = PixelArtAgentDelegate(
+        canvas: mockCanvas,
+        referenceImageBmp: null,
+        previousCanvasBmp: null,
+      );
+      final harness = AgentHarness(aiService: mockAi, delegate: delegate);
 
       final steps = await harness.runDrawingLoop(
         userPrompt: 'draw a stick figure',
-        referenceImageBmp: null,
-        previousCanvasBmp: null,
         maxSteps: 5,
       );
 
@@ -133,12 +171,15 @@ void main() {
         },
       ]);
       final mockCanvas = MockAgentCanvas();
-      final harness = AgentHarness(aiService: mockAi, canvas: mockCanvas);
+      final delegate = PixelArtAgentDelegate(
+        canvas: mockCanvas,
+        referenceImageBmp: null,
+        previousCanvasBmp: null,
+      );
+      final harness = AgentHarness(aiService: mockAi, delegate: delegate);
 
       final steps = await harness.runDrawingLoop(
         userPrompt: 'draw a stick figure',
-        referenceImageBmp: null,
-        previousCanvasBmp: null,
         maxSteps: 2,
       );
 
@@ -151,12 +192,15 @@ void main() {
         {'error': 'Aicore model crashed'},
       ]);
       final mockCanvas = MockAgentCanvas();
-      final harness = AgentHarness(aiService: mockAi, canvas: mockCanvas);
+      final delegate = PixelArtAgentDelegate(
+        canvas: mockCanvas,
+        referenceImageBmp: null,
+        previousCanvasBmp: null,
+      );
+      final harness = AgentHarness(aiService: mockAi, delegate: delegate);
 
       final steps = await harness.runDrawingLoop(
         userPrompt: 'draw a stick figure',
-        referenceImageBmp: null,
-        previousCanvasBmp: null,
       );
 
       expect(steps.length, equals(1));
@@ -181,14 +225,14 @@ void main() {
         },
       ]);
       final mockCanvas = MockAgentCanvas();
-      final harness = AgentHarness(aiService: mockAi, canvas: mockCanvas);
-
-      await harness.runDrawingLoop(
-        userPrompt: 'draw a line',
+      final delegate = PixelArtAgentDelegate(
+        canvas: mockCanvas,
         referenceImageBmp: null,
         previousCanvasBmp: null,
-        maxSteps: 2,
       );
+      final harness = AgentHarness(aiService: mockAi, delegate: delegate);
+
+      await harness.runDrawingLoop(userPrompt: 'draw a line', maxSteps: 2);
 
       expect(mockAi.capturedPrompts.length, equals(2));
       // Second prompt should contain Step 1 details
@@ -198,5 +242,55 @@ void main() {
         contains('Action: line with params [0, 0, 5, 5] and color index 1'),
       );
     });
+
+    test(
+      'harness executes steps with a completely generic text delegate',
+      () async {
+        final mockAi = MockAiService([
+          {
+            'action': 'increment',
+            'understanding': 'incrementing count',
+            'tool': 'inc',
+            'params': [],
+            'color': 0,
+          },
+          {
+            'action': 'increment',
+            'understanding': 'incrementing count again',
+            'tool': 'inc',
+            'params': [],
+            'color': 0,
+          },
+          {
+            'action': 'stop',
+            'understanding': 'done now',
+            'tool': 'finish',
+            'params': [],
+            'color': 0,
+          },
+        ]);
+        final delegate = MockTextAgentDelegate();
+        final harness = AgentHarness(aiService: mockAi, delegate: delegate);
+
+        final steps = await harness.runDrawingLoop(
+          userPrompt: 'count to 2',
+          maxSteps: 5,
+        );
+
+        expect(steps.length, equals(3));
+        expect(steps[0].tool, equals('inc'));
+        expect(steps[0].feedback, equals('Counter is now 1'));
+        expect(steps[0].isFinish, isFalse);
+
+        expect(steps[1].tool, equals('inc'));
+        expect(steps[1].feedback, equals('Counter is now 2'));
+        expect(steps[1].isFinish, isFalse);
+
+        expect(steps[2].isFinish, isTrue);
+
+        expect(delegate.counter, equals(2));
+        expect(delegate.actionsApplied, equals(['increment', 'increment']));
+      },
+    );
   });
 }

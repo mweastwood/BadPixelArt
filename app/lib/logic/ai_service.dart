@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,140 +10,11 @@ enum AiCoreStatus { unavailable, downloadable, downloading, available }
 abstract class AiService {
   Future<AiCoreStatus> checkStatus();
   Future<void> triggerDownload();
-  Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List canvasImage,
+  Future<String?> generateContent({
     required String prompt,
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
   });
-  Future<List<Color>?> suggestPalette(Uint8List referenceImage);
-}
-
-String formatSystemInstruction() {
-  return 'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
-      'Note: Each 64x64 canvas panel in your visual input is padded with a black border on the top and left to a size of 80x80 pixels. This border displays a coordinate ruler (tick marks and numbers: 0, 16, 32, 48, 63) to guide your drawing placement.\n'
-      'Depending on the session, your visual input consists of the following panels side-by-side (from left to right):\n'
-      '1. Reference (Original): The target image you want to match.\n'
-      '2. Reference (Edges): A high-contrast black-and-white outline map of the reference boundaries.\n'
-      '3. Reference (Quantized): A smoothed, color-quantized version of the reference containing only dominant blocks in your exact drawing palette.\n'
-      '4. Previous Canvas (optional): The state of the canvas prior to the last action.\n'
-      '5. Current Canvas: The current state of the canvas.\n'
-      'Use the Edges panel to align outline shapes, the Quantized panel to align block regions and choose palette color indices, and the Current/Previous panels to track changes.\n'
-      'Available tools:\n'
-      '- "line": params [startX, startY, endX, endY]\n'
-      '- "circle": params [centerX, centerY, radius] (outlined circle)\n'
-      '- "circle_filled": params [centerX, centerY, radius]\n'
-      '- "circle_hatched": params [centerX, centerY, radius] (alternating checkerboard pattern filled circle)\n'
-      '- "rectangle": params [startX, startY, endX, endY] (outlined rectangle)\n'
-      '- "rectangle_filled": params [startX, startY, endX, endY]\n'
-      '- "rectangle_hatched": params [startX, startY, endX, endY] (alternating checkerboard pattern filled rectangle)\n'
-      '- "fill": params [startX, startY]\n'
-      '- "hatch": params [startX, startY] (alternating checkerboard pattern flood fill)\n'
-      '- "undo": params [] (reverts the last AI or user action if the AI thinks the last stroke was a mistake)\n\n'
-      'You must output EXACTLY a valid JSON block containing your understanding of the image, your reasoning for the next stroke, and the next stroke itself. No explanation, no markdown tags. Example:\n'
-      '{\n'
-      '  "understanding": "Brief description of what you see on the canvas right now",\n'
-      '  "reasoning": "Explanation of why you are suggesting this stroke",\n'
-      '  "tool": "line",\n'
-      '  "params": [10, 15, 20, 25],\n'
-      '  "color": 2\n'
-      '}';
-}
-
-String formatPalettePrompt() {
-  return 'Analyze this reference image and suggest a palette of exactly 16 colors. '
-      'Output a JSON array containing exactly 16 hex color strings (e.g. ["#ff0000", "#00ff00", ...]). '
-      'Output nothing else.';
-}
-
-String formatUserPrompt({
-  required Uint8List canvasImage,
-  required String prompt,
-  required List<String> paletteColors,
-  bool isMultimodal = false,
-  bool hasPreviousImage = false,
-  bool hasReferenceImage = false,
-  String? currentCanvasTextGrid,
-  String? quantizedReferenceTextGrid,
-  String? loopHistory,
-}) {
-  String canvasGridString;
-  if (isMultimodal) {
-    if (hasReferenceImage && hasPreviousImage) {
-      canvasGridString =
-          'The attached image contains the reference image (left panel), previous canvas state (middle panel), and current canvas state (right panel).';
-    } else if (hasReferenceImage) {
-      canvasGridString =
-          'The attached image contains the reference image (left panel) and current canvas state (right panel).';
-    } else if (hasPreviousImage) {
-      canvasGridString =
-          'The attached image contains the previous canvas state (left panel) and current canvas state (right panel).';
-    } else {
-      canvasGridString =
-          'The current canvas is provided as an image attachment.';
-    }
-  } else {
-    String decodedGrid = utf8.decode(canvasImage);
-    if (!decodedGrid.contains(RegExp(r'[1-9]'))) {
-      decodedGrid = 'The grid is completely empty (all 0s).';
-    }
-    canvasGridString = 'Current grid layout serialized: $decodedGrid';
-  }
-
-  String refShapeInstruction = '';
-  if (hasReferenceImage) {
-    refShapeInstruction =
-        'Use the provided reference image (sent as an image attachment) to guide your drawings.';
-  }
-
-  final colorList = paletteColors
-      .asMap()
-      .entries
-      .map((e) {
-        final index = e.key;
-        final hex = e.value;
-        return '- Index $index: $hex';
-      })
-      .join('\n');
-
-  final textGridSection = StringBuffer();
-  if (quantizedReferenceTextGrid != null) {
-    textGridSection.write(
-      '\nTARGET REFERENCE LAYOUT (quantized to available palette colors):\n',
-    );
-    textGridSection.write(quantizedReferenceTextGrid);
-  }
-  if (currentCanvasTextGrid != null) {
-    textGridSection.write(
-      '\nCURRENT CANVAS STATE (each character represents a palette color index, . = empty):\n',
-    );
-    textGridSection.write(currentCanvasTextGrid);
-  }
-  if (loopHistory != null && loopHistory.isNotEmpty) {
-    textGridSection.write('\nAGENT LOOP CONVERSATION HISTORY:\n');
-    textGridSection.write(loopHistory);
-  }
-
-  return 'User Instruction: "$prompt"\n'
-      '$refShapeInstruction\n'
-      'Available Color Palette (select the correct index for the "color" field):\n'
-      '$colorList\n'
-      '$canvasGridString\n'
-      '$textGridSection\n\n'
-      'Output the single next stroke JSON now:';
-}
-
-String cleanJsonString(String input) {
-  var cleaned = input.trim();
-  if (cleaned.startsWith('```')) {
-    final lines = cleaned.split('\n');
-    if (lines.first.startsWith('```')) {
-      lines.removeAt(0);
-    }
-    if (lines.isNotEmpty && lines.last.startsWith('```')) {
-      lines.removeLast();
-    }
-    cleaned = lines.join('\n').trim();
-  }
-  return cleaned;
 }
 
 class MethodChannelAiService implements AiService {
@@ -182,9 +52,10 @@ class MethodChannelAiService implements AiService {
   }
 
   @override
-  Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List canvasImage,
+  Future<String?> generateContent({
     required String prompt,
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
   }) async {
     try {
       String? resultString;
@@ -192,11 +63,14 @@ class MethodChannelAiService implements AiService {
       StackTrace? lastStackTrace;
       final List<String> attemptErrors = [];
 
+      final String method = lowTemperature ? 'suggestPalette' : 'getNextStroke';
+      final String imageKey = lowTemperature ? 'referenceImage' : 'canvasImage';
+
       for (int attempt = 1; attempt <= 4; attempt++) {
         try {
-          resultString = await _channel.invokeMethod<String>('getNextStroke', {
+          resultString = await _channel.invokeMethod<String>(method, {
             'prompt': prompt,
-            'canvasImage': canvasImage,
+            imageKey: imageBytes,
           });
           break; // Success! Exit the retry loop.
         } catch (e, stack) {
@@ -204,7 +78,7 @@ class MethodChannelAiService implements AiService {
           lastStackTrace = stack;
           attemptErrors.add('Attempt $attempt: $e');
           debugPrint(
-            'Error getting next stroke (attempt $attempt/4) via MethodChannel: $e',
+            'Error generating content (attempt $attempt/4) via MethodChannel ($method): $e',
           );
           if (attempt < 4) {
             final backoffMs = attempt * 500; // 500ms, 1000ms, 1500ms
@@ -216,117 +90,23 @@ class MethodChannelAiService implements AiService {
       if (resultString == null) {
         if (lastError != null) {
           debugPrint(lastStackTrace.toString());
-          return {
-            'error': lastError.toString(),
-            'rawResponse':
-                'MethodChannel invocation error:\n${attemptErrors.join('\n')}',
-          };
+          return '{"error": "${lastError.toString().replaceAll('"', '\\"')}"}';
         }
         return null;
       }
 
-      final cleanedString = cleanJsonString(resultString);
-      try {
-        final parsed = jsonDecode(cleanedString);
-        if (parsed is Map<String, dynamic>) {
-          return parsed;
-        }
-      } catch (e) {
-        return {'error': e.toString(), 'rawResponse': resultString};
-      }
+      return resultString;
     } catch (e, stack) {
-      debugPrint('Error getting next stroke via MethodChannel: $e');
+      debugPrint('Error generating content via MethodChannel: $e');
       debugPrint(stack.toString());
-      return {
-        'error': e.toString(),
-        'rawResponse': 'MethodChannel invocation error: $e',
-      };
-    }
-    return null;
-  }
-
-  @override
-  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
-    try {
-      final String? resultString = await _channel.invokeMethod<String>(
-        'suggestPalette',
-        {'referenceImage': referenceImage, 'prompt': formatPalettePrompt()},
-      );
-      if (resultString == null) return null;
-      return parsePaletteColors(resultString);
-    } catch (e, stack) {
-      debugPrint('Error invoking suggestPalette via MethodChannel: $e');
-      debugPrint(stack.toString());
-      return null;
+      return '{"error": "${e.toString().replaceAll('"', '\\"')}"}';
     }
   }
-}
-
-const List<Color> _fallbackColors = [
-  Color(0xFF000000), // Black
-  Color(0xFFFFFFFF), // White
-  Color(0xFFFF0000), // Red
-  Color(0xFF00FF00), // Green
-  Color(0xFF0000FF), // Blue
-  Color(0xFFFFFF00), // Yellow
-  Color(0xFFFF00FF), // Magenta
-  Color(0xFF00FFFF), // Cyan
-];
-
-List<Color> parsePaletteColors(String responseText) {
-  final List<Color> colors = [];
-  try {
-    final cleaned = cleanJsonString(responseText);
-    final decoded = jsonDecode(cleaned);
-    if (decoded is List) {
-      for (final item in decoded) {
-        if (item is String) {
-          final hex = item.trim().replaceFirst('#', '');
-          final colorVal = int.tryParse(hex, radix: 16);
-          if (colorVal != null) {
-            if (hex.length == 6) {
-              colors.add(Color(0xFF000000 | colorVal));
-            } else if (hex.length == 8) {
-              colors.add(Color(colorVal));
-            }
-          }
-        }
-      }
-    }
-  } catch (e) {
-    debugPrint('Error parsing suggested palette: $e');
-  }
-
-  if (colors.isEmpty) {
-    final hexRegex = RegExp(r'#([0-9a-fA-F]{6})');
-    for (final match in hexRegex.allMatches(responseText)) {
-      final hex = match.group(1)!;
-      final colorVal = int.tryParse(hex, radix: 16);
-      if (colorVal != null) {
-        colors.add(Color(0xFF000000 | colorVal));
-      }
-    }
-  }
-
-  if (colors.length > 16) {
-    return colors.take(16).toList();
-  }
-  while (colors.length < 16) {
-    final idx = colors.length;
-    colors.add(_fallbackColors[idx % _fallbackColors.length]);
-  }
-  return colors;
 }
 
 class MockAiService implements AiService {
   AiCoreStatus _status = AiCoreStatus.available;
   int _strokeCount = 0;
-
-  @override
-  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return List.generate(16, (i) => Color(0xFF000000 | (i * 0x111111)));
-  }
 
   @override
   Future<AiCoreStatus> checkStatus() async {
@@ -348,11 +128,21 @@ class MockAiService implements AiService {
   }
 
   @override
-  Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List canvasImage,
+  Future<String?> generateContent({
     required String prompt,
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
   }) async {
     await Future.delayed(const Duration(milliseconds: 600));
+
+    if (lowTemperature) {
+      // Mock suggesting exactly 16 hex color strings
+      final List<String> mockPalette = List.generate(16, (i) {
+        final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
+        return '#$val$val$val';
+      });
+      return '["${mockPalette.join('", "')}"]';
+    }
 
     _strokeCount++;
 
@@ -361,39 +151,37 @@ class MockAiService implements AiService {
     final colorIdx = 1; // Pick index 1 as a default color index
 
     if (step == 0) {
-      return {
-        'understanding': 'The canvas is currently empty.',
-        'reasoning': 'Creating a central circular shape to start the drawing.',
-        'tool': 'circle',
-        'params': [32, 32, 10],
-        'color': colorIdx,
-      };
+      return '{\n'
+          '  "understanding": "The canvas is currently empty.",\n'
+          '  "reasoning": "Creating a central circular shape to start the drawing.",\n'
+          '  "tool": "circle",\n'
+          '  "params": [32, 32, 10],\n'
+          '  "color": $colorIdx\n'
+          '}';
     } else if (step == 1) {
-      return {
-        'understanding': 'I see a circle in the center of the grid.',
-        'reasoning':
-            'Drawing a diagonal line crossing the canvas for structure.',
-        'tool': 'line',
-        'params': [10, 10, 54, 54],
-        'color': colorIdx,
-      };
+      return '{\n'
+          '  "understanding": "I see a circle in the center of the grid.",\n'
+          '  "reasoning": "Drawing a diagonal line crossing the canvas for structure.",\n'
+          '  "tool": "line",\n'
+          '  "params": [10, 10, 54, 54],\n'
+          '  "color": $colorIdx\n'
+          '}';
     } else if (step == 2) {
-      return {
-        'understanding': 'I see a circle and a diagonal line.',
-        'reasoning':
-            'Performing a flood fill at the center to add solid color.',
-        'tool': 'fill',
-        'params': [32, 32],
-        'color': colorIdx == 2 ? 3 : 0,
-      };
+      return '{\n'
+          '  "understanding": "I see a circle and a diagonal line.",\n'
+          '  "reasoning": "Performing a flood fill at the center to add solid color.",\n'
+          '  "tool": "fill",\n'
+          '  "params": [32, 32],\n'
+          '  "color": ${colorIdx == 2 ? 3 : 0}\n'
+          '}';
     } else {
-      return {
-        'understanding': 'I see a filled circle and a line.',
-        'reasoning': 'Applying a checkerboard hatch pattern to create texture.',
-        'tool': 'hatch',
-        'params': [16, 16],
-        'color': colorIdx,
-      };
+      return '{\n'
+          '  "understanding": "I see a filled circle and a line.",\n'
+          '  "reasoning": "Applying a checkerboard hatch pattern to create texture.",\n'
+          '  "tool": "hatch",\n'
+          '  "params": [16, 16],\n'
+          '  "color": $colorIdx\n'
+          '}';
     }
   }
 }

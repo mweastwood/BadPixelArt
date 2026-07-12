@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'dart:js_interop';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'ai_service.dart';
 
@@ -63,42 +61,31 @@ class WebAiService implements AiService {
   }
 
   @override
-  Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List canvasImage,
+  Future<String?> generateContent({
     required String prompt,
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
   }) async {
     try {
       final ai = chromeAi;
       if (ai == null) return null;
 
+      if (lowTemperature) {
+        // Fallback for suggesting exactly 16 hex color strings on web
+        await Future.delayed(const Duration(milliseconds: 500));
+        final List<String> mockPalette = List.generate(16, (i) {
+          final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
+          return '#$val$val$val';
+        });
+        return '["${mockPalette.join('", "')}"]';
+      }
+
       final jsResponse = await ai.getNextStroke(prompt.toJS, ''.toJS).toDart;
       final String? response = (jsResponse as JSString?)?.toDart;
-
-      if (response == null) return null;
-
-      // Parse JSON from response
-      String sanitized = response.trim();
-      if (sanitized.startsWith('```')) {
-        final lines = sanitized.split('\n');
-        final filtered = lines
-            .where((line) => !line.trim().startsWith('```'))
-            .join('\n');
-        sanitized = filtered.trim();
-      }
-
-      final parsed = jsonDecode(sanitized);
-      if (parsed is Map<String, dynamic>) {
-        return parsed;
-      }
+      return response;
     } catch (e) {
-      debugPrint('Error getting next stroke from Web AI: $e');
+      debugPrint('Error generating content from Web AI: $e');
     }
     return null;
-  }
-
-  @override
-  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return List.generate(16, (i) => Color(0xFF000000 | (i * 0x111111)));
   }
 }

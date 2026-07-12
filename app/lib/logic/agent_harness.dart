@@ -1,16 +1,20 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'ai_service.dart';
-import 'canvas_state.dart';
 
-abstract class AgentCanvas {
-  List<List<int>> get grid;
-  List<Color> get palette;
-  void applyCommand(String toolName, List<int> params, int colorIndex);
-  Uint8List generateCombinedVisualInput(
-    Uint8List? referenceBmp,
-    Uint8List? previousBmp,
-  );
+abstract class AgentDelegate {
+  /// Formats the prompt for the next step, incorporating loop history.
+  String formatPrompt(String userPrompt, List<AgentStepResult> history);
+
+  /// Provides the visual/image input for the next step, if any.
+  Uint8List? getVisualInput();
+
+  /// Applies the action represented by the parsed map and returns feedback.
+  Future<String> applyAction(Map<String, dynamic> actionMap);
+
+  /// Checks if the action represents a termination/finish action.
+  bool isFinishAction(Map<String, dynamic> actionMap);
 }
 
 class AgentStepResult {
@@ -33,75 +37,69 @@ class AgentStepResult {
 
 class AgentHarness {
   final AiService aiService;
-  final AgentCanvas canvas;
+  final AgentDelegate delegate;
 
-  AgentHarness({required this.aiService, required this.canvas});
+  AgentHarness({required this.aiService, required this.delegate});
 
-  /// Runs a ReAct loop for the specified max steps
+  /// Runs the agent reasoning-action loop.
   Future<List<AgentStepResult>> runDrawingLoop({
     required String userPrompt,
-    required Uint8List? referenceImageBmp,
-    required Uint8List? previousCanvasBmp,
     int maxSteps = 5,
     Function(AgentStepResult stepResult, int currentStep)? onStep,
   }) async {
     final List<AgentStepResult> results = [];
-    final List<String> paletteHexes = canvas.palette.map((c) {
-      return '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
-    }).toList();
-
-    String? quantizedReferenceTextGrid;
-    if (referenceImageBmp != null) {
-      final quantizedGrid = getQuantizedIndexGrid(
-        referenceImageBmp,
-        canvas.palette,
-      );
-      quantizedReferenceTextGrid = canvasToTextGrid(quantizedGrid);
-    }
 
     for (int step = 1; step <= maxSteps; step++) {
-      // 1. Generate text grid representation of current canvas
-      final currentCanvasTextGrid = canvasToTextGrid(canvas.grid);
+      // 1. Get the combined image input from the delegate
+      final visualInput = delegate.getVisualInput();
 
-      // 2. Generate combined visual image input
-      final combinedBmp = canvas.generateCombinedVisualInput(
-        referenceImageBmp,
-        previousCanvasBmp,
+      // 2. Format the prompt with history
+      final prompt = delegate.formatPrompt(userPrompt, results);
+
+      // 3. Query LLM model
+      final responseText = await aiService.generateContent(
+        prompt: prompt,
+        imageBytes: visualInput,
       );
 
-      // 3. Construct history string of thoughts and outcomes
-      final historyBuffer = StringBuffer();
-      for (int i = 0; i < results.length; i++) {
-        final res = results[i];
-        historyBuffer.write('\n[Step ${i + 1}] Thoughts: "${res.thought}"\n');
-        historyBuffer.write(
-          'Action: ${res.tool} with params ${res.params} and color index ${res.colorIndex}\n',
+      if (responseText == null) {
+        final errorResult = AgentStepResult(
+          thought: 'Encountered error: AI service returned empty response',
+          tool: 'finish',
+          params: [],
+          colorIndex: 0,
+          feedback: 'Error: Empty response',
+          isFinish: true,
         );
-        historyBuffer.write('Result: ${res.feedback}\n');
+        results.add(errorResult);
+        if (onStep != null) {
+          onStep(errorResult, step);
+        }
+        break;
       }
 
-      // 4. Format prompt
-      final prompt = formatUserPrompt(
-        canvasImage: combinedBmp,
-        prompt: userPrompt,
-        paletteColors: paletteHexes,
-        isMultimodal: aiService is MethodChannelAiService,
-        hasPreviousImage: previousCanvasBmp != null,
-        hasReferenceImage: referenceImageBmp != null,
-        currentCanvasTextGrid: currentCanvasTextGrid,
-        quantizedReferenceTextGrid: quantizedReferenceTextGrid,
-        loopHistory: historyBuffer.toString(),
-      );
+      // Parse JSON from response (clean markdown if present)
+      var cleanedString = responseText.trim();
+      if (cleanedString.startsWith('```')) {
+        final lines = cleanedString.split('\n');
+        if (lines.first.startsWith('```')) {
+          lines.removeAt(0);
+        }
+        if (lines.isNotEmpty && lines.last.startsWith('```')) {
+          lines.removeLast();
+        }
+        cleanedString = lines.join('\n').trim();
+      }
 
-      // 5. Query AI model
-      final responseMap = await aiService.getNextStroke(
-        canvasImage: combinedBmp,
-        prompt: prompt,
-      );
+      Map<String, dynamic> parsed;
+      try {
+        parsed = jsonDecode(cleanedString) as Map<String, dynamic>;
+      } catch (e) {
+        parsed = {'error': e.toString(), 'rawResponse': responseText};
+      }
 
-      if (responseMap == null || responseMap.containsKey('error')) {
-        final errorMsg =
-            responseMap?['error'] ?? 'AI service returned empty response';
+      if (parsed.containsKey('error')) {
+        final errorMsg = parsed['error'] ?? 'AI service returned error';
         final errorResult = AgentStepResult(
           thought: 'Encountered error: $errorMsg',
           tool: 'finish',
@@ -117,16 +115,15 @@ class AgentHarness {
         break;
       }
 
-      final thought =
-          responseMap['understanding'] ?? responseMap['reasoning'] ?? '';
-      final tool = responseMap['tool'] as String?;
-      final paramsRaw = responseMap['params'];
+      final thought = parsed['understanding'] ?? parsed['reasoning'] ?? '';
+      final tool = parsed['tool'] as String?;
+      final paramsRaw = parsed['params'];
       final List<int> params = paramsRaw is List
           ? List<int>.from(paramsRaw.map((x) => x as int))
           : [];
-      final colorIndex = responseMap['color'] as int? ?? 0;
+      final colorIndex = parsed['color'] as int? ?? 0;
 
-      if (tool == null || tool == 'finish') {
+      if (tool == null || delegate.isFinishAction(parsed)) {
         final finishResult = AgentStepResult(
           thought: thought,
           tool: 'finish',
@@ -142,11 +139,9 @@ class AgentHarness {
         break;
       }
 
-      // Apply command to canvas
-      canvas.applyCommand(tool, params, colorIndex);
+      // Apply command to environment
+      final stepFeedback = await delegate.applyAction(parsed);
 
-      final stepFeedback =
-          'Executed $tool with params $params and color index $colorIndex.';
       final stepResult = AgentStepResult(
         thought: thought,
         tool: tool,

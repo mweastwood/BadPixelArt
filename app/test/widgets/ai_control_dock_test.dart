@@ -16,14 +16,20 @@ class MockTestAiService implements AiService {
   Future<void> triggerDownload() async {}
 
   @override
-  Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List canvasImage,
+  Future<String?> generateContent({
     required String prompt,
-  }) async => null;
-
-  @override
-  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async =>
-      List.generate(16, (i) => Color(0xFF000000 + i));
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
+  }) async {
+    if (lowTemperature) {
+      final List<String> mockPalette = List.generate(16, (i) {
+        final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
+        return '#$val$val$val';
+      });
+      return '["${mockPalette.join('", "')}"]';
+    }
+    return null;
+  }
 }
 
 void main() {

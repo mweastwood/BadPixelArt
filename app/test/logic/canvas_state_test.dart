@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bad_pixel_art/logic/ai_service.dart';
+import 'package:bad_pixel_art/logic/prompts.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 
 class MockTestAiService implements AiService {
@@ -11,11 +13,6 @@ class MockTestAiService implements AiService {
   Uint8List? lastCanvasImage;
   String? lastPrompt;
   Map<String, dynamic>? mockResult;
-
-  @override
-  Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
-    return List.generate(16, (i) => Color(0xFF000000 + i));
-  }
 
   @override
   Future<AiCoreStatus> checkStatus() async => status;
@@ -27,13 +24,22 @@ class MockTestAiService implements AiService {
   }
 
   @override
-  Future<Map<String, dynamic>?> getNextStroke({
-    required Uint8List canvasImage,
+  Future<String?> generateContent({
     required String prompt,
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
   }) async {
-    lastCanvasImage = canvasImage;
+    if (lowTemperature) {
+      final List<String> mockPalette = List.generate(16, (i) {
+        final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
+        return '#$val$val$val';
+      });
+      return '["${mockPalette.join('", "')}"]';
+    }
+    lastCanvasImage = imageBytes;
     lastPrompt = prompt;
-    return mockResult;
+    if (mockResult == null) return null;
+    return jsonEncode(mockResult);
   }
 }
 
