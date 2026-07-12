@@ -40,7 +40,7 @@ dependencies:
   file_picker: ^11.0.2
   local_agent:
     git:
-      url: git@github.com:mweastwood/flutter-local-agent.git
+      url: https://github.com/mweastwood/flutter-local-agent.git
       ref: main
 
 
