@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
+import 'drawing_commands.dart';
 
 enum CanvasTool { line, circle, fill, hatch }
 
@@ -688,312 +689,33 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(grid: newGrid);
   }
 
-  void applyLine(int x1, int y1, int x2, int y2) {
+  void _executeCommand(DrawingCommand command) {
     _pushToUndo(state.grid);
     final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _drawLineAlg(newGrid, x1, y1, x2, y2, state.selectedColorIndex);
+    command.execute(newGrid, state.selectedColorIndex, gridSize);
     state = state.copyWith(grid: newGrid);
   }
 
-  void applyCircle(int cx, int cy, int r) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _drawCircleAlg(newGrid, cx, cy, r, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
-
-  void applyFill(int startX, int startY) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _floodFillAlg(newGrid, startX, startY, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
-
-  void applyHatch(int startX, int startY) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _hatchFillAlg(newGrid, startX, startY, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
-
-  void applyCircleFilled(int cx, int cy, int r) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _drawCircleFilledAlg(newGrid, cx, cy, r, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
-
-  void applyRectangle(int x1, int y1, int x2, int y2) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _drawRectangleAlg(newGrid, x1, y1, x2, y2, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
-
-  void applyRectangleFilled(int x1, int y1, int x2, int y2) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _drawRectangleFilledAlg(newGrid, x1, y1, x2, y2, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
-
-  void applyCircleHatched(int cx, int cy, int r) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _drawCircleHatchedAlg(newGrid, cx, cy, r, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
-
-  void applyRectangleHatched(int x1, int y1, int x2, int y2) {
-    _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    _drawRectangleHatchedAlg(newGrid, x1, y1, x2, y2, state.selectedColorIndex);
-    state = state.copyWith(grid: newGrid);
-  }
+  void applyLine(int x1, int y1, int x2, int y2) =>
+      _executeCommand(LineCommand(x1, y1, x2, y2));
+  void applyCircle(int cx, int cy, int r) =>
+      _executeCommand(CircleCommand(cx, cy, r));
+  void applyCircleFilled(int cx, int cy, int r) =>
+      _executeCommand(CircleFilledCommand(cx, cy, r));
+  void applyCircleHatched(int cx, int cy, int r) =>
+      _executeCommand(CircleHatchedCommand(cx, cy, r));
+  void applyRectangle(int x1, int y1, int x2, int y2) =>
+      _executeCommand(RectangleCommand(x1, y1, x2, y2));
+  void applyRectangleFilled(int x1, int y1, int x2, int y2) =>
+      _executeCommand(RectangleFilledCommand(x1, y1, x2, y2));
+  void applyRectangleHatched(int x1, int y1, int x2, int y2) =>
+      _executeCommand(RectangleHatchedCommand(x1, y1, x2, y2));
+  void applyFill(int startX, int startY) =>
+      _executeCommand(FillCommand(startX, startY));
+  void applyHatch(int startX, int startY) =>
+      _executeCommand(HatchCommand(startX, startY));
 
   // Core algorithms
-  void _drawLineAlg(
-    List<List<int>> grid,
-    int x1,
-    int y1,
-    int x2,
-    int y2,
-    int color,
-  ) {
-    int dx = (x2 - x1).abs();
-    int dy = (y2 - y1).abs();
-    int sx = x1 < x2 ? 1 : -1;
-    int sy = y1 < y2 ? 1 : -1;
-    int err = dx - dy;
-
-    while (true) {
-      if (x1 >= 0 && x1 < gridSize && y1 >= 0 && y1 < gridSize) {
-        grid[y1][x1] = color;
-      }
-      if (x1 == x2 && y1 == y2) break;
-      int e2 = 2 * err;
-      if (e2 > -dy) {
-        err -= dy;
-        x1 += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y1 += sy;
-      }
-    }
-  }
-
-  void _drawCircleAlg(List<List<int>> grid, int xc, int yc, int r, int color) {
-    int x = 0;
-    int y = r;
-    int d = 3 - 2 * r;
-
-    void drawCirclePoints(int xc, int yc, int x, int y, int color) {
-      void setPixel(int px, int py) {
-        if (px >= 0 && px < gridSize && py >= 0 && py < gridSize) {
-          grid[py][px] = color;
-        }
-      }
-
-      setPixel(xc + x, yc + y);
-      setPixel(xc - x, yc + y);
-      setPixel(xc + x, yc - y);
-      setPixel(xc - x, yc - y);
-      setPixel(xc + y, yc + x);
-      setPixel(xc - y, yc + x);
-      setPixel(xc + y, yc - x);
-      setPixel(xc - y, yc - x);
-    }
-
-    drawCirclePoints(xc, yc, x, y, color);
-    while (y >= x) {
-      x++;
-      if (d > 0) {
-        y--;
-        d = d + 4 * (x - y) + 10;
-      } else {
-        d = d + 4 * x + 6;
-      }
-      drawCirclePoints(xc, yc, x, y, color);
-    }
-  }
-
-  void _floodFillAlg(
-    List<List<int>> grid,
-    int startX,
-    int startY,
-    int newColor,
-  ) {
-    if (startX < 0 || startX >= gridSize || startY < 0 || startY >= gridSize) {
-      return;
-    }
-    int targetColor = grid[startY][startX];
-    if (targetColor == newColor) return;
-
-    List<List<int>> queue = [
-      [startX, startY],
-    ];
-    while (queue.isNotEmpty) {
-      var curr = queue.removeLast();
-      int cx = curr[0];
-      int cy = curr[1];
-
-      if (grid[cy][cx] == targetColor) {
-        grid[cy][cx] = newColor;
-
-        if (cx > 0) queue.add([cx - 1, cy]);
-        if (cx < gridSize - 1) queue.add([cx + 1, cy]);
-        if (cy > 0) queue.add([cx, cy - 1]);
-        if (cy < gridSize - 1) queue.add([cx, cy + 1]);
-      }
-    }
-  }
-
-  void _hatchFillAlg(
-    List<List<int>> grid,
-    int startX,
-    int startY,
-    int newColor,
-  ) {
-    if (startX < 0 || startX >= gridSize || startY < 0 || startY >= gridSize) {
-      return;
-    }
-    int targetColor = grid[startY][startX];
-    if (targetColor == newColor) return;
-
-    List<List<int>> queue = [
-      [startX, startY],
-    ];
-    Set<String> visited = {};
-
-    while (queue.isNotEmpty) {
-      var curr = queue.removeLast();
-      int cx = curr[0];
-      int cy = curr[1];
-      String key = "$cx,$cy";
-      if (visited.contains(key)) continue;
-      visited.add(key);
-
-      if (grid[cy][cx] == targetColor) {
-        if ((cx + cy) % 2 == 0) {
-          grid[cy][cx] = newColor;
-        }
-
-        if (cx > 0) queue.add([cx - 1, cy]);
-        if (cx < gridSize - 1) queue.add([cx + 1, cy]);
-        if (cy > 0) queue.add([cx, cy - 1]);
-        if (cy < gridSize - 1) queue.add([cx, cy + 1]);
-      }
-    }
-  }
-
-  void _drawCircleFilledAlg(
-    List<List<int>> grid,
-    int xc,
-    int yc,
-    int r,
-    int color,
-  ) {
-    for (int y = yc - r; y <= yc + r; y++) {
-      for (int x = xc - r; x <= xc + r; x++) {
-        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-          if ((x - xc) * (x - xc) + (y - yc) * (y - yc) <= r * r) {
-            grid[y][x] = color;
-          }
-        }
-      }
-    }
-  }
-
-  void _drawCircleHatchedAlg(
-    List<List<int>> grid,
-    int xc,
-    int yc,
-    int r,
-    int color,
-  ) {
-    for (int y = yc - r; y <= yc + r; y++) {
-      for (int x = xc - r; x <= xc + r; x++) {
-        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-          if ((x - xc) * (x - xc) + (y - yc) * (y - yc) <= r * r) {
-            if ((x + y) % 2 == 0) {
-              grid[y][x] = color;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  void _drawRectangleAlg(
-    List<List<int>> grid,
-    int x1,
-    int y1,
-    int x2,
-    int y2,
-    int color,
-  ) {
-    int startX = x1 < x2 ? x1 : x2;
-    int endX = x1 < x2 ? x2 : x1;
-    int startY = y1 < y2 ? y1 : y2;
-    int endY = y1 < y2 ? y2 : y1;
-    for (int x = startX; x <= endX; x++) {
-      if (x >= 0 && x < gridSize) {
-        if (startY >= 0 && startY < gridSize) grid[startY][x] = color;
-        if (endY >= 0 && endY < gridSize) grid[endY][x] = color;
-      }
-    }
-    for (int y = startY; y <= endY; y++) {
-      if (y >= 0 && y < gridSize) {
-        if (startX >= 0 && startX < gridSize) grid[y][startX] = color;
-        if (endX >= 0 && endX < gridSize) grid[y][endX] = color;
-      }
-    }
-  }
-
-  void _drawRectangleFilledAlg(
-    List<List<int>> grid,
-    int x1,
-    int y1,
-    int x2,
-    int y2,
-    int color,
-  ) {
-    int startX = x1 < x2 ? x1 : x2;
-    int endX = x1 < x2 ? x2 : x1;
-    int startY = y1 < y2 ? y1 : y2;
-    int endY = y1 < y2 ? y2 : y1;
-    for (int y = startY; y <= endY; y++) {
-      for (int x = startX; x <= endX; x++) {
-        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-          grid[y][x] = color;
-        }
-      }
-    }
-  }
-
-  void _drawRectangleHatchedAlg(
-    List<List<int>> grid,
-    int x1,
-    int y1,
-    int x2,
-    int y2,
-    int color,
-  ) {
-    int startX = x1 < x2 ? x1 : x2;
-    int endX = x1 < x2 ? x2 : x1;
-    int startY = y1 < y2 ? y1 : y2;
-    int endY = y1 < y2 ? y2 : y1;
-    for (int y = startY; y <= endY; y++) {
-      for (int x = startX; x <= endX; x++) {
-        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-          if ((x + y) % 2 == 0) {
-            grid[y][x] = color;
-          }
-        }
-      }
-    }
-  }
 
   // Triggering next stroke from AI service
   Future<void> triggerAiStroke() async {
@@ -1127,55 +849,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     // Set notifier's current drawing color to match AI's stroke color
     state = state.copyWith(selectedColorIndex: boundedColorIndex);
 
-    switch (toolName) {
-      case 'line':
-        if (params.length >= 4) {
-          applyLine(params[0], params[1], params[2], params[3]);
-        }
-        break;
-      case 'circle':
-        if (params.length >= 3) {
-          applyCircle(params[0], params[1], params[2]);
-        }
-        break;
-      case 'circle_filled':
-        if (params.length >= 3) {
-          applyCircleFilled(params[0], params[1], params[2]);
-        }
-        break;
-      case 'circle_hatched':
-        if (params.length >= 3) {
-          applyCircleHatched(params[0], params[1], params[2]);
-        }
-        break;
-      case 'rectangle':
-        if (params.length >= 4) {
-          applyRectangle(params[0], params[1], params[2], params[3]);
-        }
-        break;
-      case 'rectangle_filled':
-        if (params.length >= 4) {
-          applyRectangleFilled(params[0], params[1], params[2], params[3]);
-        }
-        break;
-      case 'rectangle_hatched':
-        if (params.length >= 4) {
-          applyRectangleHatched(params[0], params[1], params[2], params[3]);
-        }
-        break;
-      case 'fill':
-        if (params.length >= 2) {
-          applyFill(params[0], params[1]);
-        }
-        break;
-      case 'hatch':
-        if (params.length >= 2) {
-          applyHatch(params[0], params[1]);
-        }
-        break;
-      case 'undo':
-        undo();
-        break;
+    if (toolName == 'undo') {
+      undo();
+      return;
+    }
+
+    final command = DrawingCommandFactory.create(toolName, params);
+    if (command != null) {
+      _executeCommand(command);
     }
   }
 
