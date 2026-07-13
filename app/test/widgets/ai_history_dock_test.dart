@@ -51,6 +51,9 @@ class LocalMockAiService implements AiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
+    if (prompt.contains('pixel art describer')) {
+      return 'Mock description of the canvas';
+    }
     if (temperature <= 0.5) {
       final List<String> mockPalette = List.generate(16, (i) {
         final val = (i * 0x11).toRadixString(16).padLeft(2, '0');

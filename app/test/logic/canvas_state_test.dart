@@ -31,6 +31,9 @@ class MockTestAiService implements AiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
+    if (prompt.contains('pixel art describer')) {
+      return 'Mock description of the canvas';
+    }
     if (temperature <= 0.5 && prompt.contains('16 colors')) {
       final List<String> mockPalette = List.generate(16, (i) {
         final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
@@ -588,15 +591,13 @@ void main() {
         await notifier.triggerAiStroke();
         expect(mockAiService.lastCanvasImage, isNotNull);
 
-        // 2 panels: Quantized, Current Canvas in 2x2 layout
-        // Width = 32. Height = 32.
-        // File size = 54 + 32 * 32 * 3 = 3126 bytes.
-        expect(mockAiService.lastCanvasImage!.length, equals(3126));
+        // Single panel: 16x16 canvas BMP length = 822 bytes
+        expect(mockAiService.lastCanvasImage!.length, equals(822));
         final ByteData bd = ByteData.sublistView(
           mockAiService.lastCanvasImage!,
         );
-        expect(bd.getUint32(18, Endian.little), equals(32)); // width
-        expect(bd.getUint32(22, Endian.little), equals(32)); // height
+        expect(bd.getUint32(18, Endian.little), equals(16)); // width
+        expect(bd.getUint32(22, Endian.little), equals(16)); // height
       },
     );
 
