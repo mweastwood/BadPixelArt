@@ -210,8 +210,11 @@ Uint8List combineBmps(List<Uint8List> bmps) {
   }
 
   final int panelSize = CanvasNotifier.gridSize + 16;
-  final int combinedWidth = panelSize * n;
-  final int combinedHeight = panelSize;
+  final int cols = n <= 1 ? 1 : 2;
+  final int rows = n <= 1 ? 1 : 2;
+
+  final int combinedWidth = panelSize * cols;
+  final int combinedHeight = panelSize * rows;
   const int bytesPerPixel = 3;
   final int rowPadding = (4 - (combinedWidth * bytesPerPixel) % 4) % 4;
   final int rowStride = combinedWidth * bytesPerPixel + rowPadding;
@@ -243,16 +246,31 @@ Uint8List combineBmps(List<Uint8List> bmps) {
 
   int offset = 54;
   for (int y = combinedHeight - 1; y >= 0; y--) {
-    for (int p = 0; p < n; p++) {
-      final panel = paddedPanels[p];
-      for (int x = 0; x < panelSize; x++) {
-        final color = panel[y][x];
-        combined[offset] = color.blue;
-        combined[offset + 1] = color.green;
-        combined[offset + 2] = color.red;
-        offset += 3;
+    final int gridRow = y ~/ panelSize;
+    final int panelY = y % panelSize;
+
+    for (int gridCol = 0; gridCol < cols; gridCol++) {
+      final int panelIndex = (rows - 1 - gridRow) * cols + gridCol;
+      if (panelIndex < n) {
+        final panel = paddedPanels[panelIndex];
+        for (int x = 0; x < panelSize; x++) {
+          final color = panel[panelY][x];
+          combined[offset] = color.blue;
+          combined[offset + 1] = color.green;
+          combined[offset + 2] = color.red;
+          offset += 3;
+        }
+      } else {
+        // Write black filler pixels
+        for (int x = 0; x < panelSize; x++) {
+          combined[offset] = 0;
+          combined[offset + 1] = 0;
+          combined[offset + 2] = 0;
+          offset += 3;
+        }
       }
     }
+
     for (int pad = 0; pad < rowPadding; pad++) {
       combined[offset++] = 0;
     }
