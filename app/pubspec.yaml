@@ -41,7 +41,7 @@ dependencies:
   local_agent:
     git:
       url: https://github.com/mweastwood/flutter-local-agent.git
-      ref: feat/add-agent-history-entry
+      ref: v0.0.4
 
 
 dev_dependencies:
