@@ -1,6 +1,26 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' as gt;
+import 'package:local_agent/local_agent.dart';
+
+class TestMockAiService implements AiService {
+  @override
+  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
+
+  @override
+  Future<void> triggerDownload() async {}
+
+  @override
+  Future<String?> generateContent({
+    required String prompt,
+    Uint8List? imageBytes,
+    bool lowTemperature = false,
+    int? maxOutputTokens,
+  }) async {
+    return null;
+  }
+}
 
 /// Wraps the widget under test in ProviderScope and MaterialApp.
 Widget buildTestableWidget({
@@ -8,7 +28,10 @@ Widget buildTestableWidget({
   List<Override> overrides = const [],
 }) {
   return ProviderScope(
-    overrides: overrides,
+    overrides: [
+      aiServiceProvider.overrideWithValue(TestMockAiService()),
+      ...overrides,
+    ],
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(),
@@ -24,7 +47,10 @@ gt.WidgetWrapper testMaterialAppWrapper({
 }) {
   return (Widget child) {
     return ProviderScope(
-      overrides: overrides,
+      overrides: [
+        aiServiceProvider.overrideWithValue(TestMockAiService()),
+        ...overrides,
+      ],
       child: gt.materialAppWrapper(platform: platform, theme: ThemeData.dark())(
         child,
       ),
