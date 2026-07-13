@@ -19,7 +19,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
 
   Future<void> _exportHistory(
     BuildContext context,
-    List<AiHistoryEntry> history,
+    List<AgentHistoryEntry> history,
   ) async {
     if (history.isEmpty) {
       ScaffoldMessenger.of(
@@ -29,18 +29,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
     }
 
     try {
-      final agentEntries = history.map((entry) {
-        return AgentHistoryEntry(
-          timestamp: entry.timestamp,
-          prompt: entry.prompt,
-          response: entry.response,
-          isError: entry.isError,
-          imageBytes: entry.canvasImage,
-          imageMimeType: 'image/bmp',
-        );
-      }).toList();
-
-      final String jsonStr = AgentHistoryEntry.serializeList(agentEntries);
+      final String jsonStr = AgentHistoryEntry.serializeList(history);
 
       String? outputFile;
       try {
@@ -235,7 +224,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
 }
 
 class _HistoryItem extends StatefulWidget {
-  final AiHistoryEntry entry;
+  final AgentHistoryEntry entry;
   const _HistoryItem({required this.entry});
 
   @override
@@ -329,7 +318,7 @@ class _HistoryItemState extends State<_HistoryItem> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (widget.entry.canvasImage != null) ...[
+                if (widget.entry.imageBytes != null) ...[
                   Text(
                     'CANVAS SNAPSHOT:',
                     style: TextStyle(
@@ -354,7 +343,7 @@ class _HistoryItemState extends State<_HistoryItem> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: Image.memory(
-                          widget.entry.canvasImage!,
+                          widget.entry.imageBytes!,
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.none,
                         ),

@@ -76,13 +76,13 @@ void main() {
     testWidgets('renders log entries and handles detail expand tap', (
       tester,
     ) async {
-      final entry = AiHistoryEntry(
+      final entry = AgentHistoryEntry(
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
         response:
             '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
-        canvasImage: combineBmps([
+        imageBytes: combineBmps([
           generateBmp(
             List.generate(64, (_) => List.filled(64, 0)),
             CanvasNotifier.primaryPalette,
@@ -137,13 +137,13 @@ void main() {
     });
 
     testGoldens('AiHistoryDock renders correctly', (tester) async {
-      final entry = AiHistoryEntry(
+      final entry = AgentHistoryEntry(
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
         response:
             '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
-        canvasImage: combineBmps([
+        imageBytes: combineBmps([
           generateBmp(
             List.generate(64, (_) => List.filled(64, 0)),
             CanvasNotifier.primaryPalette,
@@ -174,13 +174,13 @@ void main() {
     });
 
     testGoldens('AiHistoryDock renders expanded correctly', (tester) async {
-      final entry = AiHistoryEntry(
+      final entry = AgentHistoryEntry(
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
         response:
             '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         isError: false,
-        canvasImage: combineBmps([
+        imageBytes: combineBmps([
           generateBmp(
             List.generate(64, (_) => List.filled(64, 0)),
             CanvasNotifier.primaryPalette,
@@ -220,12 +220,12 @@ void main() {
       final originalPlatform = FilePickerPlatform.instance;
       FilePickerPlatform.instance = MockFilePickerPlatform();
 
-      final entry = AiHistoryEntry(
+      final entry = AgentHistoryEntry(
         timestamp: DateTime(2026, 7, 11, 10, 15, 30),
         prompt: 'System Instructions:\nDraw a test sword.',
         response: '{"tool":"line"}',
         isError: false,
-        canvasImage: combineBmps([
+        imageBytes: combineBmps([
           generateBmp(
             List.generate(64, (_) => List.filled(64, 0)),
             CanvasNotifier.primaryPalette,
