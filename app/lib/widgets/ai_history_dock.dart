@@ -225,7 +225,10 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                         history[history.length -
                             1 -
                             index]; // Show latest first
-                    return _HistoryItem(entry: entry);
+                    return _HistoryItem(
+                      entry: entry,
+                      palette: canvasModel.palette,
+                    );
                   },
                 ),
             ],
@@ -238,7 +241,8 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
 
 class _HistoryItem extends StatefulWidget {
   final AgentHistoryEntry entry;
-  const _HistoryItem({required this.entry});
+  final List<Color> palette;
+  const _HistoryItem({required this.entry, required this.palette});
 
   @override
   State<_HistoryItem> createState() => _HistoryItemState();
@@ -246,6 +250,78 @@ class _HistoryItem extends StatefulWidget {
 
 class _HistoryItemState extends State<_HistoryItem> {
   bool _expanded = false;
+  int _selectedPainterIndex = 0;
+
+  bool _useWhiteText(Color color) {
+    return color.computeLuminance() < 0.5;
+  }
+
+  IconData _getToolIcon(String tool) {
+    switch (tool) {
+      case 'undo':
+        return Icons.undo;
+      case 'pixel':
+      case 'pixels':
+        return Icons.gesture;
+      case 'line':
+        return Icons.show_chart;
+      case 'circle':
+      case 'ellipse':
+        return Icons.radio_button_unchecked;
+      case 'circle_filled':
+        return Icons.lens;
+      case 'circle_hatched':
+        return Icons.blur_circular;
+      case 'rectangle':
+        return Icons.check_box_outline_blank;
+      case 'rectangle_filled':
+        return Icons.square;
+      case 'rectangle_hatched':
+        return Icons.grid_view;
+      case 'fill':
+        return Icons.format_color_fill;
+      case 'hatch':
+        return Icons.grain;
+      default:
+        return Icons.brush;
+    }
+  }
+
+  String _formatParamsText(String tool, List<dynamic> params) {
+    if (params.isEmpty) return '';
+    try {
+      switch (tool) {
+        case 'pixel':
+          return 'at (${params[0]}, ${params[1]})';
+        case 'pixels':
+          final coords = [];
+          for (int i = 0; i < params.length - 1; i += 2) {
+            coords.add('(${params[i]}, ${params[i + 1]})');
+          }
+          return 'at ${coords.join(', ')}';
+        case 'line':
+          return 'from (${params[0]}, ${params[1]}) to (${params[2]}, ${params[3]})';
+        case 'circle':
+        case 'circle_filled':
+        case 'circle_hatched':
+        case 'noise_circle':
+          return 'center (${params[0]}, ${params[1]}) radius ${params[2]}';
+        case 'rectangle':
+        case 'rectangle_filled':
+        case 'rectangle_hatched':
+        case 'noise_rectangle':
+          return 'from (${params[0]}, ${params[1]}) to (${params[2]}, ${params[3]})';
+        case 'fill':
+        case 'hatch':
+          return 'start at (${params[0]}, ${params[1]})';
+        case 'ellipse':
+          return 'center (${params[0]}, ${params[1]}) radii (${params[2]}, ${params[3]})';
+        case 'voronoi':
+          return 'with ${params[0]} points';
+      }
+    } catch (_) {}
+    return 'params: ${params.join(', ')}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -261,6 +337,10 @@ class _HistoryItemState extends State<_HistoryItem> {
       }
     } catch (_) {}
 
+    final int? criticChoice = parsedJson?['criticChoice'] as int?;
+    final String? criticReasoning = parsedJson?['criticReasoning'] as String?;
+    final isTournament = criticChoice != null;
+
     final painterJson = parsedJson?['painter'] as Map<String, dynamic>?;
     final criticJson = parsedJson?['critic'] as Map<String, dynamic>?;
 
@@ -271,7 +351,7 @@ class _HistoryItemState extends State<_HistoryItem> {
         painterJson?['reasoning'] as String? ??
         parsedJson?['reasoning'] as String?;
     final criticAction = criticJson?['action'] as String?;
-    final criticReasoning = criticJson?['reasoning'] as String?;
+    final criticReasoningOld = criticJson?['reasoning'] as String?;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -287,14 +367,18 @@ class _HistoryItemState extends State<_HistoryItem> {
                 Icon(
                   widget.entry.isError
                       ? Icons.error_outline
-                      : (criticAction == 'undo'
-                            ? Icons.cancel_outlined
-                            : Icons.check_circle_outline),
+                      : (isTournament
+                            ? Icons.stars
+                            : (criticAction == 'undo'
+                                  ? Icons.cancel_outlined
+                                  : Icons.check_circle_outline)),
                   color: widget.entry.isError
                       ? theme.colorScheme.error
-                      : (criticAction == 'undo'
-                            ? theme.colorScheme.error
-                            : Colors.green),
+                      : (isTournament
+                            ? theme.colorScheme.primary
+                            : (criticAction == 'undo'
+                                  ? theme.colorScheme.error
+                                  : Colors.green)),
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -311,9 +395,11 @@ class _HistoryItemState extends State<_HistoryItem> {
                   child: Text(
                     widget.entry.isError
                         ? 'AI Generation Error'
-                        : (criticAction == 'undo'
-                              ? 'Stroke rejected by critic'
-                              : 'Stroke suggested successfully'),
+                        : (isTournament
+                              ? 'Critic picked Painter $criticChoice'
+                              : (criticAction == 'undo'
+                                    ? 'Stroke rejected by critic'
+                                    : 'Stroke suggested successfully')),
                     style: TextStyle(
                       color: widget.entry.isError
                           ? theme.colorScheme.error
@@ -348,111 +434,405 @@ class _HistoryItemState extends State<_HistoryItem> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (widget.entry.imageBytes != null) ...[
+                if (isTournament) ...[
+                  // Verdict Card
+                  Card(
+                    color: theme.colorScheme.primaryContainer.withValues(
+                      alpha: 0.4,
+                    ),
+                    elevation: 0,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      side: BorderSide(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.gavel_outlined,
+                                size: 16,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'CRITIC VERDICT: SELECTED PAINTER $criticChoice',
+                                style: TextStyle(
+                                  color: theme.colorScheme.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            criticReasoning ?? 'No reasoning provided.',
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurface,
+                              fontSize: 12.5,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // 2x2 Snapshot Grid
+                  if (widget.entry.imageBytes != null) ...[
+                    Text(
+                      'TOURNAMENT COMPARISON GRID (2x2):',
+                      style: TextStyle(
+                        color: theme.colorScheme.secondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: Container(
+                        width: 160,
+                        height: 160,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.memory(
+                            widget.entry.imageBytes!,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Center(
+                      child: Text(
+                        'Top-Left: Ref | Top-Right: P1 | Bottom-Left: P2 | Bottom-Right: P3',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                  ],
+
+                  // Tab Buttons for Painter 1, 2, 3
                   Text(
-                    'CANVAS SNAPSHOT:',
+                    'PAINTER PROGRESSION TIMELINE:',
                     style: TextStyle(
-                      color: theme.colorScheme.secondary,
+                      color: theme.colorScheme.tertiary,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  Center(
-                    child: Container(
-                      width: 128,
-                      height: 128,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant,
-                          width: 2,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: List.generate(3, (i) {
+                      final isChosen = (criticChoice == i + 1);
+                      final isSelected = (_selectedPainterIndex == i);
+                      return Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: InkWell(
+                            onTap: () =>
+                                setState(() => _selectedPainterIndex = i),
+                            borderRadius: BorderRadius.circular(8),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? theme.colorScheme.primaryContainer
+                                    : theme.colorScheme.surfaceContainer,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isChosen
+                                      ? Colors.green
+                                      : (isSelected
+                                            ? theme.colorScheme.primary
+                                            : theme.colorScheme.outlineVariant),
+                                  width: isChosen ? 2 : 1,
+                                ),
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isChosen
+                                            ? Icons.check_circle
+                                            : Icons.person_outline,
+                                        size: 13,
+                                        color: isChosen
+                                            ? Colors.green
+                                            : (isSelected
+                                                  ? theme.colorScheme.primary
+                                                  : theme
+                                                        .colorScheme
+                                                        .onSurfaceVariant),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Painter ${i + 1}',
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? theme
+                                                    .colorScheme
+                                                    .onPrimaryContainer
+                                              : theme.colorScheme.onSurface,
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Image.memory(
-                          widget.entry.imageBytes!,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.none,
-                        ),
-                      ),
-                    ),
+                      );
+                    }),
                   ),
+                  const SizedBox(height: 12),
+
+                  // Strokes List for selected Painter
+                  () {
+                    final List<dynamic>? strokes =
+                        parsedJson?['painter${_selectedPainterIndex + 1}Strokes']
+                            as List<dynamic>?;
+                    if (strokes == null || strokes.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Center(
+                          child: Text(
+                            'No strokes recorded for this Painter.',
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: strokes.length,
+                      itemBuilder: (context, strokeIdx) {
+                        final stroke = strokes[strokeIdx];
+                        final tool = stroke['tool'] as String? ?? 'unknown';
+                        final params = stroke['params'] as List<dynamic>? ?? [];
+                        final colorIdx = stroke['color'] as int? ?? 0;
+
+                        Color? strokeColor;
+                        if (colorIdx >= 0 && colorIdx < widget.palette.length) {
+                          strokeColor = widget.palette[colorIdx];
+                        }
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(vertical: 4),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerLowest,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            leading: Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: strokeColor ?? Colors.grey,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: theme.colorScheme.outline,
+                                  width: 1,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${strokeIdx + 1}',
+                                style: TextStyle(
+                                  color: strokeColor != null
+                                      ? (_useWhiteText(strokeColor)
+                                            ? Colors.white
+                                            : Colors.black)
+                                      : Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Row(
+                              children: [
+                                Icon(
+                                  _getToolIcon(tool),
+                                  size: 14,
+                                  color: theme.colorScheme.secondary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  tool,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'monospace',
+                                    color: theme.colorScheme.onSurface,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            subtitle: Text(
+                              _formatParamsText(tool, params),
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurfaceVariant,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }(),
                   const SizedBox(height: 12),
                   const Divider(),
                   const SizedBox(height: 8),
+                ] else ...[
+                  // Fallback for non-tournament / legacy entries
+                  if (widget.entry.imageBytes != null) ...[
+                    Text(
+                      'CANVAS SNAPSHOT:',
+                      style: TextStyle(
+                        color: theme.colorScheme.secondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: Container(
+                        width: 128,
+                        height: 128,
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: Image.memory(
+                            widget.entry.imageBytes!,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                  ],
+
+                  if (understanding != null) ...[
+                    Text(
+                      'AI UNDERSTANDING:',
+                      style: TextStyle(
+                        color: theme.colorScheme.tertiary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      understanding,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                  ],
+                  if (reasoning != null) ...[
+                    Text(
+                      'AI REASONING:',
+                      style: TextStyle(
+                        color: theme.colorScheme.tertiary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      reasoning,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                  ],
+                  if (criticAction != null) ...[
+                    Text(
+                      'CRITIC EVALUATION (${criticAction.toUpperCase()}):',
+                      style: TextStyle(
+                        color: criticAction == 'undo'
+                            ? theme.colorScheme.error
+                            : Colors.green,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      criticReasoningOld ?? 'No reasoning provided.',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                  ],
                 ],
 
-                if (understanding != null) ...[
-                  Text(
-                    'AI UNDERSTANDING:',
-                    style: TextStyle(
-                      color: theme.colorScheme.tertiary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    understanding,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                ],
-                if (reasoning != null) ...[
-                  Text(
-                    'AI REASONING:',
-                    style: TextStyle(
-                      color: theme.colorScheme.tertiary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    reasoning,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                ],
-                if (criticAction != null) ...[
-                  Text(
-                    'CRITIC EVALUATION (${criticAction.toUpperCase()}):',
-                    style: TextStyle(
-                      color: criticAction == 'undo'
-                          ? theme.colorScheme.error
-                          : Colors.green,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    criticReasoning ?? 'No reasoning provided.',
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                ],
                 // Prompt Detail
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
