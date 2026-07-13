@@ -824,8 +824,20 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           prompt: fullPrompt,
         );
 
-        if (painterResult != null &&
-            !painterResult.containsKey('rawResponse')) {
+        if (painterResult != null) {
+          if (painterResult.containsKey('rawResponse')) {
+            strokesHistory.add({
+              'tool': 'error',
+              'params': <int>[],
+              'color': 0,
+              'rawPrompt': fullPrompt,
+              'rawResponse': painterResult['rawResponse'] ?? 'N/A',
+              'error': painterResult['error'] ?? 'JSON parsing failed',
+              'rawImageBase64': base64Encode(combinedBmp),
+            });
+            break;
+          }
+
           final tool = painterResult['tool'] as String?;
           final params = (painterResult['params'] as List?)?.cast<int>();
           final colorIndex = painterResult['color'] as int?;
@@ -847,15 +859,43 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             strokeLog['rawImageBase64'] = base64Encode(combinedBmp);
             strokesHistory.add(strokeLog);
           } else {
+            strokesHistory.add({
+              'tool': 'error',
+              'params': <int>[],
+              'color': 0,
+              'rawPrompt': fullPrompt,
+              'rawResponse': jsonEncode(painterResult),
+              'error': 'Missing required JSON keys: tool, params, or color',
+              'rawImageBase64': base64Encode(combinedBmp),
+            });
             break;
           }
         } else {
+          strokesHistory.add({
+            'tool': 'error',
+            'params': <int>[],
+            'color': 0,
+            'rawPrompt': fullPrompt,
+            'rawResponse': 'N/A',
+            'error':
+                'AI service returned null response (possible connection issue, safety block, or rate limit)',
+            'rawImageBase64': base64Encode(combinedBmp),
+          });
           break;
         }
       } catch (e) {
         debugPrint(
           'Painter Agent $agentNumber encountered error on turn $turn: $e',
         );
+        strokesHistory.add({
+          'tool': 'error',
+          'params': <int>[],
+          'color': 0,
+          'rawPrompt': fullPrompt,
+          'rawResponse': 'N/A',
+          'error': 'Exception caught: $e',
+          'rawImageBase64': base64Encode(combinedBmp),
+        });
         break;
       }
     }
