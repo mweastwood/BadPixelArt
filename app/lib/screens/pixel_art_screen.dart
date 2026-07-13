@@ -171,6 +171,12 @@ class PixelArtScreen extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           TextButton(
+                            onPressed: () =>
+                                notifier.suggestPaletteFromReference(),
+                            child: const Text('Retry'),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
                             onPressed: () => notifier.rejectSuggestedPalette(),
                             child: const Text('Reject'),
                           ),

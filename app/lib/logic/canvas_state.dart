@@ -818,10 +818,15 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       final fullPrompt =
           '$systemInstruction\n\n$userTextPrompt\n\n$historyPrompt';
 
+      final double temperature = agentNumber == 1
+          ? 0.25
+          : (agentNumber == 2 ? 0.5 : 1.0);
+
       try {
         final painterResult = await _aiService.getNextStroke(
           canvasImage: combinedBmp,
           prompt: fullPrompt,
+          temperature: temperature,
         );
 
         if (painterResult != null) {

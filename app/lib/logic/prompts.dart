@@ -182,7 +182,7 @@ extension PixelArtAiServiceExtension on AiService {
   Future<String?> _generateContentWithRetry({
     required String prompt,
     required Uint8List imageBytes,
-    bool lowTemperature = false,
+    required double temperature,
     int maxRetries = 3,
   }) async {
     int delayMs = 1000;
@@ -191,7 +191,7 @@ extension PixelArtAiServiceExtension on AiService {
         final response = await generateContent(
           prompt: prompt,
           imageBytes: imageBytes,
-          lowTemperature: lowTemperature,
+          temperature: temperature,
         );
         if (response != null) {
           return response;
@@ -210,10 +210,12 @@ extension PixelArtAiServiceExtension on AiService {
   Future<Map<String, dynamic>?> getNextStroke({
     required Uint8List canvasImage,
     required String prompt,
+    required double temperature,
   }) async {
     final String? response = await _generateContentWithRetry(
       prompt: prompt,
       imageBytes: canvasImage,
+      temperature: temperature,
     );
     if (response == null) return null;
     final cleaned = cleanJsonString(response);
@@ -232,7 +234,7 @@ extension PixelArtAiServiceExtension on AiService {
     final String? response = await _generateContentWithRetry(
       prompt: formatPalettePrompt(),
       imageBytes: referenceImage,
-      lowTemperature: true,
+      temperature: 0.1,
     );
     if (response == null) return null;
     return parsePaletteColors(response);
@@ -246,7 +248,7 @@ extension PixelArtAiServiceExtension on AiService {
     final String? response = await _generateContentWithRetry(
       prompt: criticPrompt,
       imageBytes: canvasImage,
-      lowTemperature: true,
+      temperature: 0.1,
     );
     if (response == null) return null;
     final cleaned = cleanJsonString(response);
@@ -268,7 +270,7 @@ extension PixelArtAiServiceExtension on AiService {
     final String? response = await _generateContentWithRetry(
       prompt: criticPrompt,
       imageBytes: canvasImage,
-      lowTemperature: true,
+      temperature: 0.1,
     );
     if (response == null) return null;
     final cleaned = cleanJsonString(response);

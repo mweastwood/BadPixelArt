@@ -48,10 +48,10 @@ class LocalMockAiService implements AiService {
   Future<String?> generateContent({
     required String prompt,
     Uint8List? imageBytes,
-    bool lowTemperature = false,
+    double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
-    if (lowTemperature) {
+    if (temperature <= 0.5) {
       final List<String> mockPalette = List.generate(16, (i) {
         final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
         return '#$val$val$val';

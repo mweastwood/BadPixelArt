@@ -15,7 +15,7 @@ class TestMockAiService implements AiService {
   Future<String?> generateContent({
     required String prompt,
     Uint8List? imageBytes,
-    bool lowTemperature = false,
+    double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
     return null;
