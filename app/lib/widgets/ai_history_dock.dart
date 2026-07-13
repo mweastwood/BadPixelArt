@@ -425,6 +425,8 @@ class _HistoryItemState extends State<_HistoryItem> {
 
   IconData _getToolIcon(String tool) {
     switch (tool) {
+      case 'error':
+        return Icons.error_outline;
       case 'undo':
         return Icons.undo;
       case 'pixel':
@@ -853,9 +855,13 @@ class _HistoryItemState extends State<_HistoryItem> {
                         final tool = stroke['tool'] as String? ?? 'unknown';
                         final params = stroke['params'] as List<dynamic>? ?? [];
                         final colorIdx = stroke['color'] as int? ?? 0;
+                        final isErrorTool = tool == 'error';
 
                         Color? strokeColor;
-                        if (colorIdx >= 0 && colorIdx < widget.palette.length) {
+                        if (isErrorTool) {
+                          strokeColor = theme.colorScheme.error;
+                        } else if (colorIdx >= 0 &&
+                            colorIdx < widget.palette.length) {
                           strokeColor = widget.palette[colorIdx];
                         }
 
@@ -878,13 +884,15 @@ class _HistoryItemState extends State<_HistoryItem> {
                                 color: strokeColor ?? Colors.grey,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: theme.colorScheme.outline,
+                                  color: isErrorTool
+                                      ? theme.colorScheme.error
+                                      : theme.colorScheme.outline,
                                   width: 1,
                                 ),
                               ),
                               alignment: Alignment.center,
                               child: Text(
-                                '${strokeIdx + 1}',
+                                isErrorTool ? '!' : '${strokeIdx + 1}',
                                 style: TextStyle(
                                   color: strokeColor != null
                                       ? (_useWhiteText(strokeColor)
@@ -901,7 +909,9 @@ class _HistoryItemState extends State<_HistoryItem> {
                                 Icon(
                                   _getToolIcon(tool),
                                   size: 14,
-                                  color: theme.colorScheme.secondary,
+                                  color: isErrorTool
+                                      ? theme.colorScheme.error
+                                      : theme.colorScheme.secondary,
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
@@ -909,16 +919,23 @@ class _HistoryItemState extends State<_HistoryItem> {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontFamily: 'monospace',
-                                    color: theme.colorScheme.onSurface,
+                                    color: isErrorTool
+                                        ? theme.colorScheme.error
+                                        : theme.colorScheme.onSurface,
                                     fontSize: 12,
                                   ),
                                 ),
                               ],
                             ),
                             subtitle: Text(
-                              _formatParamsText(tool, params),
+                              isErrorTool
+                                  ? (stroke['error'] as String? ??
+                                        'An error occurred')
+                                  : _formatParamsText(tool, params),
                               style: TextStyle(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: isErrorTool
+                                    ? theme.colorScheme.error
+                                    : theme.colorScheme.onSurfaceVariant,
                                 fontSize: 11,
                               ),
                             ),
