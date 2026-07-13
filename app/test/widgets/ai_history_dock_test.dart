@@ -93,7 +93,10 @@ void main() {
         isError: false,
         imageBytes: combineBmps([
           generateBmp(
-            List.generate(64, (_) => List.filled(64, 0)),
+            List.generate(
+              CanvasNotifier.gridSize,
+              (_) => List.filled(CanvasNotifier.gridSize, 0),
+            ),
             CanvasNotifier.primaryPalette,
           ),
         ]),
@@ -154,7 +157,10 @@ void main() {
         isError: false,
         imageBytes: combineBmps([
           generateBmp(
-            List.generate(64, (_) => List.filled(64, 0)),
+            List.generate(
+              CanvasNotifier.gridSize,
+              (_) => List.filled(CanvasNotifier.gridSize, 0),
+            ),
             CanvasNotifier.primaryPalette,
           ),
         ]),
@@ -191,7 +197,10 @@ void main() {
         isError: false,
         imageBytes: combineBmps([
           generateBmp(
-            List.generate(64, (_) => List.filled(64, 0)),
+            List.generate(
+              CanvasNotifier.gridSize,
+              (_) => List.filled(CanvasNotifier.gridSize, 0),
+            ),
             CanvasNotifier.primaryPalette,
           ),
         ]),
@@ -236,7 +245,10 @@ void main() {
         isError: false,
         imageBytes: combineBmps([
           generateBmp(
-            List.generate(64, (_) => List.filled(64, 0)),
+            List.generate(
+              CanvasNotifier.gridSize,
+              (_) => List.filled(CanvasNotifier.gridSize, 0),
+            ),
             CanvasNotifier.primaryPalette,
           ),
         ]),
