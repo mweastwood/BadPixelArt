@@ -252,6 +252,139 @@ class _HistoryItemState extends State<_HistoryItem> {
   bool _expanded = false;
   int _selectedPainterIndex = 0;
 
+  void _showRawExchangeDialog(
+    BuildContext context, {
+    required String title,
+    required String prompt,
+    required String response,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return AlertDialog(
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            constraints: const BoxConstraints(maxHeight: 450),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'RAW PROMPT:',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 14),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: prompt));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied prompt to clipboard'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: Text(
+                      prompt,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 10,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'RAW RESPONSE:',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 14),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: response));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied response to clipboard'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
+                  ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: Text(
+                      response,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 10,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   bool _useWhiteText(Color color) {
     return color.computeLuminance() < 0.5;
   }
@@ -461,14 +594,35 @@ class _HistoryItemState extends State<_HistoryItem> {
                                 color: theme.colorScheme.primary,
                               ),
                               const SizedBox(width: 6),
-                              Text(
-                                'CRITIC VERDICT: SELECTED PAINTER $criticChoice',
-                                style: TextStyle(
-                                  color: theme.colorScheme.primary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
+                              Expanded(
+                                child: Text(
+                                  'CRITIC VERDICT: SELECTED PAINTER $criticChoice',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.primary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.code, size: 16),
+                                tooltip: 'View Raw Critic Exchange',
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () {
+                                  _showRawExchangeDialog(
+                                    context,
+                                    title: 'Raw LLM Exchange: Critic Verdict',
+                                    prompt:
+                                        parsedJson?['criticRawPrompt']
+                                            as String? ??
+                                        'N/A',
+                                    response:
+                                        parsedJson?['criticRawResponse']
+                                            as String? ??
+                                        'N/A',
+                                  );
+                                },
                               ),
                             ],
                           ),
@@ -715,6 +869,22 @@ class _HistoryItemState extends State<_HistoryItem> {
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontSize: 11,
                               ),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.code, size: 14),
+                              tooltip: 'View Raw Painter Exchange',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                _showRawExchangeDialog(
+                                  context,
+                                  title:
+                                      'Raw LLM Exchange: Painter ${_selectedPainterIndex + 1} - Turn ${strokeIdx + 1}',
+                                  prompt:
+                                      stroke['rawPrompt'] as String? ?? 'N/A',
+                                  response:
+                                      stroke['rawResponse'] as String? ?? 'N/A',
+                                );
+                              },
                             ),
                           ),
                         );

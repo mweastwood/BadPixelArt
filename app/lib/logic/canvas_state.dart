@@ -772,6 +772,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       ]);
       loggedBmp = criticCombinedBmp;
 
+      final String criticPrompt = formatCriticComparisonPrompt();
       // Ask Critic to evaluate the candidates
       final criticResult = await _aiService.evaluateCandidates(
         canvasImage: criticCombinedBmp,
@@ -816,6 +817,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           'criticChoice': choiceInt,
           'criticReasoning':
               criticReasoning ?? 'Selected candidate $choiceInt.',
+          'criticRawPrompt': criticPrompt,
+          'criticRawResponse': jsonEncode(criticResult),
           'painter1Strokes': results[0]['strokes'],
           'painter2Strokes': results[1]['strokes'],
           'painter3Strokes': results[2]['strokes'],
@@ -846,6 +849,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           'criticChoice': 1,
           'criticReasoning':
               'Critic response unavailable, defaulted to Painter 1.',
+          'criticRawPrompt': criticPrompt,
+          'criticRawResponse': 'Critic response was null.',
           'painter1Strokes': results[0]['strokes'],
           'painter2Strokes': results[1]['strokes'],
           'painter3Strokes': results[2]['strokes'],
@@ -920,8 +925,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       if (strokesHistory.isNotEmpty) {
         final historyItems = strokesHistory
             .map((entry) {
+              final Map<String, dynamic> cleanEntry = {
+                'tool': entry['tool'],
+                'params': entry['params'],
+                'color': entry['color'],
+              };
               final cleanResponse = jsonEncode(
-                entry,
+                cleanEntry,
               ).replaceAll(RegExp(r'\s+'), ' ');
               return '- $cleanResponse';
             })
@@ -956,7 +966,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
               colorIndex ?? 0,
               localUndoStack,
             );
-            strokesHistory.add(painterResult);
+
+            final strokeLog = Map<String, dynamic>.from(painterResult);
+            strokeLog['rawPrompt'] = fullPrompt;
+            strokeLog['rawResponse'] = jsonEncode(painterResult);
+            strokesHistory.add(strokeLog);
           } else {
             break;
           }
