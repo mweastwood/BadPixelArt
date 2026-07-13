@@ -323,7 +323,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       bmpsToCombine.add(quantizedBmp);
     }
 
-    final currentBmp = generateBmp(state.grid, state.palette);
+    final currentBmp = previousBmp ?? generateBmp(state.grid, state.palette);
     bmpsToCombine.add(currentBmp);
 
     return combineBmps(bmpsToCombine);
