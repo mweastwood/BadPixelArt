@@ -47,6 +47,7 @@ String formatUserPrompt({
   String? referenceDescription,
   String? currentCanvasTextGrid,
   String? loopHistory,
+  String? nextFocus,
 }) {
   String canvasGridString;
   if (isMultimodal) {
@@ -75,6 +76,13 @@ String formatUserPrompt({
         'Use this description to guide your drawings.';
   }
 
+  String nextFocusInstruction = '';
+  if (nextFocus != null && nextFocus.isNotEmpty) {
+    nextFocusInstruction =
+        'CRITIC\'S FOCUS/FEEDBACK FROM THE PREVIOUS ROUND:\n"$nextFocus"\n'
+        'Pay close attention to this feedback and prioritize implementing or correcting it in your next strokes.';
+  }
+
   final List<String> colorsMap = [
     '- Index 0: Eraser / Transparent Background (clears pixels)',
   ];
@@ -97,6 +105,7 @@ String formatUserPrompt({
 
   return 'User Instruction: "$prompt"\n'
       '$refShapeInstruction\n'
+      '${nextFocusInstruction.isNotEmpty ? "$nextFocusInstruction\n" : ""}'
       'Available Color Palette (select the correct index for the "color" field):\n'
       '$colorList\n'
       '$canvasGridString\n'
@@ -401,12 +410,12 @@ String formatCriticTextOnlyPrompt({
       'CANDIDATE 1 DESCRIPTION (Painter Run 1):\n$candidate1Description\n\n'
       'CANDIDATE 2 DESCRIPTION (Painter Run 2):\n$candidate2Description\n\n'
       'CANDIDATE 3 DESCRIPTION (Painter Run 3):\n$candidate3Description\n\n'
-      'Analyze the changes made by all three candidates relative to the starting canvas and select the one that aligns best with the target reference image.\n'
-      'Output a JSON block containing your choice (1, 2, or 3) and your detailed reasoning:\n'
+      'Output a JSON block containing your choice (1, 2, or 3), your detailed reasoning, and a specific "nextFocus" suggestion explaining what the next round of painters should focus on drawing or correcting next (e.g. "Add a black curved tail to the body", "Smooth out the outline of the head"):\n'
       '{\n'
       '  "choice": 1,\n'
-      '  "reasoning": "Brief explanation of why you selected this candidate"\n'
+      '  "reasoning": "Selected Candidate 1 for best shape accuracy.",\n'
+      '  "nextFocus": "Refine the border of the circle with black pixels."\n'
       '}\n'
-      'IMPORTANT: Keep the "reasoning" value extremely concise (max 1 sentence/15 words) to prevent JSON truncation on device.\n'
+      'IMPORTANT: Keep both the "reasoning" and "nextFocus" values extremely concise (max 1 sentence/15 words each) to prevent JSON truncation on device.\n'
       'Output only the JSON block. Do not write any markdown tags or explanations.';
 }

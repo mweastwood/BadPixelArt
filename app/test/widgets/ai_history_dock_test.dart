@@ -362,6 +362,7 @@ void main() {
           'criticChoice': 2,
           'criticReasoning':
               'Painter 2 added beautiful highlights to the blade that align perfectly with the target reference art style.',
+          'criticNextFocus': 'Refine the blade highlights with light blue.',
           'painter1Strokes': [
             {
               'tool': 'circle',
@@ -456,6 +457,7 @@ void main() {
           'criticChoice': 2,
           'criticReasoning':
               'Painter 2 added beautiful highlights to the blade that align perfectly with the target reference art style.',
+          'criticNextFocus': 'Refine the blade highlights with light blue.',
           'criticRawPrompt':
               'This is the raw critic prompt. It contains system instructions and candidate comparison details.',
           'criticRawResponse':
