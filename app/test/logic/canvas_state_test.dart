@@ -13,6 +13,7 @@ class MockTestAiService implements AiService {
   Uint8List? lastCanvasImage;
   String? lastPrompt;
   Map<String, dynamic>? mockResult;
+  int callCount = 0;
 
   @override
   Future<AiCoreStatus> checkStatus() async => status;
@@ -30,16 +31,39 @@ class MockTestAiService implements AiService {
     bool lowTemperature = false,
     int? maxOutputTokens,
   }) async {
-    if (lowTemperature) {
+    if (lowTemperature && prompt.contains('16 colors')) {
       final List<String> mockPalette = List.generate(16, (i) {
         final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
         return '#$val$val$val';
       });
       return '["${mockPalette.join('", "')}"]';
     }
+
+    if (prompt.contains('evaluating candidate drawings')) {
+      return jsonEncode({'choice': 1, 'reasoning': 'Critic picked 1'});
+    }
+
     lastCanvasImage = imageBytes;
     lastPrompt = prompt;
+
     if (mockResult == null) return null;
+
+    if (mockResult!['tool'] == 'undo') {
+      int turn = 1;
+      if (prompt.contains('- {')) {
+        turn = RegExp(r'- \{').allMatches(prompt).length + 1;
+      }
+      if (turn == 1) {
+        return jsonEncode({
+          'tool': 'pixel',
+          'params': [10, 10],
+          'color': 2,
+        });
+      } else {
+        return jsonEncode({'tool': 'undo', 'params': []});
+      }
+    }
+
     return jsonEncode(mockResult);
   }
 }
@@ -260,18 +284,12 @@ void main() {
 
     test('triggerAiStroke handles undo tool successfully', () async {
       final notifier = container.read(canvasStateProvider.notifier);
-      notifier.selectColor(1);
-      notifier.drawPixel(10, 10); // make a stroke
-
-      expect(container.read(canvasStateProvider).grid[10][10], equals(1));
+      expect(container.read(canvasStateProvider).grid[10][10], equals(0));
 
       mockAiService.mockResult = {'tool': 'undo', 'params': <int>[]};
 
       await notifier.triggerAiStroke();
-      expect(
-        container.read(canvasStateProvider).grid[10][10],
-        equals(0),
-      ); // reverted
+      expect(container.read(canvasStateProvider).grid[10][10], equals(0));
     });
 
     test('triggerAiStroke applies strokes returned by AI', () async {

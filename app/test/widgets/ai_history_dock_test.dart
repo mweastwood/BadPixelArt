@@ -342,5 +342,178 @@ void main() {
       // Restore platform instance
       FilePickerPlatform.instance = originalPlatform;
     });
+
+    testGoldens('AiHistoryDock renders tournament details correctly', (
+      tester,
+    ) async {
+      final entry = AgentHistoryEntry(
+        timestamp: DateTime(2026, 7, 11, 10, 15, 30),
+        prompt:
+            'Co-creative Multi-Agent Drawing Step (AI pixel art assistant):\n- 3 Painter Agent Runs each ran for 5 turns starting from the current canvas.\n- Critic evaluated all three candidates on a 2x2 comparison grid and selected the best progression.',
+        response: jsonEncode({
+          'criticChoice': 2,
+          'criticReasoning':
+              'Painter 2 added beautiful highlights to the blade that align perfectly with the target reference art style.',
+          'painter1Strokes': [
+            {
+              'tool': 'circle',
+              'params': [8, 8, 4],
+              'color': 1,
+            },
+            {
+              'tool': 'fill',
+              'params': [8, 8],
+              'color': 1,
+            },
+          ],
+          'painter2Strokes': [
+            {
+              'tool': 'line',
+              'params': [2, 2, 14, 14],
+              'color': 2,
+            },
+            {
+              'tool': 'pixel',
+              'params': [7, 8],
+              'color': 3,
+            },
+            {
+              'tool': 'pixel',
+              'params': [8, 7],
+              'color': 3,
+            },
+          ],
+          'painter3Strokes': [
+            {
+              'tool': 'rectangle_filled',
+              'params': [4, 4, 12, 12],
+              'color': 4,
+            },
+          ],
+        }),
+        isError: false,
+        imageBytes: combineBmps([
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+        ]),
+      );
+
+      final mockService = LocalMockAiService();
+      final notifier = CanvasNotifier(mockService);
+      notifier.state = notifier.state.copyWith(aiHistory: [entry]);
+
+      await tester.pumpWidgetBuilder(
+        const Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
+        wrapper: testMaterialAppWrapper(
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockService),
+            canvasStateProvider.overrideWith((ref) => notifier),
+          ],
+        ),
+      );
+
+      // Expand history dock
+      await tester.tap(find.text('AI History & Debugger'));
+      await tester.pumpAndSettle();
+
+      // Expand history item details
+      await tester.tap(find.text('Critic picked Painter 2'));
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'ai_history_dock_tournament_expanded');
+    });
+
+    testGoldens('AiHistoryDock renders raw exchange dialog correctly', (
+      tester,
+    ) async {
+      final entry = AgentHistoryEntry(
+        timestamp: DateTime(2026, 7, 11, 10, 15, 30),
+        prompt:
+            'Co-creative Multi-Agent Drawing Step (AI pixel art assistant):\n- 3 Painter Agent Runs each ran for 5 turns starting from the current canvas.\n- Critic evaluated all three candidates on a 2x2 comparison grid and selected the best progression.',
+        response: jsonEncode({
+          'criticChoice': 2,
+          'criticReasoning':
+              'Painter 2 added beautiful highlights to the blade that align perfectly with the target reference art style.',
+          'criticRawPrompt':
+              'This is the raw critic prompt. It contains system instructions and candidate comparison details.',
+          'criticRawResponse':
+              '{"choice": 2, "reasoning": "Painter 2 added beautiful highlights..."}',
+          'painter1Strokes': [],
+          'painter2Strokes': [
+            {
+              'tool': 'line',
+              'params': [2, 2, 14, 14],
+              'color': 2,
+              'rawPrompt':
+                  'This is the raw painter prompt. It has color lists and canvas state.',
+              'rawResponse':
+                  '{"tool": "line", "params": [2, 2, 14, 14], "color": 2}',
+            },
+          ],
+          'painter3Strokes': [],
+        }),
+        isError: false,
+        imageBytes: combineBmps([
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+          generateBmp(
+            List.generate(16, (_) => List.filled(16, 0)),
+            CanvasNotifier.primaryPalette,
+          ),
+        ]),
+      );
+
+      final mockService = LocalMockAiService();
+      final notifier = CanvasNotifier(mockService);
+      notifier.state = notifier.state.copyWith(aiHistory: [entry]);
+
+      await tester.pumpWidgetBuilder(
+        const Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
+        wrapper: testMaterialAppWrapper(
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockService),
+            canvasStateProvider.overrideWith((ref) => notifier),
+          ],
+        ),
+      );
+
+      // Expand history dock
+      await tester.tap(find.text('AI History & Debugger'));
+      await tester.pumpAndSettle();
+
+      // Expand history item details
+      await tester.tap(find.text('Critic picked Painter 2'));
+      await tester.pumpAndSettle();
+
+      // Tap raw exchange dialog button
+      await tester.tap(find.byTooltip('View Raw Critic Exchange'));
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(tester, 'ai_history_dock_raw_exchange_dialog');
+    });
   });
 }

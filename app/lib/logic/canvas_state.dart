@@ -701,83 +701,257 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     if (state.isGenerating) return;
     state = state.copyWith(isGenerating: true);
 
-    final canvasBytes = Uint8List.fromList(utf8.encode(state.grid.toString()));
     final paletteHexes = state.palette
         .map(
           (c) => '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
         )
         .toList();
 
-    final previousBmp = state.undoStack.isNotEmpty
-        ? generateBmp(state.undoStack.last, state.palette)
-        : null;
-
-    final combinedBmp = generateCombinedVisualInput(
-      state.referenceImage,
-      previousBmp,
-    );
-
-    // 1. Normal drawing action turn
+    final startingGrid = state.grid;
+    final startingBmp = generateBmp(startingGrid, state.palette);
     final isMultimodal = _aiService is MethodChannelAiService;
-    final systemInstruction = formatSystemInstruction();
-    final String currentCanvasTextGrid = canvasToTextGrid(state.grid);
-    String? quantizedReferenceTextGrid;
-    if (state.referenceImage != null) {
-      final quantizedGrid = getQuantizedIndexGrid(
-        state.referenceImage!,
-        state.palette,
-      );
-      quantizedReferenceTextGrid = canvasToTextGrid(quantizedGrid);
-    }
 
-    final userTextPrompt = formatUserPrompt(
-      canvasImage: canvasBytes,
-      prompt: state.userPrompt,
-      paletteColors: paletteHexes,
-      isMultimodal: isMultimodal,
-      hasPreviousImage: previousBmp != null,
-      hasReferenceImage: state.referenceImage != null,
-      currentCanvasTextGrid: currentCanvasTextGrid,
-      quantizedReferenceTextGrid: quantizedReferenceTextGrid,
-    );
-
-    // Append recent action history to break repetition loops
-    String historyPrompt = '';
-    if (state.aiHistory.isNotEmpty) {
-      final recentHistory = state.aiHistory.length > 5
-          ? state.aiHistory.skip(state.aiHistory.length - 5).toList()
-          : state.aiHistory;
-      final historyItems = recentHistory
-          .map((entry) {
-            final cleanResponse = entry.response.replaceAll(
-              RegExp(r'\s+'),
-              ' ',
-            );
-            return '- $cleanResponse';
-          })
-          .join('\n');
-      historyPrompt =
-          '\n\nRecent suggestions history:\n$historyItems\n'
-          'Avoid repeating these exact strokes and coordinates. Try drawing something new or in a different location.';
-    }
-
-    final fullPrompt =
-        '$systemInstruction\n\n$userTextPrompt\n\n$historyPrompt';
     String rawResponse = '';
     bool isError = false;
-    Uint8List? loggedBmp = combinedBmp;
+    Uint8List loggedBmp = startingBmp;
+    final String promptLog =
+        'Co-creative Multi-Agent Drawing Step (AI pixel art assistant):\n'
+        '- 3 Painter Agent Runs each ran for 5 turns starting from the current canvas.\n'
+        '- Critic evaluated all three candidates on a 2x2 comparison grid and selected the best progression.';
 
     try {
-      final painterResult = await _aiService.getNextStroke(
-        canvasImage: combinedBmp,
-        prompt: fullPrompt,
+      // Run the 3 painters in parallel using Future.wait
+      final results = await Future.wait([
+        _runPainterAgent(
+          agentNumber: 1,
+          startingGrid: startingGrid,
+          palette: state.palette,
+          paletteHexes: paletteHexes,
+          referenceBmp: state.referenceImage,
+          isMultimodal: isMultimodal,
+        ),
+        _runPainterAgent(
+          agentNumber: 2,
+          startingGrid: startingGrid,
+          palette: state.palette,
+          paletteHexes: paletteHexes,
+          referenceBmp: state.referenceImage,
+          isMultimodal: isMultimodal,
+        ),
+        _runPainterAgent(
+          agentNumber: 3,
+          startingGrid: startingGrid,
+          palette: state.palette,
+          paletteHexes: paletteHexes,
+          referenceBmp: state.referenceImage,
+          isMultimodal: isMultimodal,
+        ),
+      ]);
+
+      // Convert candidate grids to BMPs
+      final candidate1Bmp = generateBmp(
+        results[0]['grid'] as List<List<int>>,
+        state.palette,
+      );
+      final candidate2Bmp = generateBmp(
+        results[1]['grid'] as List<List<int>>,
+        state.palette,
+      );
+      final candidate3Bmp = generateBmp(
+        results[3 - 1]['grid'] as List<List<int>>,
+        state.palette,
       );
 
-      if (painterResult != null) {
-        if (painterResult.containsKey('rawResponse')) {
-          rawResponse = painterResult['rawResponse'] as String;
-          isError = true;
-        } else {
+      // Stitch the 2x2 comparison grid for the Critic
+      final refBmp = state.referenceImage ?? startingBmp;
+      final criticCombinedBmp = combineBmps([
+        refBmp,
+        candidate1Bmp,
+        candidate2Bmp,
+        candidate3Bmp,
+      ]);
+      loggedBmp = criticCombinedBmp;
+
+      final String criticPrompt = formatCriticComparisonPrompt();
+      // Ask Critic to evaluate the candidates
+      final criticResult = await _aiService.evaluateCandidates(
+        canvasImage: criticCombinedBmp,
+      );
+
+      if (criticResult != null) {
+        final choice = criticResult['choice'];
+        final criticReasoning = criticResult['reasoning'] as String?;
+
+        // Extract chosen painter index (1, 2, or 3) and clamp safely
+        int choiceInt = 1;
+        if (choice is int) {
+          choiceInt = choice.clamp(1, 3);
+        } else if (choice is String) {
+          choiceInt = (int.tryParse(choice) ?? 1).clamp(1, 3);
+        }
+
+        final chosenIndex = choiceInt - 1;
+        final chosenGrid = results[chosenIndex]['grid'] as List<List<int>>;
+        final chosenStrokes =
+            results[chosenIndex]['strokes'] as List<Map<String, dynamic>>;
+
+        int finalColorIndex = state.selectedColorIndex;
+        if (chosenStrokes.isNotEmpty) {
+          finalColorIndex =
+              (chosenStrokes.last['color'] as int?) ?? finalColorIndex;
+        }
+        final boundedColorIndex = finalColorIndex.clamp(
+          0,
+          state.palette.length,
+        );
+
+        // Update the official canvas state to the chosen grid
+        _pushToUndo(startingGrid);
+        state = state.copyWith(
+          grid: chosenGrid,
+          selectedColorIndex: boundedColorIndex,
+          redoStack: const [],
+        );
+
+        rawResponse = jsonEncode({
+          'criticChoice': choiceInt,
+          'criticReasoning':
+              criticReasoning ?? 'Selected candidate $choiceInt.',
+          'criticRawPrompt': criticPrompt,
+          'criticRawResponse': jsonEncode(criticResult),
+          'painter1Strokes': results[0]['strokes'],
+          'painter2Strokes': results[1]['strokes'],
+          'painter3Strokes': results[2]['strokes'],
+        });
+      } else {
+        // Fallback: default to Painter 1
+        final chosenGrid = results[0]['grid'] as List<List<int>>;
+        final chosenStrokes =
+            results[0]['strokes'] as List<Map<String, dynamic>>;
+
+        int finalColorIndex = state.selectedColorIndex;
+        if (chosenStrokes.isNotEmpty) {
+          finalColorIndex =
+              (chosenStrokes.last['color'] as int?) ?? finalColorIndex;
+        }
+        final boundedColorIndex = finalColorIndex.clamp(
+          0,
+          state.palette.length,
+        );
+
+        _pushToUndo(startingGrid);
+        state = state.copyWith(
+          grid: chosenGrid,
+          selectedColorIndex: boundedColorIndex,
+          redoStack: const [],
+        );
+        rawResponse = jsonEncode({
+          'criticChoice': 1,
+          'criticReasoning':
+              'Critic response unavailable, defaulted to Painter 1.',
+          'criticRawPrompt': criticPrompt,
+          'criticRawResponse': 'Critic response was null.',
+          'painter1Strokes': results[0]['strokes'],
+          'painter2Strokes': results[1]['strokes'],
+          'painter3Strokes': results[2]['strokes'],
+        });
+      }
+    } catch (e) {
+      isError = true;
+      rawResponse = 'Error in tournament execution: $e';
+      debugPrint('Error running multi-agent drawing cycle: $e');
+    } finally {
+      final newHistory = List<AgentHistoryEntry>.from(state.aiHistory)
+        ..add(
+          AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: promptLog,
+            response: rawResponse,
+            isError: isError,
+            imageBytes: loggedBmp,
+          ),
+        );
+      state = state.copyWith(isGenerating: false, aiHistory: newHistory);
+    }
+  }
+
+  Future<Map<String, dynamic>> _runPainterAgent({
+    required int agentNumber,
+    required List<List<int>> startingGrid,
+    required List<Color> palette,
+    required List<String> paletteHexes,
+    required Uint8List? referenceBmp,
+    required bool isMultimodal,
+  }) async {
+    final List<List<int>> tempGrid = List.generate(
+      CanvasNotifier.gridSize,
+      (y) => List<int>.from(startingGrid[y]),
+    );
+
+    final List<Map<String, dynamic>> strokesHistory = [];
+    final List<List<List<int>>> localUndoStack = [];
+
+    for (int turn = 1; turn <= 5; turn++) {
+      final previousBmp = localUndoStack.isNotEmpty
+          ? generateBmp(localUndoStack.last, palette)
+          : generateBmp(startingGrid, palette);
+
+      final combinedBmp = generateCombinedVisualInput(
+        referenceBmp,
+        previousBmp,
+      );
+
+      final systemInstruction = formatSystemInstruction();
+
+      final String currentCanvasTextGrid = canvasToTextGrid(tempGrid);
+      String? quantizedReferenceTextGrid;
+      if (referenceBmp != null) {
+        final quantizedGrid = getQuantizedIndexGrid(referenceBmp, palette);
+        quantizedReferenceTextGrid = canvasToTextGrid(quantizedGrid);
+      }
+
+      final userTextPrompt = formatUserPrompt(
+        canvasImage: Uint8List.fromList(utf8.encode(tempGrid.toString())),
+        prompt: state.userPrompt,
+        paletteColors: paletteHexes,
+        isMultimodal: isMultimodal,
+        hasPreviousImage: true,
+        hasReferenceImage: referenceBmp != null,
+        currentCanvasTextGrid: currentCanvasTextGrid,
+        quantizedReferenceTextGrid: quantizedReferenceTextGrid,
+      );
+
+      String historyPrompt = '';
+      if (strokesHistory.isNotEmpty) {
+        final historyItems = strokesHistory
+            .map((entry) {
+              final Map<String, dynamic> cleanEntry = {
+                'tool': entry['tool'],
+                'params': entry['params'],
+                'color': entry['color'],
+              };
+              final cleanResponse = jsonEncode(
+                cleanEntry,
+              ).replaceAll(RegExp(r'\s+'), ' ');
+              return '- $cleanResponse';
+            })
+            .join('\n');
+        historyPrompt =
+            '\n\nYour recent moves in this 5-turn sequence:\n$historyItems\n'
+            'Continue building on top of your recent moves to paint the final image.';
+      }
+
+      final fullPrompt =
+          '$systemInstruction\n\n$userTextPrompt\n\n$historyPrompt';
+
+      try {
+        final painterResult = await _aiService.getNextStroke(
+          canvasImage: combinedBmp,
+          prompt: fullPrompt,
+        );
+
+        if (painterResult != null &&
+            !painterResult.containsKey('rawResponse')) {
           final tool = painterResult['tool'] as String?;
           final params = (painterResult['params'] as List?)?.cast<int>();
           final colorIndex = painterResult['color'] as int?;
@@ -785,84 +959,65 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           if (tool != null &&
               params != null &&
               (colorIndex != null || tool == 'undo')) {
-            // Apply the Painter's suggested stroke
-            _applyAiStrokeCommand(tool, params, colorIndex ?? 0);
-
-            // Generate the post-stroke visual input for the Critic to evaluate
-            final postStrokePreviousBmp = state.undoStack.isNotEmpty
-                ? generateBmp(state.undoStack.last, state.palette)
-                : null;
-            final postStrokeCombinedBmp = generateCombinedVisualInput(
-              state.referenceImage,
-              postStrokePreviousBmp,
-            );
-            loggedBmp = postStrokeCombinedBmp;
-
-            // Run the Critic Agent to evaluate the stroke
-            final criticResult = await _aiService.evaluateStroke(
-              canvasImage: postStrokeCombinedBmp,
+            _applyStrokeToGrid(
+              tempGrid,
+              tool,
+              params,
+              colorIndex ?? 0,
+              localUndoStack,
             );
 
-            if (criticResult != null) {
-              final criticAction = criticResult['action'] as String?;
-              final criticReasoning = criticResult['reasoning'] as String?;
-
-              if (criticAction == 'undo') {
-                // Critic rejected the stroke. Revert it.
-                undo();
-                rawResponse = jsonEncode({
-                  'painter': painterResult,
-                  'critic': {
-                    'action': 'undo',
-                    'reasoning': criticReasoning ?? 'Rejected by critic.',
-                  },
-                });
-              } else {
-                // Critic accepted the stroke. Keep it.
-                rawResponse = jsonEncode({
-                  'painter': painterResult,
-                  'critic': {
-                    'action': 'keep',
-                    'reasoning': criticReasoning ?? 'Approved.',
-                  },
-                });
-              }
-            } else {
-              // Critic failed or returned null, default to keep
-              rawResponse = jsonEncode({
-                'painter': painterResult,
-                'critic': {
-                  'action': 'keep',
-                  'reasoning': 'Critic evaluation unavailable, keeping stroke.',
-                },
-              });
-            }
+            final strokeLog = Map<String, dynamic>.from(painterResult);
+            strokeLog['rawPrompt'] = fullPrompt;
+            strokeLog['rawResponse'] = jsonEncode(painterResult);
+            strokesHistory.add(strokeLog);
           } else {
-            isError = true;
-            rawResponse =
-                'Invalid painter response: ${jsonEncode(painterResult)}';
+            break;
           }
+        } else {
+          break;
         }
-      } else {
-        isError = true;
-        rawResponse = 'No stroke returned by the painter model.';
-      }
-    } catch (e) {
-      isError = true;
-      rawResponse = 'Error: $e';
-      debugPrint('Error triggering AI stroke: $e');
-    } finally {
-      final newHistory = List<AgentHistoryEntry>.from(state.aiHistory)
-        ..add(
-          AgentHistoryEntry(
-            timestamp: DateTime.now(),
-            prompt: fullPrompt,
-            response: rawResponse,
-            isError: isError,
-            imageBytes: loggedBmp,
-          ),
+      } catch (e) {
+        debugPrint(
+          'Painter Agent $agentNumber encountered error on turn $turn: $e',
         );
-      state = state.copyWith(isGenerating: false, aiHistory: newHistory);
+        break;
+      }
+    }
+
+    return {'grid': tempGrid, 'strokes': strokesHistory};
+  }
+
+  void _applyStrokeToGrid(
+    List<List<int>> tempGrid,
+    String toolName,
+    List<int> params,
+    int colorIndex,
+    List<List<List<int>>> localUndoStack,
+  ) {
+    final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
+
+    if (toolName == 'undo') {
+      if (localUndoStack.isNotEmpty) {
+        final prev = localUndoStack.removeLast();
+        for (int y = 0; y < CanvasNotifier.gridSize; y++) {
+          tempGrid[y] = List<int>.from(prev[y]);
+        }
+      }
+      return;
+    }
+
+    // Save state for undo support only for drawing commands
+    localUndoStack.add(
+      List.generate(
+        CanvasNotifier.gridSize,
+        (y) => List<int>.from(tempGrid[y]),
+      ),
+    );
+
+    final command = DrawingCommandFactory.create(toolName, params);
+    if (command != null) {
+      command.execute(tempGrid, boundedColorIndex, CanvasNotifier.gridSize);
     }
   }
 

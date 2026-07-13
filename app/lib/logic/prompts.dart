@@ -233,6 +233,28 @@ extension PixelArtAiServiceExtension on AiService {
     }
     return null;
   }
+
+  Future<Map<String, dynamic>?> evaluateCandidates({
+    required Uint8List canvasImage,
+  }) async {
+    final String criticPrompt = formatCriticComparisonPrompt();
+    final String? response = await generateContent(
+      prompt: criticPrompt,
+      imageBytes: canvasImage,
+      lowTemperature: true,
+    );
+    if (response == null) return null;
+    final cleaned = cleanJsonString(response);
+    try {
+      final parsed = jsonDecode(cleaned);
+      if (parsed is Map<String, dynamic>) {
+        return parsed;
+      }
+    } catch (e) {
+      return {'error': e.toString(), 'rawResponse': response};
+    }
+    return null;
+  }
 }
 
 String formatCriticSystemInstruction() {
@@ -254,4 +276,21 @@ String formatCriticUserPrompt() {
   return 'Evaluate the latest stroke applied to the Current Canvas.\n'
       'Determine if the stroke aligns with the target reference image.\n'
       'Output a JSON block with "reasoning" and "action" ("keep" or "undo").';
+}
+
+String formatCriticComparisonPrompt() {
+  return 'You are an AI pixel art critic evaluating candidate drawings produced by three different Painter agents.\n'
+      'Your goal is to select the single best candidate drawing that most successfully progresses the artwork.\n\n'
+      'The attached visual input is a 64x64 pixel image containing a 2x2 grid of panels:\n'
+      '- Top-Left: Reference Image (or the Starting Canvas before the 5-turn block started)\n'
+      '- Top-Right: Candidate 1 (Painter Agent - Run 1)\n'
+      '- Bottom-Left: Candidate 2 (Painter Agent - Run 2)\n'
+      '- Bottom-Right: Candidate 3 (Painter Agent - Run 3)\n\n'
+      'Analyze all three candidates and output a JSON block containing your choice (1, 2, or 3) and your detailed reasoning:\n'
+      '{\n'
+      '  "choice": 1,\n'
+      '  "reasoning": "Brief explanation of why you selected this candidate"\n'
+      '}\n'
+      'IMPORTANT: Keep the "reasoning" value extremely concise (max 1 sentence/15 words) to prevent JSON truncation on device.\n'
+      'Output only the JSON block. Do not write any markdown tags or explanations.';
 }
