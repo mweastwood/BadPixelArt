@@ -261,8 +261,17 @@ class _HistoryItemState extends State<_HistoryItem> {
       }
     } catch (_) {}
 
-    final understanding = parsedJson?['understanding'] as String?;
-    final reasoning = parsedJson?['reasoning'] as String?;
+    final painterJson = parsedJson?['painter'] as Map<String, dynamic>?;
+    final criticJson = parsedJson?['critic'] as Map<String, dynamic>?;
+
+    final understanding =
+        painterJson?['understanding'] as String? ??
+        parsedJson?['understanding'] as String?;
+    final reasoning =
+        painterJson?['reasoning'] as String? ??
+        parsedJson?['reasoning'] as String?;
+    final criticAction = criticJson?['action'] as String?;
+    final criticReasoning = criticJson?['reasoning'] as String?;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -278,10 +287,14 @@ class _HistoryItemState extends State<_HistoryItem> {
                 Icon(
                   widget.entry.isError
                       ? Icons.error_outline
-                      : Icons.check_circle_outline,
+                      : (criticAction == 'undo'
+                            ? Icons.cancel_outlined
+                            : Icons.check_circle_outline),
                   color: widget.entry.isError
                       ? theme.colorScheme.error
-                      : Colors.green,
+                      : (criticAction == 'undo'
+                            ? theme.colorScheme.error
+                            : Colors.green),
                   size: 18,
                 ),
                 const SizedBox(width: 8),
@@ -298,11 +311,15 @@ class _HistoryItemState extends State<_HistoryItem> {
                   child: Text(
                     widget.entry.isError
                         ? 'AI Generation Error'
-                        : 'Stroke suggested successfully',
+                        : (criticAction == 'undo'
+                              ? 'Stroke rejected by critic'
+                              : 'Stroke suggested successfully'),
                     style: TextStyle(
                       color: widget.entry.isError
                           ? theme.colorScheme.error
-                          : theme.colorScheme.onSurface,
+                          : (criticAction == 'undo'
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.onSurface),
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -403,6 +420,30 @@ class _HistoryItemState extends State<_HistoryItem> {
                   const SizedBox(height: 4),
                   Text(
                     reasoning,
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurface,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+                if (criticAction != null) ...[
+                  Text(
+                    'CRITIC EVALUATION (${criticAction.toUpperCase()}):',
+                    style: TextStyle(
+                      color: criticAction == 'undo'
+                          ? theme.colorScheme.error
+                          : Colors.green,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    criticReasoning ?? 'No reasoning provided.',
                     style: TextStyle(
                       color: theme.colorScheme.onSurface,
                       fontSize: 12,
