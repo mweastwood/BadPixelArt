@@ -212,8 +212,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: main
-      resolved-ref: c5b833aff45a1ac7ec077f5c8a667f4597674bd3
+      ref: "feat/add-agent-history-entry"
+      resolved-ref: "120200a156d6ad2bb19b2aad3a27204fad4009b1"
       url: "https://github.com/mweastwood/flutter-local-agent.git"
     source: git
     version: "0.0.1"

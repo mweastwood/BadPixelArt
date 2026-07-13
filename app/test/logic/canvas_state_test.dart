@@ -28,6 +28,7 @@ class MockTestAiService implements AiService {
     required String prompt,
     Uint8List? imageBytes,
     bool lowTemperature = false,
+    int? maxOutputTokens,
   }) async {
     if (lowTemperature) {
       final List<String> mockPalette = List.generate(16, (i) {

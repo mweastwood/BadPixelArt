@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:local_agent/local_agent.dart';
 import '../logic/canvas_state.dart';
 
 class AiHistoryDock extends ConsumerStatefulWidget {
@@ -28,21 +29,18 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
     }
 
     try {
-      final List<Map<String, dynamic>> jsonList = history.map((entry) {
-        return {
-          'timestamp': entry.timestamp.toIso8601String(),
-          'prompt': entry.prompt,
-          'response': entry.response,
-          'isError': entry.isError,
-          'canvasImageBase64': entry.canvasImage != null
-              ? base64Encode(entry.canvasImage!)
-              : null,
-        };
+      final agentEntries = history.map((entry) {
+        return AgentHistoryEntry(
+          timestamp: entry.timestamp,
+          prompt: entry.prompt,
+          response: entry.response,
+          isError: entry.isError,
+          imageBytes: entry.canvasImage,
+          imageMimeType: 'image/bmp',
+        );
       }).toList();
 
-      final String jsonStr = const JsonEncoder.withIndent(
-        '  ',
-      ).convert(jsonList);
+      final String jsonStr = AgentHistoryEntry.serializeList(agentEntries);
 
       String? outputFile;
       try {

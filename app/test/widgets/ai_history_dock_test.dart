@@ -40,6 +40,7 @@ class LocalMockAiService implements AiService {
     required String prompt,
     Uint8List? imageBytes,
     bool lowTemperature = false,
+    int? maxOutputTokens,
   }) async {
     if (lowTemperature) {
       final List<String> mockPalette = List.generate(16, (i) {
@@ -296,7 +297,9 @@ void main() {
                 );
                 expect(decoded[0]['response'], '{"tool":"line"}');
                 expect(decoded[0]['isError'], false);
-                expect(decoded[0]['canvasImageBase64'], isNotNull);
+                expect(decoded[0]['image'], isNotNull);
+                expect(decoded[0]['image']['mimeType'], 'image/bmp');
+                expect(decoded[0]['image']['base64'], isNotNull);
 
                 // Clean up
                 await entity.delete();
