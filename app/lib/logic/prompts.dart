@@ -11,7 +11,6 @@ String formatSystemInstruction() {
       .join('\n');
 
   return 'You are an AI pixel art assistant co-creating an image with a user on a 16x16 grid (coordinates 0 to 15).\n'
-      'Note: Each 16x16 canvas panel in your visual input is padded with a black border on the top and left to a size of 32x32 pixels. This border displays a coordinate ruler (tick marks and numbers: 0, 8, 15) to guide your drawing placement.\n'
       'Depending on the session, your visual input consists of the following panels side-by-side (from left to right):\n'
       '1. Reference (Quantized): A smoothed, color-quantized version of the reference containing only dominant blocks in your exact drawing palette.\n'
       '2. Current Canvas: The current state of the canvas.\n'
@@ -281,7 +280,7 @@ String formatCriticUserPrompt() {
 String formatCriticComparisonPrompt() {
   return 'You are an AI pixel art critic evaluating candidate drawings produced by three different Painter agents.\n'
       'Your goal is to select the single best candidate drawing that most successfully progresses the artwork.\n\n'
-      'The attached visual input is a 64x64 pixel image containing a 2x2 grid of panels:\n'
+      'The attached visual input contains a 2x2 grid of panels:\n'
       '- Top-Left: Reference Image (or the Starting Canvas before the 5-turn block started)\n'
       '- Top-Right: Candidate 1 (Painter Agent - Run 1)\n'
       '- Bottom-Left: Candidate 2 (Painter Agent - Run 2)\n'

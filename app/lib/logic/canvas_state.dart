@@ -77,139 +77,14 @@ Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
   return bmp;
 }
 
-const Map<int, List<String>> _digitFont = {
-  0: ['###', '#.#', '#.#', '#.#', '###'],
-  1: ['..#', '..#', '..#', '..#', '..#'],
-  2: ['###', '..#', '###', '#..', '###'],
-  3: ['###', '..#', '###', '..#', '###'],
-  4: ['#.#', '#.#', '###', '..#', '..#'],
-  5: ['###', '#..', '###', '..#', '###'],
-  6: ['###', '#..', '###', '#.#', '###'],
-  7: ['###', '..#', '..#', '..#', '..#'],
-  8: ['###', '#.#', '###', '#.#', '###'],
-  9: ['###', '#.#', '###', '..#', '###'],
-};
-
-void _drawText(
-  List<List<Color>> grid,
-  String text,
-  int startX,
-  int startY,
-  Color color,
-) {
-  int curX = startX;
-  for (int i = 0; i < text.length; i++) {
-    final char = text[i];
-    final digit = int.tryParse(char);
-    if (digit == null || !_digitFont.containsKey(digit)) continue;
-    final pattern = _digitFont[digit]!;
-    for (int dy = 0; dy < 5; dy++) {
-      for (int dx = 0; dx < 3; dx++) {
-        if (pattern[dy][dx] == '#') {
-          final targetY = startY + dy;
-          final targetX = curX + dx;
-          if (targetY >= 0 &&
-              targetY < grid.length &&
-              targetX >= 0 &&
-              targetX < grid[0].length) {
-            grid[targetY][targetX] = color;
-          }
-        }
-      }
-    }
-    curX += 4; // 3 width + 1 spacing
-  }
-}
-
-List<List<Color>> _padAndLabelPanel(Uint8List bmpBytes, List<Color> palette) {
-  final int gridSize = CanvasNotifier.gridSize;
-  final int panelSize = gridSize + 16;
-  final List<List<Color>> srcGrid = List.generate(
-    gridSize,
-    (_) => List.filled(gridSize, const Color(0xFF000000)),
-  );
-
-  if (bmpBytes.length >= 54 + gridSize * gridSize * 3) {
-    int offset = 54;
-    for (int y = gridSize - 1; y >= 0; y--) {
-      for (int x = 0; x < gridSize; x++) {
-        final b = bmpBytes[offset];
-        final g = bmpBytes[offset + 1];
-        final r = bmpBytes[offset + 2];
-        srcGrid[y][x] = Color(0xFF000000 | (r << 16) | (g << 8) | b);
-        offset += 3;
-      }
-    }
-  }
-
-  final List<List<Color>> destGrid = List.generate(
-    panelSize,
-    (_) => List.filled(panelSize, const Color(0xFF000000)),
-  );
-
-  for (int y = 0; y < gridSize; y++) {
-    for (int x = 0; x < gridSize; x++) {
-      destGrid[y + 16][x + 16] = srcGrid[y][x];
-    }
-  }
-
-  const separatorColor = Color(0xFF333333);
-  for (int i = 0; i < panelSize; i++) {
-    destGrid[15][i] = separatorColor;
-    destGrid[i][15] = separatorColor;
-  }
-
-  const tickColor = Color(0xFF888888);
-  const textColor = Color(0xFFCCCCCC);
-
-  final List<int> coords = gridSize == 16
-      ? [0, 8, 15]
-      : [0, 4, 8, 12, gridSize - 1];
-  for (final c in coords) {
-    // X-axis (top ruler)
-    final px = 16 + c;
-    destGrid[14][px] = tickColor;
-
-    final String labelStr = c.toString();
-    int labelX;
-    if (c == 0) {
-      labelX = px - 1;
-    } else if (c == gridSize - 1) {
-      labelX = px - 5;
-    } else {
-      labelX = px - 3;
-    }
-    _drawText(destGrid, labelStr, labelX, 5, textColor);
-
-    // Y-axis (left ruler)
-    final py = 16 + c;
-    destGrid[py][14] = tickColor;
-
-    final int labelXLeft = (labelStr.length == 1) ? 6 : 2;
-    _drawText(destGrid, labelStr, labelXLeft, py - 2, textColor);
-  }
-
-  return destGrid;
-}
-
 Uint8List combineBmps(List<Uint8List> bmps) {
   final activeBmps = bmps.where((b) => b.isNotEmpty).toList();
   if (activeBmps.isEmpty) {
     return generateBmpFromRgba(Uint8List.fromList([0, 0, 0, 255]), 1, 1);
   }
 
-  final List<Color> dummyPalette = List.generate(
-    256,
-    (_) => const Color(0xFF000000),
-  );
-
   final int n = activeBmps.length;
-  final List<List<List<Color>>> paddedPanels = [];
-  for (int i = 0; i < n; i++) {
-    paddedPanels.add(_padAndLabelPanel(activeBmps[i], dummyPalette));
-  }
-
-  final int panelSize = CanvasNotifier.gridSize + 16;
+  final int panelSize = CanvasNotifier.gridSize;
   final int cols = n <= 1 ? 1 : 2;
   final int rows = n <= 1 ? 1 : 2;
 
@@ -252,12 +127,13 @@ Uint8List combineBmps(List<Uint8List> bmps) {
     for (int gridCol = 0; gridCol < cols; gridCol++) {
       final int panelIndex = gridRow * cols + gridCol;
       if (panelIndex < n) {
-        final panel = paddedPanels[panelIndex];
+        final bmpBytes = activeBmps[panelIndex];
+        final int srcRowOffset = 54 + panelY * panelSize * 3;
         for (int x = 0; x < panelSize; x++) {
-          final color = panel[panelY][x];
-          combined[offset] = color.blue;
-          combined[offset + 1] = color.green;
-          combined[offset + 2] = color.red;
+          final int pixelOffset = srcRowOffset + x * 3;
+          combined[offset] = bmpBytes[pixelOffset]; // blue
+          combined[offset + 1] = bmpBytes[pixelOffset + 1]; // green
+          combined[offset + 2] = bmpBytes[pixelOffset + 2]; // red
           offset += 3;
         }
       } else {
