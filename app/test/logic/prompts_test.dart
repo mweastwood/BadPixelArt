@@ -7,7 +7,7 @@ void main() {
   group('AI Service Shared Prompt Formatting Helpers', () {
     test('formatSystemInstruction returns correct rules and tools', () {
       final sysInstruction = formatSystemInstruction();
-      expect(sysInstruction, contains('AI pixel art assistant'));
+      expect(sysInstruction, contains('AI pixel art painter agent'));
       expect(sysInstruction, contains('16x16 grid'));
       expect(sysInstruction, contains('"line"'));
       expect(sysInstruction, contains('"circle"'));
