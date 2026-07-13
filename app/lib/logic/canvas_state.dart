@@ -711,20 +711,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     final startingBmp = generateBmp(startingGrid, state.palette);
     final isMultimodal = _aiService is MethodChannelAiService;
 
-    // Define three different painter personalities/styles
-    const String personality1 =
-        "Style: Bold Shapes & Layouts. Focus on adding large, bold shapes, solid block regions, fills, and outline contours. You love using the 'circle', 'circle_filled', 'rectangle', 'rectangle_filled', and 'fill' tools to establish strong base layouts.";
-    const String personality2 =
-        "Style: Fine Detail & Shading. Focus on fine details, precise lines, pixel shading, highlights, and micro-structures. You love using the 'pixel', 'pixels', 'line', and 'ellipse' tools to paint individual elements, highlights, and crisp contours.";
-    const String personality3 =
-        "Style: Textured Patterns & Depth. Focus on patterns, texture shading, noise distributions, and textured depth. You love using 'hatch', 'rectangle_hatched', 'circle_hatched', 'noise_circle', 'noise_rectangle', and 'voronoi' patterns to fill sectors with unique textures.";
-
     String rawResponse = '';
     bool isError = false;
     Uint8List loggedBmp = startingBmp;
     final String promptLog =
         'Co-creative Multi-Agent Drawing Step (AI pixel art assistant):\n'
-        '- 3 Painter Agents (Bold, Detail, Texture) each ran for 5 turns starting from the current canvas.\n'
+        '- 3 Painter Agent Runs each ran for 5 turns starting from the current canvas.\n'
         '- Critic evaluated all three candidates on a 2x2 comparison grid and selected the best progression.';
 
     try {
@@ -732,7 +724,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       final results = await Future.wait([
         _runPainterAgent(
           agentNumber: 1,
-          personality: personality1,
           startingGrid: startingGrid,
           palette: state.palette,
           paletteHexes: paletteHexes,
@@ -741,7 +732,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         ),
         _runPainterAgent(
           agentNumber: 2,
-          personality: personality2,
           startingGrid: startingGrid,
           palette: state.palette,
           paletteHexes: paletteHexes,
@@ -750,7 +740,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         ),
         _runPainterAgent(
           agentNumber: 3,
-          personality: personality3,
           startingGrid: startingGrid,
           palette: state.palette,
           paletteHexes: paletteHexes,
@@ -883,7 +872,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Future<Map<String, dynamic>> _runPainterAgent({
     required int agentNumber,
-    required String personality,
     required List<List<int>> startingGrid,
     required List<Color> palette,
     required List<String> paletteHexes,
@@ -908,8 +896,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         previousBmp,
       );
 
-      final systemInstruction =
-          '${formatSystemInstruction()}\n\nYour Painter Personality & Guidelines:\n$personality';
+      final systemInstruction = formatSystemInstruction();
 
       final String currentCanvasTextGrid = canvasToTextGrid(tempGrid);
       String? quantizedReferenceTextGrid;
