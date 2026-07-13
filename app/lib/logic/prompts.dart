@@ -191,6 +191,13 @@ extension PixelArtAiServiceExtension on AiService {
           temperature: temperature,
         );
         if (response != null) {
+          // If the response contains an error block from the MethodChannel/plugin,
+          // throw an exception so that we retry!
+          if (response.contains('"error":') &&
+              response.contains('{') &&
+              response.contains('}')) {
+            throw Exception(response);
+          }
           return response;
         }
       } catch (_) {
@@ -209,13 +216,17 @@ extension PixelArtAiServiceExtension on AiService {
   }) async {
     final String describerPrompt =
         '${formatDescriberSystemInstruction()}\n\n${formatDescriberUserPrompt()}';
-    final String? response = await _generateContentWithRetry(
-      prompt: describerPrompt,
-      imageBytes: canvasImage,
-      temperature: 0.1,
-    );
-    if (response == null) return null;
-    return {'prompt': describerPrompt, 'response': response};
+    try {
+      final String? response = await _generateContentWithRetry(
+        prompt: describerPrompt,
+        imageBytes: canvasImage,
+        temperature: 0.1,
+      );
+      if (response == null) return null;
+      return {'prompt': describerPrompt, 'response': response};
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> getNextStroke({
@@ -223,32 +234,39 @@ extension PixelArtAiServiceExtension on AiService {
     required String prompt,
     required double temperature,
   }) async {
-    final String? response = await _generateContentWithRetry(
-      prompt: prompt,
-      imageBytes: canvasImage,
-      temperature: temperature,
-    );
-    if (response == null) return null;
-    final cleaned = cleanJsonString(response);
     try {
+      final String? response = await _generateContentWithRetry(
+        prompt: prompt,
+        imageBytes: canvasImage,
+        temperature: temperature,
+      );
+      if (response == null) return null;
+      final cleaned = cleanJsonString(response);
       final parsed = jsonDecode(cleaned);
       if (parsed is Map<String, dynamic>) {
+        if (parsed.containsKey('error')) {
+          return {'error': parsed['error'], 'rawResponse': response};
+        }
         return parsed;
       }
     } catch (e) {
-      return {'error': e.toString(), 'rawResponse': response};
+      return {'error': e.toString(), 'rawResponse': 'N/A'};
     }
     return null;
   }
 
   Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
-    final String? response = await _generateContentWithRetry(
-      prompt: formatPalettePrompt(),
-      imageBytes: referenceImage,
-      temperature: 0.1,
-    );
-    if (response == null) return null;
-    return parsePaletteColors(response);
+    try {
+      final String? response = await _generateContentWithRetry(
+        prompt: formatPalettePrompt(),
+        imageBytes: referenceImage,
+        temperature: 0.1,
+      );
+      if (response == null) return null;
+      return parsePaletteColors(response);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> evaluateStroke({
@@ -256,20 +274,23 @@ extension PixelArtAiServiceExtension on AiService {
   }) async {
     final String criticPrompt =
         '${formatCriticSystemInstruction()}\n\n${formatCriticUserPrompt()}';
-    final String? response = await _generateContentWithRetry(
-      prompt: criticPrompt,
-      imageBytes: canvasImage,
-      temperature: 0.1,
-    );
-    if (response == null) return null;
-    final cleaned = cleanJsonString(response);
     try {
+      final String? response = await _generateContentWithRetry(
+        prompt: criticPrompt,
+        imageBytes: canvasImage,
+        temperature: 0.1,
+      );
+      if (response == null) return null;
+      final cleaned = cleanJsonString(response);
       final parsed = jsonDecode(cleaned);
       if (parsed is Map<String, dynamic>) {
+        if (parsed.containsKey('error')) {
+          return {'error': parsed['error'], 'rawResponse': response};
+        }
         return parsed;
       }
     } catch (e) {
-      return {'error': e.toString(), 'rawResponse': response};
+      return {'error': e.toString(), 'rawResponse': 'N/A'};
     }
     return null;
   }
@@ -290,20 +311,23 @@ extension PixelArtAiServiceExtension on AiService {
       candidate2Description: candidate2Description,
       candidate3Description: candidate3Description,
     );
-    final String? response = await _generateContentWithRetry(
-      prompt: criticPrompt,
-      imageBytes: null,
-      temperature: 0.1,
-    );
-    if (response == null) return null;
-    final cleaned = cleanJsonString(response);
     try {
+      final String? response = await _generateContentWithRetry(
+        prompt: criticPrompt,
+        imageBytes: null,
+        temperature: 0.1,
+      );
+      if (response == null) return null;
+      final cleaned = cleanJsonString(response);
       final parsed = jsonDecode(cleaned);
       if (parsed is Map<String, dynamic>) {
+        if (parsed.containsKey('error')) {
+          return {'error': parsed['error'], 'rawResponse': response};
+        }
         return parsed;
       }
     } catch (e) {
-      return {'error': e.toString(), 'rawResponse': response};
+      return {'error': e.toString(), 'rawResponse': 'N/A'};
     }
     return null;
   }

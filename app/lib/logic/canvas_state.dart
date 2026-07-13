@@ -902,7 +902,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         );
 
         if (painterResult != null) {
-          if (painterResult.containsKey('rawResponse')) {
+          if (painterResult.containsKey('rawResponse') ||
+              painterResult.containsKey('error')) {
             strokesHistory.add({
               'tool': 'error',
               'params': <int>[],
