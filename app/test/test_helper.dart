@@ -18,6 +18,9 @@ class TestMockAiService implements AiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
+    if (prompt.contains('pixel art describer')) {
+      return 'Mock description of the canvas';
+    }
     return null;
   }
 }

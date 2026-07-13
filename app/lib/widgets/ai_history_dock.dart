@@ -742,6 +742,146 @@ class _HistoryItemState extends State<_HistoryItem> {
                     const SizedBox(height: 8),
                   ],
 
+                  // Describer Canvas Descriptions
+                  if (parsedJson?['describers'] != null) ...[
+                    Text(
+                      'DESCRIBER CANVAS DESCRIPTIONS:',
+                      style: TextStyle(
+                        color: theme.colorScheme.secondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ...(parsedJson!['describers'] as Map<String, dynamic>)
+                        .entries
+                        .map((e) {
+                          final key = e.key;
+                          final descData = e.value as Map<String, dynamic>?;
+                          if (descData == null) return const SizedBox.shrink();
+                          final description =
+                              descData['description'] as String? ?? 'N/A';
+                          final rawPrompt =
+                              descData['rawPrompt'] as String? ?? 'N/A';
+                          final rawResponse =
+                              descData['rawResponse'] as String? ?? 'N/A';
+                          final imgBytesBase64 =
+                              descData['imageBytes'] as String?;
+                          final Uint8List? imgBytes = imgBytesBase64 != null
+                              ? base64Decode(imgBytesBase64)
+                              : null;
+
+                          String label = 'Target Reference';
+                          if (key == 'starting') {
+                            label = 'Starting Canvas';
+                          }
+                          if (key == 'candidate1') {
+                            label = 'Candidate 1 (Painter Run 1)';
+                          }
+                          if (key == 'candidate2') {
+                            label = 'Candidate 2 (Painter Run 2)';
+                          }
+                          if (key == 'candidate3') {
+                            label = 'Candidate 3 (Painter Run 3)';
+                          }
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            color: theme.colorScheme.surfaceContainerHigh,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                color: theme.colorScheme.outlineVariant,
+                                width: 1,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                                vertical: 6.0,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (imgBytes != null) ...[
+                                        Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                            border: Border.all(
+                                              color: theme
+                                                  .colorScheme
+                                                  .outlineVariant,
+                                            ),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
+                                            child: Image.memory(
+                                              imgBytes,
+                                              fit: BoxFit.contain,
+                                              filterQuality: FilterQuality.none,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                      ],
+                                      Expanded(
+                                        child: Text(
+                                          label.toUpperCase(),
+                                          style: TextStyle(
+                                            color: theme.colorScheme.primary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.code, size: 14),
+                                        tooltip: 'View Raw Describer Exchange',
+                                        visualDensity: VisualDensity.compact,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        onPressed: () {
+                                          _showRawExchangeDialog(
+                                            context,
+                                            title:
+                                                'Raw LLM Exchange: Describer ($label)',
+                                            prompt: rawPrompt,
+                                            response: rawResponse,
+                                            imageBytes: imgBytes,
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    description,
+                                    style: TextStyle(
+                                      color: theme.colorScheme.onSurface,
+                                      fontSize: 11.5,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                  ],
+
                   // Tab Buttons for Painter 1, 2, 3
                   Text(
                     'PAINTER PROGRESSION TIMELINE:',

@@ -596,6 +596,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         '- Critic evaluated all three candidates on a 2x2 comparison grid and selected the best progression.';
 
     try {
+      // 1. Get textual description of the reference image using Describer
+      final refBmp = state.referenceImage;
+      final Map<String, String>? refDescResult = refBmp != null
+          ? await _aiService.describeCanvas(canvasImage: refBmp)
+          : null;
+      final String referenceDescription =
+          refDescResult?['response'] ??
+          (refBmp != null
+              ? 'A pixel art reference image.'
+              : 'An empty canvas.');
+
       // Run the 3 painters in parallel using Future.wait
       final results = await Future.wait([
         _runPainterAgent(
@@ -603,7 +614,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           startingGrid: startingGrid,
           palette: state.palette,
           paletteHexes: paletteHexes,
-          referenceBmp: state.referenceImage,
+          referenceDescription: referenceDescription,
           isMultimodal: isMultimodal,
         ),
         _runPainterAgent(
@@ -611,7 +622,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           startingGrid: startingGrid,
           palette: state.palette,
           paletteHexes: paletteHexes,
-          referenceBmp: state.referenceImage,
+          referenceDescription: referenceDescription,
           isMultimodal: isMultimodal,
         ),
         _runPainterAgent(
@@ -619,7 +630,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           startingGrid: startingGrid,
           palette: state.palette,
           paletteHexes: paletteHexes,
-          referenceBmp: state.referenceImage,
+          referenceDescription: referenceDescription,
           isMultimodal: isMultimodal,
         ),
       ]);
@@ -638,20 +649,90 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         state.palette,
       );
 
-      // Stitch the 2x2 comparison grid for the Critic
-      final refBmp = state.referenceImage ?? startingBmp;
+      // Describe the starting canvas and candidates
+      final startDescResult = await _aiService.describeCanvas(
+        canvasImage: startingBmp,
+      );
+      final String startingCanvasDescription =
+          startDescResult?['response'] ?? 'Starting state.';
+
+      final cand1DescResult = await _aiService.describeCanvas(
+        canvasImage: candidate1Bmp,
+      );
+      final String candidate1Description =
+          cand1DescResult?['response'] ?? 'Candidate 1 progression.';
+
+      final cand2DescResult = await _aiService.describeCanvas(
+        canvasImage: candidate2Bmp,
+      );
+      final String candidate2Description =
+          cand2DescResult?['response'] ?? 'Candidate 2 progression.';
+
+      final cand3DescResult = await _aiService.describeCanvas(
+        canvasImage: candidate3Bmp,
+      );
+      final String candidate3Description =
+          cand3DescResult?['response'] ?? 'Candidate 3 progression.';
+
+      // Stitch the 2x2 comparison grid for the visual log in the UI
       final criticCombinedBmp = combineBmps([
-        refBmp,
+        refBmp ?? startingBmp,
         candidate1Bmp,
         candidate2Bmp,
         candidate3Bmp,
       ]);
       loggedBmp = criticCombinedBmp;
 
-      final String criticPrompt = formatCriticComparisonPrompt();
-      // Ask Critic to evaluate the candidates
+      final String criticPrompt = formatCriticTextOnlyPrompt(
+        userPrompt: state.userPrompt,
+        referenceDescription: referenceDescription,
+        startingCanvasDescription: startingCanvasDescription,
+        candidate1Description: candidate1Description,
+        candidate2Description: candidate2Description,
+        candidate3Description: candidate3Description,
+      );
+
+      final describersLog = {
+        'reference': {
+          'description': referenceDescription,
+          'rawPrompt': refDescResult?['prompt'] ?? 'N/A',
+          'rawResponse': refDescResult?['response'] ?? 'N/A',
+          'imageBytes': refBmp != null ? base64Encode(refBmp) : null,
+        },
+        'starting': {
+          'description': startingCanvasDescription,
+          'rawPrompt': startDescResult?['prompt'] ?? 'N/A',
+          'rawResponse': startDescResult?['response'] ?? 'N/A',
+          'imageBytes': base64Encode(startingBmp),
+        },
+        'candidate1': {
+          'description': candidate1Description,
+          'rawPrompt': cand1DescResult?['prompt'] ?? 'N/A',
+          'rawResponse': cand1DescResult?['response'] ?? 'N/A',
+          'imageBytes': base64Encode(candidate1Bmp),
+        },
+        'candidate2': {
+          'description': candidate2Description,
+          'rawPrompt': cand2DescResult?['prompt'] ?? 'N/A',
+          'rawResponse': cand2DescResult?['response'] ?? 'N/A',
+          'imageBytes': base64Encode(candidate2Bmp),
+        },
+        'candidate3': {
+          'description': candidate3Description,
+          'rawPrompt': cand3DescResult?['prompt'] ?? 'N/A',
+          'rawResponse': cand3DescResult?['response'] ?? 'N/A',
+          'imageBytes': base64Encode(candidate3Bmp),
+        },
+      };
+
+      // Ask Critic to evaluate candidate descriptions (text-only)
       final criticResult = await _aiService.evaluateCandidates(
-        canvasImage: criticCombinedBmp,
+        userPrompt: state.userPrompt,
+        referenceDescription: referenceDescription,
+        startingCanvasDescription: startingCanvasDescription,
+        candidate1Description: candidate1Description,
+        candidate2Description: candidate2Description,
+        candidate3Description: candidate3Description,
       );
 
       if (criticResult != null) {
@@ -698,6 +779,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           'painter1Strokes': results[0]['strokes'],
           'painter2Strokes': results[1]['strokes'],
           'painter3Strokes': results[2]['strokes'],
+          'describers': describersLog,
         });
       } else {
         // Fallback: default to Painter 1
@@ -730,6 +812,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           'painter1Strokes': results[0]['strokes'],
           'painter2Strokes': results[1]['strokes'],
           'painter3Strokes': results[2]['strokes'],
+          'describers': describersLog,
         });
       }
     } catch (e) {
@@ -756,7 +839,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     required List<List<int>> startingGrid,
     required List<Color> palette,
     required List<String> paletteHexes,
-    required Uint8List? referenceBmp,
+    required String referenceDescription,
     required bool isMultimodal,
   }) async {
     final List<List<int>> tempGrid = List.generate(
@@ -770,29 +853,18 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     for (int turn = 1; turn <= 5; turn++) {
       final previousBmp = generateBmp(tempGrid, palette);
 
-      final combinedBmp = generateCombinedVisualInput(
-        referenceBmp,
-        previousBmp,
-      );
-
       final systemInstruction = formatSystemInstruction();
 
       final String currentCanvasTextGrid = canvasToTextGrid(tempGrid);
-      String? quantizedReferenceTextGrid;
-      if (referenceBmp != null) {
-        final quantizedGrid = getQuantizedIndexGrid(referenceBmp, palette);
-        quantizedReferenceTextGrid = canvasToTextGrid(quantizedGrid);
-      }
 
       final userTextPrompt = formatUserPrompt(
-        canvasImage: Uint8List.fromList(utf8.encode(tempGrid.toString())),
+        canvasImage: previousBmp,
         prompt: state.userPrompt,
         paletteColors: paletteHexes,
         isMultimodal: isMultimodal,
         hasPreviousImage: true,
-        hasReferenceImage: referenceBmp != null,
+        referenceDescription: referenceDescription,
         currentCanvasTextGrid: currentCanvasTextGrid,
-        quantizedReferenceTextGrid: quantizedReferenceTextGrid,
       );
 
       String historyPrompt = '';
@@ -824,7 +896,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
       try {
         final painterResult = await _aiService.getNextStroke(
-          canvasImage: combinedBmp,
+          canvasImage: previousBmp,
           prompt: fullPrompt,
           temperature: temperature,
         );
@@ -838,7 +910,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
               'rawPrompt': fullPrompt,
               'rawResponse': painterResult['rawResponse'] ?? 'N/A',
               'error': painterResult['error'] ?? 'JSON parsing failed',
-              'rawImageBase64': base64Encode(combinedBmp),
+              'rawImageBase64': base64Encode(previousBmp),
             });
             continue;
           }
@@ -861,7 +933,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             final strokeLog = Map<String, dynamic>.from(painterResult);
             strokeLog['rawPrompt'] = fullPrompt;
             strokeLog['rawResponse'] = jsonEncode(painterResult);
-            strokeLog['rawImageBase64'] = base64Encode(combinedBmp);
+            strokeLog['rawImageBase64'] = base64Encode(previousBmp);
             strokesHistory.add(strokeLog);
           } else {
             strokesHistory.add({
@@ -871,7 +943,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
               'rawPrompt': fullPrompt,
               'rawResponse': jsonEncode(painterResult),
               'error': 'Missing required JSON keys: tool, params, or color',
-              'rawImageBase64': base64Encode(combinedBmp),
+              'rawImageBase64': base64Encode(previousBmp),
             });
             continue;
           }
@@ -884,7 +956,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             'rawResponse': 'N/A',
             'error':
                 'AI service returned null response (possible connection issue, safety block, or rate limit)',
-            'rawImageBase64': base64Encode(combinedBmp),
+            'rawImageBase64': base64Encode(previousBmp),
           });
           continue;
         }
@@ -899,7 +971,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           'rawPrompt': fullPrompt,
           'rawResponse': 'N/A',
           'error': 'Exception caught: $e',
-          'rawImageBase64': base64Encode(combinedBmp),
+          'rawImageBase64': base64Encode(previousBmp),
         });
         continue;
       }

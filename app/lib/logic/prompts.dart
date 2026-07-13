@@ -44,22 +44,24 @@ String formatUserPrompt({
   required List<String> paletteColors,
   bool isMultimodal = false,
   bool hasPreviousImage = false,
-  bool hasReferenceImage = false,
+  String? referenceDescription,
   String? currentCanvasTextGrid,
-  String? quantizedReferenceTextGrid,
   String? loopHistory,
 }) {
   String canvasGridString;
   if (isMultimodal) {
-    if (hasReferenceImage) {
-      canvasGridString =
-          'The attached image contains the quantized reference image (left panel) and current canvas state (right panel).';
-    } else {
-      canvasGridString =
-          'The current canvas is provided as an image attachment.';
-    }
+    canvasGridString = 'The current canvas is provided as an image attachment.';
   } else {
-    String decodedGrid = utf8.decode(canvasImage);
+    String decodedGrid = '';
+    if (currentCanvasTextGrid != null) {
+      decodedGrid = currentCanvasTextGrid;
+    } else {
+      try {
+        decodedGrid = utf8.decode(canvasImage);
+      } catch (_) {
+        decodedGrid = 'The grid state could not be decoded.';
+      }
+    }
     if (!decodedGrid.contains(RegExp(r'[1-9]'))) {
       decodedGrid = 'The grid is completely empty (all 0s).';
     }
@@ -67,9 +69,10 @@ String formatUserPrompt({
   }
 
   String refShapeInstruction = '';
-  if (hasReferenceImage) {
+  if (referenceDescription != null && referenceDescription.isNotEmpty) {
     refShapeInstruction =
-        'Use the provided reference image (sent as an image attachment) to guide your drawings.';
+        'DESCRIPTION OF THE TARGET REFERENCE IMAGE:\n$referenceDescription\n'
+        'Use this description to guide your drawings.';
   }
 
   final List<String> colorsMap = [
@@ -81,12 +84,6 @@ String formatUserPrompt({
   final colorList = colorsMap.join('\n');
 
   final textGridSection = StringBuffer();
-  if (quantizedReferenceTextGrid != null) {
-    textGridSection.write(
-      '\nTARGET REFERENCE LAYOUT (quantized to available palette colors):\n',
-    );
-    textGridSection.write(quantizedReferenceTextGrid);
-  }
   if (currentCanvasTextGrid != null) {
     textGridSection.write(
       '\nCURRENT CANVAS STATE (each character represents a palette color index, . = empty):\n',
@@ -181,7 +178,7 @@ List<Color> parsePaletteColors(String responseText) {
 extension PixelArtAiServiceExtension on AiService {
   Future<String?> _generateContentWithRetry({
     required String prompt,
-    required Uint8List imageBytes,
+    required Uint8List? imageBytes,
     required double temperature,
     int maxRetries = 3,
   }) async {
@@ -205,6 +202,20 @@ extension PixelArtAiServiceExtension on AiService {
       delayMs *= 2;
     }
     return null;
+  }
+
+  Future<Map<String, String>?> describeCanvas({
+    required Uint8List canvasImage,
+  }) async {
+    final String describerPrompt =
+        '${formatDescriberSystemInstruction()}\n\n${formatDescriberUserPrompt()}';
+    final String? response = await _generateContentWithRetry(
+      prompt: describerPrompt,
+      imageBytes: canvasImage,
+      temperature: 0.1,
+    );
+    if (response == null) return null;
+    return {'prompt': describerPrompt, 'response': response};
   }
 
   Future<Map<String, dynamic>?> getNextStroke({
@@ -264,12 +275,24 @@ extension PixelArtAiServiceExtension on AiService {
   }
 
   Future<Map<String, dynamic>?> evaluateCandidates({
-    required Uint8List canvasImage,
+    required String userPrompt,
+    required String referenceDescription,
+    required String startingCanvasDescription,
+    required String candidate1Description,
+    required String candidate2Description,
+    required String candidate3Description,
   }) async {
-    final String criticPrompt = formatCriticComparisonPrompt();
+    final String criticPrompt = formatCriticTextOnlyPrompt(
+      userPrompt: userPrompt,
+      referenceDescription: referenceDescription,
+      startingCanvasDescription: startingCanvasDescription,
+      candidate1Description: candidate1Description,
+      candidate2Description: candidate2Description,
+      candidate3Description: candidate3Description,
+    );
     final String? response = await _generateContentWithRetry(
       prompt: criticPrompt,
-      imageBytes: canvasImage,
+      imageBytes: null,
       temperature: 0.1,
     );
     if (response == null) return null;
@@ -316,6 +339,42 @@ String formatCriticComparisonPrompt() {
       '- Bottom-Left: Candidate 2 (Painter Agent - Run 2)\n'
       '- Bottom-Right: Candidate 3 (Painter Agent - Run 3)\n\n'
       'Analyze all three candidates and output a JSON block containing your choice (1, 2, or 3) and your detailed reasoning:\n'
+      '{\n'
+      '  "choice": 1,\n'
+      '  "reasoning": "Brief explanation of why you selected this candidate"\n'
+      '}\n'
+      'IMPORTANT: Keep the "reasoning" value extremely concise (max 1 sentence/15 words) to prevent JSON truncation on device.\n'
+      'Output only the JSON block. Do not write any markdown tags or explanations.';
+}
+
+String formatDescriberSystemInstruction() {
+  return 'You are an AI pixel art describer. Your task is to analyze a 16x16 pixel art canvas and write a detailed, factual, and objective textual description of the shapes, colors, layout, and subject depicted.\n'
+      'Focus on the composition, spatial relationships, and exact details of where elements are located on the grid.\n'
+      'Be precise, objective, and concise. Avoid flowery language or subjective art appreciation. Speak in plain descriptions of what is actually drawn.';
+}
+
+String formatDescriberUserPrompt() {
+  return 'Describe the provided 16x16 pixel art image in detail. Specify shapes, colors, and their relative positions/coordinates.';
+}
+
+String formatCriticTextOnlyPrompt({
+  required String userPrompt,
+  required String referenceDescription,
+  required String startingCanvasDescription,
+  required String candidate1Description,
+  required String candidate2Description,
+  required String candidate3Description,
+}) {
+  return 'You are an AI pixel art critic evaluating candidate drawings produced by three different Painter agents.\n'
+      'Your goal is to select the single best candidate drawing that most successfully progresses the artwork from its starting state toward the target reference image.\n\n'
+      'USER INSTRUCTION:\n"$userPrompt"\n\n'
+      'TARGET REFERENCE IMAGE DESCRIPTION:\n$referenceDescription\n\n'
+      'STARTING CANVAS DESCRIPTION:\n$startingCanvasDescription\n\n'
+      'CANDIDATE 1 DESCRIPTION (Painter Run 1):\n$candidate1Description\n\n'
+      'CANDIDATE 2 DESCRIPTION (Painter Run 2):\n$candidate2Description\n\n'
+      'CANDIDATE 3 DESCRIPTION (Painter Run 3):\n$candidate3Description\n\n'
+      'Analyze the changes made by all three candidates relative to the starting canvas and select the one that aligns best with the target reference image.\n'
+      'Output a JSON block containing your choice (1, 2, or 3) and your detailed reasoning:\n'
       '{\n'
       '  "choice": 1,\n'
       '  "reasoning": "Brief explanation of why you selected this candidate"\n'

@@ -61,7 +61,7 @@ void main() {
       expect(userPrompt, contains('- Index 4: #00ff00'));
     });
 
-    test('formatUserPrompt includes generic reference image instructions', () {
+    test('formatUserPrompt includes custom reference image description', () {
       final canvasImage = Uint8List.fromList(utf8.encode('00000000'));
       final prompt = 'draw reference';
       final paletteColors = ['#000000', '#ffffff'];
@@ -70,13 +70,13 @@ void main() {
         canvasImage: canvasImage,
         prompt: prompt,
         paletteColors: paletteColors,
-        hasReferenceImage: true,
+        referenceDescription: 'A red circle in the center.',
       );
 
       expect(
         userPrompt,
         contains(
-          'Use the provided reference image (sent as an image attachment) to guide your drawings.',
+          'DESCRIPTION OF THE TARGET REFERENCE IMAGE:\nA red circle in the center.',
         ),
       );
     });
@@ -102,13 +102,10 @@ void main() {
         prompt: prompt,
         paletteColors: paletteColors,
         currentCanvasTextGrid: 'CANVAS_GRID_MOCK',
-        quantizedReferenceTextGrid: 'REFERENCE_GRID_MOCK',
       );
 
       expect(userPrompt, contains('CURRENT CANVAS STATE'));
       expect(userPrompt, contains('CANVAS_GRID_MOCK'));
-      expect(userPrompt, contains('TARGET REFERENCE LAYOUT'));
-      expect(userPrompt, contains('REFERENCE_GRID_MOCK'));
     });
   });
 }

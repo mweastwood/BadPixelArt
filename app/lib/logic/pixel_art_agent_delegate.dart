@@ -51,9 +51,7 @@ class PixelArtAgentDelegate implements AgentDelegate {
       paletteColors: paletteHexes,
       isMultimodal: true,
       hasPreviousImage: previousCanvasBmp != null,
-      hasReferenceImage: referenceImageBmp != null,
       currentCanvasTextGrid: currentCanvasTextGrid,
-      quantizedReferenceTextGrid: quantizedReferenceTextGrid,
       loopHistory: historyBuffer.toString(),
     );
 
