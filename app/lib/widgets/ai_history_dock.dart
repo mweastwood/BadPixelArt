@@ -419,6 +419,167 @@ class _HistoryItemState extends State<_HistoryItem> {
     );
   }
 
+  void _showDescriberDescriptionsDialog(
+    BuildContext context,
+    Map<String, dynamic> describers,
+  ) {
+    final theme = Theme.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.description,
+                color: theme.colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              const Text('Canvas Descriptions'),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            constraints: const BoxConstraints(maxHeight: 500),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children:
+                    [
+                      'reference',
+                      'starting',
+                      'candidate1',
+                      'candidate2',
+                      'candidate3',
+                    ].map((key) {
+                      final descData = describers[key] as Map<String, dynamic>?;
+                      if (descData == null) return const SizedBox.shrink();
+                      final description =
+                          descData['description'] as String? ?? 'N/A';
+                      final rawPrompt =
+                          descData['rawPrompt'] as String? ?? 'N/A';
+                      final rawResponse =
+                          descData['rawResponse'] as String? ?? 'N/A';
+                      final imgBytesBase64 = descData['imageBytes'] as String?;
+                      final Uint8List? imgBytes = imgBytesBase64 != null
+                          ? base64Decode(imgBytesBase64)
+                          : null;
+
+                      String label = 'Target Reference';
+                      if (key == 'starting') {
+                        label = 'Starting Canvas';
+                      }
+                      if (key == 'candidate1') {
+                        label = 'Candidate 1 (Painter Run 1)';
+                      }
+                      if (key == 'candidate2') {
+                        label = 'Candidate 2 (Painter Run 2)';
+                      }
+                      if (key == 'candidate3') {
+                        label = 'Candidate 3 (Painter Run 3)';
+                      }
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        color: theme.colorScheme.surfaceContainerHigh,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          side: BorderSide(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0,
+                            vertical: 8.0,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  if (imgBytes != null) ...[
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color:
+                                              theme.colorScheme.outlineVariant,
+                                        ),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(3),
+                                        child: Image.memory(
+                                          imgBytes,
+                                          fit: BoxFit.contain,
+                                          filterQuality: FilterQuality.none,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      label.toUpperCase(),
+                                      style: TextStyle(
+                                        color: theme.colorScheme.primary,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.code, size: 16),
+                                    tooltip: 'View Raw Describer Exchange',
+                                    visualDensity: VisualDensity.compact,
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                    onPressed: () {
+                                      _showRawExchangeDialog(
+                                        context,
+                                        title:
+                                            'Raw LLM Exchange: Describer ($label)',
+                                        prompt: rawPrompt,
+                                        response: rawResponse,
+                                        imageBytes: imgBytes,
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                description,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: 12.5,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   bool _useWhiteText(Color color) {
     return color.computeLuminance() < 0.5;
   }
@@ -742,141 +903,24 @@ class _HistoryItemState extends State<_HistoryItem> {
                     const SizedBox(height: 8),
                   ],
 
-                  // Describer Canvas Descriptions
+                  // Describer Canvas Descriptions Action Button
                   if (parsedJson?['describers'] != null) ...[
-                    Text(
-                      'DESCRIBER CANVAS DESCRIPTIONS:',
-                      style: TextStyle(
-                        color: theme.colorScheme.secondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                    Center(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showDescriberDescriptionsDialog(
+                          context,
+                          parsedJson!['describers'] as Map<String, dynamic>,
+                        ),
+                        icon: const Icon(Icons.description, size: 14),
+                        label: const Text('View Canvas Descriptions'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    ...(parsedJson!['describers'] as Map<String, dynamic>)
-                        .entries
-                        .map((e) {
-                          final key = e.key;
-                          final descData = e.value as Map<String, dynamic>?;
-                          if (descData == null) return const SizedBox.shrink();
-                          final description =
-                              descData['description'] as String? ?? 'N/A';
-                          final rawPrompt =
-                              descData['rawPrompt'] as String? ?? 'N/A';
-                          final rawResponse =
-                              descData['rawResponse'] as String? ?? 'N/A';
-                          final imgBytesBase64 =
-                              descData['imageBytes'] as String?;
-                          final Uint8List? imgBytes = imgBytesBase64 != null
-                              ? base64Decode(imgBytesBase64)
-                              : null;
-
-                          String label = 'Target Reference';
-                          if (key == 'starting') {
-                            label = 'Starting Canvas';
-                          }
-                          if (key == 'candidate1') {
-                            label = 'Candidate 1 (Painter Run 1)';
-                          }
-                          if (key == 'candidate2') {
-                            label = 'Candidate 2 (Painter Run 2)';
-                          }
-                          if (key == 'candidate3') {
-                            label = 'Candidate 3 (Painter Run 3)';
-                          }
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 6),
-                            color: theme.colorScheme.surfaceContainerHigh,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              side: BorderSide(
-                                color: theme.colorScheme.outlineVariant,
-                                width: 1,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                                vertical: 6.0,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      if (imgBytes != null) ...[
-                                        Container(
-                                          width: 24,
-                                          height: 24,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                            border: Border.all(
-                                              color: theme
-                                                  .colorScheme
-                                                  .outlineVariant,
-                                            ),
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              3,
-                                            ),
-                                            child: Image.memory(
-                                              imgBytes,
-                                              fit: BoxFit.contain,
-                                              filterQuality: FilterQuality.none,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                      ],
-                                      Expanded(
-                                        child: Text(
-                                          label.toUpperCase(),
-                                          style: TextStyle(
-                                            color: theme.colorScheme.primary,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.code, size: 14),
-                                        tooltip: 'View Raw Describer Exchange',
-                                        visualDensity: VisualDensity.compact,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        onPressed: () {
-                                          _showRawExchangeDialog(
-                                            context,
-                                            title:
-                                                'Raw LLM Exchange: Describer ($label)',
-                                            prompt: rawPrompt,
-                                            response: rawResponse,
-                                            imageBytes: imgBytes,
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    description,
-                                    style: TextStyle(
-                                      color: theme.colorScheme.onSurface,
-                                      fontSize: 11.5,
-                                      height: 1.3,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }),
                     const SizedBox(height: 12),
                     const Divider(),
                     const SizedBox(height: 8),
