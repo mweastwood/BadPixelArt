@@ -43,7 +43,11 @@ class MockTestAiService implements AiService {
     }
 
     if (prompt.contains('evaluating candidate drawings')) {
-      return jsonEncode({'choice': 1, 'reasoning': 'Critic picked 1'});
+      return jsonEncode({
+        'choice': 1,
+        'reasoning': 'Critic picked 1',
+        'nextFocus': 'Critic suggestion',
+      });
     }
 
     lastCanvasImage = imageBytes;

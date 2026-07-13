@@ -850,6 +850,60 @@ class _HistoryItemState extends State<_HistoryItem> {
                               height: 1.3,
                             ),
                           ),
+                          (() {
+                            final nextFocus =
+                                parsedJson?['criticNextFocus'] as String?;
+                            if (nextFocus != null &&
+                                nextFocus != 'N/A' &&
+                                nextFocus.isNotEmpty) {
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.secondaryContainer
+                                        .withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: theme
+                                          .colorScheme
+                                          .secondaryContainer
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(
+                                        Icons.lightbulb_outline,
+                                        size: 14,
+                                        color: theme.colorScheme.secondary,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          'NEXT FOCUS SUGGESTION: $nextFocus',
+                                          style: TextStyle(
+                                            color: theme
+                                                .colorScheme
+                                                .onSecondaryContainer,
+                                            fontSize: 11,
+                                            height: 1.25,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          })(),
                         ],
                       ),
                     ),

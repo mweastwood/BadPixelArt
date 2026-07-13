@@ -175,6 +175,7 @@ class CanvasModel {
   final List<Color>? suggestedPalette;
   final bool isSuggestingPalette;
   final bool showPaletteSuggestion;
+  final String? nextFocus;
 
   const CanvasModel({
     required this.grid,
@@ -195,6 +196,7 @@ class CanvasModel {
     this.suggestedPalette,
     this.isSuggestingPalette = false,
     this.showPaletteSuggestion = false,
+    this.nextFocus,
   });
 
   CanvasModel copyWith({
@@ -218,6 +220,8 @@ class CanvasModel {
     bool? isSuggestingPalette,
     bool? showPaletteSuggestion,
     bool clearSuggestedPalette = false,
+    String? nextFocus,
+    bool clearNextFocus = false,
   }) {
     return CanvasModel(
       grid: grid ?? this.grid,
@@ -245,6 +249,7 @@ class CanvasModel {
       isSuggestingPalette: isSuggestingPalette ?? this.isSuggestingPalette,
       showPaletteSuggestion:
           showPaletteSuggestion ?? this.showPaletteSuggestion,
+      nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
     );
   }
 
@@ -417,6 +422,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         clearReference: true,
         clearSuggestedPalette: true,
         showPaletteSuggestion: false,
+        clearNextFocus: true,
       );
     } else {
       state = state.copyWith(
@@ -738,6 +744,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       if (criticResult != null) {
         final choice = criticResult['choice'];
         final criticReasoning = criticResult['reasoning'] as String?;
+        final nextFocus = criticResult['nextFocus'] as String?;
 
         // Extract chosen painter index (1, 2, or 3) and clamp safely
         int choiceInt = 1;
@@ -768,12 +775,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           grid: chosenGrid,
           selectedColorIndex: boundedColorIndex,
           redoStack: const [],
+          nextFocus: nextFocus,
         );
 
         rawResponse = jsonEncode({
           'criticChoice': choiceInt,
           'criticReasoning':
               criticReasoning ?? 'Selected candidate $choiceInt.',
+          'criticNextFocus': nextFocus ?? 'N/A',
           'criticRawPrompt': criticPrompt,
           'criticRawResponse': jsonEncode(criticResult),
           'painter1Strokes': results[0]['strokes'],
@@ -802,11 +811,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           grid: chosenGrid,
           selectedColorIndex: boundedColorIndex,
           redoStack: const [],
+          clearNextFocus: true,
         );
         rawResponse = jsonEncode({
           'criticChoice': 1,
           'criticReasoning':
               'Critic response unavailable, defaulted to Painter 1.',
+          'criticNextFocus': 'N/A',
           'criticRawPrompt': criticPrompt,
           'criticRawResponse': 'Critic response was null.',
           'painter1Strokes': results[0]['strokes'],
@@ -865,6 +876,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         hasPreviousImage: true,
         referenceDescription: referenceDescription,
         currentCanvasTextGrid: currentCanvasTextGrid,
+        nextFocus: state.nextFocus,
       );
 
       String historyPrompt = '';
