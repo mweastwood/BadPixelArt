@@ -438,14 +438,14 @@ void main() {
         expect(bd.getUint32(18, Endian.little), equals(64)); // width
         expect(bd.getUint32(22, Endian.little), equals(64)); // height
 
-        // Stride is 64 * 3 = 192. Pixel (10, 10) in left panel (grid1) starts at y_bmp=5, x_bmp=16+10=26.
-        final offsetLeft = 54 + 5 * 192 + 26 * 3;
+        // Stride is 64 * 3 = 192. Pixel (10, 10) in left panel (grid1) starts at y_bmp=37, x_bmp=16+10=26.
+        final offsetLeft = 54 + 37 * 192 + 26 * 3;
         expect(combined[offsetLeft], equals(0)); // blue
         expect(combined[offsetLeft + 1], equals(0)); // green
         expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=5, x_bmp=32+16+10=58
-        final offsetRight = 54 + 5 * 192 + 58 * 3;
+        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=37, x_bmp=32+16+10=58
+        final offsetRight = 54 + 37 * 192 + 58 * 3;
         expect(combined[offsetRight], equals(255)); // blue
         expect(combined[offsetRight + 1], equals(0)); // green
         expect(combined[offsetRight + 2], equals(0)); // red
@@ -479,20 +479,20 @@ void main() {
         expect(bd.getUint32(22, Endian.little), equals(64)); // height
 
         // Stride is 64 * 3 = 192.
-        // Left panel (grid1): pixel (10, 10) -> padded y_bmp=5, x_bmp=26
-        final offsetLeft = 54 + 5 * 192 + 26 * 3;
+        // Left panel (grid1): pixel (10, 10) -> padded y_bmp=37, x_bmp=26
+        final offsetLeft = 54 + 37 * 192 + 26 * 3;
         expect(combined[offsetLeft], equals(0)); // blue
         expect(combined[offsetLeft + 1], equals(0)); // green
         expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=5, x_bmp=32+16+10=58
-        final offsetMiddle = 54 + 5 * 192 + 58 * 3;
+        // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=37, x_bmp=32+16+10=58
+        final offsetMiddle = 54 + 37 * 192 + 58 * 3;
         expect(combined[offsetMiddle], equals(0)); // blue
         expect(combined[offsetMiddle + 1], equals(255)); // green
         expect(combined[offsetMiddle + 2], equals(0)); // red
 
-        // Right panel (grid3): pixel (10, 10) -> padded y_bmp=37, x_bmp=26
-        final offsetRight = 54 + 37 * 192 + 26 * 3;
+        // Right panel (grid3): pixel (10, 10) -> padded y_bmp=5, x_bmp=26
+        final offsetRight = 54 + 5 * 192 + 26 * 3;
         expect(combined[offsetRight], equals(255)); // blue
         expect(combined[offsetRight + 1], equals(0)); // green
         expect(combined[offsetRight + 2], equals(0)); // red

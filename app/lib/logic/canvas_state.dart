@@ -250,7 +250,7 @@ Uint8List combineBmps(List<Uint8List> bmps) {
     final int panelY = y % panelSize;
 
     for (int gridCol = 0; gridCol < cols; gridCol++) {
-      final int panelIndex = (rows - 1 - gridRow) * cols + gridCol;
+      final int panelIndex = gridRow * cols + gridCol;
       if (panelIndex < n) {
         final panel = paddedPanels[panelIndex];
         for (int x = 0; x < panelSize; x++) {
