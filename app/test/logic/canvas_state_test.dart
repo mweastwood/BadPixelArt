@@ -413,21 +413,21 @@ void main() {
 
         final combined = combineBmps([bmp1, bmp2]);
 
-        // File size should be 6198 (54 header + 64 * 32 * 3)
-        expect(combined.length, equals(6198));
+        // File size should be 12342 (54 header + 64 * 64 * 3)
+        expect(combined.length, equals(12342));
 
         final ByteData bd = ByteData.sublistView(combined);
         expect(bd.getUint32(18, Endian.little), equals(64)); // width
-        expect(bd.getUint32(22, Endian.little), equals(32)); // height
+        expect(bd.getUint32(22, Endian.little), equals(64)); // height
 
-        // Stride is 64 * 3 = 192. Pixel (10, 10) in left panel (grid1) starts at y_bmp=10, x_bmp=16+10=26.
-        final offsetLeft = 54 + 10 * 192 + 26 * 3;
+        // Stride is 64 * 3 = 192. Pixel (10, 10) in left panel (grid1) starts at y_bmp=5, x_bmp=16+10=26.
+        final offsetLeft = 54 + 5 * 192 + 26 * 3;
         expect(combined[offsetLeft], equals(0)); // blue
         expect(combined[offsetLeft + 1], equals(0)); // green
         expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=10, x_bmp=32+16+10=58
-        final offsetRight = 54 + 10 * 192 + 58 * 3;
+        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=5, x_bmp=32+16+10=58
+        final offsetRight = 54 + 5 * 192 + 58 * 3;
         expect(combined[offsetRight], equals(255)); // blue
         expect(combined[offsetRight + 1], equals(0)); // green
         expect(combined[offsetRight + 2], equals(0)); // red
@@ -453,28 +453,28 @@ void main() {
 
         final combined = combineBmps([bmp1, bmp2, bmp3]);
 
-        // File size should be 9270 (54 header + 96 * 32 * 3)
-        expect(combined.length, equals(9270));
+        // File size should be 12342 (54 header + 64 * 64 * 3)
+        expect(combined.length, equals(12342));
 
         final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(96)); // width
-        expect(bd.getUint32(22, Endian.little), equals(32)); // height
+        expect(bd.getUint32(18, Endian.little), equals(64)); // width
+        expect(bd.getUint32(22, Endian.little), equals(64)); // height
 
-        // Stride is 96 * 3 = 288.
-        // Left panel (grid1): pixel (10, 10) -> padded y_bmp=10, x_bmp=26
-        final offsetLeft = 54 + 10 * 288 + 26 * 3;
+        // Stride is 64 * 3 = 192.
+        // Left panel (grid1): pixel (10, 10) -> padded y_bmp=5, x_bmp=26
+        final offsetLeft = 54 + 5 * 192 + 26 * 3;
         expect(combined[offsetLeft], equals(0)); // blue
         expect(combined[offsetLeft + 1], equals(0)); // green
         expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=10, x_bmp=32+16+10=58
-        final offsetMiddle = 54 + 10 * 288 + 58 * 3;
+        // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=5, x_bmp=32+16+10=58
+        final offsetMiddle = 54 + 5 * 192 + 58 * 3;
         expect(combined[offsetMiddle], equals(0)); // blue
         expect(combined[offsetMiddle + 1], equals(255)); // green
         expect(combined[offsetMiddle + 2], equals(0)); // red
 
-        // Right panel (grid3): pixel (10, 10) -> padded y_bmp=10, x_bmp=64+16+10=90
-        final offsetRight = 54 + 10 * 288 + 90 * 3;
+        // Right panel (grid3): pixel (10, 10) -> padded y_bmp=37, x_bmp=26
+        final offsetRight = 54 + 37 * 192 + 26 * 3;
         expect(combined[offsetRight], equals(255)); // blue
         expect(combined[offsetRight + 1], equals(0)); // green
         expect(combined[offsetRight + 2], equals(0)); // red
@@ -567,15 +567,15 @@ void main() {
         await notifier.triggerAiStroke();
         expect(mockAiService.lastCanvasImage, isNotNull);
 
-        // 2 panels: Quantized, Current Canvas
-        // Width = 32 * 2 = 64. Height = 32.
-        // File size = 54 + 64 * 32 * 3 = 6198 bytes.
-        expect(mockAiService.lastCanvasImage!.length, equals(6198));
+        // 2 panels: Quantized, Current Canvas in 2x2 layout
+        // Width = 64. Height = 64.
+        // File size = 54 + 64 * 64 * 3 = 12342 bytes.
+        expect(mockAiService.lastCanvasImage!.length, equals(12342));
         final ByteData bd = ByteData.sublistView(
           mockAiService.lastCanvasImage!,
         );
         expect(bd.getUint32(18, Endian.little), equals(64)); // width
-        expect(bd.getUint32(22, Endian.little), equals(32)); // height
+        expect(bd.getUint32(22, Endian.little), equals(64)); // height
       },
     );
 
