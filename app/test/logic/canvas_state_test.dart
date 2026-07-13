@@ -403,17 +403,17 @@ void main() {
         expect(bd.getUint32(22, Endian.little), equals(1)); // height
       });
 
-      test('combineBmps with single BMP returns 32x32 padded BMP', () {
+      test('combineBmps with single BMP returns 16x16 BMP', () {
         final grid = List.generate(
           CanvasNotifier.gridSize,
           (_) => List.filled(CanvasNotifier.gridSize, 0),
         );
         final bmp = generateBmp(grid, CanvasNotifier.primaryPalette);
         final combined = combineBmps([bmp]);
-        expect(combined.length, equals(3126)); // 54 header + 32 * 32 * 3 = 3126
+        expect(combined.length, equals(822)); // 54 header + 16 * 16 * 3 = 822
         final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(32)); // width
-        expect(bd.getUint32(22, Endian.little), equals(32)); // height
+        expect(bd.getUint32(18, Endian.little), equals(16)); // width
+        expect(bd.getUint32(22, Endian.little), equals(16)); // height
       });
 
       test('combineBmps with two BMPs concatenates side-by-side correctly', () {
@@ -431,21 +431,21 @@ void main() {
 
         final combined = combineBmps([bmp1, bmp2]);
 
-        // File size should be 12342 (54 header + 64 * 64 * 3)
-        expect(combined.length, equals(12342));
+        // File size should be 3126 (54 header + 32 * 32 * 3)
+        expect(combined.length, equals(3126));
 
         final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(64)); // width
-        expect(bd.getUint32(22, Endian.little), equals(64)); // height
+        expect(bd.getUint32(18, Endian.little), equals(32)); // width
+        expect(bd.getUint32(22, Endian.little), equals(32)); // height
 
-        // Stride is 64 * 3 = 192. Pixel (10, 10) in left panel (grid1) starts at y_bmp=5, x_bmp=16+10=26.
-        final offsetLeft = 54 + 5 * 192 + 26 * 3;
+        // Stride is 32 * 3 = 96. Pixel (10, 10) in left panel (grid1) starts at y_bmp=21, x_bmp=10.
+        final offsetLeft = 54 + 21 * 96 + 10 * 3;
         expect(combined[offsetLeft], equals(0)); // blue
         expect(combined[offsetLeft + 1], equals(0)); // green
         expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=5, x_bmp=32+16+10=58
-        final offsetRight = 54 + 5 * 192 + 58 * 3;
+        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=21, x_bmp=16+10=26
+        final offsetRight = 54 + 21 * 96 + 26 * 3;
         expect(combined[offsetRight], equals(255)); // blue
         expect(combined[offsetRight + 1], equals(0)); // green
         expect(combined[offsetRight + 2], equals(0)); // red
@@ -471,28 +471,28 @@ void main() {
 
         final combined = combineBmps([bmp1, bmp2, bmp3]);
 
-        // File size should be 12342 (54 header + 64 * 64 * 3)
-        expect(combined.length, equals(12342));
+        // File size should be 3126 (54 header + 32 * 32 * 3)
+        expect(combined.length, equals(3126));
 
         final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(64)); // width
-        expect(bd.getUint32(22, Endian.little), equals(64)); // height
+        expect(bd.getUint32(18, Endian.little), equals(32)); // width
+        expect(bd.getUint32(22, Endian.little), equals(32)); // height
 
-        // Stride is 64 * 3 = 192.
-        // Left panel (grid1): pixel (10, 10) -> padded y_bmp=5, x_bmp=26
-        final offsetLeft = 54 + 5 * 192 + 26 * 3;
+        // Stride is 32 * 3 = 96.
+        // Left panel (grid1): pixel (10, 10) -> padded y_bmp=21, x_bmp=10
+        final offsetLeft = 54 + 21 * 96 + 10 * 3;
         expect(combined[offsetLeft], equals(0)); // blue
         expect(combined[offsetLeft + 1], equals(0)); // green
         expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=5, x_bmp=32+16+10=58
-        final offsetMiddle = 54 + 5 * 192 + 58 * 3;
+        // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=21, x_bmp=16+10=26
+        final offsetMiddle = 54 + 21 * 96 + 26 * 3;
         expect(combined[offsetMiddle], equals(0)); // blue
         expect(combined[offsetMiddle + 1], equals(255)); // green
         expect(combined[offsetMiddle + 2], equals(0)); // red
 
-        // Right panel (grid3): pixel (10, 10) -> padded y_bmp=37, x_bmp=26
-        final offsetRight = 54 + 37 * 192 + 26 * 3;
+        // Right panel (grid3): pixel (10, 10) -> padded y_bmp=5, x_bmp=10
+        final offsetRight = 54 + 5 * 96 + 10 * 3;
         expect(combined[offsetRight], equals(255)); // blue
         expect(combined[offsetRight + 1], equals(0)); // green
         expect(combined[offsetRight + 2], equals(0)); // red
@@ -558,8 +558,8 @@ void main() {
         expect(
           mockAiService.lastCanvasImage!.length,
           equals(
-            3126,
-          ), // 32x32 bmp length (only current canvas, since ref is null and we dropped previous)
+            822,
+          ), // 16x16 bmp length (only current canvas, since ref is null and we dropped previous)
         );
       },
     );
@@ -586,14 +586,14 @@ void main() {
         expect(mockAiService.lastCanvasImage, isNotNull);
 
         // 2 panels: Quantized, Current Canvas in 2x2 layout
-        // Width = 64. Height = 64.
-        // File size = 54 + 64 * 64 * 3 = 12342 bytes.
-        expect(mockAiService.lastCanvasImage!.length, equals(12342));
+        // Width = 32. Height = 32.
+        // File size = 54 + 32 * 32 * 3 = 3126 bytes.
+        expect(mockAiService.lastCanvasImage!.length, equals(3126));
         final ByteData bd = ByteData.sublistView(
           mockAiService.lastCanvasImage!,
         );
-        expect(bd.getUint32(18, Endian.little), equals(64)); // width
-        expect(bd.getUint32(22, Endian.little), equals(64)); // height
+        expect(bd.getUint32(18, Endian.little), equals(32)); // width
+        expect(bd.getUint32(22, Endian.little), equals(32)); // height
       },
     );
 

@@ -126,16 +126,21 @@ void main() {
       expect(find.text('10:15:30'), findsOneWidget);
       expect(find.text('Stroke suggested successfully'), findsOneWidget);
 
-      // Verify details are collapsed initially
-      expect(find.text('PROMPT:'), findsNothing);
+      // Verify details are collapsed initially but raw AI exchange button is in the header
+      expect(find.byTooltip('View Raw AI Exchange'), findsOneWidget);
 
       // Tap log summary row to expand details
       await tester.tap(find.text('Stroke suggested successfully'));
       await tester.pumpAndSettle();
 
-      // Verify prompt and response headers/texts are shown
-      expect(find.text('PROMPT:'), findsOneWidget);
-      expect(find.text('RESPONSE:'), findsOneWidget);
+      // Tap the raw AI exchange button to open popup
+      expect(find.byTooltip('View Raw AI Exchange'), findsOneWidget);
+      await tester.tap(find.byTooltip('View Raw AI Exchange'));
+      await tester.pumpAndSettle();
+
+      // Verify prompt and response headers/texts are shown in dialog
+      expect(find.text('RAW PROMPT:'), findsOneWidget);
+      expect(find.text('RAW RESPONSE:'), findsOneWidget);
       expect(
         find.text('System Instructions:\nDraw a test sword.'),
         findsOneWidget,
