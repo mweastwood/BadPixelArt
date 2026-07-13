@@ -23,13 +23,13 @@ abstract class AgentCanvas {
 }
 
 Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
-  const int width = 64;
-  const int height = 64;
+  final int width = CanvasNotifier.gridSize;
+  final int height = CanvasNotifier.gridSize;
   const int bytesPerPixel = 3;
-  const int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
-  const int rowStride = width * bytesPerPixel + rowPadding;
-  const int pixelDataSize = rowStride * height;
-  const int fileSize = 54 + pixelDataSize;
+  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
+  final int rowStride = width * bytesPerPixel + rowPadding;
+  final int pixelDataSize = rowStride * height;
+  final int fileSize = 54 + pixelDataSize;
 
   final Uint8List bmp = Uint8List(fileSize);
   final ByteData bd = ByteData.sublistView(bmp);
@@ -122,15 +122,17 @@ void _drawText(
 }
 
 List<List<Color>> _padAndLabelPanel(Uint8List bmpBytes, List<Color> palette) {
+  final int gridSize = CanvasNotifier.gridSize;
+  final int panelSize = gridSize + 16;
   final List<List<Color>> srcGrid = List.generate(
-    64,
-    (_) => List.filled(64, const Color(0xFF000000)),
+    gridSize,
+    (_) => List.filled(gridSize, const Color(0xFF000000)),
   );
 
-  if (bmpBytes.length >= 54 + 64 * 64 * 3) {
+  if (bmpBytes.length >= 54 + gridSize * gridSize * 3) {
     int offset = 54;
-    for (int y = 63; y >= 0; y--) {
-      for (int x = 0; x < 64; x++) {
+    for (int y = gridSize - 1; y >= 0; y--) {
+      for (int x = 0; x < gridSize; x++) {
         final b = bmpBytes[offset];
         final g = bmpBytes[offset + 1];
         final r = bmpBytes[offset + 2];
@@ -141,18 +143,18 @@ List<List<Color>> _padAndLabelPanel(Uint8List bmpBytes, List<Color> palette) {
   }
 
   final List<List<Color>> destGrid = List.generate(
-    80,
-    (_) => List.filled(80, const Color(0xFF000000)),
+    panelSize,
+    (_) => List.filled(panelSize, const Color(0xFF000000)),
   );
 
-  for (int y = 0; y < 64; y++) {
-    for (int x = 0; x < 64; x++) {
+  for (int y = 0; y < gridSize; y++) {
+    for (int x = 0; x < gridSize; x++) {
       destGrid[y + 16][x + 16] = srcGrid[y][x];
     }
   }
 
   const separatorColor = Color(0xFF333333);
-  for (int i = 0; i < 80; i++) {
+  for (int i = 0; i < panelSize; i++) {
     destGrid[15][i] = separatorColor;
     destGrid[i][15] = separatorColor;
   }
@@ -160,7 +162,9 @@ List<List<Color>> _padAndLabelPanel(Uint8List bmpBytes, List<Color> palette) {
   const tickColor = Color(0xFF888888);
   const textColor = Color(0xFFCCCCCC);
 
-  final coords = [0, 16, 32, 48, 63];
+  final List<int> coords = gridSize == 16
+      ? [0, 8, 15]
+      : [0, 4, 8, 12, gridSize - 1];
   for (final c in coords) {
     // X-axis (top ruler)
     final px = 16 + c;
@@ -170,7 +174,7 @@ List<List<Color>> _padAndLabelPanel(Uint8List bmpBytes, List<Color> palette) {
     int labelX;
     if (c == 0) {
       labelX = px - 1;
-    } else if (c == 63) {
+    } else if (c == gridSize - 1) {
       labelX = px - 5;
     } else {
       labelX = px - 3;
@@ -205,8 +209,9 @@ Uint8List combineBmps(List<Uint8List> bmps) {
     paddedPanels.add(_padAndLabelPanel(activeBmps[i], dummyPalette));
   }
 
-  final int combinedWidth = 80 * n;
-  const int combinedHeight = 80;
+  final int panelSize = CanvasNotifier.gridSize + 16;
+  final int combinedWidth = panelSize * n;
+  final int combinedHeight = panelSize;
   const int bytesPerPixel = 3;
   final int rowPadding = (4 - (combinedWidth * bytesPerPixel) % 4) % 4;
   final int rowStride = combinedWidth * bytesPerPixel + rowPadding;
@@ -240,7 +245,7 @@ Uint8List combineBmps(List<Uint8List> bmps) {
   for (int y = combinedHeight - 1; y >= 0; y--) {
     for (int p = 0; p < n; p++) {
       final panel = paddedPanels[p];
-      for (int x = 0; x < 80; x++) {
+      for (int x = 0; x < panelSize; x++) {
         final color = panel[y][x];
         combined[offset] = color.blue;
         combined[offset + 1] = color.green;
@@ -396,7 +401,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   final AiService _aiService;
   Timer? _autoRunTimer;
 
-  static const int gridSize = 64;
+  static const int gridSize = 16;
 
   @override
   List<List<int>> get grid => state.grid;
@@ -415,24 +420,16 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     Uint8List? previousBmp,
   ) {
     final List<Uint8List> bmpsToCombine = [];
-    final currentBmp = generateBmp(state.grid, state.palette);
 
     if (referenceBmp != null) {
-      bmpsToCombine.add(referenceBmp);
       final refGrid = _bmpToColorGrid(referenceBmp);
-
-      final edgesGrid = _applyEdgeDetection(refGrid);
-      final edgesBmp = _bmpFromColorGrid(edgesGrid);
-      bmpsToCombine.add(edgesBmp);
-
       final blurredGrid = _applyGaussianBlur(refGrid);
       final quantizedGrid = _applyColorQuantization(blurredGrid, state.palette);
       final quantizedBmp = _bmpFromColorGrid(quantizedGrid);
       bmpsToCombine.add(quantizedBmp);
     }
-    if (previousBmp != null) {
-      bmpsToCombine.add(previousBmp);
-    }
+
+    final currentBmp = generateBmp(state.grid, state.palette);
     bmpsToCombine.add(currentBmp);
 
     return combineBmps(bmpsToCombine);
@@ -932,13 +929,21 @@ Future<Uint8List?> resizeAndConvertToBmp(Uint8List imageBytes) async {
 
     paintImage(
       canvas: canvas,
-      rect: const Rect.fromLTWH(0, 0, 64, 64),
+      rect: Rect.fromLTWH(
+        0,
+        0,
+        CanvasNotifier.gridSize.toDouble(),
+        CanvasNotifier.gridSize.toDouble(),
+      ),
       image: originalImage,
       fit: BoxFit.cover,
     );
 
     final picture = recorder.endRecording();
-    final resizedImage = await picture.toImage(64, 64);
+    final resizedImage = await picture.toImage(
+      CanvasNotifier.gridSize,
+      CanvasNotifier.gridSize,
+    );
 
     final byteData = await resizedImage.toByteData(
       format: ui.ImageByteFormat.rawRgba,
@@ -946,7 +951,11 @@ Future<Uint8List?> resizeAndConvertToBmp(Uint8List imageBytes) async {
     if (byteData == null) return null;
 
     final rgbaBytes = byteData.buffer.asUint8List();
-    return generateBmpFromRgba(rgbaBytes, 64, 64);
+    return generateBmpFromRgba(
+      rgbaBytes,
+      CanvasNotifier.gridSize,
+      CanvasNotifier.gridSize,
+    );
   } catch (e) {
     debugPrint('Error resizing image: $e');
     return null;
@@ -1005,14 +1014,15 @@ Uint8List generateBmpFromRgba(Uint8List rgbaBytes, int width, int height) {
 }
 
 List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes) {
+  final int size = CanvasNotifier.gridSize;
   final List<List<Color>> grid = List.generate(
-    64,
-    (_) => List.filled(64, const Color(0xFF000000)),
+    size,
+    (_) => List.filled(size, const Color(0xFF000000)),
   );
-  if (bmpBytes.length >= 54 + 64 * 64 * 3) {
+  if (bmpBytes.length >= 54 + size * size * 3) {
     int offset = 54;
-    for (int y = 63; y >= 0; y--) {
-      for (int x = 0; x < 64; x++) {
+    for (int y = size - 1; y >= 0; y--) {
+      for (int x = 0; x < size; x++) {
         final b = bmpBytes[offset];
         final g = bmpBytes[offset + 1];
         final r = bmpBytes[offset + 2];
@@ -1025,13 +1035,13 @@ List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes) {
 }
 
 Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
-  const int width = 64;
-  const int height = 64;
+  final int width = CanvasNotifier.gridSize;
+  final int height = CanvasNotifier.gridSize;
   const int bytesPerPixel = 3;
-  const int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
-  const int rowStride = width * bytesPerPixel + rowPadding;
-  const int pixelDataSize = rowStride * height;
-  const int fileSize = 54 + pixelDataSize;
+  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
+  final int rowStride = width * bytesPerPixel + rowPadding;
+  final int pixelDataSize = rowStride * height;
+  final int fileSize = 54 + pixelDataSize;
 
   final Uint8List bmp = Uint8List(fileSize);
   final ByteData bd = ByteData.sublistView(bmp);
@@ -1071,23 +1081,24 @@ Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
 }
 
 List<List<Color>> _applyGaussianBlur(List<List<Color>> src) {
+  final int size = CanvasNotifier.gridSize;
   final List<List<Color>> dest = List.generate(
-    64,
-    (_) => List.filled(64, const Color(0xFF000000)),
+    size,
+    (_) => List.filled(size, const Color(0xFF000000)),
   );
   final List<int> kernel = [1, 2, 1, 2, 4, 2, 1, 2, 1];
   const int kernelWeight = 16;
 
-  for (int y = 0; y < 64; y++) {
-    for (int x = 0; x < 64; x++) {
+  for (int y = 0; y < size; y++) {
+    for (int x = 0; x < size; x++) {
       int sumR = 0;
       int sumG = 0;
       int sumB = 0;
 
       for (int ky = -1; ky <= 1; ky++) {
         for (int kx = -1; kx <= 1; kx++) {
-          final px = (x + kx).clamp(0, 63);
-          final py = (y + ky).clamp(0, 63);
+          final px = (x + kx).clamp(0, size - 1);
+          final py = (y + ky).clamp(0, size - 1);
           final color = src[py][px];
           final weight = kernel[(ky + 1) * 3 + (kx + 1)];
           sumR += color.red * weight;
@@ -1111,12 +1122,13 @@ List<List<Color>> _applyColorQuantization(
   List<List<Color>> src,
   List<Color> palette,
 ) {
+  final int size = CanvasNotifier.gridSize;
   final List<List<Color>> dest = List.generate(
-    64,
-    (_) => List.filled(64, const Color(0xFF000000)),
+    size,
+    (_) => List.filled(size, const Color(0xFF000000)),
   );
-  for (int y = 0; y < 64; y++) {
-    for (int x = 0; x < 64; x++) {
+  for (int y = 0; y < size; y++) {
+    for (int x = 0; x < size; x++) {
       final color = src[y][x];
       Color closestColor = palette.first;
       double minDistance = double.infinity;
@@ -1136,52 +1148,14 @@ List<List<Color>> _applyColorQuantization(
   return dest;
 }
 
-List<List<Color>> _applyEdgeDetection(List<List<Color>> src) {
-  final List<List<Color>> dest = List.generate(
-    64,
-    (_) => List.filled(64, const Color(0xFF000000)),
-  );
-  final List<List<int>> gray = List.generate(64, (_) => List.filled(64, 0));
-  for (int y = 0; y < 64; y++) {
-    for (int x = 0; x < 64; x++) {
-      final color = src[y][x];
-      gray[y][x] =
-          (0.299 * color.red + 0.587 * color.green + 0.114 * color.blue)
-              .round();
-    }
-  }
-
-  for (int y = 1; y < 63; y++) {
-    for (int x = 1; x < 63; x++) {
-      final val00 = gray[y - 1][x - 1];
-      final val01 = gray[y - 1][x];
-      final val02 = gray[y - 1][x + 1];
-      final val10 = gray[y][x - 1];
-      final val12 = gray[y][x + 1];
-      final val20 = gray[y + 1][x - 1];
-      final val21 = gray[y + 1][x];
-      final val22 = gray[y + 1][x + 1];
-
-      final gx = (val02 + 2 * val12 + val22) - (val00 + 2 * val10 + val20);
-      final gy = (val20 + 2 * val21 + val22) - (val00 + 2 * val01 + val02);
-      final magnitude = (gx * gx + gy * gy);
-      if (magnitude > 900) {
-        dest[y][x] = const Color(0xFFFFFFFF);
-      } else {
-        dest[y][x] = const Color(0xFF000000);
-      }
-    }
-  }
-  return dest;
-}
-
 List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
-  final List<List<int>> grid = List.generate(64, (_) => List.filled(64, 0));
-  if (bmpBytes.length >= 54 + 64 * 64 * 3) {
+  final int size = CanvasNotifier.gridSize;
+  final List<List<int>> grid = List.generate(size, (_) => List.filled(size, 0));
+  if (bmpBytes.length >= 54 + size * size * 3) {
     final refGrid = _bmpToColorGrid(bmpBytes);
     final blurredGrid = _applyGaussianBlur(refGrid);
-    for (int y = 0; y < 64; y++) {
-      for (int x = 0; x < 64; x++) {
+    for (int y = 0; y < size; y++) {
+      for (int x = 0; x < size; x++) {
         final color = blurredGrid[y][x];
         int closestIndex = 0;
         double minDistance = double.infinity;
@@ -1205,25 +1179,26 @@ List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
 
 String canvasToTextGrid(List<List<int>> grid) {
   final buffer = StringBuffer();
+  final int size = CanvasNotifier.gridSize;
 
   // Header: 10s digits
   buffer.write('    ');
-  for (int x = 0; x < 64; x++) {
+  for (int x = 0; x < size; x++) {
     buffer.write(x >= 10 ? '${x ~/ 10}' : ' ');
   }
   buffer.write('\n');
 
   // Header: 1s digits
   buffer.write('    ');
-  for (int x = 0; x < 64; x++) {
+  for (int x = 0; x < size; x++) {
     buffer.write('${x % 10}');
   }
   buffer.write('\n');
 
   // Rows
-  for (int y = 0; y < 64; y++) {
+  for (int y = 0; y < size; y++) {
     buffer.write('${y.toString().padLeft(3)} ');
-    for (int x = 0; x < 64; x++) {
+    for (int x = 0; x < size; x++) {
       final val = grid[y][x];
       if (val == 0) {
         buffer.write('.');

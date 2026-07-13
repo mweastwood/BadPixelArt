@@ -60,24 +60,25 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                   onPanEnd: (details) {
                     if (_dragStart == null || _dragCurrent == null) return;
 
-                    final cellWidth = size / 64;
-                    final cellHeight = size / 64;
+                    final gridSize = CanvasNotifier.gridSize;
+                    final cellWidth = size / gridSize;
+                    final cellHeight = size / gridSize;
 
                     final startX = (_dragStart!.dx / cellWidth).floor().clamp(
                       0,
-                      63,
+                      gridSize - 1,
                     );
                     final startY = (_dragStart!.dy / cellHeight).floor().clamp(
                       0,
-                      63,
+                      gridSize - 1,
                     );
                     final currX = (_dragCurrent!.dx / cellWidth).floor().clamp(
                       0,
-                      63,
+                      gridSize - 1,
                     );
                     final currY = (_dragCurrent!.dy / cellHeight).floor().clamp(
                       0,
-                      63,
+                      gridSize - 1,
                     );
 
                     switch (canvasModel.selectedTool) {
@@ -87,7 +88,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       case CanvasTool.circle:
                         final dx = currX - startX;
                         final dy = currY - startY;
-                        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 30);
+                        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 15);
                         notifier.applyCircle(startX, startY, r);
                         break;
                       case CanvasTool.fill:
@@ -116,7 +117,9 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       color: Colors.grey[800]!.withOpacity(0.2),
                       divisions: 1,
                       subdivisions: 1,
-                      interval: size / 16, // Visual helper gridlines
+                      interval:
+                          size /
+                          CanvasNotifier.gridSize, // Visual helper gridlines
                       child: Container(),
                     ),
                   ),
@@ -149,8 +152,9 @@ class CanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cellWidth = size.width / 64;
-    final cellHeight = size.height / 64;
+    final gridSize = grid.length;
+    final cellWidth = size.width / gridSize;
+    final cellHeight = size.height / gridSize;
 
     // Draw solid background to prevent subpixel outline bleeding from the Card background
     final bgBasePaint = Paint()..color = const Color(0xFF1E1E1E);
@@ -165,8 +169,8 @@ class CanvasPainter extends CustomPainter {
       ..color = const Color(0xFF1E1E1E)
       ..isAntiAlias = false;
 
-    for (int y = 0; y < 64; y++) {
-      for (int x = 0; x < 64; x++) {
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
         final rect = Rect.fromLTWH(
           x * cellWidth,
           y * cellHeight,
@@ -191,10 +195,19 @@ class CanvasPainter extends CustomPainter {
 
     // Draw preview if dragging
     if (dragStart != null && dragCurrent != null && activeTool != null) {
-      final startX = (dragStart!.dx / cellWidth).floor().clamp(0, 63);
-      final startY = (dragStart!.dy / cellHeight).floor().clamp(0, 63);
-      final currX = (dragCurrent!.dx / cellWidth).floor().clamp(0, 63);
-      final currY = (dragCurrent!.dy / cellHeight).floor().clamp(0, 63);
+      final startX = (dragStart!.dx / cellWidth).floor().clamp(0, gridSize - 1);
+      final startY = (dragStart!.dy / cellHeight).floor().clamp(
+        0,
+        gridSize - 1,
+      );
+      final currX = (dragCurrent!.dx / cellWidth).floor().clamp(
+        0,
+        gridSize - 1,
+      );
+      final currY = (dragCurrent!.dy / cellHeight).floor().clamp(
+        0,
+        gridSize - 1,
+      );
 
       final previewPaint = Paint()
         ..color = activeColorIndex == 0
@@ -219,8 +232,8 @@ class CanvasPainter extends CustomPainter {
       } else if (activeTool == CanvasTool.circle) {
         final dx = currX - startX;
         final dy = currY - startY;
-        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 30);
-        final points = _getCirclePoints(startX, startY, r);
+        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, gridSize - 1);
+        final points = _getCirclePoints(startX, startY, r, gridSize);
         for (final p in points) {
           canvas.drawRect(
             Rect.fromLTWH(
@@ -272,7 +285,7 @@ class CanvasPainter extends CustomPainter {
     return points;
   }
 
-  List<Offset> _getCirclePoints(int xc, int yc, int r) {
+  List<Offset> _getCirclePoints(int xc, int yc, int r, int gridSize) {
     List<Offset> points = [];
     int x = 0;
     int y = r;
@@ -280,7 +293,7 @@ class CanvasPainter extends CustomPainter {
 
     void addPoints(int xc, int yc, int x, int y) {
       void add(int px, int py) {
-        if (px >= 0 && px < 64 && py >= 0 && py < 64) {
+        if (px >= 0 && px < gridSize && py >= 0 && py < gridSize) {
           points.add(Offset(px.toDouble(), py.toDouble()));
         }
       }

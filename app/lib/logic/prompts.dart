@@ -10,15 +10,12 @@ String formatSystemInstruction() {
       .map((e) => '- "${e.key}": ${e.value}')
       .join('\n');
 
-  return 'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
-      'Note: Each 64x64 canvas panel in your visual input is padded with a black border on the top and left to a size of 80x80 pixels. This border displays a coordinate ruler (tick marks and numbers: 0, 16, 32, 48, 63) to guide your drawing placement.\n'
+  return 'You are an AI pixel art assistant co-creating an image with a user on a 16x16 grid (coordinates 0 to 15).\n'
+      'Note: Each 16x16 canvas panel in your visual input is padded with a black border on the top and left to a size of 32x32 pixels. This border displays a coordinate ruler (tick marks and numbers: 0, 8, 15) to guide your drawing placement.\n'
       'Depending on the session, your visual input consists of the following panels side-by-side (from left to right):\n'
-      '1. Reference (Original): The target image you want to match.\n'
-      '2. Reference (Edges): A high-contrast black-and-white outline map of the reference boundaries.\n'
-      '3. Reference (Quantized): A smoothed, color-quantized version of the reference containing only dominant blocks in your exact drawing palette.\n'
-      '4. Previous Canvas (optional): The state of the canvas prior to the last action.\n'
-      '5. Current Canvas: The current state of the canvas.\n'
-      'Use the Edges panel to align outline shapes, the Quantized panel to align block regions and choose palette color indices, and the Current/Previous panels to track changes.\n'
+      '1. Reference (Quantized): A smoothed, color-quantized version of the reference containing only dominant blocks in your exact drawing palette.\n'
+      '2. Current Canvas: The current state of the canvas.\n'
+      'Use the Quantized panel to align block regions and choose palette color indices, and the Current panel to track your progress.\n'
       'Available tools:\n'
       '$tools\n\n'
       'Color selection:\n'
@@ -55,15 +52,9 @@ String formatUserPrompt({
 }) {
   String canvasGridString;
   if (isMultimodal) {
-    if (hasReferenceImage && hasPreviousImage) {
+    if (hasReferenceImage) {
       canvasGridString =
-          'The attached image contains the reference image (left panel), previous canvas state (middle panel), and current canvas state (right panel).';
-    } else if (hasReferenceImage) {
-      canvasGridString =
-          'The attached image contains the reference image (left panel) and current canvas state (right panel).';
-    } else if (hasPreviousImage) {
-      canvasGridString =
-          'The attached image contains the previous canvas state (left panel) and current canvas state (right panel).';
+          'The attached image contains the quantized reference image (left panel) and current canvas state (right panel).';
     } else {
       canvasGridString =
           'The current canvas is provided as an image attachment.';
@@ -245,13 +236,10 @@ extension PixelArtAiServiceExtension on AiService {
 }
 
 String formatCriticSystemInstruction() {
-  return 'You are an AI pixel art critic evaluating the accuracy of a co-created image on a 64x64 grid.\n'
+  return 'You are an AI pixel art critic evaluating the accuracy of a co-created image on a 16x16 grid.\n'
       'Your visual input consists of the following panels side-by-side (from left to right):\n'
-      '1. Reference (Original): The target image to match.\n'
-      '2. Reference (Edges): Outline map of the reference.\n'
-      '3. Reference (Quantized): Smoothed, color-quantized reference.\n'
-      '4. Previous Canvas: The state of the canvas before the latest stroke.\n'
-      '5. Current Canvas: The current state of the canvas with the latest stroke applied.\n\n'
+      '1. Reference (Quantized): Smoothed, color-quantized reference.\n'
+      '2. Current Canvas: The current state of the canvas with the latest stroke applied.\n\n'
       'Analyze the latest stroke shown in the Current Canvas. Does it improve the overall accuracy, structure, or coloring of the drawing to match the reference? Or is it a mistake, misplaced, disconnected, or of the wrong scale?\n'
       'You must output EXACTLY a valid JSON block containing your reasoning and your action decision ("keep" or "undo").\n'
       'IMPORTANT: Keep the "reasoning" value extremely concise (max 1 sentence/15 words) to prevent JSON truncation on device.\n'

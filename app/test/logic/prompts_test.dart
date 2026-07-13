@@ -8,7 +8,7 @@ void main() {
     test('formatSystemInstruction returns correct rules and tools', () {
       final sysInstruction = formatSystemInstruction();
       expect(sysInstruction, contains('AI pixel art assistant'));
-      expect(sysInstruction, contains('64x64 grid'));
+      expect(sysInstruction, contains('16x16 grid'));
       expect(sysInstruction, contains('"line"'));
       expect(sysInstruction, contains('"circle"'));
       expect(sysInstruction, contains('"circle_filled"'));
