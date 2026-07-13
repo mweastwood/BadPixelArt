@@ -213,7 +213,7 @@ packages:
     description:
       path: "."
       ref: "feat/add-agent-history-entry"
-      resolved-ref: "120200a156d6ad2bb19b2aad3a27204fad4009b1"
+      resolved-ref: "161ea9b0e210841ec8aaecf9640c8b8b6e105195"
       url: "https://github.com/mweastwood/flutter-local-agent.git"
     source: git
     version: "0.0.1"
