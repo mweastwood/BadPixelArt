@@ -22,42 +22,6 @@ abstract class AgentCanvas {
   );
 }
 
-class AiHistoryEntry {
-  final DateTime timestamp;
-  final String prompt;
-  final String response;
-  final bool isError;
-  final Uint8List? canvasImage;
-
-  const AiHistoryEntry({
-    required this.timestamp,
-    required this.prompt,
-    required this.response,
-    this.isError = false,
-    this.canvasImage,
-  });
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! AiHistoryEntry) return false;
-    return timestamp == other.timestamp &&
-        prompt == other.prompt &&
-        response == other.response &&
-        isError == other.isError &&
-        listEquals(canvasImage, other.canvasImage);
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    timestamp,
-    prompt,
-    response,
-    isError,
-    canvasImage != null ? Object.hashAll(canvasImage!) : null,
-  );
-}
-
 Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
   const int width = 64;
   const int height = 64;
@@ -308,7 +272,7 @@ class CanvasModel {
   final double autoRunSpeed; // in seconds
   final List<List<List<int>>> undoStack;
   final List<List<List<int>>> redoStack;
-  final List<AiHistoryEntry> aiHistory;
+  final List<AgentHistoryEntry> aiHistory;
   final List<Color>? suggestedPalette;
   final bool isSuggestingPalette;
   final bool showPaletteSuggestion;
@@ -350,7 +314,7 @@ class CanvasModel {
     double? autoRunSpeed,
     List<List<List<int>>>? undoStack,
     List<List<List<int>>>? redoStack,
-    List<AiHistoryEntry>? aiHistory,
+    List<AgentHistoryEntry>? aiHistory,
     List<Color>? suggestedPalette,
     bool? isSuggestingPalette,
     bool? showPaletteSuggestion,
@@ -820,14 +784,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       rawResponse = 'Error: $e';
       debugPrint('Error triggering AI stroke: $e');
     } finally {
-      final newHistory = List<AiHistoryEntry>.from(state.aiHistory)
+      final newHistory = List<AgentHistoryEntry>.from(state.aiHistory)
         ..add(
-          AiHistoryEntry(
+          AgentHistoryEntry(
             timestamp: DateTime.now(),
             prompt: fullPrompt,
             response: rawResponse,
             isError: isError,
-            canvasImage: combinedBmp,
+            imageBytes: combinedBmp,
           ),
         );
       state = state.copyWith(isGenerating: false, aiHistory: newHistory);

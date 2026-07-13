@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:local_agent/local_agent.dart';
 import '../logic/canvas_state.dart';
 
 class AiHistoryDock extends ConsumerStatefulWidget {
@@ -13,6 +16,89 @@ class AiHistoryDock extends ConsumerStatefulWidget {
 
 class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
   bool _isCollapsed = true;
+
+  Future<void> _exportHistory(
+    BuildContext context,
+    List<AgentHistoryEntry> history,
+  ) async {
+    if (history.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No history to export')));
+      return;
+    }
+
+    try {
+      final String jsonStr = AgentHistoryEntry.serializeList(history);
+
+      String? outputFile;
+      try {
+        outputFile = await FilePicker.saveFile(
+          dialogTitle: 'Save AI History Log',
+          fileName:
+              'ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json',
+          allowedExtensions: ['json'],
+          type: FileType.custom,
+        );
+      } catch (e) {
+        // saveFile might not be supported on this platform/shell setup
+        outputFile = null;
+      }
+
+      if (outputFile == null) {
+        // Fallback: save to exports folder or current directory
+        final exportsDir = Directory(
+          '/home/mweastwood/projects/BadPixelArt/exports',
+        );
+        final targetDir = await exportsDir.exists()
+            ? exportsDir.path
+            : Directory.current.path;
+
+        final defaultPath =
+            '$targetDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
+        final file = File(defaultPath);
+        await file.writeAsString(jsonStr);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Exported to: ${osPathBasename(defaultPath)}'),
+              action: SnackBarAction(
+                label: 'Copy Path',
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: defaultPath));
+                },
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      final file = File(outputFile);
+      await file.writeAsString(jsonStr);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Exported successfully to: ${osPathBasename(outputFile)}',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error exporting history: $e')));
+      }
+    }
+  }
+
+  String osPathBasename(String path) {
+    return path.split(Platform.isWindows ? '\\' : '/').last;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,13 +161,20 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                         ),
                       ),
                     const Spacer(),
-                    if (!_isCollapsed && history.isNotEmpty)
+                    if (!_isCollapsed && history.isNotEmpty) ...[
+                      IconButton(
+                        icon: const Icon(Icons.file_download_outlined),
+                        tooltip: 'Export Logs',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _exportHistory(context, history),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.delete_sweep_outlined),
                         tooltip: 'Clear History',
                         visualDensity: VisualDensity.compact,
                         onPressed: notifier.clearAiHistory,
                       ),
+                    ],
                     Icon(
                       _isCollapsed ? Icons.expand_more : Icons.expand_less,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -131,7 +224,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
 }
 
 class _HistoryItem extends StatefulWidget {
-  final AiHistoryEntry entry;
+  final AgentHistoryEntry entry;
   const _HistoryItem({required this.entry});
 
   @override
@@ -225,7 +318,7 @@ class _HistoryItemState extends State<_HistoryItem> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (widget.entry.canvasImage != null) ...[
+                if (widget.entry.imageBytes != null) ...[
                   Text(
                     'CANVAS SNAPSHOT:',
                     style: TextStyle(
@@ -250,7 +343,7 @@ class _HistoryItemState extends State<_HistoryItem> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: Image.memory(
-                          widget.entry.canvasImage!,
+                          widget.entry.imageBytes!,
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.none,
                         ),
