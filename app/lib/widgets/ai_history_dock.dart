@@ -45,44 +45,57 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
         outputFile = null;
       }
 
+      // If saveFile is not supported/returns null, try getDirectoryPath to let the user choose where to save
       if (outputFile == null) {
-        // Fallback: save to exports folder or current directory
+        try {
+          final String? selectedDir = await FilePicker.getDirectoryPath(
+            dialogTitle: 'Select Directory to Save AI History Log',
+          );
+          if (selectedDir != null) {
+            outputFile =
+                '$selectedDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
+          }
+        } catch (_) {
+          outputFile = null;
+        }
+      }
+
+      if (outputFile == null) {
+        // Fallback: save to exports folder, current directory (if not root), or system temp directory
         final exportsDir = Directory(
           '/home/mweastwood/projects/BadPixelArt/exports',
         );
-        final targetDir = await exportsDir.exists()
-            ? exportsDir.path
-            : Directory.current.path;
-
-        final defaultPath =
-            '$targetDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
-        final file = File(defaultPath);
-        await file.writeAsString(jsonStr);
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Exported to: ${osPathBasename(defaultPath)}'),
-              action: SnackBarAction(
-                label: 'Copy Path',
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: defaultPath));
-                },
-              ),
-            ),
-          );
+        String targetDir;
+        if (await exportsDir.exists()) {
+          targetDir = exportsDir.path;
+        } else {
+          final currentPath = Directory.current.path;
+          if (currentPath != '/' && currentPath.isNotEmpty) {
+            targetDir = currentPath;
+          } else {
+            targetDir = Directory.systemTemp.path;
+          }
         }
-        return;
+
+        outputFile =
+            '$targetDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
       }
 
       final file = File(outputFile);
       await file.writeAsString(jsonStr);
 
       if (context.mounted) {
+        final finalPath = outputFile;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               'Exported successfully to: ${osPathBasename(outputFile)}',
+            ),
+            action: SnackBarAction(
+              label: 'Copy Path',
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: finalPath));
+              },
             ),
           ),
         );
