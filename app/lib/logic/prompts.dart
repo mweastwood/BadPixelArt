@@ -179,11 +179,39 @@ List<Color> parsePaletteColors(String responseText) {
 }
 
 extension PixelArtAiServiceExtension on AiService {
+  Future<String?> _generateContentWithRetry({
+    required String prompt,
+    required Uint8List imageBytes,
+    bool lowTemperature = false,
+    int maxRetries = 3,
+  }) async {
+    int delayMs = 1000;
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await generateContent(
+          prompt: prompt,
+          imageBytes: imageBytes,
+          lowTemperature: lowTemperature,
+        );
+        if (response != null) {
+          return response;
+        }
+      } catch (_) {
+        if (attempt == maxRetries) {
+          rethrow;
+        }
+      }
+      await Future.delayed(Duration(milliseconds: delayMs));
+      delayMs *= 2;
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>?> getNextStroke({
     required Uint8List canvasImage,
     required String prompt,
   }) async {
-    final String? response = await generateContent(
+    final String? response = await _generateContentWithRetry(
       prompt: prompt,
       imageBytes: canvasImage,
     );
@@ -201,7 +229,7 @@ extension PixelArtAiServiceExtension on AiService {
   }
 
   Future<List<Color>?> suggestPalette(Uint8List referenceImage) async {
-    final String? response = await generateContent(
+    final String? response = await _generateContentWithRetry(
       prompt: formatPalettePrompt(),
       imageBytes: referenceImage,
       lowTemperature: true,
@@ -215,7 +243,7 @@ extension PixelArtAiServiceExtension on AiService {
   }) async {
     final String criticPrompt =
         '${formatCriticSystemInstruction()}\n\n${formatCriticUserPrompt()}';
-    final String? response = await generateContent(
+    final String? response = await _generateContentWithRetry(
       prompt: criticPrompt,
       imageBytes: canvasImage,
       lowTemperature: true,
@@ -237,7 +265,7 @@ extension PixelArtAiServiceExtension on AiService {
     required Uint8List canvasImage,
   }) async {
     final String criticPrompt = formatCriticComparisonPrompt();
-    final String? response = await generateContent(
+    final String? response = await _generateContentWithRetry(
       prompt: criticPrompt,
       imageBytes: canvasImage,
       lowTemperature: true,
