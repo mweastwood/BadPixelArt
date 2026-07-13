@@ -348,13 +348,17 @@ String formatCriticComparisonPrompt() {
 }
 
 String formatDescriberSystemInstruction() {
-  return 'You are an AI pixel art describer. Your task is to analyze a 16x16 pixel art canvas and write a detailed, factual, and objective textual description of the shapes, colors, layout, and subject depicted.\n'
-      'Focus on the composition, spatial relationships, and exact details of where elements are located on the grid.\n'
-      'Be precise, objective, and concise. Avoid flowery language or subjective art appreciation. Speak in plain descriptions of what is actually drawn.';
+  return 'You are an AI pixel art describer. Your task is to analyze a 16x16 pixel art canvas and write a descriptive summary of about 100 words.\n'
+      'Your description must focus on:\n'
+      '- Shapes & Layout: describe the outlines, geometric structures, contours, and overall grid placement.\n'
+      '- Colors & Contrast: list the exact color palette index shades used and their distribution.\n'
+      '- Details & Texture: identify fine-grained patterns, symmetrical lines, or distinct highlights.\n'
+      '- Subject Identity: speculate on the identity of the image (e.g., what character, object, animal, icon, or subject is this thing depicting?).\n'
+      'Keep the description structured, engaging, and around 100 words in length.';
 }
 
 String formatDescriberUserPrompt() {
-  return 'Describe the provided 16x16 pixel art image in detail. Specify shapes, colors, and their relative positions/coordinates.';
+  return 'Analyze the provided 16x16 pixel art image and write a structured description of about 100 words, focusing on its shapes, colors, fine details, and speculating on what it is depicting.';
 }
 
 String formatCriticTextOnlyPrompt({
