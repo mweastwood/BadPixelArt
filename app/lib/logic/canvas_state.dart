@@ -750,34 +750,87 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         '$systemInstruction\n\n$userTextPrompt\n\n$historyPrompt';
     String rawResponse = '';
     bool isError = false;
+    Uint8List? loggedBmp = combinedBmp;
 
     try {
-      final result = await _aiService.getNextStroke(
+      final painterResult = await _aiService.getNextStroke(
         canvasImage: combinedBmp,
         prompt: fullPrompt,
       );
 
-      if (result != null) {
-        if (result.containsKey('rawResponse')) {
-          rawResponse = result['rawResponse'] as String;
+      if (painterResult != null) {
+        if (painterResult.containsKey('rawResponse')) {
+          rawResponse = painterResult['rawResponse'] as String;
           isError = true;
         } else {
-          rawResponse = jsonEncode(result);
-          final tool = result['tool'] as String?;
-          final params = (result['params'] as List?)?.cast<int>();
-          final colorIndex = result['color'] as int?;
+          final tool = painterResult['tool'] as String?;
+          final params = (painterResult['params'] as List?)?.cast<int>();
+          final colorIndex = painterResult['color'] as int?;
 
           if (tool != null &&
               params != null &&
               (colorIndex != null || tool == 'undo')) {
+            // Apply the Painter's suggested stroke
             _applyAiStrokeCommand(tool, params, colorIndex ?? 0);
+
+            // Generate the post-stroke visual input for the Critic to evaluate
+            final postStrokePreviousBmp = state.undoStack.isNotEmpty
+                ? generateBmp(state.undoStack.last, state.palette)
+                : null;
+            final postStrokeCombinedBmp = generateCombinedVisualInput(
+              state.referenceImage,
+              postStrokePreviousBmp,
+            );
+            loggedBmp = postStrokeCombinedBmp;
+
+            // Run the Critic Agent to evaluate the stroke
+            final criticResult = await _aiService.evaluateStroke(
+              canvasImage: postStrokeCombinedBmp,
+            );
+
+            if (criticResult != null) {
+              final criticAction = criticResult['action'] as String?;
+              final criticReasoning = criticResult['reasoning'] as String?;
+
+              if (criticAction == 'undo') {
+                // Critic rejected the stroke. Revert it.
+                undo();
+                rawResponse = jsonEncode({
+                  'painter': painterResult,
+                  'critic': {
+                    'action': 'undo',
+                    'reasoning': criticReasoning ?? 'Rejected by critic.',
+                  },
+                });
+              } else {
+                // Critic accepted the stroke. Keep it.
+                rawResponse = jsonEncode({
+                  'painter': painterResult,
+                  'critic': {
+                    'action': 'keep',
+                    'reasoning': criticReasoning ?? 'Approved.',
+                  },
+                });
+              }
+            } else {
+              // Critic failed or returned null, default to keep
+              rawResponse = jsonEncode({
+                'painter': painterResult,
+                'critic': {
+                  'action': 'keep',
+                  'reasoning': 'Critic evaluation unavailable, keeping stroke.',
+                },
+              });
+            }
           } else {
             isError = true;
+            rawResponse =
+                'Invalid painter response: ${jsonEncode(painterResult)}';
           }
         }
       } else {
         isError = true;
-        rawResponse = 'No stroke returned by the model.';
+        rawResponse = 'No stroke returned by the painter model.';
       }
     } catch (e) {
       isError = true;
@@ -791,7 +844,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             prompt: fullPrompt,
             response: rawResponse,
             isError: isError,
-            imageBytes: combinedBmp,
+            imageBytes: loggedBmp,
           ),
         );
       state = state.copyWith(isGenerating: false, aiHistory: newHistory);
