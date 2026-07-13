@@ -6,6 +6,7 @@ import 'drawing_commands.dart';
 
 String formatSystemInstruction() {
   final tools = DrawingCommandFactory.toolInstructions.entries
+      .where((e) => e.key != 'undo')
       .map((e) => '- "${e.key}": ${e.value}')
       .join('\n');
 
@@ -218,4 +219,51 @@ extension PixelArtAiServiceExtension on AiService {
     if (response == null) return null;
     return parsePaletteColors(response);
   }
+
+  Future<Map<String, dynamic>?> evaluateStroke({
+    required Uint8List canvasImage,
+  }) async {
+    final String criticPrompt =
+        '${formatCriticSystemInstruction()}\n\n${formatCriticUserPrompt()}';
+    final String? response = await generateContent(
+      prompt: criticPrompt,
+      imageBytes: canvasImage,
+      lowTemperature: true,
+    );
+    if (response == null) return null;
+    final cleaned = cleanJsonString(response);
+    try {
+      final parsed = jsonDecode(cleaned);
+      if (parsed is Map<String, dynamic>) {
+        return parsed;
+      }
+    } catch (e) {
+      return {'error': e.toString(), 'rawResponse': response};
+    }
+    return null;
+  }
+}
+
+String formatCriticSystemInstruction() {
+  return 'You are an AI pixel art critic evaluating the accuracy of a co-created image on a 64x64 grid.\n'
+      'Your visual input consists of the following panels side-by-side (from left to right):\n'
+      '1. Reference (Original): The target image to match.\n'
+      '2. Reference (Edges): Outline map of the reference.\n'
+      '3. Reference (Quantized): Smoothed, color-quantized reference.\n'
+      '4. Previous Canvas: The state of the canvas before the latest stroke.\n'
+      '5. Current Canvas: The current state of the canvas with the latest stroke applied.\n\n'
+      'Analyze the latest stroke shown in the Current Canvas. Does it improve the overall accuracy, structure, or coloring of the drawing to match the reference? Or is it a mistake, misplaced, disconnected, or of the wrong scale?\n'
+      'You must output EXACTLY a valid JSON block containing your reasoning and your action decision ("keep" or "undo").\n'
+      'IMPORTANT: Keep the "reasoning" value extremely concise (max 1 sentence/15 words) to prevent JSON truncation on device.\n'
+      'Example:\n'
+      '{\n'
+      '  "reasoning": "The circle is placed in the correct location and matches the bulbous base shape.",\n'
+      '  "action": "keep"\n'
+      '}';
+}
+
+String formatCriticUserPrompt() {
+  return 'Evaluate the latest stroke applied to the Current Canvas.\n'
+      'Determine if the stroke aligns with the target reference image.\n'
+      'Output a JSON block with "reasoning" and "action" ("keep" or "undo").';
 }

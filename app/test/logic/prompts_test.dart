@@ -18,7 +18,7 @@ void main() {
       expect(sysInstruction, contains('"rectangle_hatched"'));
       expect(sysInstruction, contains('"fill"'));
       expect(sysInstruction, contains('"hatch"'));
-      expect(sysInstruction, contains('"undo"'));
+      expect(sysInstruction, isNot(contains('"undo"')));
       expect(sysInstruction, contains('output EXACTLY a valid JSON block'));
     });
 
