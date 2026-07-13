@@ -122,7 +122,7 @@ Uint8List combineBmps(List<Uint8List> bmps) {
   int offset = 54;
   for (int y = combinedHeight - 1; y >= 0; y--) {
     final int gridRow = y ~/ panelSize;
-    final int panelY = y % panelSize;
+    final int panelY = (gridRow + 1) * panelSize - 1 - y;
 
     for (int gridCol = 0; gridCol < cols; gridCol++) {
       final int panelIndex = gridRow * cols + gridCol;

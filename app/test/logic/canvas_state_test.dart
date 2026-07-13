@@ -438,65 +438,68 @@ void main() {
         expect(bd.getUint32(18, Endian.little), equals(32)); // width
         expect(bd.getUint32(22, Endian.little), equals(32)); // height
 
-        // Stride is 32 * 3 = 96. Pixel (10, 10) in left panel (grid1) starts at y_bmp=21, x_bmp=10.
-        final offsetLeft = 54 + 21 * 96 + 10 * 3;
+        // Stride is 32 * 3 = 96. Pixel (10, 10) in left panel (grid1) starts at y_bmp=26, x_bmp=10.
+        final offsetLeft = 54 + 26 * 96 + 10 * 3;
         expect(combined[offsetLeft], equals(0)); // blue
         expect(combined[offsetLeft + 1], equals(0)); // green
         expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=21, x_bmp=16+10=26
-        final offsetRight = 54 + 21 * 96 + 26 * 3;
+        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=26, x_bmp=16+10=26
+        final offsetRight = 54 + 26 * 96 + 26 * 3;
         expect(combined[offsetRight], equals(255)); // blue
         expect(combined[offsetRight + 1], equals(0)); // green
         expect(combined[offsetRight + 2], equals(0)); // red
       });
 
-      test('combineBmps with three BMPs concatenates side-by-side correctly', () {
-        final grid1 = List.generate(
-          CanvasNotifier.gridSize,
-          (_) => List.filled(CanvasNotifier.gridSize, 3),
-        ); // Red (index 3, maps to palette[2])
-        final grid2 = List.generate(
-          CanvasNotifier.gridSize,
-          (_) => List.filled(CanvasNotifier.gridSize, 4),
-        ); // Green (index 4, maps to palette[3])
-        final grid3 = List.generate(
-          CanvasNotifier.gridSize,
-          (_) => List.filled(CanvasNotifier.gridSize, 5),
-        ); // Blue (index 5, maps to palette[4])
+      test(
+        'combineBmps with three BMPs concatenates side-by-side correctly',
+        () {
+          final grid1 = List.generate(
+            CanvasNotifier.gridSize,
+            (_) => List.filled(CanvasNotifier.gridSize, 3),
+          ); // Red (index 3, maps to palette[2])
+          final grid2 = List.generate(
+            CanvasNotifier.gridSize,
+            (_) => List.filled(CanvasNotifier.gridSize, 4),
+          ); // Green (index 4, maps to palette[3])
+          final grid3 = List.generate(
+            CanvasNotifier.gridSize,
+            (_) => List.filled(CanvasNotifier.gridSize, 5),
+          ); // Blue (index 5, maps to palette[4])
 
-        final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
-        final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
-        final bmp3 = generateBmp(grid3, CanvasNotifier.primaryPalette);
+          final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
+          final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
+          final bmp3 = generateBmp(grid3, CanvasNotifier.primaryPalette);
 
-        final combined = combineBmps([bmp1, bmp2, bmp3]);
+          final combined = combineBmps([bmp1, bmp2, bmp3]);
 
-        // File size should be 3126 (54 header + 32 * 32 * 3)
-        expect(combined.length, equals(3126));
+          // File size should be 3126 (54 header + 32 * 32 * 3)
+          expect(combined.length, equals(3126));
 
-        final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(32)); // width
-        expect(bd.getUint32(22, Endian.little), equals(32)); // height
+          final ByteData bd = ByteData.sublistView(combined);
+          expect(bd.getUint32(18, Endian.little), equals(32)); // width
+          expect(bd.getUint32(22, Endian.little), equals(32)); // height
 
-        // Stride is 32 * 3 = 96.
-        // Left panel (grid1): pixel (10, 10) -> padded y_bmp=21, x_bmp=10
-        final offsetLeft = 54 + 21 * 96 + 10 * 3;
-        expect(combined[offsetLeft], equals(0)); // blue
-        expect(combined[offsetLeft + 1], equals(0)); // green
-        expect(combined[offsetLeft + 2], equals(255)); // red
+          // Stride is 32 * 3 = 96.
+          // Left panel (grid1): pixel (10, 10) -> padded y_bmp=26, x_bmp=10
+          final offsetLeft = 54 + 26 * 96 + 10 * 3;
+          expect(combined[offsetLeft], equals(0)); // blue
+          expect(combined[offsetLeft + 1], equals(0)); // green
+          expect(combined[offsetLeft + 2], equals(255)); // red
 
-        // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=21, x_bmp=16+10=26
-        final offsetMiddle = 54 + 21 * 96 + 26 * 3;
-        expect(combined[offsetMiddle], equals(0)); // blue
-        expect(combined[offsetMiddle + 1], equals(255)); // green
-        expect(combined[offsetMiddle + 2], equals(0)); // red
+          // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=26, x_bmp=26
+          final offsetMiddle = 54 + 26 * 96 + 26 * 3;
+          expect(combined[offsetMiddle], equals(0)); // blue
+          expect(combined[offsetMiddle + 1], equals(255)); // green
+          expect(combined[offsetMiddle + 2], equals(0)); // red
 
-        // Right panel (grid3): pixel (10, 10) -> padded y_bmp=5, x_bmp=10
-        final offsetRight = 54 + 5 * 96 + 10 * 3;
-        expect(combined[offsetRight], equals(255)); // blue
-        expect(combined[offsetRight + 1], equals(0)); // green
-        expect(combined[offsetRight + 2], equals(0)); // red
-      });
+          // Right panel (grid3): pixel (10, 10) -> padded y_bmp=10, x_bmp=10
+          final offsetRight = 54 + 10 * 96 + 10 * 3;
+          expect(combined[offsetRight], equals(255)); // blue
+          expect(combined[offsetRight + 1], equals(0)); // green
+          expect(combined[offsetRight + 2], equals(0)); // red
+        },
+      );
     });
 
     test(
