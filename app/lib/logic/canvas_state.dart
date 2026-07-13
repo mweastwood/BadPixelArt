@@ -846,6 +846,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             final strokeLog = Map<String, dynamic>.from(painterResult);
             strokeLog['rawPrompt'] = fullPrompt;
             strokeLog['rawResponse'] = jsonEncode(painterResult);
+            strokeLog['rawImageBase64'] = base64Encode(combinedBmp);
             strokesHistory.add(strokeLog);
           } else {
             break;

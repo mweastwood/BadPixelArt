@@ -257,6 +257,7 @@ class _HistoryItemState extends State<_HistoryItem> {
     required String title,
     required String prompt,
     required String response,
+    Uint8List? imageBytes,
   }) {
     showDialog(
       context: context,
@@ -279,6 +280,39 @@ class _HistoryItemState extends State<_HistoryItem> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (imageBytes != null) ...[
+                    Text(
+                      'VISUAL INPUT:',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.memory(
+                            imageBytes,
+                            height: 128,
+                            width: 128,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -546,6 +580,23 @@ class _HistoryItemState extends State<_HistoryItem> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                if (!isTournament) ...[
+                  IconButton(
+                    icon: const Icon(Icons.code, size: 16),
+                    tooltip: 'View Raw AI Exchange',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      _showRawExchangeDialog(
+                        context,
+                        title: 'Raw LLM Exchange: Stroke Suggestion',
+                        prompt: widget.entry.prompt,
+                        response: widget.entry.response,
+                        imageBytes: widget.entry.imageBytes,
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 Icon(
                   _expanded ? Icons.arrow_drop_up : Icons.arrow_drop_down,
                   color: theme.colorScheme.onSurfaceVariant,
@@ -621,6 +672,7 @@ class _HistoryItemState extends State<_HistoryItem> {
                                         parsedJson?['criticRawResponse']
                                             as String? ??
                                         'N/A',
+                                    imageBytes: widget.entry.imageBytes,
                                   );
                                 },
                               ),
@@ -875,6 +927,12 @@ class _HistoryItemState extends State<_HistoryItem> {
                               tooltip: 'View Raw Painter Exchange',
                               visualDensity: VisualDensity.compact,
                               onPressed: () {
+                                final String? rawImageBase64 =
+                                    stroke['rawImageBase64'] as String?;
+                                final Uint8List? imageBytes =
+                                    rawImageBase64 != null
+                                    ? base64Decode(rawImageBase64)
+                                    : null;
                                 _showRawExchangeDialog(
                                   context,
                                   title:
@@ -883,6 +941,7 @@ class _HistoryItemState extends State<_HistoryItem> {
                                       stroke['rawPrompt'] as String? ?? 'N/A',
                                   response:
                                       stroke['rawResponse'] as String? ?? 'N/A',
+                                  imageBytes: imageBytes,
                                 );
                               },
                             ),
@@ -1002,101 +1061,6 @@ class _HistoryItemState extends State<_HistoryItem> {
                     const SizedBox(height: 8),
                   ],
                 ],
-
-                // Prompt Detail
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'PROMPT:',
-                      style: TextStyle(
-                        color: theme.colorScheme.primary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 16),
-                      tooltip: 'Copy Prompt',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () {
-                        Clipboard.setData(
-                          ClipboardData(text: widget.entry.prompt),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Prompt copied to clipboard'),
-                            duration: Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 180),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  child: SingleChildScrollView(
-                    child: Text(
-                      widget.entry.prompt,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Divider(),
-                const SizedBox(height: 4),
-
-                // Response Detail
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'RESPONSE:',
-                      style: TextStyle(
-                        color: widget.entry.isError
-                            ? theme.colorScheme.error
-                            : Colors.green,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    widget.entry.response,
-                    style: TextStyle(
-                      color: widget.entry.isError
-                          ? theme.colorScheme.error
-                          : theme.colorScheme.onSurface,
-                      fontSize: 11,
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
