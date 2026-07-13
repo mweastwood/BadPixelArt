@@ -847,7 +847,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       Duration(milliseconds: (state.autoRunSpeed * 1000).toInt()),
       (timer) async {
         if (!state.isGenerating) {
-          await triggerAiStroke();
+          final lifecycle = WidgetsBinding.instance.lifecycleState;
+          if (lifecycle == null || lifecycle == AppLifecycleState.resumed) {
+            await triggerAiStroke();
+          } else {
+            debugPrint(
+              'Skipping AI stroke: app is in background/inactive state ($lifecycle)',
+            );
+          }
         }
       },
     );
