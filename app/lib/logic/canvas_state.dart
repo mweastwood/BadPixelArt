@@ -835,7 +835,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
               'error': painterResult['error'] ?? 'JSON parsing failed',
               'rawImageBase64': base64Encode(combinedBmp),
             });
-            break;
+            continue;
           }
 
           final tool = painterResult['tool'] as String?;
@@ -868,7 +868,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
               'error': 'Missing required JSON keys: tool, params, or color',
               'rawImageBase64': base64Encode(combinedBmp),
             });
-            break;
+            continue;
           }
         } else {
           strokesHistory.add({
@@ -881,7 +881,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
                 'AI service returned null response (possible connection issue, safety block, or rate limit)',
             'rawImageBase64': base64Encode(combinedBmp),
           });
-          break;
+          continue;
         }
       } catch (e) {
         debugPrint(
@@ -896,7 +896,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           'error': 'Exception caught: $e',
           'rawImageBase64': base64Encode(combinedBmp),
         });
-        break;
+        continue;
       }
     }
 
