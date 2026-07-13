@@ -768,9 +768,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     final List<List<List<int>>> localUndoStack = [];
 
     for (int turn = 1; turn <= 5; turn++) {
-      final previousBmp = localUndoStack.isNotEmpty
-          ? generateBmp(localUndoStack.last, palette)
-          : generateBmp(startingGrid, palette);
+      final previousBmp = generateBmp(tempGrid, palette);
 
       final combinedBmp = generateCombinedVisualInput(
         referenceBmp,
