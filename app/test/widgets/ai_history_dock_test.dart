@@ -26,6 +26,15 @@ class MockFilePickerPlatform extends FilePickerPlatform {
   }) async {
     return null; // Simulate user cancel to trigger fallback save logic
   }
+
+  @override
+  Future<String?> getDirectoryPath({
+    String? dialogTitle,
+    String? initialDirectory,
+    bool lockParentWindow = false,
+  }) async {
+    return null; // Simulate user cancel to trigger fallback save logic
+  }
 }
 
 class LocalMockAiService implements AiService {
