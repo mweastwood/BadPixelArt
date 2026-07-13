@@ -2,8 +2,13 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:local_agent/local_agent.dart';
+import 'drawing_commands.dart';
 
 String formatSystemInstruction() {
+  final tools = DrawingCommandFactory.toolInstructions.entries
+      .map((e) => '- "${e.key}": ${e.value}')
+      .join('\n');
+
   return 'You are an AI pixel art assistant co-creating an image with a user on a 64x64 grid (coordinates 0 to 63).\n'
       'Note: Each 64x64 canvas panel in your visual input is padded with a black border on the top and left to a size of 80x80 pixels. This border displays a coordinate ruler (tick marks and numbers: 0, 16, 32, 48, 63) to guide your drawing placement.\n'
       'Depending on the session, your visual input consists of the following panels side-by-side (from left to right):\n'
@@ -14,16 +19,7 @@ String formatSystemInstruction() {
       '5. Current Canvas: The current state of the canvas.\n'
       'Use the Edges panel to align outline shapes, the Quantized panel to align block regions and choose palette color indices, and the Current/Previous panels to track changes.\n'
       'Available tools:\n'
-      '- "line": params [startX, startY, endX, endY]\n'
-      '- "circle": params [centerX, centerY, radius] (outlined circle)\n'
-      '- "circle_filled": params [centerX, centerY, radius]\n'
-      '- "circle_hatched": params [centerX, centerY, radius] (alternating checkerboard pattern filled circle)\n'
-      '- "rectangle": params [startX, startY, endX, endY] (outlined rectangle)\n'
-      '- "rectangle_filled": params [startX, startY, endX, endY]\n'
-      '- "rectangle_hatched": params [startX, startY, endX, endY] (alternating checkerboard pattern filled rectangle)\n'
-      '- "fill": params [startX, startY]\n'
-      '- "hatch": params [startX, startY] (alternating checkerboard pattern flood fill)\n'
-      '- "undo": params [] (reverts the last AI or user action if the AI thinks the last stroke was a mistake)\n\n'
+      '$tools\n\n'
       'Color selection:\n'
       '- Set the "color" field in your JSON output to one of the indices in the Available Color Palette.\n'
       '- IMPORTANT: Use index 0 to erase/clear pixels back to the transparent background.\n\n'
