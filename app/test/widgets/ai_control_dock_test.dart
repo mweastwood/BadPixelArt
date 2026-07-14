@@ -73,13 +73,15 @@ void main() {
     testGoldens('AiControlDock renders correctly', (tester) async {
       final mockAiService = MockTestAiService();
       final mockNotifier = CanvasNotifier(mockAiService);
+      final mockNotifierPreviewFast = CanvasNotifier(mockAiService);
+      mockNotifierPreviewFast.setModelConfig('preview', 'fast');
 
       // Simple mock bytes (length < 10) to trigger safe preview placeholders under test
       final mockBytes = Uint8List.fromList([0, 1, 2, 3]);
 
       mockNotifier.setReferenceImage(mockBytes, originalBytes: mockBytes);
 
-      final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 0.5)
+      final builder = GoldenBuilder.grid(columns: 3, widthToHeightRatio: 0.5)
         ..addScenario('AI Control Dock Default', const AiControlDock())
         ..addScenario(
           'AI Control Dock Active Reference',
@@ -89,11 +91,23 @@ void main() {
             ],
             child: const AiControlDock(),
           ),
+        )
+        ..addScenario(
+          'AI Control Dock Preview Fast',
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith(
+                (ref) => mockNotifierPreviewFast,
+              ),
+            ],
+            child: const AiControlDock(),
+          ),
         );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: testMaterialAppWrapper(),
+        surfaceSize: const Size(1200, 1000),
       );
       await screenMatchesGolden(tester, 'ai_control_dock');
     });
