@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import 'package:local_agent/local_agent.dart';
-import 'model_options_dialog.dart';
 
 class AiControlDock extends ConsumerStatefulWidget {
   const AiControlDock({super.key});
@@ -75,78 +74,6 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
             ),
             if (!_isCollapsed) ...[
               const SizedBox(height: 12),
-
-              // Model Settings Section Summary Card
-              Container(
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHigh,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.colorScheme.outlineVariant,
-                    width: 1,
-                  ),
-                ),
-                child: InkWell(
-                  key: const ValueKey('model_options_button'),
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => ModelOptionsDialog(
-                        currentReleaseStage: canvasModel.modelReleaseStage,
-                        currentPreference: canvasModel.modelPreference,
-                        onChanged: (stage, preference) {
-                          notifier.setModelConfig(stage, preference);
-                        },
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.settings_outlined,
-                          size: 18,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Model Options',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                'Stage: ${canvasModel.modelReleaseStage.toUpperCase()} • Preference: ${canvasModel.modelPreference.toUpperCase()}',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
 
               // Reference Image Selector
               Text(
