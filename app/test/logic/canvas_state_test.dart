@@ -25,6 +25,12 @@ class MockTestAiService implements AiService {
   }
 
   @override
+  Future<void> setModelConfig({
+    required String releaseStage,
+    required String preference,
+  }) async {}
+
+  @override
   Future<String?> generateContent({
     required String prompt,
     Uint8List? imageBytes,

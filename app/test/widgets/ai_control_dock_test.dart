@@ -16,6 +16,12 @@ class MockTestAiService implements AiService {
   Future<void> triggerDownload() async {}
 
   @override
+  Future<void> setModelConfig({
+    required String releaseStage,
+    required String preference,
+  }) async {}
+
+  @override
   Future<String?> generateContent({
     required String prompt,
     Uint8List? imageBytes,
@@ -73,7 +79,7 @@ void main() {
 
       mockNotifier.setReferenceImage(mockBytes, originalBytes: mockBytes);
 
-      final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 0.55)
+      final builder = GoldenBuilder.grid(columns: 2, widthToHeightRatio: 0.5)
         ..addScenario('AI Control Dock Default', const AiControlDock())
         ..addScenario(
           'AI Control Dock Active Reference',

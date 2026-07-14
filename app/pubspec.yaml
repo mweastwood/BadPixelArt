@@ -39,9 +39,7 @@ dependencies:
   dynamic_color: ^1.8.1
   file_picker: ^11.0.2
   local_agent:
-    git:
-      url: https://github.com/mweastwood/flutter-local-agent.git
-      ref: v0.0.8
+    path: ../../flutter-local-agent
 
 
 dev_dependencies:

@@ -176,6 +176,8 @@ class CanvasModel {
   final bool isSuggestingPalette;
   final bool showPaletteSuggestion;
   final String? nextFocus;
+  final String modelReleaseStage;
+  final String modelPreference;
 
   const CanvasModel({
     required this.grid,
@@ -197,6 +199,8 @@ class CanvasModel {
     this.isSuggestingPalette = false,
     this.showPaletteSuggestion = false,
     this.nextFocus,
+    this.modelReleaseStage = 'stable',
+    this.modelPreference = 'full',
   });
 
   CanvasModel copyWith({
@@ -222,6 +226,8 @@ class CanvasModel {
     bool clearSuggestedPalette = false,
     String? nextFocus,
     bool clearNextFocus = false,
+    String? modelReleaseStage,
+    String? modelPreference,
   }) {
     return CanvasModel(
       grid: grid ?? this.grid,
@@ -250,6 +256,8 @@ class CanvasModel {
       showPaletteSuggestion:
           showPaletteSuggestion ?? this.showPaletteSuggestion,
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
+      modelReleaseStage: modelReleaseStage ?? this.modelReleaseStage,
+      modelPreference: modelPreference ?? this.modelPreference,
     );
   }
 
@@ -370,9 +378,31 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           aiHistory: const [],
           referenceImage: null,
           originalReferenceImage: null,
+          modelReleaseStage: 'stable',
+          modelPreference: 'full',
         ),
       ) {
-    checkAiStatus();
+    _initModelConfig();
+  }
+
+  Future<void> _initModelConfig() async {
+    await _aiService.setModelConfig(
+      releaseStage: state.modelReleaseStage,
+      preference: state.modelPreference,
+    );
+    await checkAiStatus();
+  }
+
+  Future<void> setModelConfig(String stage, String preference) async {
+    state = state.copyWith(
+      modelReleaseStage: stage,
+      modelPreference: preference,
+    );
+    await _aiService.setModelConfig(
+      releaseStage: stage,
+      preference: preference,
+    );
+    await checkAiStatus();
   }
 
   @override
