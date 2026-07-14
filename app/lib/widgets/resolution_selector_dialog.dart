@@ -50,49 +50,55 @@ class ResolutionSelectorDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final isSelected = currentGridSize == size;
 
-    return GestureDetector(
+    return Card(
       key: ValueKey('size_card_$size'),
-      onTap: () {
-        onSelected(size);
-        Navigator.of(context).pop();
-      },
-      child: Container(
-        width: 110,
-        height: 110,
-        decoration: BoxDecoration(
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
           color: isSelected
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surfaceVariant.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant,
-            width: isSelected ? 2 : 1,
-          ),
+              ? theme.colorScheme.primary
+              : theme.colorScheme.outlineVariant,
+          width: isSelected ? 2 : 1,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.grid_on,
-              size: size == 8 ? 32 : 40,
-              color: isSelected
-                  ? theme.colorScheme.onPrimaryContainer
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+      ),
+      color: isSelected
+          ? theme.colorScheme.primaryContainer
+          : theme.colorScheme.surfaceVariant.withOpacity(0.4),
+      elevation: isSelected ? 2 : 0,
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: () {
+          onSelected(size);
+          Navigator.of(context).pop();
+        },
+        child: Container(
+          width: 110,
+          height: 110,
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.grid_on,
+                size: size == 8 ? 32 : 40,
                 color: isSelected
                     ? theme.colorScheme.onPrimaryContainer
-                    : theme.colorScheme.onSurface,
+                    : theme.colorScheme.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: isSelected
+                      ? theme.colorScheme.onPrimaryContainer
+                      : theme.colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
