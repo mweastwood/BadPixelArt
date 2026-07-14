@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -9,6 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
 import 'drawing_commands.dart';
+
+extension ColorRgbInt on Color {
+  int get rInt => (r * 255.0).round().clamp(0, 255);
+  int get gInt => (g * 255.0).round().clamp(0, 255);
+  int get bInt => (b * 255.0).round().clamp(0, 255);
+}
 
 enum CanvasTool { line, circle, fill, hatch }
 
@@ -23,8 +27,11 @@ abstract class AgentCanvas {
 }
 
 Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
-  final int width = CanvasNotifier.gridSize;
-  final int height = CanvasNotifier.gridSize;
+  final int height = grid.length;
+  final int width = grid.isNotEmpty ? grid[0].length : 0;
+  if (width == 0 || height == 0) {
+    return generateBmpFromRgba(Uint8List.fromList([0, 0, 0, 255]), 1, 1);
+  }
   const int bytesPerPixel = 3;
   final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
   final int rowStride = width * bytesPerPixel + rowPadding;
@@ -64,9 +71,9 @@ Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
                 : const Color(0xFF1E1E1E))
           : palette[colorIndex - 1];
 
-      bmp[offset] = color.blue;
-      bmp[offset + 1] = color.green;
-      bmp[offset + 2] = color.red;
+      bmp[offset] = color.bInt;
+      bmp[offset + 1] = color.gInt;
+      bmp[offset + 2] = color.rInt;
       offset += 3;
     }
     for (int p = 0; p < rowPadding; p++) {
@@ -84,7 +91,8 @@ Uint8List combineBmps(List<Uint8List> bmps) {
   }
 
   final int n = activeBmps.length;
-  final int panelSize = CanvasNotifier.gridSize;
+  final ByteData firstBd = ByteData.sublistView(activeBmps[0]);
+  final int panelSize = firstBd.getUint32(18, Endian.little);
   final int cols = n <= 1 ? 1 : 2;
   final int rows = n <= 1 ? 1 : 2;
 
@@ -157,6 +165,7 @@ Uint8List combineBmps(List<Uint8List> bmps) {
 
 @immutable
 class CanvasModel {
+  final int gridSize;
   final List<List<int>> grid;
   final int selectedColorIndex;
   final CanvasTool selectedTool;
@@ -180,6 +189,7 @@ class CanvasModel {
   final String modelPreference;
 
   const CanvasModel({
+    this.gridSize = 16,
     required this.grid,
     required this.selectedColorIndex,
     required this.selectedTool,
@@ -204,6 +214,7 @@ class CanvasModel {
   });
 
   CanvasModel copyWith({
+    int? gridSize,
     List<List<int>>? grid,
     int? selectedColorIndex,
     CanvasTool? selectedTool,
@@ -230,6 +241,7 @@ class CanvasModel {
     String? modelPreference,
   }) {
     return CanvasModel(
+      gridSize: gridSize ?? this.gridSize,
       grid: grid ?? this.grid,
       selectedColorIndex: selectedColorIndex ?? this.selectedColorIndex,
       selectedTool: selectedTool ?? this.selectedTool,
@@ -265,7 +277,8 @@ class CanvasModel {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! CanvasModel) return false;
-    return selectedColorIndex == other.selectedColorIndex &&
+    return gridSize == other.gridSize &&
+        selectedColorIndex == other.selectedColorIndex &&
         selectedTool == other.selectedTool &&
         paletteName == other.paletteName &&
         userPrompt == other.userPrompt &&
@@ -284,6 +297,7 @@ class CanvasModel {
 
   @override
   int get hashCode => Object.hash(
+    gridSize,
     selectedColorIndex,
     selectedTool,
     paletteName,
@@ -363,7 +377,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   CanvasNotifier(this._aiService)
     : super(
         CanvasModel(
-          grid: List.generate(gridSize, (_) => List.filled(gridSize, 0)),
+          gridSize: 16,
+          grid: List.generate(16, (_) => List.filled(16, 0)),
           selectedColorIndex: 1, // Start with white/light color
           selectedTool: CanvasTool.line,
           paletteName: 'primary',
@@ -383,6 +398,16 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         ),
       ) {
     _initModelConfig();
+  }
+
+  void changeResolution(int newSize) {
+    if (newSize != 8 && newSize != 16) return;
+    state = state.copyWith(
+      gridSize: newSize,
+      grid: List.generate(newSize, (_) => List.filled(newSize, 0)),
+      undoStack: const [],
+      redoStack: const [],
+    );
   }
 
   Future<void> _initModelConfig() async {
@@ -464,7 +489,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> setUploadedReferenceImage(Uint8List rawBytes) async {
-    final bmp = await resizeAndConvertToBmp(rawBytes);
+    final bmp = await resizeAndConvertToBmp(rawBytes, state.gridSize);
     if (bmp != null) {
       state = state.copyWith(
         referenceImage: bmp,
@@ -519,7 +544,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   void resetCanvas() {
     state = state.copyWith(
-      grid: List.generate(gridSize, (_) => List.filled(gridSize, 0)),
+      grid: List.generate(
+        state.gridSize,
+        (_) => List.filled(state.gridSize, 0),
+      ),
       undoStack: [],
       redoStack: [],
     );
@@ -571,7 +599,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   // Drawing implementations
   void drawPixel(int x, int y, {bool preview = false}) {
-    if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) return;
+    if (x < 0 || x >= state.gridSize || y < 0 || y >= state.gridSize) return;
     if (!preview) {
       _pushToUndo(state.grid);
     }
@@ -583,7 +611,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void _executeCommand(DrawingCommand command) {
     _pushToUndo(state.grid);
     final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    command.execute(newGrid, state.selectedColorIndex, gridSize);
+    command.execute(newGrid, state.selectedColorIndex, state.gridSize);
     state = state.copyWith(grid: newGrid);
   }
 
@@ -615,7 +643,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
     final paletteHexes = state.palette
         .map(
-          (c) => '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
+          (c) =>
+              '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
         )
         .toList();
 
@@ -884,7 +913,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     required bool isMultimodal,
   }) async {
     final List<List<int>> tempGrid = List.generate(
-      CanvasNotifier.gridSize,
+      startingGrid.length,
       (y) => List<int>.from(startingGrid[y]),
     );
 
@@ -1035,7 +1064,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     if (toolName == 'undo') {
       if (localUndoStack.isNotEmpty) {
         final prev = localUndoStack.removeLast();
-        for (int y = 0; y < CanvasNotifier.gridSize; y++) {
+        for (int y = 0; y < tempGrid.length; y++) {
           tempGrid[y] = List<int>.from(prev[y]);
         }
       }
@@ -1044,15 +1073,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
     // Save state for undo support only for drawing commands
     localUndoStack.add(
-      List.generate(
-        CanvasNotifier.gridSize,
-        (y) => List<int>.from(tempGrid[y]),
-      ),
+      List.generate(tempGrid.length, (y) => List<int>.from(tempGrid[y])),
     );
 
     final command = DrawingCommandFactory.create(toolName, params);
     if (command != null) {
-      command.execute(tempGrid, boundedColorIndex, CanvasNotifier.gridSize);
+      command.execute(tempGrid, boundedColorIndex, tempGrid.length);
     }
   }
 
@@ -1126,7 +1152,10 @@ final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
   return CanvasNotifier(aiService);
 });
 
-Future<Uint8List?> resizeAndConvertToBmp(Uint8List imageBytes) async {
+Future<Uint8List?> resizeAndConvertToBmp(
+  Uint8List imageBytes,
+  int gridSize,
+) async {
   try {
     final codec = await ui.instantiateImageCodec(imageBytes);
     final frameInfo = await codec.getNextFrame();
@@ -1137,21 +1166,13 @@ Future<Uint8List?> resizeAndConvertToBmp(Uint8List imageBytes) async {
 
     paintImage(
       canvas: canvas,
-      rect: Rect.fromLTWH(
-        0,
-        0,
-        CanvasNotifier.gridSize.toDouble(),
-        CanvasNotifier.gridSize.toDouble(),
-      ),
+      rect: Rect.fromLTWH(0, 0, gridSize.toDouble(), gridSize.toDouble()),
       image: originalImage,
       fit: BoxFit.cover,
     );
 
     final picture = recorder.endRecording();
-    final resizedImage = await picture.toImage(
-      CanvasNotifier.gridSize,
-      CanvasNotifier.gridSize,
-    );
+    final resizedImage = await picture.toImage(gridSize, gridSize);
 
     final byteData = await resizedImage.toByteData(
       format: ui.ImageByteFormat.rawRgba,
@@ -1159,11 +1180,7 @@ Future<Uint8List?> resizeAndConvertToBmp(Uint8List imageBytes) async {
     if (byteData == null) return null;
 
     final rgbaBytes = byteData.buffer.asUint8List();
-    return generateBmpFromRgba(
-      rgbaBytes,
-      CanvasNotifier.gridSize,
-      CanvasNotifier.gridSize,
-    );
+    return generateBmpFromRgba(rgbaBytes, gridSize, gridSize);
   } catch (e) {
     debugPrint('Error resizing image: $e');
     return null;
@@ -1222,7 +1239,8 @@ Uint8List generateBmpFromRgba(Uint8List rgbaBytes, int width, int height) {
 }
 
 List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes) {
-  final int size = CanvasNotifier.gridSize;
+  final ByteData bd = ByteData.sublistView(bmpBytes);
+  final int size = bd.getUint32(18, Endian.little);
   final List<List<Color>> grid = List.generate(
     size,
     (_) => List.filled(size, const Color(0xFF000000)),
@@ -1243,8 +1261,8 @@ List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes) {
 }
 
 Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
-  final int width = CanvasNotifier.gridSize;
-  final int height = CanvasNotifier.gridSize;
+  final int height = grid.length;
+  final int width = grid.isNotEmpty ? grid[0].length : 0;
   const int bytesPerPixel = 3;
   final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
   final int rowStride = width * bytesPerPixel + rowPadding;
@@ -1276,9 +1294,9 @@ Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
   for (int y = height - 1; y >= 0; y--) {
     for (int x = 0; x < width; x++) {
       final color = grid[y][x];
-      bmp[offset] = color.blue;
-      bmp[offset + 1] = color.green;
-      bmp[offset + 2] = color.red;
+      bmp[offset] = color.bInt;
+      bmp[offset + 1] = color.gInt;
+      bmp[offset + 2] = color.rInt;
       offset += 3;
     }
     for (int p = 0; p < rowPadding; p++) {
@@ -1289,7 +1307,7 @@ Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
 }
 
 List<List<Color>> _applyGaussianBlur(List<List<Color>> src) {
-  final int size = CanvasNotifier.gridSize;
+  final int size = src.length;
   final List<List<Color>> dest = List.generate(
     size,
     (_) => List.filled(size, const Color(0xFF000000)),
@@ -1309,9 +1327,9 @@ List<List<Color>> _applyGaussianBlur(List<List<Color>> src) {
           final py = (y + ky).clamp(0, size - 1);
           final color = src[py][px];
           final weight = kernel[(ky + 1) * 3 + (kx + 1)];
-          sumR += color.red * weight;
-          sumG += color.green * weight;
-          sumB += color.blue * weight;
+          sumR += color.rInt * weight;
+          sumG += color.gInt * weight;
+          sumB += color.bInt * weight;
         }
       }
 
@@ -1330,7 +1348,7 @@ List<List<Color>> _applyColorQuantization(
   List<List<Color>> src,
   List<Color> palette,
 ) {
-  final int size = CanvasNotifier.gridSize;
+  final int size = src.length;
   final List<List<Color>> dest = List.generate(
     size,
     (_) => List.filled(size, const Color(0xFF000000)),
@@ -1341,9 +1359,9 @@ List<List<Color>> _applyColorQuantization(
       Color closestColor = palette.first;
       double minDistance = double.infinity;
       for (final pColor in palette) {
-        final dr = color.red - pColor.red;
-        final dg = color.green - pColor.green;
-        final db = color.blue - pColor.blue;
+        final dr = color.rInt - pColor.rInt;
+        final dg = color.gInt - pColor.gInt;
+        final db = color.bInt - pColor.bInt;
         final dist = dr * dr + dg * dg + db * db;
         if (dist < minDistance) {
           minDistance = dist.toDouble();
@@ -1357,7 +1375,8 @@ List<List<Color>> _applyColorQuantization(
 }
 
 List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
-  final int size = CanvasNotifier.gridSize;
+  final ByteData bd = ByteData.sublistView(bmpBytes);
+  final int size = bd.getUint32(18, Endian.little);
   final List<List<int>> grid = List.generate(size, (_) => List.filled(size, 0));
   if (bmpBytes.length >= 54 + size * size * 3) {
     final refGrid = _bmpToColorGrid(bmpBytes);
@@ -1369,9 +1388,9 @@ List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
         double minDistance = double.infinity;
         for (int i = 0; i < palette.length; i++) {
           final pColor = palette[i];
-          final dr = color.red - pColor.red;
-          final dg = color.green - pColor.green;
-          final db = color.blue - pColor.blue;
+          final dr = color.rInt - pColor.rInt;
+          final dg = color.gInt - pColor.gInt;
+          final db = color.bInt - pColor.bInt;
           final dist = dr * dr + dg * dg + db * db;
           if (dist < minDistance) {
             minDistance = dist.toDouble();
@@ -1387,7 +1406,7 @@ List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
 
 String canvasToTextGrid(List<List<int>> grid) {
   final buffer = StringBuffer();
-  final int size = CanvasNotifier.gridSize;
+  final int size = grid.length;
 
   // Header: 10s digits
   buffer.write('    ');

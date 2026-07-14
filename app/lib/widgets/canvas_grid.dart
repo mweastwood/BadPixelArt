@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,7 +58,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                   onPanEnd: (details) {
                     if (_dragStart == null || _dragCurrent == null) return;
 
-                    final gridSize = CanvasNotifier.gridSize;
+                    final gridSize = canvasModel.gridSize;
                     final cellWidth = size / gridSize;
                     final cellHeight = size / gridSize;
 
@@ -88,7 +86,9 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       case CanvasTool.circle:
                         final dx = currX - startX;
                         final dy = currY - startY;
-                        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 15);
+                        final r = sqrt(
+                          dx * dx + dy * dy,
+                        ).toInt().clamp(1, gridSize - 1);
                         notifier.applyCircle(startX, startY, r);
                         break;
                       case CanvasTool.fill:
@@ -114,12 +114,12 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       activeColorIndex: canvasModel.selectedColorIndex,
                     ),
                     child: GridPaper(
-                      color: Colors.grey[800]!.withOpacity(0.2),
+                      color: Colors.grey[800]!.withValues(alpha: 0.2),
                       divisions: 1,
                       subdivisions: 1,
                       interval:
                           size /
-                          CanvasNotifier.gridSize, // Visual helper gridlines
+                          canvasModel.gridSize, // Visual helper gridlines
                       child: Container(),
                     ),
                   ),
@@ -211,8 +211,8 @@ class CanvasPainter extends CustomPainter {
 
       final previewPaint = Paint()
         ..color = activeColorIndex == 0
-            ? Colors.redAccent.withOpacity(0.5)
-            : palette[activeColorIndex - 1].withOpacity(0.5)
+            ? Colors.redAccent.withValues(alpha: 0.5)
+            : palette[activeColorIndex - 1].withValues(alpha: 0.5)
         ..style = PaintingStyle.fill
         ..isAntiAlias = false;
 

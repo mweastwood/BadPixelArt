@@ -7,6 +7,7 @@ import '../widgets/canvas_grid.dart';
 import '../widgets/color_palette_bar.dart';
 import '../widgets/ai_control_dock.dart';
 import '../widgets/ai_history_dock.dart';
+import '../widgets/resolution_selector_dialog.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -20,7 +21,27 @@ class PixelArtScreen extends ConsumerWidget {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: const Text('Bad Pixel Art')),
+          appBar: AppBar(
+            title: const Text('Bad Pixel Art'),
+            actions: [
+              IconButton(
+                key: const ValueKey('grid_size_button'),
+                icon: const Icon(Icons.grid_on),
+                tooltip: 'Select Grid Size',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => ResolutionSelectorDialog(
+                      currentGridSize: canvasState.gridSize,
+                      onSelected: (size) {
+                        notifier.changeResolution(size);
+                      },
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
           body: LayoutBuilder(
             builder: (context, constraints) {
               final isLandscape = constraints.maxWidth > 800;
