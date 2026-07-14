@@ -211,9 +211,11 @@ packages:
   local_agent:
     dependency: "direct main"
     description:
-      path: "../../flutter-local-agent"
-      relative: true
-    source: path
+      path: "."
+      ref: "feat/dynamic-model-configuration"
+      resolved-ref: "8f9ead6f3e659824b30832430cf45bba2c71f392"
+      url: "https://github.com/mweastwood/flutter-local-agent.git"
+    source: git
     version: "0.0.1"
   matcher:
     dependency: transitive

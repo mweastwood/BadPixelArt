@@ -39,7 +39,9 @@ dependencies:
   dynamic_color: ^1.8.1
   file_picker: ^11.0.2
   local_agent:
-    path: ../../flutter-local-agent
+    git:
+      url: https://github.com/mweastwood/flutter-local-agent.git
+      ref: feat/dynamic-model-configuration
 
 
 dev_dependencies:
