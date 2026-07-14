@@ -20,7 +20,29 @@ class PixelArtScreen extends ConsumerWidget {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: const Text('Bad Pixel Art')),
+          appBar: AppBar(
+            title: const Text('Bad Pixel Art'),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: DropdownButton<int>(
+                  key: const ValueKey('grid_size_selector'),
+                  value: canvasState.gridSize,
+                  underline: const SizedBox(),
+                  icon: const Icon(Icons.grid_on),
+                  items: const [
+                    DropdownMenuItem(value: 8, child: Text('8x8 Grid')),
+                    DropdownMenuItem(value: 16, child: Text('16x16 Grid')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      notifier.changeResolution(val);
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
           body: LayoutBuilder(
             builder: (context, constraints) {
               final isLandscape = constraints.maxWidth > 800;

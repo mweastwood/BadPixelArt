@@ -700,6 +700,31 @@ void main() {
         expect(state.showPaletteSuggestion, isFalse);
         expect(state.suggestedPalette, isNull);
       });
+
+      test(
+        'changeResolution switches grid size and clears history/undo/redo stacks',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+
+          expect(notifier.state.gridSize, equals(16));
+          expect(notifier.state.grid.length, equals(16));
+
+          notifier.drawPixel(0, 0);
+          expect(notifier.state.undoStack.isNotEmpty, isTrue);
+
+          notifier.changeResolution(8);
+
+          final updatedState = container.read(canvasStateProvider);
+          expect(updatedState.gridSize, equals(8));
+          expect(updatedState.grid.length, equals(8));
+          expect(updatedState.grid[0].length, equals(8));
+          expect(updatedState.undoStack.isEmpty, isTrue);
+          expect(updatedState.redoStack.isEmpty, isTrue);
+
+          notifier.changeResolution(12);
+          expect(container.read(canvasStateProvider).gridSize, equals(8));
+        },
+      );
     });
   });
 }

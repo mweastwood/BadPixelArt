@@ -60,7 +60,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                   onPanEnd: (details) {
                     if (_dragStart == null || _dragCurrent == null) return;
 
-                    final gridSize = CanvasNotifier.gridSize;
+                    final gridSize = canvasModel.gridSize;
                     final cellWidth = size / gridSize;
                     final cellHeight = size / gridSize;
 
@@ -88,7 +88,9 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       case CanvasTool.circle:
                         final dx = currX - startX;
                         final dy = currY - startY;
-                        final r = sqrt(dx * dx + dy * dy).toInt().clamp(1, 15);
+                        final r = sqrt(
+                          dx * dx + dy * dy,
+                        ).toInt().clamp(1, gridSize - 1);
                         notifier.applyCircle(startX, startY, r);
                         break;
                       case CanvasTool.fill:
@@ -119,7 +121,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       subdivisions: 1,
                       interval:
                           size /
-                          CanvasNotifier.gridSize, // Visual helper gridlines
+                          canvasModel.gridSize, // Visual helper gridlines
                       child: Container(),
                     ),
                   ),
