@@ -27,14 +27,14 @@ void main() {
       expect(find.text('Primary 8'), findsOneWidget);
 
       // Tap header to collapse
-      await tester.tap(find.text('Manual Drawing Controls'));
+      await tester.tap(find.text('Color Palette'));
       await tester.pumpAndSettle();
 
       // Verify elements are now hidden
       expect(find.text('Primary 8'), findsNothing);
 
       // Tap header to expand again
-      await tester.tap(find.text('Manual Drawing Controls'));
+      await tester.tap(find.text('Color Palette'));
       await tester.pumpAndSettle();
 
       // Verify elements are visible again

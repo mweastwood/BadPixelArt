@@ -38,7 +38,7 @@ class _ColorPaletteBarState extends ConsumerState<ColorPaletteBar> {
                 child: Row(
                   children: [
                     Text(
-                      'Manual Drawing Controls',
+                      'Color Palette',
                       style: TextStyle(
                         color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
@@ -133,111 +133,25 @@ class _ColorPaletteBarState extends ConsumerState<ColorPaletteBar> {
                 height: 48,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: canvasModel.palette.length + 1,
+                  itemCount: canvasModel.palette.length,
                   separatorBuilder: (_, index) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
-                    final isEraser = index == 0;
-                    final color = isEraser
-                        ? null
-                        : canvasModel.palette[index - 1];
-                    final isSelected = canvasModel.selectedColorIndex == index;
+                    final color = canvasModel.palette[index];
 
-                    return GestureDetector(
-                      onTap: () => notifier.selectColor(index),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: isEraser ? Colors.transparent : color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected
-                                ? theme.colorScheme.primary
-                                : theme.colorScheme.outlineVariant,
-                            width: isSelected ? 3 : 1.5,
-                          ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: theme.colorScheme.primary.withValues(
-                                      alpha: 0.4,
-                                    ),
-                                    blurRadius: 8,
-                                    spreadRadius: 1,
-                                  ),
-                                ]
-                              : null,
+                    return Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                          width: 1.5,
                         ),
-                        child: isEraser
-                            ? ClipOval(
-                                child: CustomPaint(
-                                  painter: CheckerboardPainter(
-                                    bg1: const Color(0xFF262626),
-                                    bg2: const Color(0xFF1E1E1E),
-                                  ),
-                                  child: isSelected
-                                      ? const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 20,
-                                        )
-                                      : const Icon(
-                                          Icons.block,
-                                          color: Colors.grey,
-                                          size: 20,
-                                        ),
-                                ),
-                              )
-                            : (isSelected
-                                  ? Icon(
-                                      Icons.check,
-                                      color:
-                                          ThemeData.estimateBrightnessForColor(
-                                                color!,
-                                              ) ==
-                                              Brightness.dark
-                                          ? Colors.white
-                                          : Colors.black,
-                                      size: 20,
-                                    )
-                                  : null),
                       ),
                     );
                   },
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              // Brush Tools Selector
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _BrushToolButton(
-                    icon: Icons.gesture,
-                    label: 'Line',
-                    isSelected: canvasModel.selectedTool == CanvasTool.line,
-                    onTap: () => notifier.selectTool(CanvasTool.line),
-                  ),
-                  _BrushToolButton(
-                    icon: Icons.radio_button_unchecked,
-                    label: 'Circle',
-                    isSelected: canvasModel.selectedTool == CanvasTool.circle,
-                    onTap: () => notifier.selectTool(CanvasTool.circle),
-                  ),
-                  _BrushToolButton(
-                    icon: Icons.format_color_fill,
-                    label: 'Fill',
-                    isSelected: canvasModel.selectedTool == CanvasTool.fill,
-                    onTap: () => notifier.selectTool(CanvasTool.fill),
-                  ),
-                  _BrushToolButton(
-                    icon: Icons.grid_on,
-                    label: 'Hatch',
-                    isSelected: canvasModel.selectedTool == CanvasTool.hatch,
-                    onTap: () => notifier.selectTool(CanvasTool.hatch),
-                  ),
-                ],
               ),
             ],
           ],
@@ -261,14 +175,15 @@ class _PaletteTabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.secondaryContainer
+              ? theme.colorScheme.primaryContainer
               : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
@@ -276,104 +191,13 @@ class _PaletteTabButton extends StatelessWidget {
           label,
           style: TextStyle(
             color: isSelected
-                ? theme.colorScheme.onSecondaryContainer
+                ? theme.colorScheme.onPrimaryContainer
                 : theme.colorScheme.onSurfaceVariant,
+            fontSize: 12,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 13,
           ),
         ),
       ),
     );
   }
-}
-
-class _BrushToolButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _BrushToolButton({
-    required this.icon,
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primary.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary.withValues(alpha: 0.5)
-                : Colors.transparent,
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.onSurfaceVariant,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class CheckerboardPainter extends CustomPainter {
-  final Color bg1;
-  final Color bg2;
-
-  CheckerboardPainter({required this.bg1, required this.bg2});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint1 = Paint()..color = bg1;
-    final paint2 = Paint()..color = bg2;
-    const int cells = 4;
-    final cellW = size.width / cells;
-    final cellH = size.height / cells;
-
-    for (int y = 0; y < cells; y++) {
-      for (int x = 0; x < cells; x++) {
-        final paint = (x + y) % 2 == 0 ? paint1 : paint2;
-        canvas.drawRect(
-          Rect.fromLTWH(x * cellW, y * cellH, cellW, cellH),
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
