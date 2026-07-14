@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
 import 'drawing_commands.dart';
+import 'algorithms/k_means_quantizer.dart';
 
 extension ColorRgbInt on Color {
   int get rInt => (r * 255.0).round().clamp(0, 255);
@@ -374,6 +375,43 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     const Color(0xFF00FFFF), // Cyan
   ];
 
+  static final List<Color> gameboyPalette = [
+    const Color(0xFF0F380F),
+    const Color(0xFF306230),
+    const Color(0xFF8BAC0F),
+    const Color(0xFF9BBC0F),
+  ];
+
+  static final List<Color> nesPalette = [
+    const Color(0xFF000000), // Black
+    const Color(0xFFFCBCB0), // Peach/Skin
+    const Color(0xFFF06800), // Red/Orange
+    const Color(0xFFF8B800), // Yellow
+    const Color(0xFF00A800), // Green
+    const Color(0xFF0058F8), // Blue
+    const Color(0xFFD800CC), // Purple
+    const Color(0xFFFFFFFF), // White
+  ];
+
+  static final List<Color> pico8Palette = [
+    const Color(0xFF000000),
+    const Color(0xFF1D2B53),
+    const Color(0xFF7E2553),
+    const Color(0xFF008751),
+    const Color(0xFFAB5236),
+    const Color(0xFF5F574F),
+    const Color(0xFFC2C3C7),
+    const Color(0xFFFFF1E8),
+    const Color(0xFFFF004D),
+    const Color(0xFFFFA300),
+    const Color(0xFFFFEC27),
+    const Color(0xFF00E436),
+    const Color(0xFF29ADFF),
+    const Color(0xFF83769C),
+    const Color(0xFFFF77A8),
+    const Color(0xFFFFCCAA),
+  ];
+
   CanvasNotifier(this._aiService)
     : super(
         CanvasModel(
@@ -448,7 +486,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void selectPalette(String name) {
-    final newPalette = name == 'grayscale' ? grayscalePalette : primaryPalette;
+    List<Color> newPalette = primaryPalette;
+    if (name == 'grayscale') {
+      newPalette = grayscalePalette;
+    } else if (name == 'gameboy') {
+      newPalette = gameboyPalette;
+    } else if (name == 'nes') {
+      newPalette = nesPalette;
+    } else if (name == 'pico8') {
+      newPalette = pico8Palette;
+    }
+
     state = state.copyWith(
       paletteName: name,
       palette: newPalette,
@@ -540,6 +588,23 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       showPaletteSuggestion: false,
       clearSuggestedPalette: true,
     );
+  }
+
+  void extractPaletteAlgorithmic() {
+    final refImg = state.referenceImage;
+    if (refImg == null) return;
+    try {
+      final colorGrid = _bmpToColorGrid(refImg);
+      final colors = kMeansQuantize(colorGrid, 8);
+      state = state.copyWith(
+        paletteName: 'algorithmic',
+        palette: colors,
+        selectedColorIndex: 1,
+      );
+      resetCanvas();
+    } catch (e) {
+      debugPrint('Error in algorithmic color extraction: $e');
+    }
   }
 
   void resetCanvas() {

@@ -40,9 +40,10 @@ class MockTestAiService implements AiService {
     if (prompt.contains('pixel art describer')) {
       return 'Mock description of the canvas';
     }
-    if (temperature <= 0.5 && prompt.contains('16 colors')) {
-      final List<String> mockPalette = List.generate(16, (i) {
-        final val = (i * 0x11).toRadixString(16).padLeft(2, '0');
+    if (temperature <= 0.5 &&
+        (prompt.contains('16 colors') || prompt.contains('8 colors'))) {
+      final List<String> mockPalette = List.generate(8, (i) {
+        final val = (i * 0x22).toRadixString(16).padLeft(2, '0');
         return '#$val$val$val';
       });
       return '["${mockPalette.join('", "')}"]';
@@ -635,7 +636,7 @@ void main() {
       test('parsePaletteColors parses clean JSON list correctly', () {
         const jsonResponse = '["#ff0000", "#00ff00", "#0000ff"]';
         final colors = parsePaletteColors(jsonResponse);
-        expect(colors.length, equals(16));
+        expect(colors.length, equals(8));
         expect(colors[0], equals(const Color(0xFFFF0000)));
         expect(colors[1], equals(const Color(0xFF00FF00)));
         expect(colors[2], equals(const Color(0xFF0000FF)));
@@ -645,7 +646,7 @@ void main() {
         const textResponse =
             'Here are the suggested colors: #ff55aa and #00bbcc.';
         final colors = parsePaletteColors(textResponse);
-        expect(colors.length, equals(16));
+        expect(colors.length, equals(8));
         expect(colors[0], equals(const Color(0xFFFF55AA)));
         expect(colors[1], equals(const Color(0xFF00BBCC)));
       });
@@ -662,14 +663,14 @@ void main() {
 
           final state = container.read(canvasStateProvider);
           expect(state.suggestedPalette, isNotNull);
-          expect(state.suggestedPalette!.length, equals(16));
+          expect(state.suggestedPalette!.length, equals(8));
           expect(state.showPaletteSuggestion, isTrue);
         },
       );
 
       test('acceptSuggestedPalette updates palette and resets canvas', () {
         final notifier = container.read(canvasStateProvider.notifier);
-        final suggested = List.generate(16, (i) => Color(0xFF000000 + i));
+        final suggested = List.generate(8, (i) => Color(0xFF000000 + i));
 
         notifier.state = notifier.state.copyWith(
           suggestedPalette: suggested,

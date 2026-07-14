@@ -33,8 +33,8 @@ String formatSystemInstruction() {
 }
 
 String formatPalettePrompt() {
-  return 'Analyze this reference image and suggest a palette of exactly 16 colors. '
-      'Output a JSON array containing exactly 16 hex color strings (e.g. ["#ff0000", "#00ff00", ...]). '
+  return 'Analyze this reference image and suggest a palette of exactly 8 colors. '
+      'Output a JSON array containing exactly 8 hex color strings (e.g. ["#ff0000", "#00ff00", ...]). '
       'Output nothing else.';
 }
 
@@ -174,10 +174,10 @@ List<Color> parsePaletteColors(String responseText) {
     }
   }
 
-  if (colors.length > 16) {
-    return colors.take(16).toList();
+  if (colors.length > 8) {
+    return colors.take(8).toList();
   }
-  while (colors.length < 16) {
+  while (colors.length < 8) {
     final idx = colors.length;
     colors.add(_fallbackColors[idx % _fallbackColors.length]);
   }

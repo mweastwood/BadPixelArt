@@ -78,7 +78,11 @@ void main() {
         ),
       );
 
-      await screenMatchesGolden(tester, 'pixel_art_screen_palette_loading');
+      await screenMatchesGolden(
+        tester,
+        'pixel_art_screen_palette_loading',
+        customPump: (tester) async => tester.pump(),
+      );
     });
   });
 }

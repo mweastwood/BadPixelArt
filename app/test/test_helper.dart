@@ -21,6 +21,9 @@ class TestMockAiService implements AiService {
     if (prompt.contains('pixel art describer')) {
       return 'Mock description of the canvas';
     }
+    if (prompt.contains('palette') || prompt.contains('colors')) {
+      return '["#000000", "#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"]';
+    }
     return null;
   }
 
