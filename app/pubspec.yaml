@@ -41,7 +41,7 @@ dependencies:
   local_agent:
     git:
       url: https://github.com/mweastwood/flutter-local-agent.git
-      ref: feat/dynamic-model-configuration
+      ref: v0.0.9
 
 
 dev_dependencies:
