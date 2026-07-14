@@ -7,6 +7,7 @@ import '../widgets/canvas_grid.dart';
 import '../widgets/color_palette_bar.dart';
 import '../widgets/ai_control_dock.dart';
 import '../widgets/ai_history_dock.dart';
+import '../widgets/resolution_selector_dialog.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -23,23 +24,21 @@ class PixelArtScreen extends ConsumerWidget {
           appBar: AppBar(
             title: const Text('Bad Pixel Art'),
             actions: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: DropdownButton<int>(
-                  key: const ValueKey('grid_size_selector'),
-                  value: canvasState.gridSize,
-                  underline: const SizedBox(),
-                  icon: const Icon(Icons.grid_on),
-                  items: const [
-                    DropdownMenuItem(value: 8, child: Text('8x8 Grid')),
-                    DropdownMenuItem(value: 16, child: Text('16x16 Grid')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) {
-                      notifier.changeResolution(val);
-                    }
-                  },
-                ),
+              IconButton(
+                key: const ValueKey('grid_size_button'),
+                icon: const Icon(Icons.grid_on),
+                tooltip: 'Select Grid Size',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => ResolutionSelectorDialog(
+                      currentGridSize: canvasState.gridSize,
+                      onSelected: (size) {
+                        notifier.changeResolution(size);
+                      },
+                    ),
+                  );
+                },
               ),
             ],
           ),
