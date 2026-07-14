@@ -1,7 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
-import 'dart:convert';
+import 'dart:math' show pow, Random;
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +9,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
 import 'drawing_commands.dart';
+import 'agents/base_agent.dart';
+import 'agents/agent_orchestrator.dart';
+import 'commands/algorithmic_helpers.dart';
+import 'bmp_helper.dart';
+export 'bmp_helper.dart';
 
 enum CanvasTool { line, circle, fill, hatch }
 
@@ -22,142 +27,10 @@ abstract class AgentCanvas {
   );
 }
 
-Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
-  final int width = CanvasNotifier.gridSize;
-  final int height = CanvasNotifier.gridSize;
-  const int bytesPerPixel = 3;
-  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
-  final int rowStride = width * bytesPerPixel + rowPadding;
-  final int pixelDataSize = rowStride * height;
-  final int fileSize = 54 + pixelDataSize;
-
-  final Uint8List bmp = Uint8List(fileSize);
-  final ByteData bd = ByteData.sublistView(bmp);
-
-  // BMP Header
-  bmp[0] = 0x42; // 'B'
-  bmp[1] = 0x4D; // 'M'
-  bd.setUint32(2, fileSize, Endian.little);
-  bd.setUint32(6, 0, Endian.little);
-  bd.setUint32(10, 54, Endian.little);
-
-  // DIB Header (BITMAPINFOHEADER)
-  bd.setUint32(14, 40, Endian.little);
-  bd.setUint32(18, width, Endian.little);
-  bd.setUint32(22, height, Endian.little);
-  bd.setUint16(26, 1, Endian.little);
-  bd.setUint16(28, 24, Endian.little); // 24-bit BGR
-  bd.setUint32(30, 0, Endian.little);
-  bd.setUint32(34, pixelDataSize, Endian.little);
-  bd.setUint32(38, 2835, Endian.little); // 72 DPI
-  bd.setUint32(42, 2835, Endian.little); // 72 DPI
-  bd.setUint32(46, 0, Endian.little);
-  bd.setUint32(50, 0, Endian.little);
-
-  int offset = 54;
-  for (int y = height - 1; y >= 0; y--) {
-    for (int x = 0; x < width; x++) {
-      final colorIndex = grid[y][x];
-      final color = colorIndex == 0
-          ? ((x + y) % 2 == 0
-                ? const Color(0xFF262626)
-                : const Color(0xFF1E1E1E))
-          : palette[colorIndex - 1];
-
-      bmp[offset] = color.blue;
-      bmp[offset + 1] = color.green;
-      bmp[offset + 2] = color.red;
-      offset += 3;
-    }
-    for (int p = 0; p < rowPadding; p++) {
-      bmp[offset++] = 0;
-    }
-  }
-
-  return bmp;
-}
-
-Uint8List combineBmps(List<Uint8List> bmps) {
-  final activeBmps = bmps.where((b) => b.isNotEmpty).toList();
-  if (activeBmps.isEmpty) {
-    return generateBmpFromRgba(Uint8List.fromList([0, 0, 0, 255]), 1, 1);
-  }
-
-  final int n = activeBmps.length;
-  final int panelSize = CanvasNotifier.gridSize;
-  final int cols = n <= 1 ? 1 : 2;
-  final int rows = n <= 1 ? 1 : 2;
-
-  final int combinedWidth = panelSize * cols;
-  final int combinedHeight = panelSize * rows;
-  const int bytesPerPixel = 3;
-  final int rowPadding = (4 - (combinedWidth * bytesPerPixel) % 4) % 4;
-  final int rowStride = combinedWidth * bytesPerPixel + rowPadding;
-  final int pixelDataSize = rowStride * combinedHeight;
-  final int fileSize = 54 + pixelDataSize;
-
-  final Uint8List combined = Uint8List(fileSize);
-  final ByteData bd = ByteData.sublistView(combined);
-
-  // BMP Header
-  combined[0] = 0x42; // 'B'
-  combined[1] = 0x4D; // 'M'
-  bd.setUint32(2, fileSize, Endian.little);
-  bd.setUint32(6, 0, Endian.little);
-  bd.setUint32(10, 54, Endian.little);
-
-  // DIB Header (BITMAPINFOHEADER)
-  bd.setUint32(14, 40, Endian.little);
-  bd.setUint32(18, combinedWidth, Endian.little);
-  bd.setUint32(22, combinedHeight, Endian.little);
-  bd.setUint16(26, 1, Endian.little);
-  bd.setUint16(28, 24, Endian.little); // 24-bit BGR
-  bd.setUint32(30, 0, Endian.little);
-  bd.setUint32(34, pixelDataSize, Endian.little);
-  bd.setUint32(38, 2835, Endian.little); // 72 DPI
-  bd.setUint32(42, 2835, Endian.little); // 72 DPI
-  bd.setUint32(46, 0, Endian.little);
-  bd.setUint32(50, 0, Endian.little);
-
-  int offset = 54;
-  for (int y = combinedHeight - 1; y >= 0; y--) {
-    final int gridRow = y ~/ panelSize;
-    final int panelY = (gridRow + 1) * panelSize - 1 - y;
-
-    for (int gridCol = 0; gridCol < cols; gridCol++) {
-      final int panelIndex = gridRow * cols + gridCol;
-      if (panelIndex < n) {
-        final bmpBytes = activeBmps[panelIndex];
-        final int srcRowOffset = 54 + panelY * panelSize * 3;
-        for (int x = 0; x < panelSize; x++) {
-          final int pixelOffset = srcRowOffset + x * 3;
-          combined[offset] = bmpBytes[pixelOffset]; // blue
-          combined[offset + 1] = bmpBytes[pixelOffset + 1]; // green
-          combined[offset + 2] = bmpBytes[pixelOffset + 2]; // red
-          offset += 3;
-        }
-      } else {
-        // Write black filler pixels
-        for (int x = 0; x < panelSize; x++) {
-          combined[offset] = 0;
-          combined[offset + 1] = 0;
-          combined[offset + 2] = 0;
-          offset += 3;
-        }
-      }
-    }
-
-    for (int pad = 0; pad < rowPadding; pad++) {
-      combined[offset++] = 0;
-    }
-  }
-
-  return combined;
-}
-
 @immutable
 class CanvasModel {
   final List<List<int>> grid;
+  final int gridSize;
   final int selectedColorIndex;
   final CanvasTool selectedTool;
   final String paletteName;
@@ -178,9 +51,13 @@ class CanvasModel {
   final String? nextFocus;
   final String modelReleaseStage;
   final String modelPreference;
+  final String aiProvider; // 'aicore' or 'ollama'
+  final String ollamaBaseUrl;
+  final String ollamaModelName;
 
   const CanvasModel({
     required this.grid,
+    this.gridSize = 16,
     required this.selectedColorIndex,
     required this.selectedTool,
     required this.paletteName,
@@ -201,10 +78,14 @@ class CanvasModel {
     this.nextFocus,
     this.modelReleaseStage = 'stable',
     this.modelPreference = 'full',
+    this.aiProvider = 'aicore',
+    this.ollamaBaseUrl = 'http://127.0.0.1:11434',
+    this.ollamaModelName = 'gemma4:e4b',
   });
 
   CanvasModel copyWith({
     List<List<int>>? grid,
+    int? gridSize,
     int? selectedColorIndex,
     CanvasTool? selectedTool,
     String? paletteName,
@@ -228,9 +109,13 @@ class CanvasModel {
     bool clearNextFocus = false,
     String? modelReleaseStage,
     String? modelPreference,
+    String? aiProvider,
+    String? ollamaBaseUrl,
+    String? ollamaModelName,
   }) {
     return CanvasModel(
       grid: grid ?? this.grid,
+      gridSize: gridSize ?? this.gridSize,
       selectedColorIndex: selectedColorIndex ?? this.selectedColorIndex,
       selectedTool: selectedTool ?? this.selectedTool,
       paletteName: paletteName ?? this.paletteName,
@@ -258,6 +143,9 @@ class CanvasModel {
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
       modelReleaseStage: modelReleaseStage ?? this.modelReleaseStage,
       modelPreference: modelPreference ?? this.modelPreference,
+      aiProvider: aiProvider ?? this.aiProvider,
+      ollamaBaseUrl: ollamaBaseUrl ?? this.ollamaBaseUrl,
+      ollamaModelName: ollamaModelName ?? this.ollamaModelName,
     );
   }
 
@@ -265,7 +153,8 @@ class CanvasModel {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! CanvasModel) return false;
-    return selectedColorIndex == other.selectedColorIndex &&
+    return gridSize == other.gridSize &&
+        selectedColorIndex == other.selectedColorIndex &&
         selectedTool == other.selectedTool &&
         paletteName == other.paletteName &&
         userPrompt == other.userPrompt &&
@@ -284,6 +173,7 @@ class CanvasModel {
 
   @override
   int get hashCode => Object.hash(
+    gridSize,
     selectedColorIndex,
     selectedTool,
     paletteName,
@@ -307,6 +197,22 @@ class CanvasModel {
 class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   final AiService _aiService;
   Timer? _autoRunTimer;
+  OllamaAiService? _cachedOllamaService;
+
+  AiService get activeAiService {
+    if (state.aiProvider == 'ollama') {
+      if (_cachedOllamaService == null ||
+          _cachedOllamaService!.baseUrl != state.ollamaBaseUrl ||
+          _cachedOllamaService!.modelName != state.ollamaModelName) {
+        _cachedOllamaService = OllamaAiService(
+          baseUrl: state.ollamaBaseUrl,
+          modelName: state.ollamaModelName,
+        );
+      }
+      return _cachedOllamaService!;
+    }
+    return _aiService;
+  }
 
   static const int gridSize = 16;
 
@@ -326,17 +232,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     Uint8List? referenceBmp,
     Uint8List? previousBmp,
   ) {
-    final List<Uint8List> bmpsToCombine = [];
-
-    if (referenceBmp != null) {
-      final refGrid = _bmpToColorGrid(referenceBmp);
-      final blurredGrid = _applyGaussianBlur(refGrid);
-      final quantizedGrid = _applyColorQuantization(blurredGrid, state.palette);
-      final quantizedBmp = _bmpFromColorGrid(quantizedGrid);
-      bmpsToCombine.add(quantizedBmp);
-    }
-
     final currentBmp = previousBmp ?? generateBmp(state.grid, state.palette);
+    final List<Uint8List> bmpsToCombine = [];
+    if (referenceBmp != null && referenceBmp.isNotEmpty) {
+      bmpsToCombine.add(referenceBmp);
+    }
     bmpsToCombine.add(currentBmp);
 
     return combineBmps(bmpsToCombine);
@@ -360,11 +260,57 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     const Color(0xFF00FFFF), // Cyan
   ];
 
+  static final List<Color> gameboyPalette = [
+    const Color(0xFF0F380F),
+    const Color(0xFF306230),
+    const Color(0xFF8BAC0F),
+    const Color(0xFF9BBC0F),
+  ];
+
+  static final List<Color> nesPalette = [
+    const Color(0xFF7C7C7C),
+    const Color(0xFF0000FC),
+    const Color(0xFF0000BC),
+    const Color(0xFF4428BC),
+    const Color(0xFF940084),
+    const Color(0xFFA80020),
+    const Color(0xFFA81000),
+    const Color(0xFF881400),
+    const Color(0xFF503000),
+    const Color(0xFF007800),
+    const Color(0xFF006800),
+    const Color(0xFF005800),
+    const Color(0xFF004058),
+    const Color(0xFF000000),
+    const Color(0xFF000000),
+    const Color(0xFF000000),
+  ];
+
+  static final List<Color> pico8Palette = [
+    const Color(0xFF000000),
+    const Color(0xFF1D2B53),
+    const Color(0xFF7E2553),
+    const Color(0xFF008751),
+    const Color(0xFFAB5236),
+    const Color(0xFF5F574F),
+    const Color(0xFFC2C3C7),
+    const Color(0xFFFFF1E8),
+    const Color(0xFFFF004D),
+    const Color(0xFFFFA300),
+    const Color(0xFFFFEC27),
+    const Color(0xFF00E436),
+    const Color(0xFF29ADFF),
+    const Color(0xFF83769C),
+    const Color(0xFFFF77A8),
+    const Color(0xFFFFCCAA),
+  ];
+
   CanvasNotifier(this._aiService)
     : super(
         CanvasModel(
           grid: List.generate(gridSize, (_) => List.filled(gridSize, 0)),
-          selectedColorIndex: 1, // Start with white/light color
+          gridSize: 16,
+          selectedColorIndex: 1,
           selectedTool: CanvasTool.line,
           paletteName: 'primary',
           palette: primaryPalette,
@@ -413,6 +359,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Future<void> checkAiStatus() async {
     final status = await _aiService.checkStatus();
+    if (!mounted) return;
     state = state.copyWith(aiStatus: status);
   }
 
@@ -422,8 +369,27 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     await checkAiStatus();
   }
 
+  void changeResolution(int newSize) {
+    if (newSize != 8 && newSize != 16) return;
+    state = state.copyWith(
+      gridSize: newSize,
+      grid: List.generate(newSize, (_) => List.filled(newSize, 0)),
+      undoStack: const [],
+      redoStack: const [],
+    );
+  }
+
   void selectPalette(String name) {
-    final newPalette = name == 'grayscale' ? grayscalePalette : primaryPalette;
+    List<Color> newPalette = primaryPalette;
+    if (name == 'grayscale') {
+      newPalette = grayscalePalette;
+    } else if (name == 'gameboy') {
+      newPalette = gameboyPalette;
+    } else if (name == 'nes') {
+      newPalette = nesPalette;
+    } else if (name == 'pico8') {
+      newPalette = pico8Palette;
+    }
     state = state.copyWith(
       paletteName: name,
       palette: newPalette,
@@ -452,7 +418,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         clearReference: true,
         clearSuggestedPalette: true,
         showPaletteSuggestion: false,
-        clearNextFocus: true,
       );
     } else {
       state = state.copyWith(
@@ -464,7 +429,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> setUploadedReferenceImage(Uint8List rawBytes) async {
-    final bmp = await resizeAndConvertToBmp(rawBytes);
+    final bmp = await resizeAndConvertToBmp(rawBytes, state.gridSize);
     if (bmp != null) {
       state = state.copyWith(
         referenceImage: bmp,
@@ -474,7 +439,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
-  Future<void> suggestPaletteFromReference() async {
+  Future<void> suggestPaletteFromReference({bool algorithmic = false}) async {
     final refImg = state.referenceImage;
     if (refImg == null) return;
 
@@ -484,17 +449,29 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     );
 
     try {
-      final colors = await _aiService.suggestPalette(refImg);
-      if (colors != null) {
+      if (algorithmic) {
+        final colors = extractPaletteKMeans(refImg, 8);
+        if (!mounted) return;
         state = state.copyWith(
           suggestedPalette: colors,
           showPaletteSuggestion: true,
         );
+      } else {
+        final colors = await _aiService.suggestPalette(refImg);
+        if (colors != null) {
+          if (!mounted) return;
+          state = state.copyWith(
+            suggestedPalette: colors,
+            showPaletteSuggestion: true,
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error suggesting palette: $e');
     } finally {
-      state = state.copyWith(isSuggestingPalette: false);
+      if (mounted) {
+        state = state.copyWith(isSuggestingPalette: false);
+      }
     }
   }
 
@@ -519,7 +496,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   void resetCanvas() {
     state = state.copyWith(
-      grid: List.generate(gridSize, (_) => List.filled(gridSize, 0)),
+      grid: List.generate(
+        state.gridSize,
+        (_) => List.filled(state.gridSize, 0),
+      ),
       undoStack: [],
       redoStack: [],
     );
@@ -529,10 +509,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     final clonedGrid = currentGrid.map((row) => List<int>.from(row)).toList();
     final newUndo = List<List<List<int>>>.from(state.undoStack)
       ..add(clonedGrid);
-    state = state.copyWith(
-      undoStack: newUndo,
-      redoStack: [], // Clear redo stack on new operation
-    );
+    state = state.copyWith(undoStack: newUndo, redoStack: []);
   }
 
   void undo() {
@@ -569,9 +546,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     );
   }
 
-  // Drawing implementations
   void drawPixel(int x, int y, {bool preview = false}) {
-    if (x < 0 || x >= gridSize || y < 0 || y >= gridSize) return;
+    final size = state.gridSize;
+    if (x < 0 || x >= size || y < 0 || y >= size) return;
     if (!preview) {
       _pushToUndo(state.grid);
     }
@@ -583,7 +560,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void _executeCommand(DrawingCommand command) {
     _pushToUndo(state.grid);
     final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    command.execute(newGrid, state.selectedColorIndex, gridSize);
+    command.execute(newGrid, state.selectedColorIndex, state.gridSize);
     state = state.copyWith(grid: newGrid);
   }
 
@@ -606,453 +583,211 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void applyHatch(int startX, int startY) =>
       _executeCommand(HatchCommand(startX, startY));
 
-  // Core algorithms
-
-  // Triggering next stroke from AI service
+  // Triggering next stroke using new multi-agent orchestrator pipeline
   Future<void> triggerAiStroke() async {
     if (state.isGenerating) return;
     state = state.copyWith(isGenerating: true);
 
-    final paletteHexes = state.palette
-        .map(
-          (c) => '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
-        )
-        .toList();
-
-    final startingGrid = state.grid;
-    final startingBmp = generateBmp(startingGrid, state.palette);
-    final isMultimodal = _aiService is MethodChannelAiService;
-
-    String rawResponse = '';
-    bool isError = false;
-    Uint8List loggedBmp = startingBmp;
-    final String promptLog =
-        'Co-creative Multi-Agent Drawing Step (AI pixel art assistant):\n'
-        '- 3 Painter Agent Runs each ran for 5 turns starting from the current canvas.\n'
-        '- Critic evaluated all three candidates on a 2x2 comparison grid and selected the best progression.';
-
     try {
-      // 1. Get textual description of the reference image using Describer
-      final refBmp = state.referenceImage;
-      final Map<String, String>? refDescResult = refBmp != null
-          ? await _aiService.describeCanvas(canvasImage: refBmp)
-          : null;
-      final String referenceDescription =
-          refDescResult?['response'] ??
-          (refBmp != null
-              ? 'A pixel art reference image.'
-              : 'An empty canvas.');
+      final orchestrator = AgentOrchestrator(aiService: activeAiService);
 
-      // Run the 3 painters in parallel using Future.wait
-      final results = await Future.wait([
-        _runPainterAgent(
-          agentNumber: 1,
-          startingGrid: startingGrid,
-          palette: state.palette,
-          paletteHexes: paletteHexes,
-          referenceDescription: referenceDescription,
-          isMultimodal: isMultimodal,
-        ),
-        _runPainterAgent(
-          agentNumber: 2,
-          startingGrid: startingGrid,
-          palette: state.palette,
-          paletteHexes: paletteHexes,
-          referenceDescription: referenceDescription,
-          isMultimodal: isMultimodal,
-        ),
-        _runPainterAgent(
-          agentNumber: 3,
-          startingGrid: startingGrid,
-          palette: state.palette,
-          paletteHexes: paletteHexes,
-          referenceDescription: referenceDescription,
-          isMultimodal: isMultimodal,
-        ),
-      ]);
-
-      // Convert candidate grids to BMPs
-      final candidate1Bmp = generateBmp(
-        results[0]['grid'] as List<List<int>>,
+      // Step 3: Decompose the prompt into components
+      final components = await orchestrator.decomposePrompt(
+        state.gridSize,
         state.palette,
+        state.userPrompt,
+        referenceImage: state.referenceImage,
       );
-      final candidate2Bmp = generateBmp(
-        results[1]['grid'] as List<List<int>>,
+
+      // Run Painter/Eraser/Evaluator outlines loop
+      final sketchResult = await orchestrator.runMultiAgentSketch(
+        state.gridSize,
         state.palette,
-      );
-      final candidate3Bmp = generateBmp(
-        results[3 - 1]['grid'] as List<List<int>>,
-        state.palette,
-      );
-
-      // Describe the starting canvas and candidates
-      final startDescResult = await _aiService.describeCanvas(
-        canvasImage: startingBmp,
-      );
-      final String startingCanvasDescription =
-          startDescResult?['response'] ?? 'Starting state.';
-
-      final cand1DescResult = await _aiService.describeCanvas(
-        canvasImage: candidate1Bmp,
-      );
-      final String candidate1Description =
-          cand1DescResult?['response'] ?? 'Candidate 1 progression.';
-
-      final cand2DescResult = await _aiService.describeCanvas(
-        canvasImage: candidate2Bmp,
-      );
-      final String candidate2Description =
-          cand2DescResult?['response'] ?? 'Candidate 2 progression.';
-
-      final cand3DescResult = await _aiService.describeCanvas(
-        canvasImage: candidate3Bmp,
-      );
-      final String candidate3Description =
-          cand3DescResult?['response'] ?? 'Candidate 3 progression.';
-
-      // Stitch the 2x2 comparison grid for the visual log in the UI
-      final criticCombinedBmp = combineBmps([
-        refBmp ?? startingBmp,
-        candidate1Bmp,
-        candidate2Bmp,
-        candidate3Bmp,
-      ]);
-      loggedBmp = criticCombinedBmp;
-
-      final String criticPrompt = formatCriticTextOnlyPrompt(
-        userPrompt: state.userPrompt,
-        referenceDescription: referenceDescription,
-        startingCanvasDescription: startingCanvasDescription,
-        candidate1Description: candidate1Description,
-        candidate2Description: candidate2Description,
-        candidate3Description: candidate3Description,
-      );
-
-      final describersLog = {
-        'reference': {
-          'description': referenceDescription,
-          'rawPrompt': refDescResult?['prompt'] ?? 'N/A',
-          'rawResponse': refDescResult?['response'] ?? 'N/A',
-          'imageBytes': refBmp != null ? base64Encode(refBmp) : null,
+        state.userPrompt,
+        components,
+        state.referenceImage,
+        (msg) {
+          debugPrint('[Orchestrator] $msg');
         },
-        'starting': {
-          'description': startingCanvasDescription,
-          'rawPrompt': startDescResult?['prompt'] ?? 'N/A',
-          'rawResponse': startDescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(startingBmp),
-        },
-        'candidate1': {
-          'description': candidate1Description,
-          'rawPrompt': cand1DescResult?['prompt'] ?? 'N/A',
-          'rawResponse': cand1DescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(candidate1Bmp),
-        },
-        'candidate2': {
-          'description': candidate2Description,
-          'rawPrompt': cand2DescResult?['prompt'] ?? 'N/A',
-          'rawResponse': cand2DescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(candidate2Bmp),
-        },
-        'candidate3': {
-          'description': candidate3Description,
-          'rawPrompt': cand3DescResult?['prompt'] ?? 'N/A',
-          'rawResponse': cand3DescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(candidate3Bmp),
-        },
-      };
-
-      // Ask Critic to evaluate candidate descriptions (text-only)
-      final criticResult = await _aiService.evaluateCandidates(
-        userPrompt: state.userPrompt,
-        referenceDescription: referenceDescription,
-        startingCanvasDescription: startingCanvasDescription,
-        candidate1Description: candidate1Description,
-        candidate2Description: candidate2Description,
-        candidate3Description: candidate3Description,
       );
+      final sketchGrid = sketchResult.grid;
 
-      if (criticResult != null) {
-        final choice = criticResult['choice'];
-        final criticReasoning = criticResult['reasoning'] as String?;
-        final nextFocus = criticResult['nextFocus'] as String?;
-
-        // Extract chosen painter index (1, 2, or 3) and clamp safely
-        int choiceInt = 1;
-        if (choice is int) {
-          choiceInt = choice.clamp(1, 3);
-        } else if (choice is String) {
-          choiceInt = (int.tryParse(choice) ?? 1).clamp(1, 3);
-        }
-
-        final chosenIndex = choiceInt - 1;
-        final chosenGrid = results[chosenIndex]['grid'] as List<List<int>>;
-        final chosenStrokes =
-            results[chosenIndex]['strokes'] as List<Map<String, dynamic>>;
-
-        int finalColorIndex = state.selectedColorIndex;
-        if (chosenStrokes.isNotEmpty) {
-          finalColorIndex =
-              (chosenStrokes.last['color'] as int?) ?? finalColorIndex;
-        }
-        final boundedColorIndex = finalColorIndex.clamp(
-          0,
-          state.palette.length,
-        );
-
-        // Update the official canvas state to the chosen grid
-        _pushToUndo(startingGrid);
-        state = state.copyWith(
-          grid: chosenGrid,
-          selectedColorIndex: boundedColorIndex,
-          redoStack: const [],
-          nextFocus: nextFocus,
-        );
-
-        rawResponse = jsonEncode({
-          'criticChoice': choiceInt,
-          'criticReasoning':
-              criticReasoning ?? 'Selected candidate $choiceInt.',
-          'criticNextFocus': nextFocus ?? 'N/A',
-          'criticRawPrompt': criticPrompt,
-          'criticRawResponse': jsonEncode(criticResult),
-          'painter1Strokes': results[0]['strokes'],
-          'painter2Strokes': results[1]['strokes'],
-          'painter3Strokes': results[2]['strokes'],
-          'describers': describersLog,
-        });
-      } else {
-        // Fallback: default to Painter 1
-        final chosenGrid = results[0]['grid'] as List<List<int>>;
-        final chosenStrokes =
-            results[0]['strokes'] as List<Map<String, dynamic>>;
-
-        int finalColorIndex = state.selectedColorIndex;
-        if (chosenStrokes.isNotEmpty) {
-          finalColorIndex =
-              (chosenStrokes.last['color'] as int?) ?? finalColorIndex;
-        }
-        final boundedColorIndex = finalColorIndex.clamp(
-          0,
-          state.palette.length,
-        );
-
-        _pushToUndo(startingGrid);
-        state = state.copyWith(
-          grid: chosenGrid,
-          selectedColorIndex: boundedColorIndex,
-          redoStack: const [],
-          clearNextFocus: true,
-        );
-        rawResponse = jsonEncode({
-          'criticChoice': 1,
-          'criticReasoning':
-              'Critic response unavailable, defaulted to Painter 1.',
-          'criticNextFocus': 'N/A',
-          'criticRawPrompt': criticPrompt,
-          'criticRawResponse': 'Critic response was null.',
-          'painter1Strokes': results[0]['strokes'],
-          'painter2Strokes': results[1]['strokes'],
-          'painter3Strokes': results[2]['strokes'],
-          'describers': describersLog,
-        });
-      }
-    } catch (e) {
-      isError = true;
-      rawResponse = 'Error in tournament execution: $e';
-      debugPrint('Error running multi-agent drawing cycle: $e');
-    } finally {
-      final newHistory = List<AgentHistoryEntry>.from(state.aiHistory)
-        ..add(
-          AgentHistoryEntry(
-            timestamp: DateTime.now(),
-            prompt: promptLog,
-            response: rawResponse,
-            isError: isError,
-            imageBytes: loggedBmp,
-          ),
-        );
-      state = state.copyWith(isGenerating: false, aiHistory: newHistory);
-    }
-  }
-
-  Future<Map<String, dynamic>> _runPainterAgent({
-    required int agentNumber,
-    required List<List<int>> startingGrid,
-    required List<Color> palette,
-    required List<String> paletteHexes,
-    required String referenceDescription,
-    required bool isMultimodal,
-  }) async {
-    final List<List<int>> tempGrid = List.generate(
-      CanvasNotifier.gridSize,
-      (y) => List<int>.from(startingGrid[y]),
-    );
-
-    final List<Map<String, dynamic>> strokesHistory = [];
-    final List<List<List<int>>> localUndoStack = [];
-
-    for (int turn = 1; turn <= 5; turn++) {
-      final previousBmp = generateBmp(tempGrid, palette);
-
-      final systemInstruction = formatSystemInstruction();
-
-      final String currentCanvasTextGrid = canvasToTextGrid(tempGrid);
-
-      final userTextPrompt = formatUserPrompt(
-        canvasImage: previousBmp,
-        prompt: state.userPrompt,
-        paletteColors: paletteHexes,
-        isMultimodal: isMultimodal,
-        hasPreviousImage: true,
-        referenceDescription: referenceDescription,
-        currentCanvasTextGrid: currentCanvasTextGrid,
-        nextFocus: state.nextFocus,
+      // Step 4: Algorithmic detection & Evaluator-directed jaggies correction
+      final issues = AlgorithmicHelpers.detectOutlineIssues(
+        sketchGrid,
+        state.gridSize,
       );
-
-      String historyPrompt = '';
-      if (strokesHistory.isNotEmpty) {
-        final historyItems = strokesHistory
-            .map((entry) {
-              final Map<String, dynamic> cleanEntry = {
-                'tool': entry['tool'],
-                'params': entry['params'],
-                'color': entry['color'],
-              };
-              final cleanResponse = jsonEncode(
-                cleanEntry,
-              ).replaceAll(RegExp(r'\s+'), ' ');
-              return '- $cleanResponse';
-            })
-            .join('\n');
-        historyPrompt =
-            '\n\nYour recent moves in this 5-turn sequence:\n$historyItems\n'
-            'Continue building on top of your recent moves to paint the final image.';
-      }
-
-      final fullPrompt =
-          '$systemInstruction\n\n$userTextPrompt\n\n$historyPrompt';
-
-      final double temperature = agentNumber == 1
-          ? 0.25
-          : (agentNumber == 2 ? 0.5 : 1.0);
-
-      try {
-        final painterResult = await _aiService.getNextStroke(
-          canvasImage: previousBmp,
-          prompt: fullPrompt,
-          temperature: temperature,
+      if (issues.isNotEmpty) {
+        debugPrint(
+          'Detected ${issues.length} outline issues. Proposing solutions...',
         );
+        final issue = issues.first;
+        final solutions = AlgorithmicHelpers.proposeSolutions(
+          sketchGrid,
+          issue,
+          state.gridSize,
+        );
+        if (solutions.isNotEmpty) {
+          int bestIdx = 0;
+          double bestScore = 0;
 
-        if (painterResult != null) {
-          if (painterResult.containsKey('rawResponse') ||
-              painterResult.containsKey('error')) {
-            strokesHistory.add({
-              'tool': 'error',
-              'params': <int>[],
-              'color': 0,
-              'rawPrompt': fullPrompt,
-              'rawResponse': painterResult['rawResponse'] ?? 'N/A',
-              'error': painterResult['error'] ?? 'JSON parsing failed',
-              'rawImageBase64': base64Encode(previousBmp),
-            });
-            continue;
-          }
-
-          final tool = painterResult['tool'] as String?;
-          final params = (painterResult['params'] as List?)?.cast<int>();
-          final colorIndex = painterResult['color'] as int?;
-
-          if (tool != null &&
-              params != null &&
-              (colorIndex != null || tool == 'undo')) {
-            _applyStrokeToGrid(
-              tempGrid,
-              tool,
-              params,
-              colorIndex ?? 0,
-              localUndoStack,
+          for (int i = 0; i < solutions.length; i++) {
+            final evalContext = AgentContext(
+              gridSize: state.gridSize,
+              activePalette: state.palette,
+              userPrompt: state.userPrompt,
+              targetComponent: PixelArtComponent(
+                name: 'outlines',
+                description: 'Refined outline candidate.',
+                relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+                proposedBaseColor: state.palette[0],
+              ),
+              currentGrid: solutions[i],
+              referenceImage: state.referenceImage,
             );
 
-            final strokeLog = Map<String, dynamic>.from(painterResult);
-            strokeLog['rawPrompt'] = fullPrompt;
-            strokeLog['rawResponse'] = jsonEncode(painterResult);
-            strokeLog['rawImageBase64'] = base64Encode(previousBmp);
-            strokesHistory.add(strokeLog);
-          } else {
-            strokesHistory.add({
-              'tool': 'error',
-              'params': <int>[],
-              'color': 0,
-              'rawPrompt': fullPrompt,
-              'rawResponse': jsonEncode(painterResult),
-              'error': 'Missing required JSON keys: tool, params, or color',
-              'rawImageBase64': base64Encode(previousBmp),
-            });
-            continue;
+            final system = orchestrator.evaluator.getSystemInstruction(
+              evalContext,
+            );
+            final user = orchestrator.evaluator.getFormattedUserPrompt(
+              evalContext,
+              [],
+            );
+            final evalResult = await activeAiService.generateJson(
+              prompt: '$system\n\n$user',
+              imageBytes: generateBmp(solutions[i], state.palette),
+            );
+            if (evalResult is Map<String, dynamic>) {
+              final score = (evalResult['score'] as num? ?? 0.0).toDouble();
+              if (score > bestScore) {
+                bestScore = score;
+                bestIdx = i;
+              }
+            }
           }
-        } else {
-          strokesHistory.add({
-            'tool': 'error',
-            'params': <int>[],
-            'color': 0,
-            'rawPrompt': fullPrompt,
-            'rawResponse': 'N/A',
-            'error':
-                'AI service returned null response (possible connection issue, safety block, or rate limit)',
-            'rawImageBase64': base64Encode(previousBmp),
-          });
-          continue;
-        }
-      } catch (e) {
-        debugPrint(
-          'Painter Agent $agentNumber encountered error on turn $turn: $e',
-        );
-        strokesHistory.add({
-          'tool': 'error',
-          'params': <int>[],
-          'color': 0,
-          'rawPrompt': fullPrompt,
-          'rawResponse': 'N/A',
-          'error': 'Exception caught: $e',
-          'rawImageBase64': base64Encode(previousBmp),
-        });
-        continue;
-      }
-    }
 
-    return {'grid': tempGrid, 'strokes': strokesHistory};
+          // Apply chosen solution
+          for (int y = 0; y < state.gridSize; y++) {
+            for (int x = 0; x < state.gridSize; x++) {
+              sketchGrid[y][x] = solutions[bestIdx][y][x];
+            }
+          }
+        }
+      }
+
+      // Step 5: Flat coloring
+      for (final comp in components) {
+        final bbox = comp.relativeBoundingBox;
+        final startX = (bbox.left * state.gridSize).round().clamp(
+          0,
+          state.gridSize - 1,
+        );
+        final endX = ((bbox.left + bbox.width) * state.gridSize).round().clamp(
+          0,
+          state.gridSize - 1,
+        );
+        final startY = (bbox.top * state.gridSize).round().clamp(
+          0,
+          state.gridSize - 1,
+        );
+        final endY = ((bbox.top + bbox.height) * state.gridSize).round().clamp(
+          0,
+          state.gridSize - 1,
+        );
+
+        Point? fillPoint;
+        for (int y = startY + 1; y < endY; y++) {
+          int firstOutlineX = -1;
+          int secondOutlineX = -1;
+          for (int x = startX; x <= endX; x++) {
+            if (sketchGrid[y][x] != 0) {
+              if (firstOutlineX == -1) {
+                firstOutlineX = x;
+              } else {
+                secondOutlineX = x;
+                break;
+              }
+            }
+          }
+          if (firstOutlineX != -1 &&
+              secondOutlineX != -1 &&
+              secondOutlineX - firstOutlineX > 1) {
+            fillPoint = Point((firstOutlineX + secondOutlineX) ~/ 2, y);
+            break;
+          }
+        }
+
+        if (fillPoint != null) {
+          final colorIdx = state.palette.indexOf(comp.proposedBaseColor) + 1;
+          final fillCommand = FillCommand(fillPoint.x, fillPoint.y);
+          fillCommand.execute(
+            sketchGrid,
+            colorIdx.clamp(1, state.palette.length),
+            state.gridSize,
+          );
+        }
+      }
+
+      _pushToUndo(state.grid);
+      state = state.copyWith(
+        grid: sketchGrid,
+        selectedColorIndex: sketchResult.lastColorIndex.clamp(
+          0,
+          state.palette.length,
+        ),
+        aiHistory: [
+          ...state.aiHistory,
+          AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: sketchResult.rawPrompt,
+            response: sketchResult.rawResponse,
+            isError: false,
+          ),
+        ],
+      );
+    } catch (e) {
+      debugPrint('Error in triggerAiStroke: $e');
+    } finally {
+      state = state.copyWith(isGenerating: false);
+    }
   }
 
-  void _applyStrokeToGrid(
-    List<List<int>> tempGrid,
-    String toolName,
-    List<int> params,
-    int colorIndex,
-    List<List<List<int>>> localUndoStack,
-  ) {
-    final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
+  Future<void> runPolishingAction(String actionName) async {
+    if (state.isGenerating) return;
+    state = state.copyWith(isGenerating: true);
 
-    if (toolName == 'undo') {
-      if (localUndoStack.isNotEmpty) {
-        final prev = localUndoStack.removeLast();
-        for (int y = 0; y < CanvasNotifier.gridSize; y++) {
-          tempGrid[y] = List<int>.from(prev[y]);
-        }
-      }
-      return;
-    }
+    try {
+      final orchestrator = AgentOrchestrator(aiService: activeAiService);
+      final List<List<int>> currentGrid = state.grid
+          .map((row) => List<int>.from(row))
+          .toList();
 
-    // Save state for undo support only for drawing commands
-    localUndoStack.add(
-      List.generate(
-        CanvasNotifier.gridSize,
-        (y) => List<int>.from(tempGrid[y]),
-      ),
-    );
+      await orchestrator.runPolishing(
+        currentGrid,
+        state.gridSize,
+        state.palette,
+        actionName,
+        state.referenceImage,
+        (msg) => debugPrint(msg),
+      );
 
-    final command = DrawingCommandFactory.create(toolName, params);
-    if (command != null) {
-      command.execute(tempGrid, boundedColorIndex, CanvasNotifier.gridSize);
+      _pushToUndo(state.grid);
+      state = state.copyWith(
+        grid: currentGrid,
+        aiHistory: [
+          ...state.aiHistory,
+          AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: 'Trigger Polish Action: "$actionName"',
+            response: 'Completed polishing filters.',
+            isError: false,
+          ),
+        ],
+      );
+    } catch (e) {
+      debugPrint('Error in runPolishingAction: $e');
+    } finally {
+      state = state.copyWith(isGenerating: false);
     }
   }
 
@@ -1065,10 +800,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     List<int> params,
     int colorIndex,
   ) {
-    // Keep color index bounded
     final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
-
-    // Set notifier's current drawing color to match AI's stroke color
     state = state.copyWith(selectedColorIndex: boundedColorIndex);
 
     if (toolName == 'undo') {
@@ -1119,110 +851,75 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 }
 
-final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
-  ref,
-) {
-  final aiService = ref.watch(aiServiceProvider);
-  return CanvasNotifier(aiService);
-});
-
-Future<Uint8List?> resizeAndConvertToBmp(Uint8List imageBytes) async {
-  try {
-    final codec = await ui.instantiateImageCodec(imageBytes);
-    final frameInfo = await codec.getNextFrame();
-    final originalImage = frameInfo.image;
-
-    final recorder = ui.PictureRecorder();
-    final canvas = Canvas(recorder);
-
-    paintImage(
-      canvas: canvas,
-      rect: Rect.fromLTWH(
-        0,
-        0,
-        CanvasNotifier.gridSize.toDouble(),
-        CanvasNotifier.gridSize.toDouble(),
-      ),
-      image: originalImage,
-      fit: BoxFit.cover,
-    );
-
-    final picture = recorder.endRecording();
-    final resizedImage = await picture.toImage(
-      CanvasNotifier.gridSize,
-      CanvasNotifier.gridSize,
-    );
-
-    final byteData = await resizedImage.toByteData(
-      format: ui.ImageByteFormat.rawRgba,
-    );
-    if (byteData == null) return null;
-
-    final rgbaBytes = byteData.buffer.asUint8List();
-    return generateBmpFromRgba(
-      rgbaBytes,
-      CanvasNotifier.gridSize,
-      CanvasNotifier.gridSize,
-    );
-  } catch (e) {
-    debugPrint('Error resizing image: $e');
-    return null;
+List<Color> extractPaletteKMeans(Uint8List bmpBytes, int colorCount) {
+  if (bmpBytes.length <= 54) {
+    return List.filled(colorCount, Colors.grey);
   }
-}
 
-Uint8List generateBmpFromRgba(Uint8List rgbaBytes, int width, int height) {
-  const int bytesPerPixel = 3;
-  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
-  final int rowStride = width * bytesPerPixel + rowPadding;
-  final int pixelDataSize = rowStride * height;
-  final int fileSize = 54 + pixelDataSize;
-
-  final Uint8List bmp = Uint8List(fileSize);
-  final ByteData bd = ByteData.sublistView(bmp);
-
-  // BMP Header
-  bmp[0] = 0x42; // 'B'
-  bmp[1] = 0x4D; // 'M'
-  bd.setUint32(2, fileSize, Endian.little);
-  bd.setUint32(6, 0, Endian.little);
-  bd.setUint32(10, 54, Endian.little);
-
-  // DIB Header (BITMAPINFOHEADER)
-  bd.setUint32(14, 40, Endian.little);
-  bd.setUint32(18, width, Endian.little);
-  bd.setUint32(22, height, Endian.little);
-  bd.setUint16(26, 1, Endian.little);
-  bd.setUint16(28, 24, Endian.little); // 24-bit BGR
-  bd.setUint32(30, 0, Endian.little);
-  bd.setUint32(34, pixelDataSize, Endian.little);
-  bd.setUint32(38, 2835, Endian.little); // 72 DPI
-  bd.setUint32(42, 2835, Endian.little); // 72 DPI
-  bd.setUint32(46, 0, Endian.little);
-  bd.setUint32(50, 0, Endian.little);
-
+  final List<Color> pixels = [];
   int offset = 54;
-  for (int y = height - 1; y >= 0; y--) {
-    for (int x = 0; x < width; x++) {
-      final int rgbaOffset = (y * width + x) * 4;
-      final int r = rgbaBytes[rgbaOffset];
-      final int g = rgbaBytes[rgbaOffset + 1];
-      final int b = rgbaBytes[rgbaOffset + 2];
+  while (offset + 2 < bmpBytes.length) {
+    final b = bmpBytes[offset];
+    final g = bmpBytes[offset + 1];
+    final r = bmpBytes[offset + 2];
+    pixels.add(Color.fromARGB(255, r, g, b));
+    offset += 3;
+  }
 
-      bmp[offset] = b;
-      bmp[offset + 1] = g;
-      bmp[offset + 2] = r;
-      offset += 3;
+  if (pixels.isEmpty) {
+    return List.filled(colorCount, Colors.grey);
+  }
+
+  final List<Color> centroids = [];
+  final random = Random(42);
+  for (int i = 0; i < colorCount; i++) {
+    centroids.add(pixels[random.nextInt(pixels.length)]);
+  }
+
+  for (int iter = 0; iter < 5; iter++) {
+    final List<List<Color>> clusters = List.generate(colorCount, (_) => []);
+
+    for (final pixel in pixels) {
+      double minDistance = double.maxFinite;
+      int closestCentroid = 0;
+
+      for (int i = 0; i < colorCount; i++) {
+        final cent = centroids[i];
+        final dist =
+            pow(pixel.red - cent.red, 2) +
+            pow(pixel.green - cent.green, 2) +
+            pow(pixel.blue - cent.blue, 2);
+        if (dist < minDistance) {
+          minDistance = dist.toDouble();
+          closestCentroid = i;
+        }
+      }
+      clusters[closestCentroid].add(pixel);
     }
-    for (int p = 0; p < rowPadding; p++) {
-      bmp[offset++] = 0;
+
+    for (int i = 0; i < colorCount; i++) {
+      final cluster = clusters[i];
+      if (cluster.isEmpty) continue;
+
+      int sumR = 0, sumG = 0, sumB = 0;
+      for (final p in cluster) {
+        sumR += p.red;
+        sumG += p.green;
+        sumB += p.blue;
+      }
+      centroids[i] = Color.fromARGB(
+        255,
+        (sumR / cluster.length).round(),
+        (sumG / cluster.length).round(),
+        (sumB / cluster.length).round(),
+      );
     }
   }
 
-  return bmp;
+  return centroids;
 }
 
-List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes) {
-  final int size = CanvasNotifier.gridSize;
+List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes, int size) {
   final List<List<Color>> grid = List.generate(
     size,
     (_) => List.filled(size, const Color(0xFF000000)),
@@ -1242,54 +939,8 @@ List<List<Color>> _bmpToColorGrid(Uint8List bmpBytes) {
   return grid;
 }
 
-Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
-  final int width = CanvasNotifier.gridSize;
-  final int height = CanvasNotifier.gridSize;
-  const int bytesPerPixel = 3;
-  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
-  final int rowStride = width * bytesPerPixel + rowPadding;
-  final int pixelDataSize = rowStride * height;
-  final int fileSize = 54 + pixelDataSize;
-
-  final Uint8List bmp = Uint8List(fileSize);
-  final ByteData bd = ByteData.sublistView(bmp);
-
-  bmp[0] = 0x42; // 'B'
-  bmp[1] = 0x4D; // 'M'
-  bd.setUint32(2, fileSize, Endian.little);
-  bd.setUint32(6, 0, Endian.little);
-  bd.setUint32(10, 54, Endian.little);
-
-  bd.setUint32(14, 40, Endian.little);
-  bd.setUint32(18, width, Endian.little);
-  bd.setUint32(22, height, Endian.little);
-  bd.setUint16(26, 1, Endian.little);
-  bd.setUint16(28, 24, Endian.little);
-  bd.setUint32(30, 0, Endian.little);
-  bd.setUint32(34, pixelDataSize, Endian.little);
-  bd.setUint32(38, 2835, Endian.little);
-  bd.setUint32(42, 2835, Endian.little);
-  bd.setUint32(46, 0, Endian.little);
-  bd.setUint32(50, 0, Endian.little);
-
-  int offset = 54;
-  for (int y = height - 1; y >= 0; y--) {
-    for (int x = 0; x < width; x++) {
-      final color = grid[y][x];
-      bmp[offset] = color.blue;
-      bmp[offset + 1] = color.green;
-      bmp[offset + 2] = color.red;
-      offset += 3;
-    }
-    for (int p = 0; p < rowPadding; p++) {
-      bmp[offset++] = 0;
-    }
-  }
-  return bmp;
-}
-
 List<List<Color>> _applyGaussianBlur(List<List<Color>> src) {
-  final int size = CanvasNotifier.gridSize;
+  final int size = src.length;
   final List<List<Color>> dest = List.generate(
     size,
     (_) => List.filled(size, const Color(0xFF000000)),
@@ -1326,41 +977,14 @@ List<List<Color>> _applyGaussianBlur(List<List<Color>> src) {
   return dest;
 }
 
-List<List<Color>> _applyColorQuantization(
-  List<List<Color>> src,
+List<List<int>> getQuantizedIndexGrid(
+  Uint8List bmpBytes,
   List<Color> palette,
+  int size,
 ) {
-  final int size = CanvasNotifier.gridSize;
-  final List<List<Color>> dest = List.generate(
-    size,
-    (_) => List.filled(size, const Color(0xFF000000)),
-  );
-  for (int y = 0; y < size; y++) {
-    for (int x = 0; x < size; x++) {
-      final color = src[y][x];
-      Color closestColor = palette.first;
-      double minDistance = double.infinity;
-      for (final pColor in palette) {
-        final dr = color.red - pColor.red;
-        final dg = color.green - pColor.green;
-        final db = color.blue - pColor.blue;
-        final dist = dr * dr + dg * dg + db * db;
-        if (dist < minDistance) {
-          minDistance = dist.toDouble();
-          closestColor = pColor;
-        }
-      }
-      dest[y][x] = closestColor;
-    }
-  }
-  return dest;
-}
-
-List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
-  final int size = CanvasNotifier.gridSize;
   final List<List<int>> grid = List.generate(size, (_) => List.filled(size, 0));
   if (bmpBytes.length >= 54 + size * size * 3) {
-    final refGrid = _bmpToColorGrid(bmpBytes);
+    final refGrid = _bmpToColorGrid(bmpBytes, size);
     final blurredGrid = _applyGaussianBlur(refGrid);
     for (int y = 0; y < size; y++) {
       for (int x = 0; x < size; x++) {
@@ -1387,23 +1011,20 @@ List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
 
 String canvasToTextGrid(List<List<int>> grid) {
   final buffer = StringBuffer();
-  final int size = CanvasNotifier.gridSize;
+  final int size = grid.length;
 
-  // Header: 10s digits
   buffer.write('    ');
   for (int x = 0; x < size; x++) {
     buffer.write(x >= 10 ? '${x ~/ 10}' : ' ');
   }
   buffer.write('\n');
 
-  // Header: 1s digits
   buffer.write('    ');
   for (int x = 0; x < size; x++) {
     buffer.write('${x % 10}');
   }
   buffer.write('\n');
 
-  // Rows
   for (int y = 0; y < size; y++) {
     buffer.write('${y.toString().padLeft(3)} ');
     for (int x = 0; x < size; x++) {
@@ -1422,4 +1043,46 @@ String canvasToTextGrid(List<List<int>> grid) {
   }
 
   return buffer.toString();
+}
+
+final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
+  ref,
+) {
+  final aiService = ref.watch(aiServiceProvider);
+  return CanvasNotifier(aiService);
+});
+
+Future<Uint8List?> resizeAndConvertToBmp(
+  Uint8List imageBytes,
+  int gridSize,
+) async {
+  try {
+    final codec = await ui.instantiateImageCodec(imageBytes);
+    final frameInfo = await codec.getNextFrame();
+    final originalImage = frameInfo.image;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+
+    paintImage(
+      canvas: canvas,
+      rect: Rect.fromLTWH(0, 0, gridSize.toDouble(), gridSize.toDouble()),
+      image: originalImage,
+      fit: BoxFit.cover,
+    );
+
+    final picture = recorder.endRecording();
+    final resizedImage = await picture.toImage(gridSize, gridSize);
+
+    final byteData = await resizedImage.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    if (byteData == null) return null;
+
+    final rgbaBytes = byteData.buffer.asUint8List();
+    return generateBmpFromRgba(rgbaBytes, gridSize, gridSize);
+  } catch (e) {
+    debugPrint('Error resizing image: $e');
+    return null;
+  }
 }

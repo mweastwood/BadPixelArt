@@ -56,6 +56,36 @@ class MockTestAiService implements AiService {
       });
     }
 
+    if (prompt.contains('evaluator/critic agent')) {
+      final isUndoTest = mockResult != null && mockResult!['tool'] == 'undo';
+      return jsonEncode({
+        'score': isUndoTest ? 4 : 9,
+        'critique': 'Looks good',
+        'isSatisfied': !isUndoTest,
+      });
+    }
+
+    if (prompt.contains('eraser agent')) {
+      return jsonEncode({
+        'understanding': 'Clear corner',
+        'reasoning': 'Eraser reasoning',
+        'tool': 'pixel',
+        'params': [10, 10],
+        'color': 0,
+      });
+    }
+
+    if (prompt.contains('pixel art director')) {
+      return jsonEncode([
+        {
+          'name': 'main',
+          'description': 'Main outline',
+          'boundingBox': {'x': 0.1, 'y': 0.1, 'w': 0.8, 'h': 0.8},
+          'color': '#ff0000',
+        },
+      ]);
+    }
+
     lastCanvasImage = imageBytes;
     lastPrompt = prompt;
 

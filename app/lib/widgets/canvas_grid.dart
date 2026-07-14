@@ -60,7 +60,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                   onPanEnd: (details) {
                     if (_dragStart == null || _dragCurrent == null) return;
 
-                    final gridSize = CanvasNotifier.gridSize;
+                    final gridSize = canvasModel.grid.length;
                     final cellWidth = size / gridSize;
                     final cellHeight = size / gridSize;
 
@@ -119,7 +119,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       subdivisions: 1,
                       interval:
                           size /
-                          CanvasNotifier.gridSize, // Visual helper gridlines
+                          canvasModel.grid.length, // Visual helper gridlines
                       child: Container(),
                     ),
                   ),
