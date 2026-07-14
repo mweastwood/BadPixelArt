@@ -191,8 +191,9 @@ extension PixelArtAiServiceExtension on AiService {
     required double temperature,
     int maxRetries = 3,
   }) async {
+    final int actualMaxRetries = (this is OllamaAiService) ? 1 : maxRetries;
     int delayMs = 1000;
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+    for (int attempt = 1; attempt <= actualMaxRetries; attempt++) {
       try {
         final response = await generateContent(
           prompt: prompt,

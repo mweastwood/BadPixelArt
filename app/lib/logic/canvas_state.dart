@@ -178,6 +178,9 @@ class CanvasModel {
   final String? nextFocus;
   final String modelReleaseStage;
   final String modelPreference;
+  final String aiProvider; // 'aicore' or 'ollama'
+  final String ollamaBaseUrl;
+  final String ollamaModelName;
 
   const CanvasModel({
     required this.grid,
@@ -201,6 +204,9 @@ class CanvasModel {
     this.nextFocus,
     this.modelReleaseStage = 'stable',
     this.modelPreference = 'full',
+    this.aiProvider = 'aicore',
+    this.ollamaBaseUrl = 'http://127.0.0.1:11434',
+    this.ollamaModelName = 'gemma4:e4b',
   });
 
   CanvasModel copyWith({
@@ -228,6 +234,9 @@ class CanvasModel {
     bool clearNextFocus = false,
     String? modelReleaseStage,
     String? modelPreference,
+    String? aiProvider,
+    String? ollamaBaseUrl,
+    String? ollamaModelName,
   }) {
     return CanvasModel(
       grid: grid ?? this.grid,
@@ -258,6 +267,9 @@ class CanvasModel {
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
       modelReleaseStage: modelReleaseStage ?? this.modelReleaseStage,
       modelPreference: modelPreference ?? this.modelPreference,
+      aiProvider: aiProvider ?? this.aiProvider,
+      ollamaBaseUrl: ollamaBaseUrl ?? this.ollamaBaseUrl,
+      ollamaModelName: ollamaModelName ?? this.ollamaModelName,
     );
   }
 
@@ -307,6 +319,22 @@ class CanvasModel {
 class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   final AiService _aiService;
   Timer? _autoRunTimer;
+  OllamaAiService? _cachedOllamaService;
+
+  AiService get activeAiService {
+    if (state.aiProvider == 'ollama') {
+      if (_cachedOllamaService == null ||
+          _cachedOllamaService!.baseUrl != state.ollamaBaseUrl ||
+          _cachedOllamaService!.modelName != state.ollamaModelName) {
+        _cachedOllamaService = OllamaAiService(
+          baseUrl: state.ollamaBaseUrl,
+          modelName: state.ollamaModelName,
+        );
+      }
+      return _cachedOllamaService!;
+    }
+    return _aiService;
+  }
 
   static const int gridSize = 16;
 
@@ -386,7 +414,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> _initModelConfig() async {
-    await _aiService.setModelConfig(
+    await activeAiService.setModelConfig(
       releaseStage: state.modelReleaseStage,
       preference: state.modelPreference,
     );
@@ -398,9 +426,22 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       modelReleaseStage: stage,
       modelPreference: preference,
     );
-    await _aiService.setModelConfig(
+    await activeAiService.setModelConfig(
       releaseStage: stage,
       preference: preference,
+    );
+    await checkAiStatus();
+  }
+
+  Future<void> setAiProvider(
+    String provider,
+    String baseUrl,
+    String modelName,
+  ) async {
+    state = state.copyWith(
+      aiProvider: provider,
+      ollamaBaseUrl: baseUrl,
+      ollamaModelName: modelName,
     );
     await checkAiStatus();
   }
@@ -412,13 +453,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> checkAiStatus() async {
-    final status = await _aiService.checkStatus();
+    final status = await activeAiService.checkStatus();
     state = state.copyWith(aiStatus: status);
   }
 
   Future<void> triggerDownload() async {
     state = state.copyWith(aiStatus: AiCoreStatus.downloading);
-    await _aiService.triggerDownload();
+    await activeAiService.triggerDownload();
     await checkAiStatus();
   }
 
@@ -484,7 +525,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     );
 
     try {
-      final colors = await _aiService.suggestPalette(refImg);
+      final colors = await activeAiService.suggestPalette(refImg);
       if (colors != null) {
         state = state.copyWith(
           suggestedPalette: colors,
@@ -621,7 +662,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
     final startingGrid = state.grid;
     final startingBmp = generateBmp(startingGrid, state.palette);
-    final isMultimodal = _aiService is MethodChannelAiService;
+    final isMultimodal =
+        activeAiService is MethodChannelAiService ||
+        activeAiService is OllamaAiService;
 
     String rawResponse = '';
     bool isError = false;
@@ -635,7 +678,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       // 1. Get textual description of the reference image using Describer
       final refBmp = state.referenceImage;
       final Map<String, String>? refDescResult = refBmp != null
-          ? await _aiService.describeCanvas(canvasImage: refBmp)
+          ? await activeAiService.describeCanvas(canvasImage: refBmp)
           : null;
       final String referenceDescription =
           refDescResult?['response'] ??
@@ -686,25 +729,25 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
 
       // Describe the starting canvas and candidates
-      final startDescResult = await _aiService.describeCanvas(
+      final startDescResult = await activeAiService.describeCanvas(
         canvasImage: startingBmp,
       );
       final String startingCanvasDescription =
           startDescResult?['response'] ?? 'Starting state.';
 
-      final cand1DescResult = await _aiService.describeCanvas(
+      final cand1DescResult = await activeAiService.describeCanvas(
         canvasImage: candidate1Bmp,
       );
       final String candidate1Description =
           cand1DescResult?['response'] ?? 'Candidate 1 progression.';
 
-      final cand2DescResult = await _aiService.describeCanvas(
+      final cand2DescResult = await activeAiService.describeCanvas(
         canvasImage: candidate2Bmp,
       );
       final String candidate2Description =
           cand2DescResult?['response'] ?? 'Candidate 2 progression.';
 
-      final cand3DescResult = await _aiService.describeCanvas(
+      final cand3DescResult = await activeAiService.describeCanvas(
         canvasImage: candidate3Bmp,
       );
       final String candidate3Description =
@@ -762,7 +805,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       };
 
       // Ask Critic to evaluate candidate descriptions (text-only)
-      final criticResult = await _aiService.evaluateCandidates(
+      final criticResult = await activeAiService.evaluateCandidates(
         userPrompt: state.userPrompt,
         referenceDescription: referenceDescription,
         startingCanvasDescription: startingCanvasDescription,
@@ -937,7 +980,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           : (agentNumber == 2 ? 0.5 : 1.0);
 
       try {
-        final painterResult = await _aiService.getNextStroke(
+        final painterResult = await activeAiService.getNextStroke(
           canvasImage: previousBmp,
           prompt: fullPrompt,
           temperature: temperature,
