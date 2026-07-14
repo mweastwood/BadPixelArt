@@ -2,8 +2,9 @@ import 'dart:typed_data';
 import 'canvas_state.dart';
 import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
+import 'agents/base_agent.dart';
 
-class PixelArtAgentDelegate implements AgentDelegate {
+class PixelArtAgentDelegate implements AgentDelegate<PixelArtStepResult> {
   final AgentCanvas canvas;
   final Uint8List? referenceImageBmp;
   final Uint8List? previousCanvasBmp;
@@ -30,7 +31,7 @@ class PixelArtAgentDelegate implements AgentDelegate {
   }
 
   @override
-  String formatPrompt(String userPrompt, List<AgentStepResult> history) {
+  String formatPrompt(String userPrompt, List<PixelArtStepResult> history) {
     final currentCanvasTextGrid = canvasToTextGrid(canvas.grid);
 
     final historyBuffer = StringBuffer();
@@ -84,5 +85,19 @@ class PixelArtAgentDelegate implements AgentDelegate {
   bool isFinishAction(Map<String, dynamic> actionMap) {
     final tool = actionMap['tool'] as String?;
     return tool == null || tool == 'finish';
+  }
+
+  @override
+  PixelArtStepResult parseStepResult(
+    Map<String, dynamic> actionMap,
+    String feedback,
+  ) {
+    return PixelArtStepResult(
+      thought: actionMap['thought'] as String? ?? '',
+      tool: actionMap['tool'] as String? ?? '',
+      params: List<int>.from(actionMap['params'] as List? ?? []),
+      colorIndex: actionMap['color'] as int? ?? 0,
+      feedback: feedback,
+    );
   }
 }
