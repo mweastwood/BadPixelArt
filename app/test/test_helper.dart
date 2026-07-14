@@ -23,6 +23,12 @@ class TestMockAiService implements AiService {
     }
     return null;
   }
+
+  @override
+  Future<void> setModelConfig({
+    required String releaseStage,
+    required String preference,
+  }) async {}
 }
 
 /// Wraps the widget under test in ProviderScope and MaterialApp.
