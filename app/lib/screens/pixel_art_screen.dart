@@ -8,6 +8,7 @@ import '../widgets/color_palette_bar.dart';
 import '../widgets/ai_control_dock.dart';
 import '../widgets/ai_history_dock.dart';
 import '../widgets/resolution_selector_dialog.dart';
+import '../widgets/model_options_dialog.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -35,6 +36,23 @@ class PixelArtScreen extends ConsumerWidget {
                       currentGridSize: canvasState.gridSize,
                       onSelected: (size) {
                         notifier.changeResolution(size);
+                      },
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                key: const ValueKey('model_options_button'),
+                icon: const Icon(Icons.settings),
+                tooltip: 'Model Options',
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => ModelOptionsDialog(
+                      currentReleaseStage: canvasState.modelReleaseStage,
+                      currentPreference: canvasState.modelPreference,
+                      onChanged: (stage, preference) {
+                        notifier.setModelConfig(stage, preference);
                       },
                     ),
                   );
