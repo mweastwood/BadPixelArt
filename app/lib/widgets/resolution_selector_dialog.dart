@@ -1,4 +1,3 @@
-// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 
 class ResolutionSelectorDialog extends StatelessWidget {
@@ -64,7 +63,7 @@ class ResolutionSelectorDialog extends StatelessWidget {
       ),
       color: isSelected
           ? theme.colorScheme.primaryContainer
-          : theme.colorScheme.surfaceVariant.withOpacity(0.4),
+          : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
       elevation: isSelected ? 2 : 0,
       margin: EdgeInsets.zero,
       child: InkWell(

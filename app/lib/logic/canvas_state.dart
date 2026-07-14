@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -9,6 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
 import 'drawing_commands.dart';
+
+extension ColorRgbInt on Color {
+  int get rInt => (r * 255.0).round().clamp(0, 255);
+  int get gInt => (g * 255.0).round().clamp(0, 255);
+  int get bInt => (b * 255.0).round().clamp(0, 255);
+}
 
 enum CanvasTool { line, circle, fill, hatch }
 
@@ -67,9 +71,9 @@ Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
                 : const Color(0xFF1E1E1E))
           : palette[colorIndex - 1];
 
-      bmp[offset] = color.blue;
-      bmp[offset + 1] = color.green;
-      bmp[offset + 2] = color.red;
+      bmp[offset] = color.bInt;
+      bmp[offset + 1] = color.gInt;
+      bmp[offset + 2] = color.rInt;
       offset += 3;
     }
     for (int p = 0; p < rowPadding; p++) {
@@ -639,7 +643,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
     final paletteHexes = state.palette
         .map(
-          (c) => '#${(c.value & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
+          (c) =>
+              '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
         )
         .toList();
 
@@ -1289,9 +1294,9 @@ Uint8List _bmpFromColorGrid(List<List<Color>> grid) {
   for (int y = height - 1; y >= 0; y--) {
     for (int x = 0; x < width; x++) {
       final color = grid[y][x];
-      bmp[offset] = color.blue;
-      bmp[offset + 1] = color.green;
-      bmp[offset + 2] = color.red;
+      bmp[offset] = color.bInt;
+      bmp[offset + 1] = color.gInt;
+      bmp[offset + 2] = color.rInt;
       offset += 3;
     }
     for (int p = 0; p < rowPadding; p++) {
@@ -1322,9 +1327,9 @@ List<List<Color>> _applyGaussianBlur(List<List<Color>> src) {
           final py = (y + ky).clamp(0, size - 1);
           final color = src[py][px];
           final weight = kernel[(ky + 1) * 3 + (kx + 1)];
-          sumR += color.red * weight;
-          sumG += color.green * weight;
-          sumB += color.blue * weight;
+          sumR += color.rInt * weight;
+          sumG += color.gInt * weight;
+          sumB += color.bInt * weight;
         }
       }
 
@@ -1354,9 +1359,9 @@ List<List<Color>> _applyColorQuantization(
       Color closestColor = palette.first;
       double minDistance = double.infinity;
       for (final pColor in palette) {
-        final dr = color.red - pColor.red;
-        final dg = color.green - pColor.green;
-        final db = color.blue - pColor.blue;
+        final dr = color.rInt - pColor.rInt;
+        final dg = color.gInt - pColor.gInt;
+        final db = color.bInt - pColor.bInt;
         final dist = dr * dr + dg * dg + db * db;
         if (dist < minDistance) {
           minDistance = dist.toDouble();
@@ -1383,9 +1388,9 @@ List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
         double minDistance = double.infinity;
         for (int i = 0; i < palette.length; i++) {
           final pColor = palette[i];
-          final dr = color.red - pColor.red;
-          final dg = color.green - pColor.green;
-          final db = color.blue - pColor.blue;
+          final dr = color.rInt - pColor.rInt;
+          final dg = color.gInt - pColor.gInt;
+          final db = color.bInt - pColor.bInt;
           final dist = dr * dr + dg * dg + db * db;
           if (dist < minDistance) {
             minDistance = dist.toDouble();

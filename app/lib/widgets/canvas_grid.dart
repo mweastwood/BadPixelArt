@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -116,7 +114,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       activeColorIndex: canvasModel.selectedColorIndex,
                     ),
                     child: GridPaper(
-                      color: Colors.grey[800]!.withOpacity(0.2),
+                      color: Colors.grey[800]!.withValues(alpha: 0.2),
                       divisions: 1,
                       subdivisions: 1,
                       interval:
@@ -213,8 +211,8 @@ class CanvasPainter extends CustomPainter {
 
       final previewPaint = Paint()
         ..color = activeColorIndex == 0
-            ? Colors.redAccent.withOpacity(0.5)
-            : palette[activeColorIndex - 1].withOpacity(0.5)
+            ? Colors.redAccent.withValues(alpha: 0.5)
+            : palette[activeColorIndex - 1].withValues(alpha: 0.5)
         ..style = PaintingStyle.fill
         ..isAntiAlias = false;
 

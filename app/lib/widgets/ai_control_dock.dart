@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -331,7 +329,7 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                           Icon(
                             Icons.arrow_forward_rounded,
                             color: theme.colorScheme.onSurfaceVariant
-                                .withOpacity(0.5),
+                                .withValues(alpha: 0.5),
                           ),
                           // Model Input Preview (64x64)
                           Column(
@@ -408,11 +406,15 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
                 decoration: InputDecoration(
                   labelText: 'User Instructions / Prompt',
                   labelStyle: TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.6,
+                    ),
                   ),
                   hintText: 'e.g., Draw a red sword outlined in black...',
                   hintStyle: TextStyle(
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.6),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.6,
+                    ),
                   ),
                   filled: true,
                   fillColor: theme.colorScheme.surfaceContainerHigh,
@@ -573,9 +575,9 @@ class _AiControlDockState extends ConsumerState<AiControlDock> {
         duration: const Duration(milliseconds: 300),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.6), width: 1.5),
+          border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
@@ -162,8 +160,9 @@ class _ColorPaletteBarState extends ConsumerState<ColorPaletteBar> {
                           boxShadow: isSelected
                               ? [
                                   BoxShadow(
-                                    color: theme.colorScheme.primary
-                                        .withOpacity(0.4),
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.4,
+                                    ),
                                     blurRadius: 8,
                                     spreadRadius: 1,
                                   ),
@@ -312,12 +311,12 @@ class _BrushToolButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.primary.withOpacity(0.15)
+              ? theme.colorScheme.primary.withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected
-                ? theme.colorScheme.primary.withOpacity(0.5)
+                ? theme.colorScheme.primary.withValues(alpha: 0.5)
                 : Colors.transparent,
             width: 1.5,
           ),
