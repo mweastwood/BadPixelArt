@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
+import '../logic/agents/base_agent.dart';
 
 class CanvasGrid extends ConsumerWidget {
   const CanvasGrid({super.key});
@@ -30,6 +31,8 @@ class CanvasGrid extends ConsumerWidget {
                   painter: CanvasPainter(
                     grid: canvasModel.grid,
                     palette: canvasModel.palette,
+                    decomposedComponents: canvasModel.decomposedComponents,
+                    activeComponentIndex: canvasModel.activeComponentIndex,
                   ),
                   child: GridPaper(
                     color: Colors.grey[800]!.withValues(alpha: 0.2),
@@ -52,8 +55,15 @@ class CanvasGrid extends ConsumerWidget {
 class CanvasPainter extends CustomPainter {
   final List<List<int>> grid;
   final List<Color> palette;
+  final List<PixelArtComponent> decomposedComponents;
+  final int activeComponentIndex;
 
-  CanvasPainter({required this.grid, required this.palette});
+  CanvasPainter({
+    required this.grid,
+    required this.palette,
+    required this.decomposedComponents,
+    required this.activeComponentIndex,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -94,10 +104,66 @@ class CanvasPainter extends CustomPainter {
         }
       }
     }
+
+    // Draw component bounding boxes if present
+    if (decomposedComponents.isNotEmpty) {
+      final borderPaint = Paint()..style = PaintingStyle.stroke;
+
+      for (int i = 0; i < decomposedComponents.length; i++) {
+        final comp = decomposedComponents[i];
+        final isActive = i == activeComponentIndex;
+
+        final rect = Rect.fromLTWH(
+          comp.relativeBoundingBox.left * size.width,
+          comp.relativeBoundingBox.top * size.height,
+          comp.relativeBoundingBox.width * size.width,
+          comp.relativeBoundingBox.height * size.height,
+        );
+
+        if (isActive) {
+          borderPaint
+            ..color = comp.proposedBaseColor
+            ..strokeWidth = 3.0;
+          canvas.drawRect(rect, borderPaint);
+
+          // Draw component name label block at the top-left of the bounding box
+          final textPainter = TextPainter(
+            text: TextSpan(
+              text: ' ${comp.name} ',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+
+          final labelBgPaint = Paint()..color = comp.proposedBaseColor;
+          final labelRect = Rect.fromLTWH(
+            rect.left.clamp(0.0, size.width - textPainter.width),
+            (rect.top - 14.0).clamp(0.0, size.height - textPainter.height),
+            textPainter.width,
+            14.0,
+          );
+          canvas.drawRect(labelRect, labelBgPaint);
+
+          textPainter.paint(canvas, Offset(labelRect.left, labelRect.top));
+        } else {
+          borderPaint
+            ..color = Colors.white24
+            ..strokeWidth = 1.0;
+          canvas.drawRect(rect, borderPaint);
+        }
+      }
+    }
   }
 
   @override
   bool shouldRepaint(covariant CanvasPainter oldDelegate) {
-    return oldDelegate.grid != grid || oldDelegate.palette != palette;
+    return oldDelegate.grid != grid ||
+        oldDelegate.palette != palette ||
+        oldDelegate.decomposedComponents != decomposedComponents ||
+        oldDelegate.activeComponentIndex != activeComponentIndex;
   }
 }

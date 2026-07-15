@@ -10,6 +10,7 @@ import '../widgets/ai_history_dock.dart';
 import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';
 import '../widgets/reference_image_prompt.dart';
+import '../widgets/decomposed_components_list.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -101,6 +102,8 @@ class PixelArtScreen extends ConsumerWidget {
                             children: [
                               ReferenceImagePrompt(),
                               SizedBox(height: 16),
+                              DecomposedComponentsList(),
+                              SizedBox(height: 16),
                               ColorPaletteGenerator(),
                               SizedBox(height: 16),
                               AiHistoryDock(),
@@ -123,6 +126,8 @@ class PixelArtScreen extends ConsumerWidget {
                       const _CanvasControlsCard(),
                       const SizedBox(height: 16),
                       const ReferenceImagePrompt(),
+                      const SizedBox(height: 16),
+                      const DecomposedComponentsList(),
                       const SizedBox(height: 16),
                       const ColorPaletteGenerator(),
                       const SizedBox(height: 16),

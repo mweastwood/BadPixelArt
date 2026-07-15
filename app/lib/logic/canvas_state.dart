@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +7,8 @@ import 'package:local_agent/local_agent.dart';
 import 'prompts.dart';
 import 'drawing_commands.dart';
 import 'algorithms/k_means_quantizer.dart';
+import 'agents/base_agent.dart';
+import 'agents/decomposer_agent.dart';
 
 extension ColorRgbInt on Color {
   int get rInt => (r * 255.0).round().clamp(0, 255);
@@ -188,6 +189,8 @@ class CanvasModel {
   final String? nextFocus;
   final String modelReleaseStage;
   final String modelPreference;
+  final List<PixelArtComponent> decomposedComponents;
+  final int activeComponentIndex;
 
   const CanvasModel({
     this.gridSize = 16,
@@ -212,6 +215,8 @@ class CanvasModel {
     this.nextFocus,
     this.modelReleaseStage = 'stable',
     this.modelPreference = 'full',
+    this.decomposedComponents = const [],
+    this.activeComponentIndex = 0,
   });
 
   CanvasModel copyWith({
@@ -240,6 +245,8 @@ class CanvasModel {
     bool clearNextFocus = false,
     String? modelReleaseStage,
     String? modelPreference,
+    List<PixelArtComponent>? decomposedComponents,
+    int? activeComponentIndex,
   }) {
     return CanvasModel(
       gridSize: gridSize ?? this.gridSize,
@@ -271,6 +278,8 @@ class CanvasModel {
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
       modelReleaseStage: modelReleaseStage ?? this.modelReleaseStage,
       modelPreference: modelPreference ?? this.modelPreference,
+      decomposedComponents: decomposedComponents ?? this.decomposedComponents,
+      activeComponentIndex: activeComponentIndex ?? this.activeComponentIndex,
     );
   }
 
@@ -289,11 +298,13 @@ class CanvasModel {
         autoRunSpeed == other.autoRunSpeed &&
         isSuggestingPalette == other.isSuggestingPalette &&
         showPaletteSuggestion == other.showPaletteSuggestion &&
+        activeComponentIndex == other.activeComponentIndex &&
         listEquals(palette, other.palette) &&
         listEquals(suggestedPalette, other.suggestedPalette) &&
         listEquals(referenceImage, other.referenceImage) &&
         listEquals(originalReferenceImage, other.originalReferenceImage) &&
-        listEquals(aiHistory, other.aiHistory);
+        listEquals(aiHistory, other.aiHistory) &&
+        listEquals(decomposedComponents, other.decomposedComponents);
   }
 
   @override
@@ -309,6 +320,7 @@ class CanvasModel {
     autoRunSpeed,
     isSuggestingPalette,
     showPaletteSuggestion,
+    activeComponentIndex,
     Object.hashAll(palette),
     suggestedPalette != null ? Object.hashAll(suggestedPalette!) : null,
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
@@ -316,6 +328,7 @@ class CanvasModel {
         ? Object.hashAll(originalReferenceImage!)
         : null,
     Object.hashAll(aiHistory),
+    Object.hashAll(decomposedComponents),
   );
 }
 
@@ -333,7 +346,18 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   @override
   void applyCommand(String toolName, List<int> params, int colorIndex) {
-    _applyAiStrokeCommand(toolName, params, colorIndex);
+    final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
+    state = state.copyWith(selectedColorIndex: boundedColorIndex);
+
+    if (toolName == 'undo') {
+      undo();
+      return;
+    }
+
+    final command = DrawingCommandFactory.create(toolName, params);
+    if (command != null) {
+      _executeCommand(command);
+    }
   }
 
   @override
@@ -445,6 +469,19 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       grid: List.generate(newSize, (_) => List.filled(newSize, 0)),
       undoStack: const [],
       redoStack: const [],
+    );
+  }
+
+  void selectComponent(int index) {
+    if (index >= 0 && index < state.decomposedComponents.length) {
+      state = state.copyWith(activeComponentIndex: index);
+    }
+  }
+
+  void clearDecomposedComponents() {
+    state = state.copyWith(
+      decomposedComponents: const [],
+      activeComponentIndex: 0,
     );
   }
 
@@ -706,471 +743,49 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     if (state.isGenerating) return;
     state = state.copyWith(isGenerating: true);
 
-    final paletteHexes = state.palette
-        .map(
-          (c) =>
-              '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
-        )
-        .toList();
-
-    final startingGrid = state.grid;
-    final startingBmp = generateBmp(startingGrid, state.palette);
-    final isMultimodal = _aiService is MethodChannelAiService;
-
-    String rawResponse = '';
-    bool isError = false;
-    Uint8List loggedBmp = startingBmp;
-    final String promptLog =
-        'Co-creative Multi-Agent Drawing Step (AI pixel art assistant):\n'
-        '- 3 Painter Agent Runs each ran for 5 turns starting from the current canvas.\n'
-        '- Critic evaluated all three candidates on a 2x2 comparison grid and selected the best progression.';
-
     try {
-      // 1. Get textual description of the reference image using Describer
-      final refBmp = state.referenceImage;
-      final Map<String, String>? refDescResult = refBmp != null
-          ? await _aiService.describeCanvas(canvasImage: refBmp)
-          : null;
-      final String referenceDescription =
-          refDescResult?['response'] ??
-          (refBmp != null
-              ? 'A pixel art reference image.'
-              : 'An empty canvas.');
-
-      // Run the 3 painters in parallel using Future.wait
-      final results = await Future.wait([
-        _runPainterAgent(
-          agentNumber: 1,
-          startingGrid: startingGrid,
-          palette: state.palette,
-          paletteHexes: paletteHexes,
-          referenceDescription: referenceDescription,
-          isMultimodal: isMultimodal,
-        ),
-        _runPainterAgent(
-          agentNumber: 2,
-          startingGrid: startingGrid,
-          palette: state.palette,
-          paletteHexes: paletteHexes,
-          referenceDescription: referenceDescription,
-          isMultimodal: isMultimodal,
-        ),
-        _runPainterAgent(
-          agentNumber: 3,
-          startingGrid: startingGrid,
-          palette: state.palette,
-          paletteHexes: paletteHexes,
-          referenceDescription: referenceDescription,
-          isMultimodal: isMultimodal,
-        ),
-      ]);
-
-      // Convert candidate grids to BMPs
-      final candidate1Bmp = generateBmp(
-        results[0]['grid'] as List<List<int>>,
-        state.palette,
-      );
-      final candidate2Bmp = generateBmp(
-        results[1]['grid'] as List<List<int>>,
-        state.palette,
-      );
-      final candidate3Bmp = generateBmp(
-        results[3 - 1]['grid'] as List<List<int>>,
-        state.palette,
-      );
-
-      // Describe the starting canvas and candidates
-      final startDescResult = await _aiService.describeCanvas(
-        canvasImage: startingBmp,
-      );
-      final String startingCanvasDescription =
-          startDescResult?['response'] ?? 'Starting state.';
-
-      final cand1DescResult = await _aiService.describeCanvas(
-        canvasImage: candidate1Bmp,
-      );
-      final String candidate1Description =
-          cand1DescResult?['response'] ?? 'Candidate 1 progression.';
-
-      final cand2DescResult = await _aiService.describeCanvas(
-        canvasImage: candidate2Bmp,
-      );
-      final String candidate2Description =
-          cand2DescResult?['response'] ?? 'Candidate 2 progression.';
-
-      final cand3DescResult = await _aiService.describeCanvas(
-        canvasImage: candidate3Bmp,
-      );
-      final String candidate3Description =
-          cand3DescResult?['response'] ?? 'Candidate 3 progression.';
-
-      // Stitch the 2x2 comparison grid for the visual log in the UI
-      final criticCombinedBmp = combineBmps([
-        refBmp ?? startingBmp,
-        candidate1Bmp,
-        candidate2Bmp,
-        candidate3Bmp,
-      ]);
-      loggedBmp = criticCombinedBmp;
-
-      final String criticPrompt = formatCriticTextOnlyPrompt(
+      final agent = DecomposerAgent();
+      final context = AgentContext(
+        gridSize: state.gridSize,
+        activePalette: state.palette,
         userPrompt: state.userPrompt,
-        referenceDescription: referenceDescription,
-        startingCanvasDescription: startingCanvasDescription,
-        candidate1Description: candidate1Description,
-        candidate2Description: candidate2Description,
-        candidate3Description: candidate3Description,
+        currentGrid: state.grid,
       );
 
-      final describersLog = {
-        'reference': {
-          'description': referenceDescription,
-          'rawPrompt': refDescResult?['prompt'] ?? 'N/A',
-          'rawResponse': refDescResult?['response'] ?? 'N/A',
-          'imageBytes': refBmp != null ? base64Encode(refBmp) : null,
-        },
-        'starting': {
-          'description': startingCanvasDescription,
-          'rawPrompt': startDescResult?['prompt'] ?? 'N/A',
-          'rawResponse': startDescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(startingBmp),
-        },
-        'candidate1': {
-          'description': candidate1Description,
-          'rawPrompt': cand1DescResult?['prompt'] ?? 'N/A',
-          'rawResponse': cand1DescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(candidate1Bmp),
-        },
-        'candidate2': {
-          'description': candidate2Description,
-          'rawPrompt': cand2DescResult?['prompt'] ?? 'N/A',
-          'rawResponse': cand2DescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(candidate2Bmp),
-        },
-        'candidate3': {
-          'description': candidate3Description,
-          'rawPrompt': cand3DescResult?['prompt'] ?? 'N/A',
-          'rawResponse': cand3DescResult?['response'] ?? 'N/A',
-          'imageBytes': base64Encode(candidate3Bmp),
-        },
-      };
+      final components = await agent.decompose(_aiService, context);
 
-      // Ask Critic to evaluate candidate descriptions (text-only)
-      final criticResult = await _aiService.evaluateCandidates(
-        userPrompt: state.userPrompt,
-        referenceDescription: referenceDescription,
-        startingCanvasDescription: startingCanvasDescription,
-        candidate1Description: candidate1Description,
-        candidate2Description: candidate2Description,
-        candidate3Description: candidate3Description,
+      final componentDescriptions = components
+          .map(
+            (c) =>
+                '- ${c.name}: ${c.description} [BBox: L:${c.relativeBoundingBox.left.toStringAsFixed(2)}, T:${c.relativeBoundingBox.top.toStringAsFixed(2)}, W:${c.relativeBoundingBox.width.toStringAsFixed(2)}, H:${c.relativeBoundingBox.height.toStringAsFixed(2)}]',
+          )
+          .join('\n');
+
+      final newHistoryEntry = AgentHistoryEntry(
+        timestamp: DateTime.now(),
+        prompt: 'Decompose User Prompt: "${state.userPrompt}"',
+        response: 'Semantic Components:\n$componentDescriptions',
+        isError: false,
+        imageBytes: null,
       );
 
-      if (criticResult != null) {
-        final choice = criticResult['choice'];
-        final criticReasoning = criticResult['reasoning'] as String?;
-        final nextFocus = criticResult['nextFocus'] as String?;
+      final List<AgentHistoryEntry> newHistory = List.from(state.aiHistory)
+        ..add(newHistoryEntry);
 
-        // Extract chosen painter index (1, 2, or 3) and clamp safely
-        int choiceInt = 1;
-        if (choice is int) {
-          choiceInt = choice.clamp(1, 3);
-        } else if (choice is String) {
-          choiceInt = (int.tryParse(choice) ?? 1).clamp(1, 3);
-        }
-
-        final chosenIndex = choiceInt - 1;
-        final chosenGrid = results[chosenIndex]['grid'] as List<List<int>>;
-        final chosenStrokes =
-            results[chosenIndex]['strokes'] as List<Map<String, dynamic>>;
-
-        int finalColorIndex = state.selectedColorIndex;
-        if (chosenStrokes.isNotEmpty) {
-          finalColorIndex =
-              (chosenStrokes.last['color'] as int?) ?? finalColorIndex;
-        }
-        final boundedColorIndex = finalColorIndex.clamp(
-          0,
-          state.palette.length,
-        );
-
-        // Update the official canvas state to the chosen grid
-        _pushToUndo(startingGrid);
-        state = state.copyWith(
-          grid: chosenGrid,
-          selectedColorIndex: boundedColorIndex,
-          redoStack: const [],
-          nextFocus: nextFocus,
-        );
-
-        rawResponse = jsonEncode({
-          'criticChoice': choiceInt,
-          'criticReasoning':
-              criticReasoning ?? 'Selected candidate $choiceInt.',
-          'criticNextFocus': nextFocus ?? 'N/A',
-          'criticRawPrompt': criticPrompt,
-          'criticRawResponse': jsonEncode(criticResult),
-          'painter1Strokes': results[0]['strokes'],
-          'painter2Strokes': results[1]['strokes'],
-          'painter3Strokes': results[2]['strokes'],
-          'describers': describersLog,
-        });
-      } else {
-        // Fallback: default to Painter 1
-        final chosenGrid = results[0]['grid'] as List<List<int>>;
-        final chosenStrokes =
-            results[0]['strokes'] as List<Map<String, dynamic>>;
-
-        int finalColorIndex = state.selectedColorIndex;
-        if (chosenStrokes.isNotEmpty) {
-          finalColorIndex =
-              (chosenStrokes.last['color'] as int?) ?? finalColorIndex;
-        }
-        final boundedColorIndex = finalColorIndex.clamp(
-          0,
-          state.palette.length,
-        );
-
-        _pushToUndo(startingGrid);
-        state = state.copyWith(
-          grid: chosenGrid,
-          selectedColorIndex: boundedColorIndex,
-          redoStack: const [],
-          clearNextFocus: true,
-        );
-        rawResponse = jsonEncode({
-          'criticChoice': 1,
-          'criticReasoning':
-              'Critic response unavailable, defaulted to Painter 1.',
-          'criticNextFocus': 'N/A',
-          'criticRawPrompt': criticPrompt,
-          'criticRawResponse': 'Critic response was null.',
-          'painter1Strokes': results[0]['strokes'],
-          'painter2Strokes': results[1]['strokes'],
-          'painter3Strokes': results[2]['strokes'],
-          'describers': describersLog,
-        });
-      }
+      state = state.copyWith(
+        decomposedComponents: components,
+        activeComponentIndex: 0,
+        aiHistory: newHistory,
+        isGenerating: false,
+      );
     } catch (e) {
-      isError = true;
-      rawResponse = 'Error in tournament execution: $e';
-      debugPrint('Error running multi-agent drawing cycle: $e');
-    } finally {
-      final newHistory = List<AgentHistoryEntry>.from(state.aiHistory)
-        ..add(
-          AgentHistoryEntry(
-            timestamp: DateTime.now(),
-            prompt: promptLog,
-            response: rawResponse,
-            isError: isError,
-            imageBytes: loggedBmp,
-          ),
-        );
-      state = state.copyWith(isGenerating: false, aiHistory: newHistory);
-    }
-  }
-
-  Future<Map<String, dynamic>> _runPainterAgent({
-    required int agentNumber,
-    required List<List<int>> startingGrid,
-    required List<Color> palette,
-    required List<String> paletteHexes,
-    required String referenceDescription,
-    required bool isMultimodal,
-  }) async {
-    final List<List<int>> tempGrid = List.generate(
-      startingGrid.length,
-      (y) => List<int>.from(startingGrid[y]),
-    );
-
-    final List<Map<String, dynamic>> strokesHistory = [];
-    final List<List<List<int>>> localUndoStack = [];
-
-    for (int turn = 1; turn <= 5; turn++) {
-      final previousBmp = generateBmp(tempGrid, palette);
-
-      final systemInstruction = formatSystemInstruction();
-
-      final String currentCanvasTextGrid = canvasToTextGrid(tempGrid);
-
-      final userTextPrompt = formatUserPrompt(
-        canvasImage: previousBmp,
-        prompt: state.userPrompt,
-        paletteColors: paletteHexes,
-        isMultimodal: isMultimodal,
-        hasPreviousImage: true,
-        referenceDescription: referenceDescription,
-        currentCanvasTextGrid: currentCanvasTextGrid,
-        nextFocus: state.nextFocus,
-      );
-
-      String historyPrompt = '';
-      if (strokesHistory.isNotEmpty) {
-        final historyItems = strokesHistory
-            .map((entry) {
-              final Map<String, dynamic> cleanEntry = {
-                'tool': entry['tool'],
-                'params': entry['params'],
-                'color': entry['color'],
-              };
-              final cleanResponse = jsonEncode(
-                cleanEntry,
-              ).replaceAll(RegExp(r'\s+'), ' ');
-              return '- $cleanResponse';
-            })
-            .join('\n');
-        historyPrompt =
-            '\n\nYour recent moves in this 5-turn sequence:\n$historyItems\n'
-            'Continue building on top of your recent moves to paint the final image.';
-      }
-
-      final fullPrompt =
-          '$systemInstruction\n\n$userTextPrompt\n\n$historyPrompt';
-
-      final double temperature = agentNumber == 1
-          ? 0.25
-          : (agentNumber == 2 ? 0.5 : 1.0);
-
-      try {
-        final painterResult = await _aiService.getNextStroke(
-          canvasImage: previousBmp,
-          prompt: fullPrompt,
-          temperature: temperature,
-        );
-
-        if (painterResult != null) {
-          if (painterResult.containsKey('rawResponse') ||
-              painterResult.containsKey('error')) {
-            strokesHistory.add({
-              'tool': 'error',
-              'params': <int>[],
-              'color': 0,
-              'rawPrompt': fullPrompt,
-              'rawResponse': painterResult['rawResponse'] ?? 'N/A',
-              'error': painterResult['error'] ?? 'JSON parsing failed',
-              'rawImageBase64': base64Encode(previousBmp),
-            });
-            continue;
-          }
-
-          final tool = painterResult['tool'] as String?;
-          final params = (painterResult['params'] as List?)?.cast<int>();
-          final colorIndex = painterResult['color'] as int?;
-
-          if (tool != null &&
-              params != null &&
-              (colorIndex != null || tool == 'undo')) {
-            _applyStrokeToGrid(
-              tempGrid,
-              tool,
-              params,
-              colorIndex ?? 0,
-              localUndoStack,
-            );
-
-            final strokeLog = Map<String, dynamic>.from(painterResult);
-            strokeLog['rawPrompt'] = fullPrompt;
-            strokeLog['rawResponse'] = jsonEncode(painterResult);
-            strokeLog['rawImageBase64'] = base64Encode(previousBmp);
-            strokesHistory.add(strokeLog);
-          } else {
-            strokesHistory.add({
-              'tool': 'error',
-              'params': <int>[],
-              'color': 0,
-              'rawPrompt': fullPrompt,
-              'rawResponse': jsonEncode(painterResult),
-              'error': 'Missing required JSON keys: tool, params, or color',
-              'rawImageBase64': base64Encode(previousBmp),
-            });
-            continue;
-          }
-        } else {
-          strokesHistory.add({
-            'tool': 'error',
-            'params': <int>[],
-            'color': 0,
-            'rawPrompt': fullPrompt,
-            'rawResponse': 'N/A',
-            'error':
-                'AI service returned null response (possible connection issue, safety block, or rate limit)',
-            'rawImageBase64': base64Encode(previousBmp),
-          });
-          continue;
-        }
-      } catch (e) {
-        debugPrint(
-          'Painter Agent $agentNumber encountered error on turn $turn: $e',
-        );
-        strokesHistory.add({
-          'tool': 'error',
-          'params': <int>[],
-          'color': 0,
-          'rawPrompt': fullPrompt,
-          'rawResponse': 'N/A',
-          'error': 'Exception caught: $e',
-          'rawImageBase64': base64Encode(previousBmp),
-        });
-        continue;
-      }
-    }
-
-    return {'grid': tempGrid, 'strokes': strokesHistory};
-  }
-
-  void _applyStrokeToGrid(
-    List<List<int>> tempGrid,
-    String toolName,
-    List<int> params,
-    int colorIndex,
-    List<List<List<int>>> localUndoStack,
-  ) {
-    final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
-
-    if (toolName == 'undo') {
-      if (localUndoStack.isNotEmpty) {
-        final prev = localUndoStack.removeLast();
-        for (int y = 0; y < tempGrid.length; y++) {
-          tempGrid[y] = List<int>.from(prev[y]);
-        }
-      }
-      return;
-    }
-
-    // Save state for undo support only for drawing commands
-    localUndoStack.add(
-      List.generate(tempGrid.length, (y) => List<int>.from(tempGrid[y])),
-    );
-
-    final command = DrawingCommandFactory.create(toolName, params);
-    if (command != null) {
-      command.execute(tempGrid, boundedColorIndex, tempGrid.length);
+      debugPrint('Error triggering decomposer: $e');
+      state = state.copyWith(isGenerating: false);
     }
   }
 
   void clearAiHistory() {
     state = state.copyWith(aiHistory: const []);
-  }
-
-  void _applyAiStrokeCommand(
-    String toolName,
-    List<int> params,
-    int colorIndex,
-  ) {
-    // Keep color index bounded
-    final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
-
-    // Set notifier's current drawing color to match AI's stroke color
-    state = state.copyWith(selectedColorIndex: boundedColorIndex);
-
-    if (toolName == 'undo') {
-      undo();
-      return;
-    }
-
-    final command = DrawingCommandFactory.create(toolName, params);
-    if (command != null) {
-      _executeCommand(command);
-    }
   }
 
   void toggleAutoRun() {

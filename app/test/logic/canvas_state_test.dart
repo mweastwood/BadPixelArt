@@ -60,6 +60,19 @@ class MockTestAiService implements AiService {
     lastCanvasImage = imageBytes;
     lastPrompt = prompt;
 
+    if (prompt.contains('decomposer') || prompt.contains('Decompose')) {
+      return '''
+      [
+        {
+          "name": "blade",
+          "description": "vertical blade",
+          "relativeBoundingBox": { "left": 0.4, "top": 0.1, "width": 0.2, "height": 0.6 },
+          "colorIndex": 1
+        }
+      ]
+      ''';
+    }
+
     if (mockResult == null) return null;
 
     if (mockResult!['tool'] == 'undo') {
@@ -296,29 +309,43 @@ void main() {
       expect(grid[12][12], equals(1)); // (12+12)%2 == 0
     });
 
-    test('triggerAiStroke handles undo tool successfully', () async {
+    test(
+      'triggerAiStroke runs DecomposerAgent and populates decomposedComponents',
+      () async {
+        final notifier = container.read(canvasStateProvider.notifier);
+        expect(
+          container.read(canvasStateProvider).decomposedComponents,
+          isEmpty,
+        );
+
+        await notifier.triggerAiStroke();
+
+        final model = container.read(canvasStateProvider);
+        expect(model.decomposedComponents, hasLength(1));
+        expect(model.decomposedComponents.first.name, equals('blade'));
+        expect(
+          model.decomposedComponents.first.description,
+          equals('vertical blade'),
+        );
+        expect(
+          model.decomposedComponents.first.relativeBoundingBox,
+          equals(const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6)),
+        );
+      },
+    );
+
+    test('triggerAiStroke logs components in history', () async {
       final notifier = container.read(canvasStateProvider.notifier);
-      expect(container.read(canvasStateProvider).grid[10][10], equals(0));
+      expect(container.read(canvasStateProvider).aiHistory, isEmpty);
 
-      mockAiService.mockResult = {'tool': 'undo', 'params': <int>[]};
-
-      await notifier.triggerAiStroke();
-      expect(container.read(canvasStateProvider).grid[10][10], equals(0));
-    });
-
-    test('triggerAiStroke applies strokes returned by AI', () async {
-      mockAiService.mockResult = {
-        'tool': 'circle',
-        'params': [5, 5, 2],
-        'color': 2,
-      };
-
-      final notifier = container.read(canvasStateProvider.notifier);
       await notifier.triggerAiStroke();
 
       final model = container.read(canvasStateProvider);
-      expect(model.selectedColorIndex, equals(2));
-      expect(model.grid[5][7], equals(2)); // xc+r = 5+2 = 7
+      expect(model.aiHistory, hasLength(1));
+      expect(model.aiHistory.first.isError, isFalse);
+      expect(model.aiHistory.first.prompt, contains('Decompose User Prompt'));
+      expect(model.aiHistory.first.response, contains('Semantic Components'));
+      expect(model.aiHistory.first.response, contains('blade: vertical blade'));
     });
 
     test('triggerDownload calls AI service download', () async {
@@ -333,32 +360,7 @@ void main() {
       );
     });
 
-    test('triggerAiStroke logs prompt and response in history', () async {
-      mockAiService.mockResult = {
-        'tool': 'line',
-        'params': [0, 0, 5, 5],
-        'color': 2,
-      };
-
-      final notifier = container.read(canvasStateProvider.notifier);
-      expect(container.read(canvasStateProvider).aiHistory, isEmpty);
-
-      await notifier.triggerAiStroke();
-
-      final model = container.read(canvasStateProvider);
-      expect(model.aiHistory, hasLength(1));
-      expect(model.aiHistory.first.isError, isFalse);
-      expect(model.aiHistory.first.prompt, contains('AI pixel art assistant'));
-      expect(model.aiHistory.first.response, contains('"tool":"line"'));
-    });
-
     test('clearAiHistory clears the logs', () async {
-      mockAiService.mockResult = {
-        'tool': 'line',
-        'params': [0, 0, 5, 5],
-        'color': 2,
-      };
-
       final notifier = container.read(canvasStateProvider.notifier);
       await notifier.triggerAiStroke();
       expect(container.read(canvasStateProvider).aiHistory, isNotEmpty);
@@ -517,32 +519,6 @@ void main() {
     });
 
     test(
-      'triggerAiStroke formats paletteColors as 6-character hex values (RGB)',
-      () async {
-        mockAiService.mockResult = {
-          'tool': 'line',
-          'params': [0, 0, 5, 5],
-          'color': 2,
-        };
-
-        final notifier = container.read(canvasStateProvider.notifier);
-        await notifier.triggerAiStroke();
-
-        expect(mockAiService.lastPrompt, isNotNull);
-        final hexRegex = RegExp(r'#([0-9a-fA-F]{6})');
-        final matches = hexRegex.allMatches(mockAiService.lastPrompt!);
-        expect(matches.isNotEmpty, isTrue);
-        for (final match in matches) {
-          final hex = match.group(0)!;
-          expect(hex, startsWith('#'));
-          expect(hex.length, equals(7)); // #RRGGBB
-          final hexValue = hex.substring(1);
-          expect(int.tryParse(hexValue, radix: 16), isNotNull);
-        }
-      },
-    );
-
-    test(
       'setReferenceImage with originalBytes sets both referenceImage and originalReferenceImage',
       () {
         final notifier = container.read(canvasStateProvider.notifier);
@@ -554,61 +530,6 @@ void main() {
         final state = container.read(canvasStateProvider);
         expect(state.originalReferenceImage, equals(rawPngBytes));
         expect(state.referenceImage, equals(modelBmpBytes));
-      },
-    );
-
-    test(
-      'triggerAiStroke passes combined canvas containing previous canvas to AI service if undo stack is not empty',
-      () async {
-        final notifier = container.read(canvasStateProvider.notifier);
-        notifier.selectColor(1);
-        notifier.drawPixel(10, 10); // push one stroke to undo stack
-
-        mockAiService.mockResult = {
-          'tool': 'line',
-          'params': [0, 0, 5, 5],
-          'color': 2,
-        };
-
-        await notifier.triggerAiStroke();
-        expect(mockAiService.lastCanvasImage, isNotNull);
-        expect(
-          mockAiService.lastCanvasImage!.length,
-          equals(
-            822,
-          ), // 16x16 bmp length (only current canvas, since ref is null and we dropped previous)
-        );
-      },
-    );
-
-    test(
-      'triggerAiStroke generates edges and quantized panels when reference image is present',
-      () async {
-        final notifier = container.read(canvasStateProvider.notifier);
-
-        final refGrid = List.generate(
-          CanvasNotifier.gridSize,
-          (_) => List.filled(CanvasNotifier.gridSize, 0),
-        );
-        final refBmp = generateBmp(refGrid, CanvasNotifier.primaryPalette);
-        notifier.setReferenceImage(refBmp, originalBytes: Uint8List(0));
-
-        mockAiService.mockResult = {
-          'tool': 'line',
-          'params': [0, 0, 5, 5],
-          'color': 2,
-        };
-
-        await notifier.triggerAiStroke();
-        expect(mockAiService.lastCanvasImage, isNotNull);
-
-        // Single panel: 16x16 canvas BMP length = 822 bytes
-        expect(mockAiService.lastCanvasImage!.length, equals(822));
-        final ByteData bd = ByteData.sublistView(
-          mockAiService.lastCanvasImage!,
-        );
-        expect(bd.getUint32(18, Endian.little), equals(16)); // width
-        expect(bd.getUint32(22, Endian.little), equals(16)); // height
       },
     );
 
