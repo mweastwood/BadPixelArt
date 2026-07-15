@@ -79,13 +79,91 @@ void main() {
       // Top = 0.1 -> (0.1 * 16).round() = 2 -> 2/16 = 0.125
       // Width = 0.1 -> Left+Width = 0.55 -> (0.55 * 16).round() = 9 -> Width = (9-7)/16 = 0.125
       // Height = 0.6 -> Top+Height = 0.7 -> (0.7 * 16).round() = 11 -> Height = (11-2)/16 = 0.5625
+      // Scaled and centered:
+      // Left = 0.4375, Top = 0.0625, Width = 0.125, Height = 0.625
       expect(
         result.components[0].relativeBoundingBox,
-        equals(const Rect.fromLTWH(0.4375, 0.125, 0.125, 0.5625)),
+        equals(const Rect.fromLTWH(0.4375, 0.0625, 0.125, 0.625)),
       );
 
       expect(result.components[1].name, equals('hilt'));
     });
+
+    test(
+      'automatically scales and centers off-center bounding boxes',
+      () async {
+        final mockJson = '''
+      [
+        {
+          "name": "offCenterBox",
+          "description": "off-center box",
+          "relativeBoundingBox": { "left": 0.1, "top": 0.1, "width": 0.1, "height": 0.1 }
+        }
+      ]
+      ''';
+
+        final agent = DecomposerAgent();
+        final mockAi = TestMockAiService(responseToReturn: mockJson);
+        final result = await agent.decompose(mockAi, context);
+
+        expect(result.components, hasLength(1));
+
+        // Expected math:
+        // Single box: centroid = (0.15, 0.15), width = 0.1, height = 0.1
+        // CoM = (0.15, 0.15)
+        // sMax = 10.0 -> scale = 9.0 -> newWidth = 0.9
+        // newLeft = 0.5 + 9.0 * (0.1 - 0.15) = 0.05
+        // Snapped (gridSize = 16):
+        // Left = (0.05 * 16).round()/16 = 1/16 = 0.0625
+        // Width = ((0.95 * 16).round() - 1)/16 = 14/16 = 0.875
+        expect(
+          result.components[0].relativeBoundingBox,
+          equals(const Rect.fromLTWH(0.0625, 0.0625, 0.875, 0.875)),
+        );
+      },
+    );
+
+    test(
+      'scales and centers multiple boxes based on area-weighted center of mass',
+      () async {
+        final mockJson = '''
+      [
+        {
+          "name": "large",
+          "description": "large box",
+          "relativeBoundingBox": { "left": 0.1, "top": 0.1, "width": 0.2, "height": 0.2 }
+        },
+        {
+          "name": "small",
+          "description": "small box",
+          "relativeBoundingBox": { "left": 0.5, "top": 0.5, "width": 0.1, "height": 0.1 }
+        }
+      ]
+      ''';
+
+        final agent = DecomposerAgent();
+        final mockAi = TestMockAiService(responseToReturn: mockJson);
+        final result = await agent.decompose(mockAi, context);
+
+        expect(result.components, hasLength(2));
+
+        // Math verification:
+        // totalArea = 0.04 + 0.01 = 0.05
+        // CoM = (0.27, 0.27)
+        // Limits on S: Box 2 Right limit: S <= 0.5 / (0.6 - 0.27) = 1.51515
+        // scale = 1.363636
+        // Box 1 new Left: 0.5 + 1.363636 * (0.1 - 0.27) = 0.26818
+        // Box 1 new Width: 0.2 * 1.363636 = 0.272727
+        // Snap Box 1 to gridSize = 16:
+        // X1 = (0.26818 * 16).round() = 4 -> 0.25
+        // X2 = (0.5409 * 16).round() = 9 -> 0.5625
+        // Width = 0.3125
+        expect(
+          result.components[0].relativeBoundingBox,
+          equals(const Rect.fromLTWH(0.25, 0.25, 0.3125, 0.3125)),
+        );
+      },
+    );
 
     test(
       'falls back to default main component when response is null',

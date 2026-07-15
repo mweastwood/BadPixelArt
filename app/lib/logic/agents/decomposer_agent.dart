@@ -15,6 +15,18 @@ class DecomposerResult {
   });
 }
 
+class _RawParsedComponent {
+  final String name;
+  final String description;
+  final Rect rect;
+
+  _RawParsedComponent({
+    required this.name,
+    required this.description,
+    required this.rect,
+  });
+}
+
 class DecomposerAgent implements PixelArtAgent {
   @override
   String get name => 'Decomposer';
@@ -93,7 +105,7 @@ class DecomposerAgent implements PixelArtAgent {
 
       final parsed = jsonDecode(cleaned);
       if (parsed is List) {
-        final List<PixelArtComponent> components = [];
+        final List<_RawParsedComponent> parsedItems = [];
         for (final item in parsed) {
           if (item is Map<String, dynamic>) {
             final name = item['name'] as String? ?? 'component';
@@ -103,26 +115,32 @@ class DecomposerAgent implements PixelArtAgent {
 
             final left = (bbox['left'] as num? ?? 0.0).toDouble();
             final top = (bbox['top'] as num? ?? 0.0).toDouble();
-            final width = (bbox['width'] as num? ?? 1.0).toDouble();
-            final height = (bbox['height'] as num? ?? 1.0).toDouble();
-
-            final alignedRect = _alignRectToPixels(
-              Rect.fromLTWH(left, top, width, height),
-              context.gridSize,
+            final width = (bbox['width'] as num? ?? 1.0).toDouble().clamp(
+              0.01,
+              1.0,
+            );
+            final height = (bbox['height'] as num? ?? 1.0).toDouble().clamp(
+              0.01,
+              1.0,
             );
 
-            components.add(
-              PixelArtComponent(
+            parsedItems.add(
+              _RawParsedComponent(
                 name: name,
                 description: description,
-                relativeBoundingBox: alignedRect,
+                rect: Rect.fromLTWH(left, top, width, height),
               ),
             );
           }
         }
-        if (components.isNotEmpty) {
+
+        if (parsedItems.isNotEmpty) {
+          final scaledComponents = _scaleAndCenter(
+            parsedItems,
+            context.gridSize,
+          );
           return DecomposerResult(
-            components: components,
+            components: scaledComponents,
             rawPrompt: fullPrompt,
             rawResponse: response,
           );
@@ -137,6 +155,99 @@ class DecomposerAgent implements PixelArtAgent {
       rawPrompt: fullPrompt,
       rawResponse: response ?? 'Error occurred during decomposition',
     );
+  }
+
+  List<PixelArtComponent> _scaleAndCenter(
+    List<_RawParsedComponent> items,
+    int gridSize,
+  ) {
+    // 1. Calculate Center of Mass (area-weighted)
+    double totalArea = 0.0;
+    double sumX = 0.0;
+    double sumY = 0.0;
+
+    for (final item in items) {
+      final rect = item.rect;
+      final area = rect.width * rect.height;
+      totalArea += area;
+      sumX += (rect.left + rect.width / 2) * area;
+      sumY += (rect.top + rect.height / 2) * area;
+    }
+
+    double xCom, yCom;
+    if (totalArea > 0.0001) {
+      xCom = sumX / totalArea;
+      yCom = sumY / totalArea;
+    } else {
+      // Fallback: geometric center of combined bounds
+      double minL = 1.0, minT = 1.0, maxR = 0.0, maxB = 0.0;
+      for (final item in items) {
+        final rect = item.rect;
+        if (rect.left < minL) minL = rect.left;
+        if (rect.top < minT) minT = rect.top;
+        if (rect.left + rect.width > maxR) maxR = rect.left + rect.width;
+        if (rect.top + rect.height > maxB) maxB = rect.top + rect.height;
+      }
+      xCom = minL + (maxR - minL) / 2;
+      yCom = minT + (maxB - minT) / 2;
+    }
+
+    // 2. Calculate Maximum Scale Factor sMax to keep all components in [0, 1]
+    double sMax = 999.0;
+    for (final item in items) {
+      final rect = item.rect;
+
+      final diffLeft = xCom - rect.left;
+      if (diffLeft > 0.0001) {
+        final sVal = 0.5 / diffLeft;
+        if (sVal < sMax) sMax = sVal;
+      }
+
+      final diffRight = rect.left + rect.width - xCom;
+      if (diffRight > 0.0001) {
+        final sVal = 0.5 / diffRight;
+        if (sVal < sMax) sMax = sVal;
+      }
+
+      final diffTop = yCom - rect.top;
+      if (diffTop > 0.0001) {
+        final sVal = 0.5 / diffTop;
+        if (sVal < sMax) sMax = sVal;
+      }
+
+      final diffBottom = rect.top + rect.height - yCom;
+      if (diffBottom > 0.0001) {
+        final sVal = 0.5 / diffBottom;
+        if (sVal < sMax) sMax = sVal;
+      }
+    }
+
+    // Target fill: 90% of maximum possible scale for breathing room
+    final double scale = sMax < 999.0 ? sMax * 0.9 : 1.0;
+
+    // 3. Apply Scale & Shift, and Align to Pixels
+    final List<PixelArtComponent> result = [];
+    for (final item in items) {
+      final rect = item.rect;
+
+      final newWidth = rect.width * scale;
+      final newHeight = rect.height * scale;
+      final newLeft = 0.5 + scale * (rect.left - xCom);
+      final newTop = 0.5 + scale * (rect.top - yCom);
+
+      final scaledRect = Rect.fromLTWH(newLeft, newTop, newWidth, newHeight);
+      final alignedRect = _alignRectToPixels(scaledRect, gridSize);
+
+      result.add(
+        PixelArtComponent(
+          name: item.name,
+          description: item.description,
+          relativeBoundingBox: alignedRect,
+        ),
+      );
+    }
+
+    return result;
   }
 
   Rect _alignRectToPixels(Rect rect, int gridSize) {
