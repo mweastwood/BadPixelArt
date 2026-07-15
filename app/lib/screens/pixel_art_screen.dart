@@ -72,7 +72,17 @@ class PixelArtScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Left side: Just the Canvas
-                      const Expanded(flex: 3, child: CanvasGrid()),
+                      const Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: CanvasGrid()),
+                            SizedBox(height: 16),
+                            _CanvasActionsCard(),
+                          ],
+                        ),
+                      ),
                       const SizedBox(width: 24),
                       // Right side: Controls (Palette & AI)
                       const Expanded(
@@ -81,8 +91,6 @@ class PixelArtScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              _CanvasActionsCard(),
-                              SizedBox(height: 16),
                               ColorPaletteGenerator(),
                               SizedBox(height: 16),
                               AiControlDock(),
