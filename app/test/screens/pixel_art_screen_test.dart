@@ -134,5 +134,36 @@ void main() {
         expect(mockNotifier.state.pendingDecompositionOptions, isEmpty);
       },
     );
+
+    testGoldens('PixelArtScreen component confirmation dialog golden render', (
+      tester,
+    ) async {
+      final mockAiService = MockAiService();
+      final mockNotifier = CanvasNotifier(mockAiService);
+      mockNotifier.state = mockNotifier.state.copyWith(
+        decomposedComponents: [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical steel blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+        ],
+        confirmingComponentIndex: 0,
+      );
+
+      await tester.pumpWidgetBuilder(
+        const PixelArtScreen(),
+        wrapper: testMaterialAppWrapper(
+          overrides: [canvasStateProvider.overrideWith((ref) => mockNotifier)],
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await screenMatchesGolden(
+        tester,
+        'pixel_art_screen_component_confirmation',
+      );
+    });
   });
 }
