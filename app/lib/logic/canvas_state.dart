@@ -651,12 +651,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     );
   }
 
-  void extractPaletteAlgorithmic() {
+  void extractPaletteAlgorithmic([int k = 8]) {
     final refImg = state.referenceImage;
     if (refImg == null) return;
     try {
       final colorGrid = _bmpToColorGrid(refImg);
-      final colors = kMeansQuantize(colorGrid, 8);
+      final colors = kMeansQuantize(colorGrid, k);
       state = state.copyWith(
         paletteName: 'algorithmic',
         palette: colors,

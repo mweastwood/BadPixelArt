@@ -14,6 +14,7 @@ class ColorPaletteGenerator extends ConsumerStatefulWidget {
 
 class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
   late bool _isCollapsed;
+  int _kmeansColors = 8;
 
   @override
   void initState() {
@@ -28,6 +29,45 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
     final theme = Theme.of(context);
 
     final hasRefImage = canvasModel.referenceImage != null;
+
+    final List<DropdownMenuItem<String>> dropdownItems = [
+      const DropdownMenuItem(
+        value: 'primary',
+        child: Text('Preset: Primary 8'),
+      ),
+      const DropdownMenuItem(
+        value: 'grayscale',
+        child: Text('Preset: Grayscale 4'),
+      ),
+      const DropdownMenuItem(
+        value: 'gameboy',
+        child: Text('Preset: Game Boy (4-color)'),
+      ),
+      const DropdownMenuItem(
+        value: 'nes',
+        child: Text('Preset: NES (8-color)'),
+      ),
+      const DropdownMenuItem(
+        value: 'pico8',
+        child: Text('Preset: PICO-8 (16-color)'),
+      ),
+    ];
+
+    if (hasRefImage) {
+      dropdownItems.addAll([
+        const DropdownMenuItem(value: 'suggested', child: Text('AI Suggested')),
+        const DropdownMenuItem(
+          value: 'algorithmic',
+          child: Text('K-Means Quantized'),
+        ),
+      ]);
+    }
+
+    final isCustomMode =
+        canvasModel.paletteName == 'suggested' ||
+        canvasModel.paletteName == 'algorithmic';
+
+    final showRefreshIcon = hasRefImage && isCustomMode;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -101,13 +141,14 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
             if (!_isCollapsed) ...[
               const SizedBox(height: 12),
 
-              // Dropdown Preset Selector
+              // Dropdown Selector Row
               Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      key: ValueKey(canvasModel.paletteName),
                       decoration: InputDecoration(
-                        labelText: 'Select Preset',
+                        labelText: 'Color Palette Mode',
                         prefixIcon: const Icon(Icons.tune),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -117,85 +158,97 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
                           vertical: 8,
                         ),
                       ),
-                      initialValue: _getPresetValue(canvasModel.paletteName),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'primary',
-                          child: Text('Primary 8'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'grayscale',
-                          child: Text('Grayscale 4'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'gameboy',
-                          child: Text('Game Boy (4-color)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'nes',
-                          child: Text('NES (8-color)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'pico8',
-                          child: Text('PICO-8 (16-color)'),
-                        ),
-                      ],
+                      initialValue:
+                          dropdownItems.any(
+                            (item) => item.value == canvasModel.paletteName,
+                          )
+                          ? canvasModel.paletteName
+                          : null,
+                      items: dropdownItems,
                       onChanged: (val) {
                         if (val != null) {
-                          notifier.selectPalette(val);
+                          if (val == 'suggested') {
+                            if (canvasModel.suggestedPalette == null) {
+                              notifier.suggestPaletteFromReference().then((_) {
+                                notifier.acceptSuggestedPalette();
+                              });
+                            } else {
+                              notifier.acceptSuggestedPalette();
+                            }
+                          } else if (val == 'algorithmic') {
+                            notifier.extractPaletteAlgorithmic(_kmeansColors);
+                          } else {
+                            notifier.selectPalette(val);
+                          }
                         }
                       },
                     ),
                   ),
+                  if (canvasModel.isSuggestingPalette) ...[
+                    const SizedBox(width: 12),
+                    const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ] else if (showRefreshIcon) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      tooltip: canvasModel.paletteName == 'suggested'
+                          ? 'Re-suggest AI Palette'
+                          : 'Re-extract K-Means Palette',
+                      onPressed: () {
+                        if (canvasModel.paletteName == 'suggested') {
+                          notifier.suggestPaletteFromReference().then((_) {
+                            notifier.acceptSuggestedPalette();
+                          });
+                        } else {
+                          notifier.extractPaletteAlgorithmic(_kmeansColors);
+                        }
+                      },
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 16),
 
-              // AI & Local Generation Buttons (Stacked vertically to accommodate long text)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // AI Generate Button
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+              if (canvasModel.paletteName == 'algorithmic') ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(
+                      'Colors:',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    icon: canvasModel.isSuggestingPalette
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.auto_awesome),
-                    label: const Text('AI Suggest'),
-                    onPressed: hasRefImage && !canvasModel.isSuggestingPalette
-                        ? () => notifier.suggestPaletteFromReference()
-                        : null,
-                  ),
-                  const SizedBox(height: 12),
-                  // K-Means Algorithmic Button
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.filter_hdr),
-                    label: const Text('K-Means Quantization'),
-                    onPressed: hasRefImage
-                        ? () => notifier.extractPaletteAlgorithmic()
-                        : null,
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 12),
+                    ...[4, 8, 16].map((count) {
+                      final isSelected = _kmeansColors == count;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text('$count'),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() {
+                                _kmeansColors = count;
+                              });
+                              notifier.extractPaletteAlgorithmic(count);
+                            }
+                          },
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ],
+
               if (!hasRefImage) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'Upload a reference image to unlock AI & Local Quantization.',
+                  'Upload a reference image to unlock AI & K-Means Quantization.',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.outline,
                   ),
@@ -229,91 +282,10 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
                   },
                 ),
               ),
-
-              // AI suggested palette confirmation banner
-              if (canvasModel.showPaletteSuggestion &&
-                  canvasModel.suggestedPalette != null) ...[
-                const SizedBox(height: 16),
-                Card(
-                  color: theme.colorScheme.primaryContainer.withValues(
-                    alpha: 0.3,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'AI Suggestion Available',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 36,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: canvasModel.suggestedPalette!.length,
-                            separatorBuilder: (_, _) =>
-                                const SizedBox(width: 6),
-                            itemBuilder: (context, index) {
-                              final color =
-                                  canvasModel.suggestedPalette![index];
-                              return Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: theme.colorScheme.outline,
-                                    width: 1,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              onPressed: notifier.rejectSuggestedPalette,
-                              child: const Text('Reject'),
-                            ),
-                            const SizedBox(width: 8),
-                            ElevatedButton(
-                              onPressed: notifier.acceptSuggestedPalette,
-                              child: const Text('Accept'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ],
           ],
         ),
       ),
     );
-  }
-
-  String? _getPresetValue(String currentName) {
-    const validPresets = ['primary', 'grayscale', 'gameboy', 'nes', 'pico8'];
-    if (validPresets.contains(currentName)) {
-      return currentName;
-    }
-    return null;
   }
 }
