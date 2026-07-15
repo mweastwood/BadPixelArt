@@ -68,12 +68,17 @@ void main() {
     ) async {
       final mockAiService = MockAiService();
       final mockNotifier = CanvasNotifier(mockAiService);
+      final compGrid = List.generate(16, (_) => List.filled(16, 0));
+      for (int y = 2; y <= 10; y++) {
+        compGrid[y][8] = 1;
+      }
       mockNotifier.state = mockNotifier.state.copyWith(
         decomposedComponents: [
           PixelArtComponent(
             name: 'blade',
             description: 'vertical steel blade',
             relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            grid: compGrid,
           ),
         ],
         confirmingComponentIndex: null,
