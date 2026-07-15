@@ -32,7 +32,9 @@ class PixelArtScreen extends ConsumerWidget {
         showDialog(
           context: context,
           barrierDismissible: false,
+          barrierColor: Colors.black.withValues(alpha: 0.15),
           builder: (context) => AlertDialog(
+            alignment: Alignment.bottomCenter,
             key: const ValueKey('component_confirmation_dialog'),
             title: Text('Approve "${comp.name}"?'),
             content: Column(
