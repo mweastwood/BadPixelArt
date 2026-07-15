@@ -27,6 +27,7 @@ class SketchPainterAgent implements PixelArtAgent {
     return 'You are an AI pixel art painter agent named "sketch_painter". Your goal is to ADD pixels to fill the shape volume of a specific component: "${comp.name}" (${comp.description}).\n'
         'You must draw within its bounding box: X: $minX to $maxX, Y: $minY to $maxY.\n'
         'All coordinates are 0-indexed integers from 0 to ${gridSize - 1}.\n\n'
+        'Try to utilize the allocated bounding box space fully (from X: $minX to $maxX, Y: $minY to $maxY) so the component fits well with other parts.\n\n'
         'You are restricted to ONLY using filled shapes. You must NOT draw lines, single pixels, or outlines.\n'
         'Available tools and parameters:\n'
         '- {"tool": "circle_filled", "params": [centerX, centerY, radius]}\n'

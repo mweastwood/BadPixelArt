@@ -9,10 +9,7 @@ import 'drawing_commands.dart';
 import 'algorithms/k_means_quantizer.dart';
 import 'agents/base_agent.dart';
 import 'agents/decomposer_agent.dart';
-import 'agents/sketch_painter_agent.dart';
-import 'agents/sketch_eraser_agent.dart';
-import 'agents/sketch_evaluator_agent.dart';
-import 'dart:convert';
+import 'orchestrators/sketch_orchestrator.dart';
 
 extension ColorRgbInt on Color {
   int get rInt => (r * 255.0).round().clamp(0, 255);
@@ -825,154 +822,32 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(aiHistory: const []);
   }
 
-  Future<Map<String, dynamic>?> _runAgent(
-    PixelArtAgent agent,
-    AgentContext context,
-    List<PixelArtStepResult> history,
-  ) async {
-    final systemPrompt = agent.getSystemInstruction(context);
-    final userPrompt = agent.getFormattedUserPrompt(context, history);
-    final fullPrompt = '$systemPrompt\n\n$userPrompt';
-
-    try {
-      final response = await _aiService.generateContent(
-        prompt: fullPrompt,
-        temperature: 0.2,
-      );
-      if (response == null) return null;
-
-      var cleaned = response.trim();
-      if (cleaned.startsWith('```')) {
-        final lines = cleaned.split('\n');
-        if (lines.first.startsWith('```')) {
-          lines.removeAt(0);
-        }
-        if (lines.isNotEmpty && lines.last.startsWith('```')) {
-          lines.removeLast();
-        }
-        cleaned = lines.join('\n').trim();
-      }
-
-      final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
-      newHistory.add(
-        AgentHistoryEntry(
-          timestamp: DateTime.now(),
-          prompt: '${agent.name} Prompt:\n$fullPrompt',
-          response: '${agent.name} Response:\n$response',
-          isError: false,
-        ),
-      );
-      state = state.copyWith(aiHistory: newHistory);
-
-      return jsonDecode(cleaned) as Map<String, dynamic>;
-    } catch (e) {
-      debugPrint('Error running agent ${agent.name}: $e');
-      return null;
-    }
-  }
-
   Future<void> sketchComponents() async {
     if (state.isGenerating || state.decomposedComponents.isEmpty) return;
     state = state.copyWith(isGenerating: true);
 
     try {
-      final List<PixelArtComponent> updatedComponents = List.from(
-        state.decomposedComponents,
+      final orchestrator = SketchOrchestrator(_aiService);
+      final result = await orchestrator.sketch(
+        components: state.decomposedComponents,
+        gridSize: state.gridSize,
+        palette: state.palette,
+        userPrompt: state.userPrompt,
+        autoRunSpeed: state.autoRunSpeed,
+        onStep: (activeIndex, updated) {
+          state = state.copyWith(
+            activeComponentIndex: activeIndex,
+            decomposedComponents: updated,
+          );
+        },
+        onLogHistory: (log) {
+          final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
+          newHistory.add(log);
+          state = state.copyWith(aiHistory: newHistory);
+        },
       );
 
-      for (int i = 0; i < updatedComponents.length; i++) {
-        state = state.copyWith(activeComponentIndex: i);
-        var comp = updatedComponents[i];
-
-        var compGrid =
-            comp.grid ??
-            List.generate(
-              state.gridSize,
-              (_) => List.filled(state.gridSize, 0),
-            );
-
-        final List<PixelArtStepResult> history = [];
-
-        for (int step = 0; step < 5; step++) {
-          final context = AgentContext(
-            gridSize: state.gridSize,
-            activePalette: state.palette,
-            userPrompt: state.userPrompt,
-            targetComponent: comp,
-            currentGrid: compGrid,
-          );
-
-          final evaluatorAgent = SketchEvaluatorAgent();
-          final evalJson = await _runAgent(evaluatorAgent, context, history);
-          if (evalJson == null) break;
-
-          final bool isComplete = evalJson['isComplete'] as bool? ?? false;
-          final String suggestions = evalJson['suggestions'] as String? ?? '';
-
-          if (isComplete) {
-            break;
-          }
-
-          final suggLower = suggestions.toLowerCase();
-          final bool useEraser =
-              suggLower.contains('erase') ||
-              suggLower.contains('remove') ||
-              suggLower.contains('delete') ||
-              suggLower.contains('sculpt') ||
-              suggLower.contains('clean');
-
-          PixelArtAgent activeAgent;
-          int colorIndex;
-          if (useEraser) {
-            activeAgent = SketchEraserAgent();
-            colorIndex = 0;
-          } else {
-            activeAgent = SketchPainterAgent();
-            colorIndex = 1;
-          }
-
-          final actionJson = await _runAgent(activeAgent, context, history);
-          if (actionJson == null) break;
-
-          final String thought = actionJson['thought'] as String? ?? '';
-          final String tool = actionJson['tool'] as String? ?? '';
-          final List<int> params = List<int>.from(
-            (actionJson['params'] as List? ?? []).map(
-              (v) => (v as num).toInt(),
-            ),
-          );
-
-          final command = DrawingCommandFactory.create(tool, params);
-          if (command != null) {
-            final nextGrid = compGrid
-                .map((row) => List<int>.from(row))
-                .toList();
-            command.execute(nextGrid, colorIndex, state.gridSize);
-            compGrid = nextGrid;
-          }
-
-          history.add(
-            PixelArtStepResult(
-              thought: thought,
-              tool: tool,
-              params: params,
-              colorIndex: colorIndex,
-              feedback:
-                  'Executed $tool with params $params. Suggestions: $suggestions',
-            ),
-          );
-
-          comp = comp.copyWith(grid: compGrid);
-          updatedComponents[i] = comp;
-          state = state.copyWith(decomposedComponents: updatedComponents);
-
-          await Future.delayed(
-            Duration(milliseconds: (state.autoRunSpeed * 1000).round()),
-          );
-        }
-      }
-
-      state = state.copyWith(isGenerating: false);
+      state = state.copyWith(decomposedComponents: result, isGenerating: false);
     } catch (e) {
       debugPrint('Error in sketching components: $e');
       state = state.copyWith(isGenerating: false);

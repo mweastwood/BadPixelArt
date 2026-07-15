@@ -41,8 +41,9 @@ class SketchEvaluatorAgent implements PixelArtAgent {
         '    "feedback": "summary of the evaluation",\n'
         '    "suggestions": "what the painter/eraser should do next (empty if complete)"\n'
         '  }\n'
+        '- Check if the drawing makes good use of its allocated bounding box space (from X: $minX to $maxX, Y: $minY to $maxY). If it is too small or doesn\'t occupy the space well, set "isComplete" to false and suggest expanding it.\n'
         '- If the drawing resembles the component description well (taking into account the low resolution of $gridSize x $gridSize grid), set "isComplete" to true.\n'
-        '- If it is incomplete, or needs adjustment (e.g. too skinny, misaligned, has stray pixels), set "isComplete" to false and write concrete suggestions (specifying coords if needed).';
+        '- If it is incomplete, or needs adjustment (e.g. too skinny, misaligned, has stray pixels, or does not occupy the space well), set "isComplete" to false and write concrete suggestions (specifying coords if needed).';
   }
 
   @override
