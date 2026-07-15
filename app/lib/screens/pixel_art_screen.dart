@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
+import 'package:local_agent/local_agent.dart';
 import '../widgets/canvas_grid.dart';
 import '../widgets/color_palette_generator.dart';
-import '../widgets/ai_control_dock.dart';
 import '../widgets/ai_history_dock.dart';
 import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';
@@ -26,6 +26,13 @@ class PixelArtScreen extends ConsumerWidget {
           appBar: AppBar(
             title: const Text('Bad Pixel Art'),
             actions: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 8.0,
+                ),
+                child: _buildStatusChip(canvasState.aiStatus, notifier, theme),
+              ),
               IconButton(
                 key: const ValueKey('grid_size_button'),
                 icon: const Icon(Icons.grid_on),
@@ -80,7 +87,7 @@ class PixelArtScreen extends ConsumerWidget {
                           children: [
                             Expanded(child: CanvasGrid()),
                             SizedBox(height: 16),
-                            _CanvasActionsCard(),
+                            _CanvasControlsCard(),
                           ],
                         ),
                       ),
@@ -95,8 +102,6 @@ class PixelArtScreen extends ConsumerWidget {
                               ReferenceImagePrompt(),
                               SizedBox(height: 16),
                               ColorPaletteGenerator(),
-                              SizedBox(height: 16),
-                              AiControlDock(),
                               SizedBox(height: 16),
                               AiHistoryDock(),
                             ],
@@ -115,13 +120,11 @@ class PixelArtScreen extends ConsumerWidget {
                     children: [
                       const SizedBox(height: 380, child: CanvasGrid()),
                       const SizedBox(height: 16),
-                      const _CanvasActionsCard(),
+                      const _CanvasControlsCard(),
                       const SizedBox(height: 16),
                       const ReferenceImagePrompt(),
                       const SizedBox(height: 16),
                       const ColorPaletteGenerator(),
-                      const SizedBox(height: 16),
-                      const AiControlDock(),
                       const SizedBox(height: 16),
                       const AiHistoryDock(),
                     ],
@@ -252,43 +255,202 @@ class PixelArtScreen extends ConsumerWidget {
       ],
     );
   }
+
+  Widget _buildStatusChip(
+    AiCoreStatus status,
+    CanvasNotifier notifier,
+    ThemeData theme,
+  ) {
+    Color color;
+    String label;
+    VoidCallback? onTap;
+
+    switch (status) {
+      case AiCoreStatus.available:
+        color = Colors.green;
+        label = 'Ready';
+        break;
+      case AiCoreStatus.downloadable:
+        color = Colors.blue;
+        label = 'Download Model';
+        onTap = notifier.triggerDownload;
+        break;
+      case AiCoreStatus.downloading:
+        color = Colors.orange;
+        label = 'Downloading...';
+        break;
+      case AiCoreStatus.unavailable:
+        color = Colors.red;
+        label = 'Unavailable';
+        break;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.6), width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _CanvasActionsCard extends ConsumerWidget {
-  const _CanvasActionsCard();
+class _CanvasControlsCard extends ConsumerWidget {
+  const _CanvasControlsCard();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasModel = ref.watch(canvasStateProvider);
     final notifier = ref.read(canvasStateProvider.notifier);
+    final theme = Theme.of(context);
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            IconButton(
-              tooltip: 'Undo',
-              icon: const Icon(Icons.undo),
-              onPressed: canvasModel.undoStack.isNotEmpty
-                  ? notifier.undo
-                  : null,
+            Row(
+              children: [
+                // Left-aligned AI Controls
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: canvasModel.isGenerating
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            color: theme.colorScheme.onPrimary,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.psychology, size: 18),
+                  label: Text(
+                    canvasModel.isGenerating
+                        ? 'AI Drawing...'
+                        : 'Suggest Stroke',
+                  ),
+                  onPressed:
+                      canvasModel.isGenerating ||
+                          canvasModel.aiStatus != AiCoreStatus.available
+                      ? null
+                      : notifier.triggerAiStroke,
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: canvasModel.autoRun
+                      ? 'Pause Auto-Run'
+                      : 'Start Auto-Run',
+                  icon: Icon(
+                    canvasModel.autoRun ? Icons.pause : Icons.play_arrow,
+                    color: canvasModel.autoRun ? Colors.amber : Colors.green,
+                    size: 24,
+                  ),
+                  onPressed: canvasModel.aiStatus == AiCoreStatus.available
+                      ? notifier.toggleAutoRun
+                      : null,
+                ),
+                const Spacer(),
+                // Right-aligned Canvas Actions
+                IconButton(
+                  tooltip: 'Undo',
+                  icon: const Icon(Icons.undo),
+                  onPressed: canvasModel.undoStack.isNotEmpty
+                      ? notifier.undo
+                      : null,
+                ),
+                IconButton(
+                  tooltip: 'Redo',
+                  icon: const Icon(Icons.redo),
+                  onPressed: canvasModel.redoStack.isNotEmpty
+                      ? notifier.redo
+                      : null,
+                ),
+                IconButton(
+                  tooltip: 'Reset Canvas',
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.redAccent,
+                  ),
+                  onPressed: notifier.resetCanvas,
+                ),
+              ],
             ),
-            IconButton(
-              tooltip: 'Redo',
-              icon: const Icon(Icons.redo),
-              onPressed: canvasModel.redoStack.isNotEmpty
-                  ? notifier.redo
-                  : null,
-            ),
-            IconButton(
-              tooltip: 'Reset Canvas',
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              onPressed: notifier.resetCanvas,
-            ),
+            if (canvasModel.autoRun) ...[
+              const SizedBox(height: 8),
+              const Divider(),
+              Row(
+                children: [
+                  Icon(
+                    Icons.speed,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Speed:',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  Expanded(
+                    child: Slider(
+                      min: 0.5,
+                      max: 3.0,
+                      divisions: 5,
+                      value: canvasModel.autoRunSpeed,
+                      label: '${canvasModel.autoRunSpeed}s',
+                      onChanged: notifier.updateSpeed,
+                    ),
+                  ),
+                  Text(
+                    '${canvasModel.autoRunSpeed}s',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
