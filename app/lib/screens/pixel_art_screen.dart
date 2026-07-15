@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../widgets/canvas_grid.dart';
-import '../widgets/color_palette_bar.dart';
+import '../widgets/color_palette_generator.dart';
 import '../widgets/ai_control_dock.dart';
 import '../widgets/ai_history_dock.dart';
 import '../widgets/resolution_selector_dialog.dart';
@@ -81,7 +81,9 @@ class PixelArtScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              ColorPaletteBar(),
+                              _CanvasActionsCard(),
+                              SizedBox(height: 16),
+                              ColorPaletteGenerator(),
                               SizedBox(height: 16),
                               AiControlDock(),
                               SizedBox(height: 16),
@@ -102,7 +104,9 @@ class PixelArtScreen extends ConsumerWidget {
                     children: [
                       const SizedBox(height: 380, child: CanvasGrid()),
                       const SizedBox(height: 16),
-                      const ColorPaletteBar(),
+                      const _CanvasActionsCard(),
+                      const SizedBox(height: 16),
+                      const ColorPaletteGenerator(),
                       const SizedBox(height: 16),
                       const AiControlDock(),
                       const SizedBox(height: 16),
@@ -233,6 +237,69 @@ class PixelArtScreen extends ConsumerWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _CanvasActionsCard extends ConsumerWidget {
+  const _CanvasActionsCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canvasModel = ref.watch(canvasStateProvider);
+    final notifier = ref.read(canvasStateProvider.notifier);
+    final theme = Theme.of(context);
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.gesture, color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Canvas Actions',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Undo',
+                  icon: const Icon(Icons.undo),
+                  onPressed: canvasModel.undoStack.isNotEmpty
+                      ? notifier.undo
+                      : null,
+                ),
+                IconButton(
+                  tooltip: 'Redo',
+                  icon: const Icon(Icons.redo),
+                  onPressed: canvasModel.redoStack.isNotEmpty
+                      ? notifier.redo
+                      : null,
+                ),
+                IconButton(
+                  tooltip: 'Reset Canvas',
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.redAccent,
+                  ),
+                  onPressed: notifier.resetCanvas,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
