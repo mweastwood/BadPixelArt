@@ -121,8 +121,9 @@ class CanvasPainter extends CustomPainter {
         );
 
         if (isActive) {
+          const activeColor = Colors.tealAccent;
           borderPaint
-            ..color = comp.proposedBaseColor
+            ..color = activeColor
             ..strokeWidth = 3.0;
           canvas.drawRect(rect, borderPaint);
 
@@ -131,7 +132,7 @@ class CanvasPainter extends CustomPainter {
             text: TextSpan(
               text: ' ${comp.name} ',
               style: const TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
               ),
@@ -139,7 +140,7 @@ class CanvasPainter extends CustomPainter {
             textDirection: TextDirection.ltr,
           )..layout();
 
-          final labelBgPaint = Paint()..color = comp.proposedBaseColor;
+          final labelBgPaint = Paint()..color = activeColor;
           final labelRect = Rect.fromLTWH(
             rect.left.clamp(0.0, size.width - textPainter.width),
             (rect.top - 14.0).clamp(0.0, size.height - textPainter.height),

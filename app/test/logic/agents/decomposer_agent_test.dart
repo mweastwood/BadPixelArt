@@ -55,14 +55,12 @@ void main() {
         {
           "name": "blade",
           "description": "sharp blue blade",
-          "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 },
-          "colorIndex": 3
+          "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 }
         },
         {
           "name": "guard",
           "description": "horizontal red guard",
-          "relativeBoundingBox": { "left": 0.3, "top": 0.7, "width": 0.4, "height": 0.1 },
-          "colorIndex": 1
+          "relativeBoundingBox": { "left": 0.3, "top": 0.7, "width": 0.4, "height": 0.1 }
         }
       ]
       ''';
@@ -78,7 +76,6 @@ void main() {
         result[0].relativeBoundingBox,
         equals(const Rect.fromLTWH(0.45, 0.1, 0.1, 0.6)),
       );
-      expect(result[0].proposedBaseColor, equals(const Color(0xFF0000FF)));
 
       expect(result[1].name, equals('guard'));
       expect(result[1].description, equals('horizontal red guard'));
@@ -86,7 +83,6 @@ void main() {
         result[1].relativeBoundingBox,
         equals(const Rect.fromLTWH(0.3, 0.7, 0.4, 0.1)),
       );
-      expect(result[1].proposedBaseColor, equals(const Color(0xFFFF0000)));
     });
 
     test(
@@ -103,7 +99,6 @@ void main() {
           result[0].relativeBoundingBox,
           equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0)),
         );
-        expect(result[0].proposedBaseColor, equals(activePalette[1]));
       },
     );
 

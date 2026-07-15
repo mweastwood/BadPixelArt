@@ -37,7 +37,6 @@ void main() {
             name: 'blade',
             description: 'vertical blade',
             relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-            proposedBaseColor: Colors.grey,
           ),
         ];
         container.read(canvasStateProvider.notifier).state = container
@@ -82,13 +81,11 @@ void main() {
           name: 'blade',
           description: 'vertical blade',
           relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-          proposedBaseColor: Colors.grey,
         ),
         PixelArtComponent(
           name: 'hilt',
           description: 'wooden handle',
           relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
-          proposedBaseColor: Colors.brown,
         ),
       ];
       container.read(canvasStateProvider.notifier).state = container

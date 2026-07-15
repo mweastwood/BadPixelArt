@@ -20,13 +20,11 @@ class PixelArtComponent {
   final String name;
   final String description;
   final Rect relativeBoundingBox; // Normalized bounding box (0.0 to 1.0)
-  final Color proposedBaseColor;
 
   PixelArtComponent({
     required this.name,
     required this.description,
     required this.relativeBoundingBox,
-    required this.proposedBaseColor,
   });
 
   Map<String, dynamic> toJson() {
@@ -39,7 +37,6 @@ class PixelArtComponent {
         'width': relativeBoundingBox.width,
         'height': relativeBoundingBox.height,
       },
-      'proposedBaseColor': proposedBaseColor.toARGB32(),
     };
   }
 
@@ -54,7 +51,6 @@ class PixelArtComponent {
         (bbox['width'] as num).toDouble(),
         (bbox['height'] as num).toDouble(),
       ),
-      proposedBaseColor: Color(json['proposedBaseColor'] as int),
     );
   }
 }

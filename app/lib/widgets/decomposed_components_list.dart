@@ -134,18 +134,13 @@ class _DecomposedComponentsListState
                         ),
                         child: Row(
                           children: [
-                            // Color dot indicator
-                            Container(
-                              width: 16,
-                              height: 16,
-                              decoration: BoxDecoration(
-                                color: comp.proposedBaseColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: theme.colorScheme.outline,
-                                  width: 1.0,
-                                ),
-                              ),
+                            // BBox icon indicator
+                            Icon(
+                              Icons.crop_free_outlined,
+                              size: 18,
+                              color: isActive
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurfaceVariant,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
