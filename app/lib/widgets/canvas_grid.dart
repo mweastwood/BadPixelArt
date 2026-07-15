@@ -105,6 +105,34 @@ class CanvasPainter extends CustomPainter {
       }
     }
 
+    // Draw the individual component grids (outlines) as semi-transparent overlays
+    for (int i = 0; i < decomposedComponents.length; i++) {
+      final comp = decomposedComponents[i];
+      final compOutline = comp.getOutlineGrid();
+      if (compOutline != null) {
+        final compColor = _getComponentColor(i);
+        final overlayPaint = Paint()
+          ..color = compColor
+          ..isAntiAlias = false;
+
+        for (int y = 0; y < gridSize; y++) {
+          for (int x = 0; x < gridSize; x++) {
+            if (y < compOutline.length &&
+                x < compOutline[y].length &&
+                compOutline[y][x] > 0) {
+              final rect = Rect.fromLTWH(
+                x * cellWidth,
+                y * cellHeight,
+                cellWidth,
+                cellHeight,
+              );
+              canvas.drawRect(rect, overlayPaint);
+            }
+          }
+        }
+      }
+    }
+
     // Draw component bounding boxes if present
     if (decomposedComponents.isNotEmpty) {
       final borderPaint = Paint()..style = PaintingStyle.stroke;
@@ -158,6 +186,19 @@ class CanvasPainter extends CustomPainter {
         }
       }
     }
+  }
+
+  Color _getComponentColor(int index) {
+    final colors = [
+      Colors.blue,
+      Colors.amber,
+      Colors.green,
+      Colors.red,
+      Colors.purple,
+      Colors.teal,
+      Colors.orange,
+    ];
+    return colors[index % colors.length].withValues(alpha: 0.4);
   }
 
   @override
