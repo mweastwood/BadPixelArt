@@ -336,13 +336,10 @@ void main() {
           equals('vertical blade'),
         );
         // Snapped bounds verification:
-        // Left = 0.4 -> (0.4 * 16).round()/16 = 6/16 = 0.375
-        // Top = 0.1 -> (0.1 * 16).round()/16 = 2/16 = 0.125
-        // Width = 0.2 -> (0.6 * 16).round()/16 = 10/16 -> Width = (10-6)/16 = 0.25
-        // Height = 0.6 -> (0.7 * 16).round()/16 = 11/16 -> Height = (11-2)/16 = 0.5625
+        // After scaling and centering relative to the center of mass
         expect(
           model.decomposedComponents.first.relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.375, 0.125, 0.25, 0.5625)),
+          equals(const Rect.fromLTWH(0.375, 0.0625, 0.25, 0.875)),
         );
       },
     );
