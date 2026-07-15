@@ -9,6 +9,7 @@ import '../widgets/ai_control_dock.dart';
 import '../widgets/ai_history_dock.dart';
 import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';
+import '../widgets/reference_image_prompt.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -91,6 +92,8 @@ class PixelArtScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
+                              ReferenceImagePrompt(),
+                              SizedBox(height: 16),
                               ColorPaletteGenerator(),
                               SizedBox(height: 16),
                               AiControlDock(),
@@ -113,6 +116,8 @@ class PixelArtScreen extends ConsumerWidget {
                       const SizedBox(height: 380, child: CanvasGrid()),
                       const SizedBox(height: 16),
                       const _CanvasActionsCard(),
+                      const SizedBox(height: 16),
+                      const ReferenceImagePrompt(),
                       const SizedBox(height: 16),
                       const ColorPaletteGenerator(),
                       const SizedBox(height: 16),

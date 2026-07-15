@@ -51,23 +51,22 @@ void main() {
         buildTestableWidget(child: const Scaffold(body: AiControlDock())),
       );
 
-      // Verify started as expanded (Reference Image Selector should be visible)
-      expect(find.text('Reference Image'), findsOneWidget);
-      expect(find.text('User Instructions / Prompt'), findsOneWidget);
+      // Verify started as expanded (Suggest Stroke should be visible)
+      expect(find.text('Suggest Stroke'), findsOneWidget);
 
       // Tap header to collapse
       await tester.tap(find.text('AI Assistant Controls'));
       await tester.pumpAndSettle();
 
       // Verify controls are hidden
-      expect(find.text('Reference Image'), findsNothing);
+      expect(find.text('Suggest Stroke'), findsNothing);
 
       // Tap header to expand
       await tester.tap(find.text('AI Assistant Controls'));
       await tester.pumpAndSettle();
 
       // Verify controls are visible again
-      expect(find.text('Reference Image'), findsOneWidget);
+      expect(find.text('Suggest Stroke'), findsOneWidget);
     });
 
     testGoldens('AiControlDock renders correctly', (tester) async {
