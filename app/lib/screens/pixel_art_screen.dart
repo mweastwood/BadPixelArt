@@ -256,54 +256,33 @@ class _CanvasActionsCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasModel = ref.watch(canvasStateProvider);
     final notifier = ref.read(canvasStateProvider.notifier);
-    final theme = Theme.of(context);
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Row(
-              children: [
-                Icon(Icons.gesture, color: theme.colorScheme.primary, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  'Canvas Actions',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            IconButton(
+              tooltip: 'Undo',
+              icon: const Icon(Icons.undo),
+              onPressed: canvasModel.undoStack.isNotEmpty
+                  ? notifier.undo
+                  : null,
             ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: 'Undo',
-                  icon: const Icon(Icons.undo),
-                  onPressed: canvasModel.undoStack.isNotEmpty
-                      ? notifier.undo
-                      : null,
-                ),
-                IconButton(
-                  tooltip: 'Redo',
-                  icon: const Icon(Icons.redo),
-                  onPressed: canvasModel.redoStack.isNotEmpty
-                      ? notifier.redo
-                      : null,
-                ),
-                IconButton(
-                  tooltip: 'Reset Canvas',
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.redAccent,
-                  ),
-                  onPressed: notifier.resetCanvas,
-                ),
-              ],
+            IconButton(
+              tooltip: 'Redo',
+              icon: const Icon(Icons.redo),
+              onPressed: canvasModel.redoStack.isNotEmpty
+                  ? notifier.redo
+                  : null,
+            ),
+            IconButton(
+              tooltip: 'Reset Canvas',
+              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              onPressed: notifier.resetCanvas,
             ),
           ],
         ),
