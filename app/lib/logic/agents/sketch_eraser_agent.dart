@@ -5,12 +5,7 @@ class SketchEraserAgent implements PixelArtAgent {
   String get name => 'sketch_eraser';
 
   @override
-  List<String> get availableTools => [
-    'circle_filled',
-    'rectangle_filled',
-    'ellipse_filled',
-    'triangle',
-  ];
+  List<String> get availableTools => [];
 
   @override
   String getSystemInstruction(AgentContext context) {
@@ -24,20 +19,14 @@ class SketchEraserAgent implements PixelArtAgent {
     final minY = (bbox.top * gridSize).round();
     final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
 
-    return 'You are an AI pixel art eraser agent named "sketch_eraser". Your goal is to REMOVE pixels (erase) to sculpt or clean the shape volume of a specific component: "${comp.name}" (${comp.description}).\n'
-        'You must erase within its bounding box: X: $minX to $maxX, Y: $minY to $maxY.\n'
-        'All coordinates are 0-indexed integers from 0 to ${gridSize - 1}.\n\n'
-        'You are restricted to ONLY using filled shapes to erase regions. You must NOT use lines, single pixels, or outlines.\n'
-        'Available tools and parameters (actions with these will clear/erase the pixels in their region):\n'
-        '- {"tool": "circle_filled", "params": [centerX, centerY, radius]}\n'
-        '- {"tool": "rectangle_filled", "params": [x1, y1, x2, y2]}\n'
-        '- {"tool": "ellipse_filled", "params": [centerX, centerY, rx, ry]}\n'
-        '- {"tool": "triangle", "params": [x1, y1, x2, y2, x3, y3]} (erases the region of a filled triangle)\n\n'
+    return 'You are an AI pixel art eraser agent named "sketch_eraser". Your goal is to REMOVE pixels (erase) to sculpt, smooth out outlines, or create curves for a specific component: "${comp.name}" (${comp.description}).\n'
+        'You are given a list of all active pixels on the outline/border of the current shape.\n'
+        'You must decide which of these border pixels should be erased to make the shape smoother, more circular, or curvier.\n\n'
         'Output rules:\n'
         '- You must output EXACTLY a valid JSON object. Do not wrap in markdown blocks.\n'
-        '- The format must be: { "thought": "reasoning for erasing", "tool": "toolName", "params": [int, int, ...] }\n'
-        '- Ensure all coordinates are strictly within the bounding box bounds: X in [$minX, $maxX], Y in [$minY, $maxY].\n'
-        '- Identify stray pixels, over-filled areas, or double corners inside the component bounds and propose clearing them.';
+        '- The format must be: { "thought": "reasoning for erasing", "erase": [ [x, y], [x, y], ... ] }\n'
+        '- In "erase", provide a JSON array of coordinate pairs [x, y] to be erased. Only suggest erasing pixels that are present in the provided list of border pixels.\n'
+        '- Ensure all coordinates are strictly within the bounding box bounds: X in [$minX, $maxX], Y in [$minY, $maxY].';
   }
 
   @override
@@ -46,16 +35,48 @@ class SketchEraserAgent implements PixelArtAgent {
     List<PixelArtStepResult> history,
   ) {
     final comp = context.targetComponent!;
+    final compGrid = context.currentGrid;
+    final gridSize = context.gridSize;
+    final bbox = comp.relativeBoundingBox;
+    final minX = (bbox.left * gridSize).round();
+    final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
+    final minY = (bbox.top * gridSize).round();
+    final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+
+    final List<String> borderCoords = [];
+    for (int y = minY; y <= maxY; y++) {
+      for (int x = minX; x <= maxX; x++) {
+        if (compGrid[y][x] > 0) {
+          bool isBorder = false;
+          if (y == minY || y == maxY || x == minX || x == maxX) {
+            isBorder = true;
+          } else {
+            if (compGrid[y - 1][x] == 0 ||
+                compGrid[y + 1][x] == 0 ||
+                compGrid[y][x - 1] == 0 ||
+                compGrid[y][x + 1] == 0) {
+              isBorder = true;
+            }
+          }
+          if (isBorder) {
+            borderCoords.add('[$x, $y]');
+          }
+        }
+      }
+    }
+
     final sb = StringBuffer();
     sb.writeln('Erasing / Sculpting component: "${comp.name}"');
     sb.writeln('Description: "${comp.description}"');
     sb.writeln('\nCurrent grid state (0=empty, 1=filled):');
 
-    final size = context.gridSize;
-    for (int y = 0; y < size; y++) {
-      final row = context.currentGrid[y].map((v) => v > 0 ? '#' : '.').join('');
+    for (int y = 0; y < gridSize; y++) {
+      final row = compGrid[y].map((v) => v > 0 ? '#' : '.').join('');
       sb.writeln(row);
     }
+
+    sb.writeln('\nActive border pixels currently on the shape outline:');
+    sb.writeln('[${borderCoords.join(', ')}]');
 
     if (history.isNotEmpty) {
       sb.writeln('\nHistory of actions in this phase:');
@@ -66,7 +87,9 @@ class SketchEraserAgent implements PixelArtAgent {
       }
     }
 
-    sb.writeln('\nPropose the next erasing action to sculpt "${comp.name}":');
+    sb.writeln(
+      '\nPropose the list of coordinates to erase from the outline to sculpt and smooth it:',
+    );
     return sb.toString();
   }
 }

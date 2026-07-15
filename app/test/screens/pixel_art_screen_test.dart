@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
@@ -61,6 +61,53 @@ void main() {
       );
 
       await screenMatchesGolden(tester, 'pixel_art_screen_palette_suggestion');
+    });
+
+    testGoldens('PixelArtScreen component confirmation dialog golden render', (
+      tester,
+    ) async {
+      final mockAiService = MockAiService();
+      final mockNotifier = CanvasNotifier(mockAiService);
+      final compGrid = List.generate(16, (_) => List.filled(16, 0));
+      for (int y = 2; y <= 10; y++) {
+        compGrid[y][8] = 1;
+      }
+      mockNotifier.state = mockNotifier.state.copyWith(
+        decomposedComponents: [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical steel blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            grid: compGrid,
+          ),
+        ],
+        confirmingComponentIndex: null,
+      );
+
+      await tester.pumpWidgetBuilder(
+        const PixelArtScreen(),
+        wrapper: testMaterialAppWrapper(
+          overrides: [canvasStateProvider.overrideWith((ref) => mockNotifier)],
+        ),
+      );
+
+      // Now change it to trigger the listener
+      mockNotifier.state = mockNotifier.state.copyWith(
+        confirmingComponentIndex: 0,
+      );
+
+      // Let dialog anim settle
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('component_confirmation_dialog')),
+        findsOneWidget,
+      );
+
+      await screenMatchesGolden(
+        tester,
+        'pixel_art_screen_component_confirmation',
+      );
     });
 
     testGoldens('PixelArtScreen palette generation loading golden render', (
