@@ -122,6 +122,60 @@ void main() {
       );
     });
 
+    testWidgets('renders option selector and switches active option on tap', (
+      tester,
+    ) async {
+      final container = ProviderContainer();
+      final option1 = [
+        PixelArtComponent(
+          name: 'blade',
+          description: 'vertical blade',
+          relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+        ),
+      ];
+      final option2 = [
+        PixelArtComponent(
+          name: 'hilt',
+          description: 'wooden handle',
+          relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+        ),
+      ];
+      final options = [option1, option2, option1, option1];
+
+      container.read(canvasStateProvider.notifier).state = container
+          .read(canvasStateProvider)
+          .copyWith(
+            decompositionOptions: options,
+            selectedDecompositionOptionIndex: 0,
+            decomposedComponents: option1,
+          );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: DecomposedComponentsList()),
+          ),
+        ),
+      );
+
+      // Verify Option 1 components are shown initially
+      expect(find.text('BLADE'), findsOneWidget);
+      expect(find.text('HILT'), findsNothing);
+
+      // Tap on Option 2 choice chip
+      await tester.tap(find.text('Option 2'));
+      await tester.pumpAndSettle();
+
+      // Verify Option 2 components are now shown
+      expect(find.text('BLADE'), findsNothing);
+      expect(find.text('HILT'), findsOneWidget);
+      expect(
+        container.read(canvasStateProvider).selectedDecompositionOptionIndex,
+        equals(1),
+      );
+    });
+
     testGoldens('DecomposedComponentsList renders correctly', (tester) async {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
         ..addScenario('Expanded Empty State', const DecomposedComponentsList())

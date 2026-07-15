@@ -189,6 +189,8 @@ class CanvasModel {
   final String? nextFocus;
   final String modelReleaseStage;
   final String modelPreference;
+  final List<List<PixelArtComponent>> decompositionOptions;
+  final int selectedDecompositionOptionIndex;
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
 
@@ -215,6 +217,8 @@ class CanvasModel {
     this.nextFocus,
     this.modelReleaseStage = 'stable',
     this.modelPreference = 'full',
+    this.decompositionOptions = const [],
+    this.selectedDecompositionOptionIndex = 0,
     this.decomposedComponents = const [],
     this.activeComponentIndex = 0,
   });
@@ -245,6 +249,8 @@ class CanvasModel {
     bool clearNextFocus = false,
     String? modelReleaseStage,
     String? modelPreference,
+    List<List<PixelArtComponent>>? decompositionOptions,
+    int? selectedDecompositionOptionIndex,
     List<PixelArtComponent>? decomposedComponents,
     int? activeComponentIndex,
   }) {
@@ -278,6 +284,10 @@ class CanvasModel {
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
       modelReleaseStage: modelReleaseStage ?? this.modelReleaseStage,
       modelPreference: modelPreference ?? this.modelPreference,
+      decompositionOptions: decompositionOptions ?? this.decompositionOptions,
+      selectedDecompositionOptionIndex:
+          selectedDecompositionOptionIndex ??
+          this.selectedDecompositionOptionIndex,
       decomposedComponents: decomposedComponents ?? this.decomposedComponents,
       activeComponentIndex: activeComponentIndex ?? this.activeComponentIndex,
     );
@@ -299,12 +309,15 @@ class CanvasModel {
         isSuggestingPalette == other.isSuggestingPalette &&
         showPaletteSuggestion == other.showPaletteSuggestion &&
         activeComponentIndex == other.activeComponentIndex &&
+        selectedDecompositionOptionIndex ==
+            other.selectedDecompositionOptionIndex &&
         listEquals(palette, other.palette) &&
         listEquals(suggestedPalette, other.suggestedPalette) &&
         listEquals(referenceImage, other.referenceImage) &&
         listEquals(originalReferenceImage, other.originalReferenceImage) &&
         listEquals(aiHistory, other.aiHistory) &&
-        listEquals(decomposedComponents, other.decomposedComponents);
+        listEquals(decomposedComponents, other.decomposedComponents) &&
+        listEquals(decompositionOptions, other.decompositionOptions);
   }
 
   @override
@@ -321,6 +334,7 @@ class CanvasModel {
     isSuggestingPalette,
     showPaletteSuggestion,
     activeComponentIndex,
+    selectedDecompositionOptionIndex,
     Object.hashAll(palette),
     suggestedPalette != null ? Object.hashAll(suggestedPalette!) : null,
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
@@ -329,6 +343,7 @@ class CanvasModel {
         : null,
     Object.hashAll(aiHistory),
     Object.hashAll(decomposedComponents),
+    Object.hashAll(decompositionOptions),
   );
 }
 
@@ -478,8 +493,20 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  void selectDecompositionOption(int index) {
+    if (index >= 0 && index < state.decompositionOptions.length) {
+      state = state.copyWith(
+        selectedDecompositionOptionIndex: index,
+        decomposedComponents: state.decompositionOptions[index],
+        activeComponentIndex: 0,
+      );
+    }
+  }
+
   void clearDecomposedComponents() {
     state = state.copyWith(
+      decompositionOptions: const [],
+      selectedDecompositionOptionIndex: 0,
       decomposedComponents: const [],
       activeComponentIndex: 0,
     );
@@ -569,7 +596,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         referenceImage: bytes,
         originalReferenceImage: originalBytes,
       );
-      suggestPaletteFromReference();
     }
   }
 
@@ -580,7 +606,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         referenceImage: bmp,
         originalReferenceImage: rawBytes,
       );
-      await suggestPaletteFromReference();
     }
   }
 
@@ -752,19 +777,23 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         currentGrid: state.grid,
       );
 
-      final components = await agent.decompose(_aiService, context);
+      final options = await agent.decompose(_aiService, context);
 
-      final componentDescriptions = components
-          .map(
-            (c) =>
-                '- ${c.name}: ${c.description} [BBox: L:${c.relativeBoundingBox.left.toStringAsFixed(2)}, T:${c.relativeBoundingBox.top.toStringAsFixed(2)}, W:${c.relativeBoundingBox.width.toStringAsFixed(2)}, H:${c.relativeBoundingBox.height.toStringAsFixed(2)}]',
-          )
-          .join('\n');
+      final StringBuffer historyBuf = StringBuffer();
+      for (int opt = 0; opt < options.length; opt++) {
+        historyBuf.writeln('Option ${opt + 1}:');
+        final optComponents = options[opt];
+        for (final c in optComponents) {
+          historyBuf.writeln(
+            '  - ${c.name}: ${c.description} [BBox: L:${c.relativeBoundingBox.left.toStringAsFixed(2)}, T:${c.relativeBoundingBox.top.toStringAsFixed(2)}, W:${c.relativeBoundingBox.width.toStringAsFixed(2)}, H:${c.relativeBoundingBox.height.toStringAsFixed(2)}]',
+          );
+        }
+      }
 
       final newHistoryEntry = AgentHistoryEntry(
         timestamp: DateTime.now(),
         prompt: 'Decompose User Prompt: "${state.userPrompt}"',
-        response: 'Semantic Components:\n$componentDescriptions',
+        response: 'Semantic Components Options:\n$historyBuf',
         isError: false,
         imageBytes: null,
       );
@@ -773,7 +802,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         ..add(newHistoryEntry);
 
       state = state.copyWith(
-        decomposedComponents: components,
+        decompositionOptions: options,
+        selectedDecompositionOptionIndex: 0,
+        decomposedComponents: options[0],
         activeComponentIndex: 0,
         aiHistory: newHistory,
         isGenerating: false,

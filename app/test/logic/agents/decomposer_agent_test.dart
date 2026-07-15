@@ -49,40 +49,50 @@ void main() {
       currentGrid: List.generate(16, (_) => List.filled(16, 0)),
     );
 
-    test('decomposes prompt correctly on valid JSON response', () async {
+    test('decomposes prompt correctly on valid 4-option JSON response', () async {
       final mockJson = '''
-      [
-        {
-          "name": "blade",
-          "description": "sharp blue blade",
-          "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 }
-        },
-        {
-          "name": "guard",
-          "description": "horizontal red guard",
-          "relativeBoundingBox": { "left": 0.3, "top": 0.7, "width": 0.4, "height": 0.1 }
-        }
-      ]
+      {
+        "option1": [
+          {
+            "name": "blade",
+            "description": "sharp blue blade",
+            "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 }
+          }
+        ],
+        "option2": [
+          {
+            "name": "hilt",
+            "description": "wooden hilt",
+            "relativeBoundingBox": { "left": 0.4375, "top": 0.7, "width": 0.125, "height": 0.2 }
+          }
+        ],
+        "option3": [],
+        "option4": []
+      }
       ''';
 
       final agent = DecomposerAgent();
       final mockAi = TestMockAiService(responseToReturn: mockJson);
       final result = await agent.decompose(mockAi, context);
 
-      expect(result, hasLength(2));
-      expect(result[0].name, equals('blade'));
-      expect(result[0].description, equals('sharp blue blade'));
+      expect(result, hasLength(4));
+
+      // Option 1
+      expect(result[0], hasLength(1));
+      expect(result[0][0].name, equals('blade'));
+      // Pixel alignment verification:
+      // Left = 0.45 -> (0.45 * 16).round() = 7 -> 7/16 = 0.4375
+      // Top = 0.1 -> (0.1 * 16).round() = 2 -> 2/16 = 0.125
+      // Width = 0.1 -> Left+Width = 0.55 -> (0.55 * 16).round() = 9 -> Width = (9-7)/16 = 0.125
+      // Height = 0.6 -> Top+Height = 0.7 -> (0.7 * 16).round() = 11 -> Height = (11-2)/16 = 0.5625
       expect(
-        result[0].relativeBoundingBox,
-        equals(const Rect.fromLTWH(0.45, 0.1, 0.1, 0.6)),
+        result[0][0].relativeBoundingBox,
+        equals(const Rect.fromLTWH(0.4375, 0.125, 0.125, 0.5625)),
       );
 
-      expect(result[1].name, equals('guard'));
-      expect(result[1].description, equals('horizontal red guard'));
-      expect(
-        result[1].relativeBoundingBox,
-        equals(const Rect.fromLTWH(0.3, 0.7, 0.4, 0.1)),
-      );
+      // Option 2
+      expect(result[1], hasLength(1));
+      expect(result[1][0].name, equals('hilt'));
     });
 
     test(
@@ -92,11 +102,12 @@ void main() {
         final mockAi = TestMockAiService(responseToReturn: null);
         final result = await agent.decompose(mockAi, context);
 
-        expect(result, hasLength(1));
-        expect(result[0].name, equals('main'));
-        expect(result[0].description, equals(context.userPrompt));
+        expect(result, hasLength(4));
+        expect(result[0], hasLength(1));
+        expect(result[0][0].name, equals('main'));
+        expect(result[0][0].description, equals(context.userPrompt));
         expect(
-          result[0].relativeBoundingBox,
+          result[0][0].relativeBoundingBox,
           equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0)),
         );
       },
@@ -111,11 +122,12 @@ void main() {
         );
         final result = await agent.decompose(mockAi, context);
 
-        expect(result, hasLength(1));
-        expect(result[0].name, equals('main'));
-        expect(result[0].description, equals(context.userPrompt));
+        expect(result, hasLength(4));
+        expect(result[0], hasLength(1));
+        expect(result[0][0].name, equals('main'));
+        expect(result[0][0].description, equals(context.userPrompt));
         expect(
-          result[0].relativeBoundingBox,
+          result[0][0].relativeBoundingBox,
           equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0)),
         );
       },

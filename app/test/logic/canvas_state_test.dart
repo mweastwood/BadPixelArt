@@ -321,15 +321,22 @@ void main() {
         await notifier.triggerAiStroke();
 
         final model = container.read(canvasStateProvider);
+        expect(model.decompositionOptions, hasLength(4));
+        expect(model.selectedDecompositionOptionIndex, equals(0));
         expect(model.decomposedComponents, hasLength(1));
         expect(model.decomposedComponents.first.name, equals('blade'));
         expect(
           model.decomposedComponents.first.description,
           equals('vertical blade'),
         );
+        // Snapped bounds verification:
+        // Left = 0.4 -> (0.4 * 16).round()/16 = 6/16 = 0.375
+        // Top = 0.1 -> (0.1 * 16).round()/16 = 2/16 = 0.125
+        // Width = 0.2 -> (0.6 * 16).round()/16 = 10/16 -> Width = (10-6)/16 = 0.25
+        // Height = 0.6 -> (0.7 * 16).round()/16 = 11/16 -> Height = (11-2)/16 = 0.5625
         expect(
           model.decomposedComponents.first.relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6)),
+          equals(const Rect.fromLTWH(0.375, 0.125, 0.25, 0.5625)),
         );
       },
     );
@@ -344,7 +351,10 @@ void main() {
       expect(model.aiHistory, hasLength(1));
       expect(model.aiHistory.first.isError, isFalse);
       expect(model.aiHistory.first.prompt, contains('Decompose User Prompt'));
-      expect(model.aiHistory.first.response, contains('Semantic Components'));
+      expect(
+        model.aiHistory.first.response,
+        contains('Semantic Components Options'),
+      );
       expect(model.aiHistory.first.response, contains('blade: vertical blade'));
     });
 
@@ -579,8 +589,7 @@ void main() {
           final refBmp = Uint8List.fromList([1, 2, 3]);
           notifier.setReferenceImage(refBmp);
 
-          // Await the asynchronous trigger to complete
-          await Future.delayed(const Duration(milliseconds: 10));
+          await notifier.suggestPaletteFromReference();
 
           final state = container.read(canvasStateProvider);
           expect(state.suggestedPalette, isNotNull);

@@ -91,6 +91,29 @@ class _DecomposedComponentsListState
 
             if (!_isCollapsed) ...[
               const SizedBox(height: 12),
+              if (canvasModel.decompositionOptions.isNotEmpty) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(
+                    canvasModel.decompositionOptions.length,
+                    (optIdx) {
+                      final isSelected =
+                          optIdx ==
+                          canvasModel.selectedDecompositionOptionIndex;
+                      return ChoiceChip(
+                        label: Text('Option ${optIdx + 1}'),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            notifier.selectDecompositionOption(optIdx);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               if (components.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
