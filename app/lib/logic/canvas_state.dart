@@ -189,6 +189,7 @@ class CanvasModel {
   final String? nextFocus;
   final String modelReleaseStage;
   final String modelPreference;
+  final List<List<PixelArtComponent>> pendingDecompositionOptions;
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
 
@@ -215,6 +216,7 @@ class CanvasModel {
     this.nextFocus,
     this.modelReleaseStage = 'stable',
     this.modelPreference = 'full',
+    this.pendingDecompositionOptions = const [],
     this.decomposedComponents = const [],
     this.activeComponentIndex = 0,
   });
@@ -245,6 +247,7 @@ class CanvasModel {
     bool clearNextFocus = false,
     String? modelReleaseStage,
     String? modelPreference,
+    List<List<PixelArtComponent>>? pendingDecompositionOptions,
     List<PixelArtComponent>? decomposedComponents,
     int? activeComponentIndex,
   }) {
@@ -278,6 +281,8 @@ class CanvasModel {
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
       modelReleaseStage: modelReleaseStage ?? this.modelReleaseStage,
       modelPreference: modelPreference ?? this.modelPreference,
+      pendingDecompositionOptions:
+          pendingDecompositionOptions ?? this.pendingDecompositionOptions,
       decomposedComponents: decomposedComponents ?? this.decomposedComponents,
       activeComponentIndex: activeComponentIndex ?? this.activeComponentIndex,
     );
@@ -304,7 +309,11 @@ class CanvasModel {
         listEquals(referenceImage, other.referenceImage) &&
         listEquals(originalReferenceImage, other.originalReferenceImage) &&
         listEquals(aiHistory, other.aiHistory) &&
-        listEquals(decomposedComponents, other.decomposedComponents);
+        listEquals(decomposedComponents, other.decomposedComponents) &&
+        listEquals(
+          pendingDecompositionOptions,
+          other.pendingDecompositionOptions,
+        );
   }
 
   @override
@@ -329,6 +338,7 @@ class CanvasModel {
         : null,
     Object.hashAll(aiHistory),
     Object.hashAll(decomposedComponents),
+    Object.hashAll(pendingDecompositionOptions),
   );
 }
 
@@ -478,8 +488,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  void applyDecompositionOption(int index) {
+    if (index >= 0 && index < state.pendingDecompositionOptions.length) {
+      final selectedComponents = state.pendingDecompositionOptions[index];
+      state = state.copyWith(
+        decomposedComponents: selectedComponents,
+        activeComponentIndex: 0,
+        pendingDecompositionOptions: const [],
+      );
+    }
+  }
+
+  void clearPendingDecompositionOptions() {
+    state = state.copyWith(pendingDecompositionOptions: const []);
+  }
+
   void clearDecomposedComponents() {
     state = state.copyWith(
+      pendingDecompositionOptions: const [],
       decomposedComponents: const [],
       activeComponentIndex: 0,
     );
@@ -569,7 +595,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         referenceImage: bytes,
         originalReferenceImage: originalBytes,
       );
-      suggestPaletteFromReference();
     }
   }
 
@@ -580,7 +605,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         referenceImage: bmp,
         originalReferenceImage: rawBytes,
       );
-      await suggestPaletteFromReference();
     }
   }
 
@@ -740,6 +764,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   // Triggering next stroke from AI service
   Future<void> triggerAiStroke() async {
+    // Painter agent strokes suggestion is currently disabled until PainterAgent is implemented.
+  }
+
+  Future<void> triggerDecomposition() async {
     if (state.isGenerating) return;
     state = state.copyWith(isGenerating: true);
 
@@ -752,29 +780,34 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         currentGrid: state.grid,
       );
 
-      final components = await agent.decompose(_aiService, context);
+      // Perform 4 concurrent calls to the AI service
+      final results = await Future.wait([
+        agent.decompose(_aiService, context),
+        agent.decompose(_aiService, context),
+        agent.decompose(_aiService, context),
+        agent.decompose(_aiService, context),
+      ]);
 
-      final componentDescriptions = components
-          .map(
-            (c) =>
-                '- ${c.name}: ${c.description} [BBox: L:${c.relativeBoundingBox.left.toStringAsFixed(2)}, T:${c.relativeBoundingBox.top.toStringAsFixed(2)}, W:${c.relativeBoundingBox.width.toStringAsFixed(2)}, H:${c.relativeBoundingBox.height.toStringAsFixed(2)}]',
-          )
-          .join('\n');
+      final List<List<PixelArtComponent>> options = [];
+      final List<AgentHistoryEntry> newHistory = List.from(state.aiHistory);
 
-      final newHistoryEntry = AgentHistoryEntry(
-        timestamp: DateTime.now(),
-        prompt: 'Decompose User Prompt: "${state.userPrompt}"',
-        response: 'Semantic Components:\n$componentDescriptions',
-        isError: false,
-        imageBytes: null,
-      );
+      for (int i = 0; i < results.length; i++) {
+        final res = results[i];
+        options.add(res.components);
 
-      final List<AgentHistoryEntry> newHistory = List.from(state.aiHistory)
-        ..add(newHistoryEntry);
+        newHistory.add(
+          AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: 'Decompose Option ${i + 1} Prompt:\n${res.rawPrompt}',
+            response: 'Decompose Option ${i + 1} Response:\n${res.rawResponse}',
+            isError: false,
+            imageBytes: null,
+          ),
+        );
+      }
 
       state = state.copyWith(
-        decomposedComponents: components,
-        activeComponentIndex: 0,
+        pendingDecompositionOptions: options,
         aiHistory: newHistory,
         isGenerating: false,
       );

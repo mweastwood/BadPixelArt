@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
@@ -122,9 +123,14 @@ void main() {
       );
     });
 
-    testGoldens('DecomposedComponentsList renders correctly', (tester) async {
+    testGoldens('DecomposedComponentsList renders disabled state by default', (
+      tester,
+    ) async {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
-        ..addScenario('Expanded Empty State', const DecomposedComponentsList())
+        ..addScenario(
+          'Expanded Empty State (Disabled)',
+          const DecomposedComponentsList(),
+        )
         ..addScenario(
           'Collapsed Empty State',
           const DecomposedComponentsList(initialCollapsed: true),
@@ -134,7 +140,55 @@ void main() {
         builder.build(),
         wrapper: testMaterialAppWrapper(),
       );
-      await screenMatchesGolden(tester, 'decomposed_components_list');
+      await screenMatchesGolden(tester, 'decomposed_components_list_disabled');
+    });
+
+    testGoldens(
+      'DecomposedComponentsList renders enabled state with prompt and ref image',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        mockNotifier.state = mockNotifier.state.copyWith(
+          userPrompt: 'sword with red guard',
+          referenceImage: Uint8List.fromList([0, 0, 0, 0]),
+        );
+
+        final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
+          ..addScenario(
+            'Expanded Empty State (Enabled)',
+            const DecomposedComponentsList(),
+          );
+
+        await tester.pumpWidgetBuilder(
+          builder.build(),
+          wrapper: testMaterialAppWrapper(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+          ),
+        );
+        await screenMatchesGolden(tester, 'decomposed_components_list_enabled');
+      },
+    );
+
+    testGoldens('DecompositionOptionsDialog renders correctly', (tester) async {
+      final option = [
+        PixelArtComponent(
+          name: 'blade',
+          description: 'vertical blade',
+          relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+        ),
+      ];
+
+      await tester.pumpWidgetBuilder(
+        DecompositionOptionsDialog(
+          options: [option, option, option, option],
+          onSelected: (_) {},
+          onCancel: () {},
+        ),
+        wrapper: testMaterialAppWrapper(),
+      );
+
+      await screenMatchesGolden(tester, 'decomposition_options_dialog');
     });
   });
 }
