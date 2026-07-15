@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:local_agent/local_agent.dart';
 import '../agents/base_agent.dart';
@@ -99,6 +100,7 @@ class SketchOrchestrator {
     required void Function(int activeIndex, List<PixelArtComponent> updated)
     onStep,
     required void Function(AgentHistoryEntry log) onLogHistory,
+    required Future<bool> Function(int componentIndex) onConfirmComponent,
   }) async {
     final List<PixelArtComponent> updatedComponents = List.from(components);
 
@@ -111,8 +113,23 @@ class SketchOrchestrator {
       bool evaluatorApproves = false;
       int step = 0;
 
-      while (!isComponentDone(compGrid, comp, gridSize, evaluatorApproves) &&
-          step < 5) {
+      while (step < 5) {
+        // Evaluate completion status first (or at loop check)
+        final isDone = isComponentDone(
+          compGrid,
+          comp,
+          gridSize,
+          evaluatorApproves,
+        );
+        if (isDone) {
+          final userApproved = await onConfirmComponent(i);
+          if (userApproved) {
+            break;
+          } else {
+            evaluatorApproves = false;
+          }
+        }
+
         step++;
 
         final context = AgentContext(
@@ -200,31 +217,23 @@ class SketchOrchestrator {
         );
         if (eraserJson != null) {
           final String thought = eraserJson['thought'] as String? ?? '';
-          final String tool = eraserJson['tool'] as String? ?? '';
-          final List<int> params = List<int>.from(
-            (eraserJson['params'] as List? ?? []).map(
-              (v) => (v as num).toInt(),
-            ),
-          );
+          final List<dynamic> eraseCoords = eraserJson['erase'] as List? ?? [];
+          final List<Point<int>> erasedPoints = [];
 
-          final command = DrawingCommandFactory.create(tool, params);
-          if (command != null) {
-            final bbox = comp.relativeBoundingBox;
-            final minX = (bbox.left * gridSize).round();
-            final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-            final minY = (bbox.top * gridSize).round();
-            final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+          final bbox = comp.relativeBoundingBox;
+          final minX = (bbox.left * gridSize).round();
+          final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
+          final minY = (bbox.top * gridSize).round();
+          final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
 
-            final nextGrid = compGrid
-                .map((row) => List<int>.from(row))
-                .toList();
-            command.execute(nextGrid, 0, gridSize); // Erase (color 0)
-
-            for (int y = 0; y < gridSize; y++) {
-              for (int x = 0; x < gridSize; x++) {
-                if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                  compGrid[y][x] = nextGrid[y][x];
-                }
+          for (final coord in eraseCoords) {
+            if (coord is List && coord.length >= 2) {
+              final x = (coord[0] as num).toInt();
+              final y = (coord[1] as num).toInt();
+              // Enforce boundary constraint
+              if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                compGrid[y][x] = 0; // Erase
+                erasedPoints.add(Point(x, y));
               }
             }
           }
@@ -232,10 +241,10 @@ class SketchOrchestrator {
           history.add(
             PixelArtStepResult(
               thought: thought,
-              tool: tool,
-              params: params,
+              tool: 'erase_pixels',
+              params: erasedPoints.expand((p) => [p.x, p.y]).toList(),
               colorIndex: 0,
-              feedback: 'Eraser executed $tool with params $params.',
+              feedback: 'Eraser removed pixels at coordinates: $eraseCoords.',
             ),
           );
         }

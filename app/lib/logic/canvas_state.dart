@@ -193,6 +193,7 @@ class CanvasModel {
   final List<List<PixelArtComponent>> pendingDecompositionOptions;
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
+  final int? confirmingComponentIndex;
 
   const CanvasModel({
     this.gridSize = 16,
@@ -220,6 +221,7 @@ class CanvasModel {
     this.pendingDecompositionOptions = const [],
     this.decomposedComponents = const [],
     this.activeComponentIndex = 0,
+    this.confirmingComponentIndex,
   });
 
   CanvasModel copyWith({
@@ -233,6 +235,7 @@ class CanvasModel {
     Uint8List? originalReferenceImage,
     bool clearReference = false,
     String? userPrompt,
+    bool clearUserPrompt = false,
     AiCoreStatus? aiStatus,
     bool? isGenerating,
     bool? autoRun,
@@ -251,6 +254,8 @@ class CanvasModel {
     List<List<PixelArtComponent>>? pendingDecompositionOptions,
     List<PixelArtComponent>? decomposedComponents,
     int? activeComponentIndex,
+    int? confirmingComponentIndex,
+    bool clearConfirmingComponent = false,
   }) {
     return CanvasModel(
       gridSize: gridSize ?? this.gridSize,
@@ -286,6 +291,9 @@ class CanvasModel {
           pendingDecompositionOptions ?? this.pendingDecompositionOptions,
       decomposedComponents: decomposedComponents ?? this.decomposedComponents,
       activeComponentIndex: activeComponentIndex ?? this.activeComponentIndex,
+      confirmingComponentIndex: clearConfirmingComponent
+          ? null
+          : (confirmingComponentIndex ?? this.confirmingComponentIndex),
     );
   }
 
@@ -346,6 +354,7 @@ class CanvasModel {
 class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   final AiService _aiService;
   Timer? _autoRunTimer;
+  Completer<bool>? _confirmationCompleter;
 
   static const int gridSize = 16;
 
@@ -822,6 +831,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(aiHistory: const []);
   }
 
+  void respondToConfirmation(bool approved) {
+    if (_confirmationCompleter != null &&
+        !_confirmationCompleter!.isCompleted) {
+      _confirmationCompleter!.complete(approved);
+    }
+    state = state.copyWith(clearConfirmingComponent: true);
+  }
+
   Future<void> sketchComponents() async {
     if (state.isGenerating || state.decomposedComponents.isEmpty) return;
     state = state.copyWith(isGenerating: true);
@@ -844,6 +861,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
           newHistory.add(log);
           state = state.copyWith(aiHistory: newHistory);
+        },
+        onConfirmComponent: (index) async {
+          _confirmationCompleter = Completer<bool>();
+          state = state.copyWith(confirmingComponentIndex: index);
+          final approved = await _confirmationCompleter!.future;
+          _confirmationCompleter = null;
+          return approved;
         },
       );
 

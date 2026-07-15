@@ -21,6 +21,62 @@ class PixelArtScreen extends ConsumerWidget {
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
+    ref.listen<
+      int?
+    >(canvasStateProvider.select((s) => s.confirmingComponentIndex), (
+      previous,
+      next,
+    ) {
+      if (next != null) {
+        final comp = ref.read(canvasStateProvider).decomposedComponents[next];
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            key: const ValueKey('component_confirmation_dialog'),
+            title: Text('Approve "${comp.name}"?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'The evaluator thinks the sketch for "${comp.name}" is finished.',
+                ),
+                const SizedBox(height: 8),
+                Text('Description: ${comp.description}'),
+                const SizedBox(height: 12),
+                const Text(
+                  'Do you want to approve this sketch or keep iterating?',
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                key: const ValueKey('keep_iterating_button'),
+                onPressed: () {
+                  ref
+                      .read(canvasStateProvider.notifier)
+                      .respondToConfirmation(false);
+                  Navigator.of(context).pop();
+                },
+                child: const Text('No, keep iterating'),
+              ),
+              ElevatedButton(
+                key: const ValueKey('approve_component_button'),
+                onPressed: () {
+                  ref
+                      .read(canvasStateProvider.notifier)
+                      .respondToConfirmation(true);
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Yes, looks good'),
+              ),
+            ],
+          ),
+        );
+      }
+    });
+
     return Stack(
       children: [
         Scaffold(
