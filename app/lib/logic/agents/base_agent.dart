@@ -20,12 +20,56 @@ class PixelArtComponent {
   final String name;
   final String description;
   final Rect relativeBoundingBox; // Normalized bounding box (0.0 to 1.0)
+  final List<List<int>>?
+  grid; // Component specific sketch grid (0 = empty, 1 = filled volume)
 
   PixelArtComponent({
     required this.name,
     required this.description,
     required this.relativeBoundingBox,
+    this.grid,
   });
+
+  List<List<int>>? getOutlineGrid() {
+    if (grid == null) return null;
+    final size = grid!.length;
+    final outline = List.generate(size, (_) => List.filled(size, 0));
+    for (int y = 0; y < size; y++) {
+      for (int x = 0; x < size; x++) {
+        if (grid![y][x] > 0) {
+          bool hasBackgroundNeighbor = false;
+          if (y == 0 || y == size - 1 || x == 0 || x == size - 1) {
+            hasBackgroundNeighbor = true;
+          } else {
+            if (grid![y - 1][x] == 0 ||
+                grid![y + 1][x] == 0 ||
+                grid![y][x - 1] == 0 ||
+                grid![y][x + 1] == 0) {
+              hasBackgroundNeighbor = true;
+            }
+          }
+          if (hasBackgroundNeighbor) {
+            outline[y][x] = 1;
+          }
+        }
+      }
+    }
+    return outline;
+  }
+
+  PixelArtComponent copyWith({
+    String? name,
+    String? description,
+    Rect? relativeBoundingBox,
+    List<List<int>>? grid,
+  }) {
+    return PixelArtComponent(
+      name: name ?? this.name,
+      description: description ?? this.description,
+      relativeBoundingBox: relativeBoundingBox ?? this.relativeBoundingBox,
+      grid: grid ?? this.grid,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -37,11 +81,17 @@ class PixelArtComponent {
         'width': relativeBoundingBox.width,
         'height': relativeBoundingBox.height,
       },
+      if (grid != null) 'grid': grid,
     };
   }
 
   factory PixelArtComponent.fromJson(Map<String, dynamic> json) {
     final bbox = json['relativeBoundingBox'] as Map<String, dynamic>;
+    final gridRaw = json['grid'] as List?;
+    List<List<int>>? parsedGrid;
+    if (gridRaw != null) {
+      parsedGrid = gridRaw.map((row) => List<int>.from(row as List)).toList();
+    }
     return PixelArtComponent(
       name: json['name'] as String,
       description: json['description'] as String,
@@ -51,6 +101,7 @@ class PixelArtComponent {
         (bbox['width'] as num).toDouble(),
         (bbox['height'] as num).toDouble(),
       ),
+      grid: parsedGrid,
     );
   }
 }
