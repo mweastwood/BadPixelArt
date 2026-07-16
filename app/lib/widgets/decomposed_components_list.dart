@@ -29,32 +29,6 @@ class _DecomposedComponentsListState
     final canvasModel = ref.watch(canvasStateProvider);
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
-
-    ref.listen<CanvasModel>(canvasStateProvider, (previous, next) {
-      if (next.pendingDecompositionOptions.isNotEmpty &&
-          (previous == null || previous.pendingDecompositionOptions.isEmpty)) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => DecompositionOptionsDialog(
-            options: next.pendingDecompositionOptions,
-            onSelected: (optIdx) {
-              ref
-                  .read(canvasStateProvider.notifier)
-                  .applyDecompositionOption(optIdx);
-              Navigator.of(context).pop();
-            },
-            onCancel: () {
-              ref
-                  .read(canvasStateProvider.notifier)
-                  .clearPendingDecompositionOptions();
-              Navigator.of(context).pop();
-            },
-          ),
-        );
-      }
-    });
-
     final components = canvasModel.decomposedComponents;
     final activeIndex = canvasModel.activeComponentIndex;
 

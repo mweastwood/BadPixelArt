@@ -5,12 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import 'package:local_agent/local_agent.dart';
 import '../widgets/canvas_grid.dart';
-import '../widgets/color_palette_generator.dart';
-import '../widgets/ai_history_dock.dart';
 import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';
-import '../widgets/reference_image_prompt.dart';
 import '../widgets/decomposed_components_list.dart';
+import '../widgets/wizard_controls.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -21,6 +19,7 @@ class PixelArtScreen extends ConsumerWidget {
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
+    // Global listener for component confirmation dialogs
     ref.listen<
       int?
     >(canvasStateProvider.select((s) => s.confirmingComponentIndex), (
@@ -90,6 +89,32 @@ class PixelArtScreen extends ConsumerWidget {
                 child: const Text('Yes, looks good'),
               ),
             ],
+          ),
+        );
+      }
+    });
+
+    // Global listener for decomposition option choose dialog
+    ref.listen<CanvasModel>(canvasStateProvider, (previous, next) {
+      if (next.pendingDecompositionOptions.isNotEmpty &&
+          (previous == null || previous.pendingDecompositionOptions.isEmpty)) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => DecompositionOptionsDialog(
+            options: next.pendingDecompositionOptions,
+            onSelected: (optIdx) {
+              ref
+                  .read(canvasStateProvider.notifier)
+                  .applyDecompositionOption(optIdx);
+              Navigator.of(context).pop();
+            },
+            onCancel: () {
+              ref
+                  .read(canvasStateProvider.notifier)
+                  .clearPendingDecompositionOptions();
+              Navigator.of(context).pop();
+            },
           ),
         );
       }
@@ -167,21 +192,13 @@ class PixelArtScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 24),
-                      // Right side: Controls (Palette & AI)
+                      // Right side: Controls (Palette & AI Wizard)
                       const Expanded(
                         flex: 2,
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              ReferenceImagePrompt(),
-                              SizedBox(height: 16),
-                              DecomposedComponentsList(),
-                              SizedBox(height: 16),
-                              ColorPaletteGenerator(),
-                              SizedBox(height: 16),
-                              AiHistoryDock(),
-                            ],
+                            children: [WizardControls()],
                           ),
                         ),
                       ),
@@ -189,7 +206,6 @@ class PixelArtScreen extends ConsumerWidget {
                   ),
                 );
               } else {
-                // Mobile Portrait Layout
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
@@ -199,13 +215,7 @@ class PixelArtScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                       const _CanvasControlsCard(),
                       const SizedBox(height: 16),
-                      const ReferenceImagePrompt(),
-                      const SizedBox(height: 16),
-                      const DecomposedComponentsList(),
-                      const SizedBox(height: 16),
-                      const ColorPaletteGenerator(),
-                      const SizedBox(height: 16),
-                      const AiHistoryDock(),
+                      const WizardControls(),
                     ],
                   ),
                 );
