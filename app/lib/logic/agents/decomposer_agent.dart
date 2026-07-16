@@ -19,11 +19,13 @@ class _RawParsedComponent {
   final String name;
   final String description;
   final Rect rect;
+  final List<FundamentalShape> shapes;
 
   _RawParsedComponent({
     required this.name,
     required this.description,
     required this.rect,
+    this.shapes = const [],
   });
 }
 
@@ -40,22 +42,34 @@ class DecomposerAgent implements PixelArtAgent {
         'For each component, you must identify:\n'
         '1. "name": The name of the component (e.g. "blade", "hilt", "guard").\n'
         '2. "description": A descriptive instruction of what to draw (e.g. "straight blade with a sharp tip").\n'
-        '3. "relativeBoundingBox": A bounding box where this component should be drawn, using normalized coordinates from 0.0 to 1.0. Bounding boxes can overlap. Format as: { "left": double, "top": double, "width": double, "height": double }\n\n'
+        '3. "relativeBoundingBox": A bounding box where this component should be drawn, using normalized coordinates from 0.0 to 1.0. Format as: { "left": double, "top": double, "width": double, "height": double }\n'
+        '4. "shapes": A list of fundamental geometric shapes that make up this component. Each shape must have:\n'
+        '   - "type": One of "rectangle", "circle", "triangle".\n'
+        '   - "description": A short description of this shape (e.g. "metallic gray blade body", "brown handle grip").\n'
+        '   - "relativeBoundingBox": A bounding box for this shape, using normalized coordinates relative to the component\'s bounding box (i.e. from 0.0 to 1.0 inside the component). Format as: { "left": double, "top": double, "width": double, "height": double }\n\n'
         'Output rules:\n'
         '- You must output EXACTLY a valid JSON array of objects. Do not wrap in markdown tags (e.g. ```json).\n'
         '- Bounding boxes must cover the area of the components on a 0.0 to 1.0 scale.\n'
         '- Keep descriptions short (max 15 words).\n'
+        '- Keep component shapes list concise (2-4 shapes per component).\n'
         'Example output:\n'
         '[\n'
         '  {\n'
         '    "name": "blade",\n'
         '    "description": "vertical gray steel blade",\n'
-        '    "relativeBoundingBox": { "left": 0.4, "top": 0.1, "width": 0.2, "height": 0.6 }\n'
+        '    "relativeBoundingBox": { "left": 0.4, "top": 0.1, "width": 0.2, "height": 0.6 },\n'
+        '    "shapes": [\n'
+        '      { "type": "rectangle", "description": "gray steel body", "relativeBoundingBox": { "left": 0.0, "top": 0.0, "width": 1.0, "height": 0.8 } },\n'
+        '      { "type": "triangle", "description": "sharp tip at top", "relativeBoundingBox": { "left": 0.0, "top": 0.8, "width": 1.0, "height": 0.2 } }\n'
+        '    ]\n'
         '  },\n'
         '  {\n'
         '    "name": "hilt",\n'
         '    "description": "brown handle at bottom",\n'
-        '    "relativeBoundingBox": { "left": 0.45, "top": 0.7, "width": 0.1, "height": 0.25 }\n'
+        '    "relativeBoundingBox": { "left": 0.45, "top": 0.7, "width": 0.1, "height": 0.25 },\n'
+        '    "shapes": [\n'
+        '      { "type": "rectangle", "description": "brown handle grip", "relativeBoundingBox": { "left": 0.0, "top": 0.0, "width": 1.0, "height": 1.0 } }\n'
+        '    ]\n'
         '  }\n'
         ']';
   }
@@ -65,7 +79,7 @@ class DecomposerAgent implements PixelArtAgent {
     AgentContext context,
     List<PixelArtStepResult> history,
   ) {
-    return 'Decompose the drawing instruction: "${context.userPrompt}" into its sub-components with bounding boxes.';
+    return 'Decompose the drawing instruction: "${context.userPrompt}" into its sub-components with bounding boxes and fundamental shapes.';
   }
 
   Future<DecomposerResult> decompose(
@@ -80,7 +94,7 @@ class DecomposerAgent implements PixelArtAgent {
     try {
       response = await aiService.generateContent(
         prompt: fullPrompt,
-        temperature: 0.7, // High temperature to generate creative variations!
+        temperature: 0.7,
       );
 
       if (response == null) {
@@ -124,11 +138,45 @@ class DecomposerAgent implements PixelArtAgent {
               1.0,
             );
 
+            // Parse shapes
+            final List<FundamentalShape> parsedShapes = [];
+            final shapesRaw = item['shapes'] as List? ?? [];
+            for (final s in shapesRaw) {
+              if (s is Map<String, dynamic>) {
+                final type = s['type'] as String? ?? 'rectangle';
+                final desc = s['description'] as String? ?? '';
+                final sBbox =
+                    s['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
+                final sLeft = (sBbox['left'] as num? ?? 0.0).toDouble();
+                final sTop = (sBbox['top'] as num? ?? 0.0).toDouble();
+                final sWidth = (sBbox['width'] as num? ?? 1.0).toDouble().clamp(
+                  0.0,
+                  1.0,
+                );
+                final sHeight = (sBbox['height'] as num? ?? 1.0)
+                    .toDouble()
+                    .clamp(0.0, 1.0);
+                parsedShapes.add(
+                  FundamentalShape(
+                    type: type,
+                    description: desc,
+                    relativeBoundingBox: Rect.fromLTWH(
+                      sLeft,
+                      sTop,
+                      sWidth,
+                      sHeight,
+                    ),
+                  ),
+                );
+              }
+            }
+
             parsedItems.add(
               _RawParsedComponent(
                 name: name,
                 description: description,
                 rect: Rect.fromLTWH(left, top, width, height),
+                shapes: parsedShapes,
               ),
             );
           }
@@ -243,6 +291,7 @@ class DecomposerAgent implements PixelArtAgent {
           name: item.name,
           description: item.description,
           relativeBoundingBox: alignedRect,
+          shapes: item.shapes,
         ),
       );
     }

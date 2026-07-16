@@ -123,6 +123,45 @@ void main() {
       );
     });
 
+    testWidgets('renders component fundamental shape chips', (tester) async {
+      final container = ProviderContainer();
+      final components = [
+        PixelArtComponent(
+          name: 'blade',
+          description: 'vertical blade',
+          relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          shapes: [
+            FundamentalShape(
+              type: 'rectangle',
+              description: 'steel body',
+              relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 0.8),
+            ),
+            FundamentalShape(
+              type: 'triangle',
+              description: 'pointy tip',
+              relativeBoundingBox: const Rect.fromLTWH(0.0, 0.8, 1.0, 0.2),
+            ),
+          ],
+        ),
+      ];
+      container.read(canvasStateProvider.notifier).state = container
+          .read(canvasStateProvider)
+          .copyWith(decomposedComponents: components, activeComponentIndex: 0);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const MaterialApp(
+            home: Scaffold(body: DecomposedComponentsList()),
+          ),
+        ),
+      );
+
+      // Verify the shapes chips description text is rendered
+      expect(find.text('steel body'), findsOneWidget);
+      expect(find.text('pointy tip'), findsOneWidget);
+    });
+
     testGoldens('DecomposedComponentsList renders disabled state by default', (
       tester,
     ) async {

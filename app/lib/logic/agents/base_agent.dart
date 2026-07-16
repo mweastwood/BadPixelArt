@@ -16,18 +16,61 @@ abstract class PixelArtAgent {
   );
 }
 
+class FundamentalShape {
+  final String type; // 'rectangle', 'circle', 'triangle'
+  final Rect
+  relativeBoundingBox; // Relative to parent component's bounding box, from 0.0 to 1.0
+  final String description;
+
+  FundamentalShape({
+    required this.type,
+    required this.relativeBoundingBox,
+    required this.description,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'relativeBoundingBox': {
+        'left': relativeBoundingBox.left,
+        'top': relativeBoundingBox.top,
+        'width': relativeBoundingBox.width,
+        'height': relativeBoundingBox.height,
+      },
+      'description': description,
+    };
+  }
+
+  factory FundamentalShape.fromJson(Map<String, dynamic> json) {
+    final bbox = json['relativeBoundingBox'] as Map<String, dynamic>;
+    return FundamentalShape(
+      type: json['type'] as String,
+      description: json['description'] as String,
+      relativeBoundingBox: Rect.fromLTWH(
+        (bbox['left'] as num).toDouble(),
+        (bbox['top'] as num).toDouble(),
+        (bbox['width'] as num).toDouble(),
+        (bbox['height'] as num).toDouble(),
+      ),
+    );
+  }
+}
+
 class PixelArtComponent {
   final String name;
   final String description;
   final Rect relativeBoundingBox; // Normalized bounding box (0.0 to 1.0)
   final List<List<int>>?
   grid; // Component specific sketch grid (0 = empty, 1 = filled volume)
+  final List<FundamentalShape>
+  shapes; // Fundamental geometric shapes composing this component
 
   PixelArtComponent({
     required this.name,
     required this.description,
     required this.relativeBoundingBox,
     this.grid,
+    this.shapes = const [],
   });
 
   List<List<int>>? getOutlineGrid() {
@@ -62,12 +105,14 @@ class PixelArtComponent {
     String? description,
     Rect? relativeBoundingBox,
     List<List<int>>? grid,
+    List<FundamentalShape>? shapes,
   }) {
     return PixelArtComponent(
       name: name ?? this.name,
       description: description ?? this.description,
       relativeBoundingBox: relativeBoundingBox ?? this.relativeBoundingBox,
       grid: grid ?? this.grid,
+      shapes: shapes ?? this.shapes,
     );
   }
 
@@ -82,6 +127,7 @@ class PixelArtComponent {
         'height': relativeBoundingBox.height,
       },
       if (grid != null) 'grid': grid,
+      'shapes': shapes.map((s) => s.toJson()).toList(),
     };
   }
 
@@ -92,6 +138,11 @@ class PixelArtComponent {
     if (gridRaw != null) {
       parsedGrid = gridRaw.map((row) => List<int>.from(row as List)).toList();
     }
+    final shapesRaw = json['shapes'] as List? ?? [];
+    final parsedShapes = shapesRaw
+        .map((s) => FundamentalShape.fromJson(s as Map<String, dynamic>))
+        .toList();
+
     return PixelArtComponent(
       name: json['name'] as String,
       description: json['description'] as String,
@@ -102,6 +153,7 @@ class PixelArtComponent {
         (bbox['height'] as num).toDouble(),
       ),
       grid: parsedGrid,
+      shapes: parsedShapes,
     );
   }
 }
