@@ -93,7 +93,7 @@ void main() {
         // Previews should be visible
         expect(find.text('Active Reference'), findsOneWidget);
         expect(find.text('Original'), findsOneWidget);
-        expect(find.text('Model Input (64x64)'), findsOneWidget);
+        expect(find.text('Model Input (512x512)'), findsOneWidget);
         expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
         expect(find.byIcon(Icons.delete_outline), findsOneWidget);
       },
