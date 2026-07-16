@@ -41,7 +41,7 @@ dependencies:
   local_agent:
     git:
       url: https://github.com/mweastwood/flutter-local-agent.git
-      ref: v0.0.10
+      ref: v0.0.11
 
 
 dev_dependencies:
