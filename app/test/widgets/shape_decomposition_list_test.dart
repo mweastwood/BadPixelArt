@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_agent/local_agent.dart';
 import '../test_helper.dart';
 
-class LocalMockAiService implements AiService {
+class LocalMockAiService extends AiService {
   @override
   Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
 

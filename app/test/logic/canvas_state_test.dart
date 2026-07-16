@@ -7,7 +7,7 @@ import 'package:local_agent/local_agent.dart';
 import 'package:bad_pixel_art/logic/prompts.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 
-class MockTestAiService implements AiService {
+class MockTestAiService extends AiService {
   AiCoreStatus status = AiCoreStatus.available;
   bool triggerDownloadCalled = false;
   Uint8List? lastCanvasImage;

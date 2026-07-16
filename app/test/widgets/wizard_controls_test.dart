@@ -15,7 +15,7 @@ import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import '../test_helper.dart';
 
-class WizardMockAiService implements AiService {
+class WizardMockAiService extends AiService {
   final String? responseToReturn;
 
   WizardMockAiService({this.responseToReturn});

@@ -851,14 +851,14 @@ class LoggingAiService implements AiService {
   );
 
   @override
-  Future<String?> generateContent({
+  Future<AiResponse?> generateContentRaw({
     required String prompt,
     Uint8List? imageBytes,
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
     try {
-      final response = await _delegate.generateContent(
+      final response = await _delegate.generateContentRaw(
         prompt: prompt,
         imageBytes: imageBytes,
         temperature: temperature,
@@ -869,7 +869,7 @@ class LoggingAiService implements AiService {
         AgentHistoryEntry(
           timestamp: DateTime.now(),
           prompt: prompt,
-          response: response ?? '',
+          response: response?.text ?? '',
           isError: response == null,
           imageBytes: imageBytes,
         ),
@@ -887,6 +887,22 @@ class LoggingAiService implements AiService {
       );
       rethrow;
     }
+  }
+
+  @override
+  Future<String?> generateContent({
+    required String prompt,
+    Uint8List? imageBytes,
+    double temperature = 1.0,
+    int? maxOutputTokens,
+  }) async {
+    final res = await generateContentRaw(
+      prompt: prompt,
+      imageBytes: imageBytes,
+      temperature: temperature,
+      maxOutputTokens: maxOutputTokens,
+    );
+    return res?.text;
   }
 }
 
