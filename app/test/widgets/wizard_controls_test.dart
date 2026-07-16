@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:local_agent/local_agent.dart';
 import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
@@ -105,9 +107,22 @@ void main() {
           const WizardControls(initialStep: 2),
         );
 
+      Widget customWrapper(Widget child) {
+        return ProviderScope(
+          overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData.dark(),
+            home: Scaffold(
+              body: Padding(padding: const EdgeInsets.all(8.0), child: child),
+            ),
+          ),
+        );
+      }
+
       await tester.pumpWidgetBuilder(
         builder.build(),
-        wrapper: testMaterialAppWrapper(),
+        wrapper: customWrapper,
         surfaceSize: const Size(500, 3800),
       );
       await multiScreenGolden(
