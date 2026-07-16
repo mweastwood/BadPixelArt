@@ -4,6 +4,7 @@ import '../logic/canvas_state.dart';
 import 'reference_image_prompt.dart';
 import 'color_palette_generator.dart';
 import 'decomposed_components_list.dart';
+import 'shape_decomposition_list.dart';
 import 'ai_history_dock.dart';
 
 class WizardState {
