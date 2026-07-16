@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:local_agent/local_agent.dart';
 import '../agents/base_agent.dart';
+import '../models/bounded_canvas.dart';
 import '../agents/sketch_painter_agent.dart';
 import '../agents/sketch_eraser_agent.dart';
 import '../agents/sketch_evaluator_agent.dart';
@@ -159,24 +160,14 @@ class SketchOrchestrator {
 
           final command = DrawingCommandFactory.create(tool, params);
           if (command != null) {
-            final bbox = comp.relativeBoundingBox;
-            final minX = (bbox.left * gridSize).round();
-            final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-            final minY = (bbox.top * gridSize).round();
-            final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
-
-            final nextGrid = compGrid
-                .map((row) => List<int>.from(row))
-                .toList();
-            command.execute(nextGrid, 1, gridSize); // Paint (color 1)
-
-            for (int y = 0; y < gridSize; y++) {
-              for (int x = 0; x < gridSize; x++) {
-                if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                  compGrid[y][x] = nextGrid[y][x];
-                }
-              }
-            }
+            final boundedCanvas = BoundedCanvas(
+              grid: compGrid,
+              boundingBox: comp.relativeBoundingBox,
+              gridSize: gridSize,
+            );
+            boundedCanvas.executeClamped((tempGrid) {
+              command.execute(tempGrid, 1, gridSize);
+            });
           }
 
           history.add(
@@ -220,19 +211,18 @@ class SketchOrchestrator {
           final List<dynamic> eraseCoords = eraserJson['erase'] as List? ?? [];
           final List<Point<int>> erasedPoints = [];
 
-          final bbox = comp.relativeBoundingBox;
-          final minX = (bbox.left * gridSize).round();
-          final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-          final minY = (bbox.top * gridSize).round();
-          final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+          final boundedCanvas = BoundedCanvas(
+            grid: compGrid,
+            boundingBox: comp.relativeBoundingBox,
+            gridSize: gridSize,
+          );
 
           for (final coord in eraseCoords) {
             if (coord is List && coord.length >= 2) {
               final x = (coord[0] as num).toInt();
               final y = (coord[1] as num).toInt();
-              // Enforce boundary constraint
-              if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-                compGrid[y][x] = 0; // Erase
+              if (boundedCanvas.isWithinBounds(x, y)) {
+                boundedCanvas.setPixel(x, y, 0); // Erase
                 erasedPoints.add(Point(x, y));
               }
             }
