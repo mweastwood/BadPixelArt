@@ -4,18 +4,18 @@ import '../logic/canvas_state.dart';
 import '../logic/agents/base_agent.dart';
 import 'package:local_agent/local_agent.dart';
 
-class DecomposedComponentsList extends ConsumerStatefulWidget {
+class SemanticComponentsList extends ConsumerStatefulWidget {
   final bool initialCollapsed;
 
-  const DecomposedComponentsList({super.key, this.initialCollapsed = false});
+  const SemanticComponentsList({super.key, this.initialCollapsed = false});
 
   @override
-  ConsumerState<DecomposedComponentsList> createState() =>
-      _DecomposedComponentsListState();
+  ConsumerState<SemanticComponentsList> createState() =>
+      _SemanticComponentsListState();
 }
 
-class _DecomposedComponentsListState
-    extends ConsumerState<DecomposedComponentsList> {
+class _SemanticComponentsListState
+    extends ConsumerState<SemanticComponentsList> {
   late bool _isCollapsed;
 
   @override
@@ -35,6 +35,29 @@ class _DecomposedComponentsListState
     final hasPromptAndRef =
         canvasModel.referenceImage != null &&
         canvasModel.userPrompt.trim().isNotEmpty;
+
+    // Show options dialog if pendingDecompositionOptions is not empty
+    if (canvasModel.pendingDecompositionOptions.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) {
+            return DecompositionOptionsDialog(
+              options: canvasModel.pendingDecompositionOptions,
+              onSelected: (idx) {
+                notifier.applyDecompositionOption(idx);
+                Navigator.of(context).pop();
+              },
+              onCancel: () {
+                notifier.clearPendingDecompositionOptions();
+                Navigator.of(context).pop();
+              },
+            );
+          },
+        );
+      });
+    }
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -209,72 +232,6 @@ class _DecomposedComponentsListState
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
-                                  if (comp.shapes.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: comp.shapes.map((shape) {
-                                        IconData icon;
-                                        switch (shape.type) {
-                                          case 'circle':
-                                            icon = Icons.circle;
-                                            break;
-                                          case 'triangle':
-                                            icon = Icons.change_history;
-                                            break;
-                                          case 'rectangle':
-                                          default:
-                                            icon = Icons.crop_square;
-                                            break;
-                                        }
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: theme
-                                                .colorScheme
-                                                .surfaceContainer,
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                            border: Border.all(
-                                              color: theme
-                                                  .colorScheme
-                                                  .outlineVariant,
-                                              width: 0.5,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                icon,
-                                                size: 10,
-                                                color:
-                                                    theme.colorScheme.primary,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                shape.description,
-                                                style: theme
-                                                    .textTheme
-                                                    .labelSmall
-                                                    ?.copyWith(
-                                                      fontSize: 9,
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
                                 ],
                               ),
                             ),

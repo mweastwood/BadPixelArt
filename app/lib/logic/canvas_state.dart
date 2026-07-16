@@ -658,6 +658,42 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(clearConfirmingComponent: true);
   }
 
+  Future<void> decomposeComponentToShapes(int index) async {
+    if (state.isGenerating ||
+        index < 0 ||
+        index >= state.decomposedComponents.length) {
+      return;
+    }
+    state = state.copyWith(isGenerating: true);
+
+    try {
+      final List<PixelArtComponent> updatedComponents = List.from(
+        state.decomposedComponents,
+      );
+      final comp = updatedComponents[index];
+      final agent = ShapeDecomposerAgent();
+      final context = AgentContext(
+        gridSize: state.gridSize,
+        activePalette: state.palette,
+        userPrompt: state.userPrompt,
+        targetComponent: comp,
+        currentGrid: state.grid,
+        referenceImage: state.referenceImage,
+      );
+
+      final shapes = await agent.decomposeComponent(_aiService, context);
+      updatedComponents[index] = comp.copyWith(shapes: shapes);
+
+      state = state.copyWith(
+        decomposedComponents: updatedComponents,
+        isGenerating: false,
+      );
+    } catch (e) {
+      debugPrint('Error decomposing component to shapes: $e');
+      state = state.copyWith(isGenerating: false);
+    }
+  }
+
   Future<void> decomposeComponentsToShapes() async {
     if (state.isGenerating || state.decomposedComponents.isEmpty) return;
     state = state.copyWith(isGenerating: true);

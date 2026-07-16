@@ -9,6 +9,7 @@ import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
 import 'package:bad_pixel_art/widgets/decomposed_components_list.dart';
+import 'package:bad_pixel_art/widgets/shape_decomposition_list.dart';
 import 'package:bad_pixel_art/widgets/ai_history_dock.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
@@ -126,7 +127,7 @@ void main() {
 
         // Verify Step 2 widgets are present (Semantic plan component list)
         expect(find.byType(ColorPaletteGenerator), findsNothing);
-        expect(find.byType(DecomposedComponentsList), findsOneWidget);
+        expect(find.byType(SemanticComponentsList), findsOneWidget);
         expect(find.byType(AiHistoryDock), findsOneWidget); // Always visible!
 
         // Tap Back FAB in Step 2 to go back to Step 1
@@ -134,7 +135,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(ColorPaletteGenerator), findsOneWidget);
-        expect(find.byType(DecomposedComponentsList), findsNothing);
+        expect(find.byType(SemanticComponentsList), findsNothing);
 
         // Navigate back to Step 2
         await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
@@ -145,7 +146,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Verify Step 3 widgets are present
-        expect(find.byType(DecomposedComponentsList), findsOneWidget);
+        expect(find.byType(ShapeDecompositionList), findsOneWidget);
         expect(
           find.byType(AiHistoryDock),
           findsOneWidget,
@@ -155,7 +156,7 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
         await tester.pumpAndSettle();
 
-        expect(find.byType(DecomposedComponentsList), findsOneWidget);
+        expect(find.byType(SemanticComponentsList), findsOneWidget);
         expect(find.byType(AiHistoryDock), findsOneWidget);
       },
     );

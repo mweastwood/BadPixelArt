@@ -15,7 +15,7 @@ void main() {
       (tester) async {
         await tester.pumpWidget(
           buildTestableWidget(
-            child: const Scaffold(body: DecomposedComponentsList()),
+            child: const Scaffold(body: SemanticComponentsList()),
           ),
         );
 
@@ -48,7 +48,7 @@ void main() {
           UncontrolledProviderScope(
             container: container,
             child: const MaterialApp(
-              home: Scaffold(body: DecomposedComponentsList()),
+              home: Scaffold(body: SemanticComponentsList()),
             ),
           ),
         );
@@ -97,7 +97,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: const MaterialApp(
-            home: Scaffold(body: DecomposedComponentsList()),
+            home: Scaffold(body: SemanticComponentsList()),
           ),
         ),
       );
@@ -123,56 +123,17 @@ void main() {
       );
     });
 
-    testWidgets('renders component fundamental shape chips', (tester) async {
-      final container = ProviderContainer();
-      final components = [
-        PixelArtComponent(
-          name: 'blade',
-          description: 'vertical blade',
-          relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-          shapes: [
-            FundamentalShape(
-              type: 'rectangle',
-              description: 'steel body',
-              relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 0.8),
-            ),
-            FundamentalShape(
-              type: 'triangle',
-              description: 'pointy tip',
-              relativeBoundingBox: const Rect.fromLTWH(0.0, 0.8, 1.0, 0.2),
-            ),
-          ],
-        ),
-      ];
-      container.read(canvasStateProvider.notifier).state = container
-          .read(canvasStateProvider)
-          .copyWith(decomposedComponents: components, activeComponentIndex: 0);
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const MaterialApp(
-            home: Scaffold(body: DecomposedComponentsList()),
-          ),
-        ),
-      );
-
-      // Verify the shapes chips description text is rendered
-      expect(find.text('steel body'), findsOneWidget);
-      expect(find.text('pointy tip'), findsOneWidget);
-    });
-
-    testGoldens('DecomposedComponentsList renders disabled state by default', (
+    testGoldens('SemanticComponentsList renders disabled state by default', (
       tester,
     ) async {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
         ..addScenario(
           'Expanded Empty State (Disabled)',
-          const DecomposedComponentsList(),
+          const SemanticComponentsList(),
         )
         ..addScenario(
           'Collapsed Empty State',
-          const DecomposedComponentsList(initialCollapsed: true),
+          const SemanticComponentsList(initialCollapsed: true),
         );
 
       await tester.pumpWidgetBuilder(
@@ -183,7 +144,7 @@ void main() {
     });
 
     testGoldens(
-      'DecomposedComponentsList renders enabled state with prompt and ref image',
+      'SemanticComponentsList renders enabled state with prompt and ref image',
       (tester) async {
         final mockNotifier = CanvasNotifier(TestMockAiService());
         mockNotifier.state = mockNotifier.state.copyWith(
@@ -194,7 +155,7 @@ void main() {
         final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
           ..addScenario(
             'Expanded Empty State (Enabled)',
-            const DecomposedComponentsList(),
+            const SemanticComponentsList(),
           );
 
         await tester.pumpWidgetBuilder(

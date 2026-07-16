@@ -4,6 +4,7 @@ import '../logic/canvas_state.dart';
 import 'reference_image_prompt.dart';
 import 'color_palette_generator.dart';
 import 'decomposed_components_list.dart';
+import 'shape_decomposition_list.dart';
 import 'ai_history_dock.dart';
 
 class WizardState {
@@ -90,13 +91,13 @@ class WizardControls extends ConsumerWidget {
       stepWidget = const Column(
         key: ValueKey('step_2'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [DecomposedComponentsList(initialCollapsed: false)],
+        children: [SemanticComponentsList(initialCollapsed: false)],
       );
     } else {
       stepWidget = const Column(
         key: ValueKey('step_3'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [DecomposedComponentsList(initialCollapsed: false)],
+        children: [ShapeDecompositionList(initialCollapsed: false)],
       );
     }
 
