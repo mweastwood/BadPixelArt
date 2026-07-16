@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' as gt;
 import 'package:local_agent/local_agent.dart';
 
-class TestMockAiService implements AiService {
+class TestMockAiService extends AiService {
   @override
   Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
 

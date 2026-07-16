@@ -194,10 +194,11 @@ extension PixelArtAiServiceExtension on AiService {
     int delayMs = 1000;
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        final response = await generateContent(
+        final response = await generateContentWithContinuation(
           prompt: prompt,
           imageBytes: imageBytes,
           temperature: temperature,
+          autoContinueLimit: 1,
         );
         if (response != null) {
           // If the response contains an error block from the MethodChannel/plugin,

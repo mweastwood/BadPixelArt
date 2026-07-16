@@ -25,9 +25,10 @@ class SketchOrchestrator {
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
 
     try {
-      final response = await _aiService.generateContent(
+      final response = await _aiService.generateContentWithContinuation(
         prompt: fullPrompt,
         temperature: 0.2,
+        autoContinueLimit: 1,
       );
       if (response == null) return null;
 

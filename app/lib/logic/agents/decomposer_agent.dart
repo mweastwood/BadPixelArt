@@ -80,10 +80,11 @@ class DecomposerAgent implements PixelArtAgent {
     String? response;
 
     try {
-      response = await aiService.generateContent(
+      response = await aiService.generateContentWithContinuation(
         prompt: fullPrompt,
         imageBytes: context.referenceImage,
         temperature: 0.7,
+        autoContinueLimit: 1,
       );
 
       if (response == null) {
