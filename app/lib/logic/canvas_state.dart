@@ -8,6 +8,7 @@ import 'drawing_commands.dart';
 import 'algorithms/k_means_quantizer.dart';
 import 'agents/base_agent.dart';
 import 'agents/decomposer_agent.dart';
+import 'agents/shape_decomposer_agent.dart';
 import 'orchestrators/sketch_orchestrator.dart';
 import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
@@ -639,6 +640,51 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       _confirmationCompleter!.complete(approved);
     }
     state = state.copyWith(clearConfirmingComponent: true);
+  }
+
+  Future<void> decomposeComponentsToShapes() async {
+    if (state.isGenerating || state.decomposedComponents.isEmpty) return;
+    state = state.copyWith(isGenerating: true);
+
+    try {
+      final List<PixelArtComponent> updatedComponents = [];
+      final agent = ShapeDecomposerAgent();
+      final List<AgentHistoryEntry> newHistory = List.from(state.aiHistory);
+
+      for (int i = 0; i < state.decomposedComponents.length; i++) {
+        final comp = state.decomposedComponents[i];
+        final context = AgentContext(
+          gridSize: state.gridSize,
+          activePalette: state.palette,
+          userPrompt: state.userPrompt,
+          targetComponent: comp,
+          currentGrid: state.grid,
+        );
+
+        final shapes = await agent.decomposeComponent(_aiService, context);
+        updatedComponents.add(comp.copyWith(shapes: shapes));
+
+        newHistory.add(
+          AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt:
+                'Shape Decomposition for "${comp.name}" Prompt:\n${agent.getFormattedUserPrompt(context, [])}',
+            response:
+                'Shapes generated: ${shapes.map((s) => s.type).join(', ')}',
+            isError: false,
+          ),
+        );
+      }
+
+      state = state.copyWith(
+        decomposedComponents: updatedComponents,
+        aiHistory: newHistory,
+        isGenerating: false,
+      );
+    } catch (e) {
+      debugPrint('Error decomposing components to shapes: $e');
+      state = state.copyWith(isGenerating: false);
+    }
   }
 
   Future<void> sketchComponents() async {
