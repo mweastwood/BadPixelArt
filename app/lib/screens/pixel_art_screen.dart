@@ -482,8 +482,14 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
           onPressed: onNext,
           icon: nextIcon,
           label: Text(nextLabel),
-          backgroundColor: theme.colorScheme.primary,
-          foregroundColor: theme.colorScheme.onPrimary,
+          backgroundColor: onNext != null
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.12),
+          foregroundColor: onNext != null
+              ? theme.colorScheme.onPrimary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+          elevation: onNext != null ? 6.0 : 0.0,
+          highlightElevation: onNext != null ? 12.0 : 0.0,
         ),
       ],
     ],
