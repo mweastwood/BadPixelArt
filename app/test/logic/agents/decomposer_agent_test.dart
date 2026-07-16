@@ -89,6 +89,52 @@ void main() {
       expect(result.components[1].name, equals('hilt'));
     });
 
+    test('decomposes prompt correctly with shapes JSON response', () async {
+      final mockJson = '''
+      [
+        {
+          "name": "blade",
+          "description": "sharp blue blade",
+          "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 },
+          "shapes": [
+            {
+              "type": "rectangle",
+              "description": "blue blade body",
+              "relativeBoundingBox": { "left": 0.0, "top": 0.0, "width": 1.0, "height": 0.8 }
+            },
+            {
+              "type": "triangle",
+              "description": "sharp tip",
+              "relativeBoundingBox": { "left": 0.0, "top": 0.8, "width": 1.0, "height": 0.2 }
+            }
+          ]
+        }
+      ]
+      ''';
+
+      final agent = DecomposerAgent();
+      final mockAi = TestMockAiService(responseToReturn: mockJson);
+      final result = await agent.decompose(mockAi, context);
+
+      expect(result.components, hasLength(1));
+      final comp = result.components[0];
+      expect(comp.name, equals('blade'));
+      expect(comp.shapes, hasLength(2));
+      expect(comp.shapes[0].type, equals('rectangle'));
+      expect(comp.shapes[0].description, equals('blue blade body'));
+      expect(
+        comp.shapes[0].relativeBoundingBox,
+        equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 0.8)),
+      );
+
+      expect(comp.shapes[1].type, equals('triangle'));
+      expect(comp.shapes[1].description, equals('sharp tip'));
+      expect(
+        comp.shapes[1].relativeBoundingBox,
+        equals(const Rect.fromLTWH(0.0, 0.8, 1.0, 0.2)),
+      );
+    });
+
     test(
       'automatically scales and centers off-center bounding boxes',
       () async {

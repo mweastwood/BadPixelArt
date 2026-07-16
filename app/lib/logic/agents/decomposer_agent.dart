@@ -19,11 +19,13 @@ class _RawParsedComponent {
   final String name;
   final String description;
   final Rect rect;
+  final List<FundamentalShape> shapes;
 
   _RawParsedComponent({
     required this.name,
     required this.description,
     required this.rect,
+    this.shapes = const [],
   });
 }
 
@@ -80,7 +82,7 @@ class DecomposerAgent implements PixelArtAgent {
     try {
       response = await aiService.generateContent(
         prompt: fullPrompt,
-        temperature: 0.7, // High temperature to generate creative variations!
+        temperature: 0.7,
       );
 
       if (response == null) {
@@ -124,11 +126,45 @@ class DecomposerAgent implements PixelArtAgent {
               1.0,
             );
 
+            // Parse shapes
+            final List<FundamentalShape> parsedShapes = [];
+            final shapesRaw = item['shapes'] as List? ?? [];
+            for (final s in shapesRaw) {
+              if (s is Map<String, dynamic>) {
+                final type = s['type'] as String? ?? 'rectangle';
+                final desc = s['description'] as String? ?? '';
+                final sBbox =
+                    s['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
+                final sLeft = (sBbox['left'] as num? ?? 0.0).toDouble();
+                final sTop = (sBbox['top'] as num? ?? 0.0).toDouble();
+                final sWidth = (sBbox['width'] as num? ?? 1.0).toDouble().clamp(
+                  0.0,
+                  1.0,
+                );
+                final sHeight = (sBbox['height'] as num? ?? 1.0)
+                    .toDouble()
+                    .clamp(0.0, 1.0);
+                parsedShapes.add(
+                  FundamentalShape(
+                    type: type,
+                    description: desc,
+                    relativeBoundingBox: Rect.fromLTWH(
+                      sLeft,
+                      sTop,
+                      sWidth,
+                      sHeight,
+                    ),
+                  ),
+                );
+              }
+            }
+
             parsedItems.add(
               _RawParsedComponent(
                 name: name,
                 description: description,
                 rect: Rect.fromLTWH(left, top, width, height),
+                shapes: parsedShapes,
               ),
             );
           }
@@ -243,6 +279,7 @@ class DecomposerAgent implements PixelArtAgent {
           name: item.name,
           description: item.description,
           relativeBoundingBox: alignedRect,
+          shapes: item.shapes,
         ),
       );
     }

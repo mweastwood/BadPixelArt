@@ -209,6 +209,72 @@ class _DecomposedComponentsListState
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
+                                  if (comp.shapes.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: comp.shapes.map((shape) {
+                                        IconData icon;
+                                        switch (shape.type) {
+                                          case 'circle':
+                                            icon = Icons.circle;
+                                            break;
+                                          case 'triangle':
+                                            icon = Icons.change_history;
+                                            break;
+                                          case 'rectangle':
+                                          default:
+                                            icon = Icons.crop_square;
+                                            break;
+                                        }
+                                        return Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: theme
+                                                .colorScheme
+                                                .surfaceContainer,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                            border: Border.all(
+                                              color: theme
+                                                  .colorScheme
+                                                  .outlineVariant,
+                                              width: 0.5,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                icon,
+                                                size: 10,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                shape.description,
+                                                style: theme
+                                                    .textTheme
+                                                    .labelSmall
+                                                    ?.copyWith(
+                                                      fontSize: 9,
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSurfaceVariant,
+                                                    ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
