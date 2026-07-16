@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
@@ -8,7 +9,7 @@ import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
 
 void main() {
-  group('WizardControls Widget Tests', () {
+  group('WizardControls Widget & Golden Tests', () {
     testWidgets(
       'shows ReferenceImagePrompt in Step 0 and navigates correctly',
       (tester) async {
@@ -88,5 +89,32 @@ void main() {
         expect(find.byType(DecomposedComponentsList), findsNothing);
       },
     );
+
+    testGoldens('WizardControls renders each step correctly', (tester) async {
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.4)
+        ..addScenario(
+          'Step 0: Reference & Prompt',
+          const WizardControls(initialStep: 0),
+        )
+        ..addScenario(
+          'Step 1: Color Palette',
+          const WizardControls(initialStep: 1),
+        )
+        ..addScenario(
+          'Step 2: Drawing Plan',
+          const WizardControls(initialStep: 2),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: testMaterialAppWrapper(),
+        surfaceSize: const Size(500, 3800),
+      );
+      await multiScreenGolden(
+        tester,
+        'wizard_controls_steps',
+        devices: [const Device(name: 'wizard_panel', size: Size(500, 3800))],
+      );
+    });
   });
 }

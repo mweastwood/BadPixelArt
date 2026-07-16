@@ -7,15 +7,24 @@ import 'decomposed_components_list.dart';
 import 'ai_history_dock.dart';
 
 class WizardControls extends ConsumerStatefulWidget {
-  const WizardControls({super.key});
+  final int initialStep;
+
+  const WizardControls({super.key, this.initialStep = 0});
 
   @override
   ConsumerState<WizardControls> createState() => _WizardControlsState();
 }
 
 class _WizardControlsState extends ConsumerState<WizardControls> {
-  int _currentStep = 0;
-  int _prevStep = 0;
+  late int _currentStep;
+  late int _prevStep;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentStep = widget.initialStep;
+    _prevStep = widget.initialStep;
+  }
 
   void _setStep(int step) {
     setState(() {
