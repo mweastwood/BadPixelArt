@@ -15,7 +15,7 @@ void main() {
       (tester) async {
         await tester.pumpWidget(
           buildTestableWidget(
-            child: const Scaffold(body: DecomposedComponentsList()),
+            child: const Scaffold(body: SemanticComponentsList()),
           ),
         );
 
@@ -48,7 +48,7 @@ void main() {
           UncontrolledProviderScope(
             container: container,
             child: const MaterialApp(
-              home: Scaffold(body: DecomposedComponentsList()),
+              home: Scaffold(body: SemanticComponentsList()),
             ),
           ),
         );
@@ -97,7 +97,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: const MaterialApp(
-            home: Scaffold(body: DecomposedComponentsList()),
+            home: Scaffold(body: SemanticComponentsList()),
           ),
         ),
       );
@@ -152,7 +152,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: const MaterialApp(
-            home: Scaffold(body: DecomposedComponentsList()),
+            home: Scaffold(body: ShapeDecompositionList()),
           ),
         ),
       );
@@ -162,17 +162,17 @@ void main() {
       expect(find.text('pointy tip'), findsOneWidget);
     });
 
-    testGoldens('DecomposedComponentsList renders disabled state by default', (
+    testGoldens('SemanticComponentsList renders disabled state by default', (
       tester,
     ) async {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
         ..addScenario(
           'Expanded Empty State (Disabled)',
-          const DecomposedComponentsList(),
+          const SemanticComponentsList(),
         )
         ..addScenario(
           'Collapsed Empty State',
-          const DecomposedComponentsList(initialCollapsed: true),
+          const SemanticComponentsList(initialCollapsed: true),
         );
 
       await tester.pumpWidgetBuilder(
@@ -183,7 +183,7 @@ void main() {
     });
 
     testGoldens(
-      'DecomposedComponentsList renders enabled state with prompt and ref image',
+      'SemanticComponentsList renders enabled state with prompt and ref image',
       (tester) async {
         final mockNotifier = CanvasNotifier(TestMockAiService());
         mockNotifier.state = mockNotifier.state.copyWith(
@@ -194,7 +194,7 @@ void main() {
         final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
           ..addScenario(
             'Expanded Empty State (Enabled)',
-            const DecomposedComponentsList(),
+            const SemanticComponentsList(),
           );
 
         await tester.pumpWidgetBuilder(

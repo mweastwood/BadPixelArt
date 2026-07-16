@@ -432,23 +432,10 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
     onNext = () => ref.read(wizardStateProvider.notifier).setStep(2);
   } else if (step == 2) {
     nextLabel = 'Decompose to Shapes';
-    nextIcon = canvasState.isGenerating
-        ? const SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation(Colors.white),
-            ),
-          )
-        : const Icon(Icons.arrow_forward);
+    nextIcon = const Icon(Icons.arrow_forward);
     onNext = canvasState.isGenerating
         ? null
-        : () async {
-            final notifier = ref.read(canvasStateProvider.notifier);
-            await notifier.decomposeComponentsToShapes();
-            ref.read(wizardStateProvider.notifier).setStep(3);
-          };
+        : () => ref.read(wizardStateProvider.notifier).setStep(3);
   }
 
   VoidCallback? onBack;

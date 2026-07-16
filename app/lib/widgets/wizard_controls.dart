@@ -90,13 +90,13 @@ class WizardControls extends ConsumerWidget {
       stepWidget = const Column(
         key: ValueKey('step_2'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [DecomposedComponentsList(initialCollapsed: false)],
+        children: [SemanticComponentsList(initialCollapsed: false)],
       );
     } else {
       stepWidget = const Column(
         key: ValueKey('step_3'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [DecomposedComponentsList(initialCollapsed: false)],
+        children: [ShapeDecompositionList(initialCollapsed: false)],
       );
     }
 
