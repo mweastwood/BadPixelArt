@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_agent/local_agent.dart';
+import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
 import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
@@ -48,7 +49,7 @@ class WizardMockAiService implements AiService {
 void main() {
   group('WizardControls Widget & Golden Tests', () {
     testWidgets(
-      'shows ReferenceImagePrompt in Step 0 and navigates correctly across 4 steps',
+      'shows ReferenceImagePrompt in Step 0 and navigates correctly across 4 steps using FABs',
       (tester) async {
         final mockAiService = WizardMockAiService(
           responseToReturn:
@@ -62,7 +63,7 @@ void main() {
 
         await tester.pumpWidget(
           buildTestableWidget(
-            child: const WizardControls(),
+            child: const PixelArtScreen(),
             overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
           ),
         );
@@ -71,25 +72,23 @@ void main() {
         expect(find.byType(ReferenceImagePrompt), findsOneWidget);
         expect(find.byType(ColorPaletteGenerator), findsNothing);
 
-        // Next button should be disabled initially (no prompt provided)
-        final nextButtonFinder = find.byKey(
-          const ValueKey('wizard_next_to_palette'),
-        );
+        // Next FAB should be disabled initially (no prompt provided)
+        final nextButtonFinder = find.byKey(const ValueKey('wizard_next_fab'));
         expect(
-          tester.widget<ElevatedButton>(nextButtonFinder).onPressed,
+          tester.widget<FloatingActionButton>(nextButtonFinder).onPressed,
           isNull,
         );
 
-        // Update prompt in state to enable Next button
+        // Update prompt in state to enable Next FAB
         notifier.updatePrompt('a cool sword');
         await tester.pumpAndSettle();
 
         expect(
-          tester.widget<ElevatedButton>(nextButtonFinder).onPressed,
+          tester.widget<FloatingActionButton>(nextButtonFinder).onPressed,
           isNotNull,
         );
 
-        // Tap Next button to go to Step 1
+        // Tap Next FAB to go to Step 1
         await tester.tap(nextButtonFinder);
         await tester.pumpAndSettle();
 
@@ -97,10 +96,8 @@ void main() {
         expect(find.byType(ReferenceImagePrompt), findsNothing);
         expect(find.byType(ColorPaletteGenerator), findsOneWidget);
 
-        // Tap Back button to go back to Step 0
-        final backButtonFinder = find.byKey(
-          const ValueKey('wizard_back_to_prompt'),
-        );
+        // Tap Back FAB to go back to Step 0
+        final backButtonFinder = find.byKey(const ValueKey('wizard_back_fab'));
         await tester.tap(backButtonFinder);
         await tester.pumpAndSettle();
 
@@ -108,14 +105,11 @@ void main() {
         expect(find.byType(ColorPaletteGenerator), findsNothing);
 
         // Navigate back to Step 1
-        await tester.tap(find.byKey(const ValueKey('wizard_next_to_palette')));
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
         await tester.pumpAndSettle();
 
-        // Tap Next button in Step 1 to go to Step 2
-        final nextToDecomposedButton = find.byKey(
-          const ValueKey('wizard_next_to_decomposed'),
-        );
-        await tester.tap(nextToDecomposedButton);
+        // Tap Next FAB in Step 1 to go to Step 2
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
         await tester.pumpAndSettle();
 
         // Inject components once we are in Step 2 so we have items to show/decompose
@@ -135,27 +129,19 @@ void main() {
         expect(find.byType(DecomposedComponentsList), findsOneWidget);
         expect(find.byType(AiHistoryDock), findsNothing); // Not in step 2!
 
-        // Tap Back button in Step 2 to go back to Step 1
-        final backToPaletteButton = find.byKey(
-          const ValueKey('wizard_back_to_palette'),
-        );
-        await tester.tap(backToPaletteButton);
+        // Tap Back FAB in Step 2 to go back to Step 1
+        await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
         await tester.pumpAndSettle();
 
         expect(find.byType(ColorPaletteGenerator), findsOneWidget);
         expect(find.byType(DecomposedComponentsList), findsNothing);
 
         // Navigate back to Step 2
-        await tester.tap(
-          find.byKey(const ValueKey('wizard_next_to_decomposed')),
-        );
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
         await tester.pumpAndSettle();
 
-        // Tap Next: Decompose to Shapes in Step 2 to run AI and go to Step 3
-        final nextToShapesButton = find.byKey(
-          const ValueKey('wizard_next_to_shapes'),
-        );
-        await tester.tap(nextToShapesButton);
+        // Tap Next FAB in Step 2 to run AI and go to Step 3
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
         await tester.pumpAndSettle();
 
         // Verify Step 3 widgets are present
@@ -166,10 +152,7 @@ void main() {
         ); // History dock is in step 3!
 
         // Tap Back to Semantic Components to go back to Step 2
-        final backToComponentsButton = find.byKey(
-          const ValueKey('wizard_back_to_components'),
-        );
-        await tester.tap(backToComponentsButton);
+        await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
         await tester.pumpAndSettle();
 
         expect(find.byType(DecomposedComponentsList), findsOneWidget);
@@ -178,22 +161,42 @@ void main() {
     );
 
     testGoldens('WizardControls renders each step correctly', (tester) async {
-      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.4)
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 0.5)
         ..addScenario(
           'Step 0: Reference & Prompt',
-          const WizardControls(initialStep: 0),
+          ProviderScope(
+            overrides: [
+              wizardStateProvider.overrideWith((ref) => WizardNotifier(0)),
+            ],
+            child: const WizardControls(),
+          ),
         )
         ..addScenario(
           'Step 1: Color Palette',
-          const WizardControls(initialStep: 1),
+          ProviderScope(
+            overrides: [
+              wizardStateProvider.overrideWith((ref) => WizardNotifier(1)),
+            ],
+            child: const WizardControls(),
+          ),
         )
         ..addScenario(
           'Step 2: Semantic Plan',
-          const WizardControls(initialStep: 2),
+          ProviderScope(
+            overrides: [
+              wizardStateProvider.overrideWith((ref) => WizardNotifier(2)),
+            ],
+            child: const WizardControls(),
+          ),
         )
         ..addScenario(
           'Step 3: Shapes Plan & Sketching',
-          const WizardControls(initialStep: 3),
+          ProviderScope(
+            overrides: [
+              wizardStateProvider.overrideWith((ref) => WizardNotifier(3)),
+            ],
+            child: const WizardControls(),
+          ),
         );
 
       Widget customWrapper(Widget child) {
@@ -214,12 +217,12 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: customWrapper,
-        surfaceSize: const Size(500, 5000),
+        surfaceSize: const Size(500, 3200),
       );
       await multiScreenGolden(
         tester,
         'wizard_controls_steps',
-        devices: [const Device(name: 'wizard_panel', size: Size(500, 5000))],
+        devices: [const Device(name: 'wizard_panel', size: Size(500, 3200))],
       );
     });
   });

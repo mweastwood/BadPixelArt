@@ -6,256 +6,100 @@ import 'color_palette_generator.dart';
 import 'decomposed_components_list.dart';
 import 'ai_history_dock.dart';
 
-class WizardControls extends ConsumerStatefulWidget {
-  final int initialStep;
+class WizardState {
+  final int currentStep;
+  final int prevStep;
+  final bool autoAdvanced;
 
-  const WizardControls({super.key, this.initialStep = 0});
+  const WizardState({
+    this.currentStep = 0,
+    this.prevStep = 0,
+    this.autoAdvanced = false,
+  });
 
-  @override
-  ConsumerState<WizardControls> createState() => _WizardControlsState();
+  WizardState copyWith({int? currentStep, int? prevStep, bool? autoAdvanced}) {
+    return WizardState(
+      currentStep: currentStep ?? this.currentStep,
+      prevStep: prevStep ?? this.prevStep,
+      autoAdvanced: autoAdvanced ?? this.autoAdvanced,
+    );
+  }
 }
 
-class _WizardControlsState extends ConsumerState<WizardControls> {
-  late int _currentStep;
-  late int _prevStep;
-  bool _autoAdvanced = false;
+class WizardNotifier extends StateNotifier<WizardState> {
+  WizardNotifier([int initialStep = 0])
+    : super(WizardState(currentStep: initialStep, prevStep: initialStep));
 
-  @override
-  void initState() {
-    super.initState();
-    _currentStep = widget.initialStep;
-    _prevStep = widget.initialStep;
+  void setStep(int step) {
+    state = state.copyWith(
+      prevStep: state.currentStep,
+      currentStep: step,
+      autoAdvanced: true,
+    );
   }
 
-  void _setStep(int step) {
-    setState(() {
-      _prevStep = _currentStep;
-      _currentStep = step;
-      _autoAdvanced = true;
-    });
+  void autoAdvance(int step) {
+    state = state.copyWith(
+      prevStep: state.currentStep,
+      currentStep: step,
+      autoAdvanced: true,
+    );
   }
+}
+
+final wizardStateProvider = StateNotifierProvider<WizardNotifier, WizardState>((
+  ref,
+) {
+  return WizardNotifier();
+});
+
+class WizardControls extends ConsumerWidget {
+  const WizardControls({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final canvasState = ref.watch(canvasStateProvider);
-    final theme = Theme.of(context);
+    final wizardState = ref.watch(wizardStateProvider);
 
-    // Let the user advance if they've provided a prompt.
-    // If they have also provided a reference image, that is even better!
-    final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
-
-    // Advance automatically to Step 2 or 3 if components/shapes are already decomposed,
-    // so the user doesn't get stuck in Step 0/1 if reloading or starting with components.
-    if (!_autoAdvanced &&
-        _currentStep < 2 &&
+    // Auto-advancing logic
+    if (!wizardState.autoAdvanced &&
+        wizardState.currentStep < 2 &&
         canvasState.decomposedComponents.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _currentStep < 2) {
-          final hasShapes = canvasState.decomposedComponents.any(
-            (c) => c.shapes.isNotEmpty,
-          );
-          _autoAdvanced = true;
-          _setStep(hasShapes ? 3 : 2);
-        }
+        final hasShapes = canvasState.decomposedComponents.any(
+          (c) => c.shapes.isNotEmpty,
+        );
+        ref.read(wizardStateProvider.notifier).autoAdvance(hasShapes ? 3 : 2);
       });
     }
 
     Widget stepWidget;
-    if (_currentStep == 0) {
-      stepWidget = Column(
-        key: const ValueKey('step_0'),
+    if (wizardState.currentStep == 0) {
+      stepWidget = const Column(
+        key: ValueKey('step_0'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const ReferenceImagePrompt(initialCollapsed: false),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            key: const ValueKey('wizard_next_to_palette'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: theme.colorScheme.primary,
-              foregroundColor: theme.colorScheme.onPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              elevation: 2,
-            ),
-            onPressed: canGoToPalette ? () => _setStep(1) : null,
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Next: Choose Color Palette',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                ),
-                SizedBox(width: 8),
-                Icon(Icons.arrow_forward, size: 18),
-              ],
-            ),
-          ),
-        ],
+        children: [ReferenceImagePrompt(initialCollapsed: false)],
       );
-    } else if (_currentStep == 1) {
-      stepWidget = Column(
-        key: const ValueKey('step_1'),
+    } else if (wizardState.currentStep == 1) {
+      stepWidget = const Column(
+        key: ValueKey('step_1'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const ColorPaletteGenerator(),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const ValueKey('wizard_back_to_prompt'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    side: BorderSide(
-                      color: theme.colorScheme.outlineVariant,
-                      width: 1.5,
-                    ),
-                  ),
-                  onPressed: () => _setStep(0),
-                  icon: const Icon(Icons.arrow_back, size: 16),
-                  label: const Text('Back'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  key: const ValueKey('wizard_next_to_decomposed'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  onPressed: () => _setStep(2),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Next: Sketch Plan',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+        children: [ColorPaletteGenerator()],
       );
-    } else if (_currentStep == 2) {
-      stepWidget = Column(
-        key: const ValueKey('step_2'),
+    } else if (wizardState.currentStep == 2) {
+      stepWidget = const Column(
+        key: ValueKey('step_2'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const DecomposedComponentsList(initialCollapsed: false),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const ValueKey('wizard_back_to_palette'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    side: BorderSide(
-                      color: theme.colorScheme.outlineVariant,
-                      width: 1.5,
-                    ),
-                  ),
-                  onPressed: () => _setStep(1),
-                  icon: const Icon(Icons.palette_outlined, size: 16),
-                  label: const Text('Back'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  key: const ValueKey('wizard_next_to_shapes'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  onPressed: canvasState.isGenerating
-                      ? null
-                      : () async {
-                          final notifier = ref.read(
-                            canvasStateProvider.notifier,
-                          );
-                          await notifier.decomposeComponentsToShapes();
-                          if (mounted) {
-                            _setStep(3);
-                          }
-                        },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (canvasState.isGenerating) ...[
-                        const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation(Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      const Text(
-                        'Next: Decompose to Shapes',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+        children: [DecomposedComponentsList(initialCollapsed: false)],
       );
     } else {
-      stepWidget = Column(
-        key: const ValueKey('step_3'),
+      stepWidget = const Column(
+        key: ValueKey('step_3'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const DecomposedComponentsList(initialCollapsed: false),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            key: const ValueKey('wizard_back_to_components'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              side: BorderSide(
-                color: theme.colorScheme.outlineVariant,
-                width: 1.5,
-              ),
-            ),
-            onPressed: () => _setStep(2),
-            icon: const Icon(Icons.crop_free_outlined, size: 16),
-            label: const Text('Back to Semantic Components'),
-          ),
-          const SizedBox(height: 16),
-          const AiHistoryDock(),
+          DecomposedComponentsList(initialCollapsed: false),
+          SizedBox(height: 16),
+          AiHistoryDock(),
         ],
       );
     }
@@ -269,8 +113,9 @@ class _WizardControlsState extends ConsumerState<WizardControls> {
         switchInCurve: Curves.easeInOut,
         switchOutCurve: Curves.easeInOut,
         transitionBuilder: (Widget child, Animation<double> animation) {
-          final isEntering = child.key == ValueKey('step_$_currentStep');
-          final isForward = _currentStep >= _prevStep;
+          final isEntering =
+              child.key == ValueKey('step_${wizardState.currentStep}');
+          final isForward = wizardState.currentStep >= wizardState.prevStep;
 
           Offset beginOffset;
           if (isEntering) {
@@ -300,7 +145,7 @@ class _WizardControlsState extends ConsumerState<WizardControls> {
               ...previousChildren.map((w) {
                 return Positioned(left: 0, right: 0, child: w);
               }),
-              ?currentChild,
+              currentChild ?? const SizedBox.shrink(),
             ],
           );
         },
