@@ -241,6 +241,25 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  List<List<Color>> _downscaleColorGrid(
+    List<List<Color>> original,
+    int targetSize,
+  ) {
+    final List<List<Color>> result = List.generate(
+      targetSize,
+      (_) => List.filled(targetSize, const Color(0xFF000000)),
+    );
+    final double scale = original.length / targetSize;
+    for (int y = 0; y < targetSize; y++) {
+      final int srcY = (y * scale).toInt().clamp(0, original.length - 1);
+      for (int x = 0; x < targetSize; x++) {
+        final int srcX = (x * scale).toInt().clamp(0, original[0].length - 1);
+        result[y][x] = original[srcY][srcX];
+      }
+    }
+    return result;
+  }
+
   @override
   Uint8List generateCombinedVisualInput(
     Uint8List? referenceBmp,
@@ -249,7 +268,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     final List<Uint8List> bmpsToCombine = [];
 
     if (referenceBmp != null) {
-      final refGrid = bmpToColorGrid(referenceBmp);
+      var refGrid = bmpToColorGrid(referenceBmp);
+      if (refGrid.length != state.gridSize) {
+        refGrid = _downscaleColorGrid(refGrid, state.gridSize);
+      }
       final blurredGrid = applyGaussianBlur(refGrid);
       final quantizedGrid = applyColorQuantization(blurredGrid, state.palette);
       final quantizedBmp = bmpFromColorGrid(quantizedGrid);
@@ -412,7 +434,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> setUploadedReferenceImage(Uint8List rawBytes) async {
-    final bmp = await resizeAndConvertToBmp(rawBytes, state.gridSize);
+    final bmp = await resizeAndConvertToBmp(rawBytes, 512);
     if (bmp != null) {
       state = state.copyWith(
         referenceImage: bmp,

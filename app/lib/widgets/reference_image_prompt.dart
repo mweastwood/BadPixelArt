@@ -240,11 +240,11 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                                 .withValues(alpha: 0.5),
                             size: 16,
                           ),
-                          // 64x64 Downscaled Preview
+                          // 512x512 Downscaled Preview
                           Column(
                             children: [
                               Text(
-                                'Model Input (64x64)',
+                                'Model Input (512x512)',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                   fontSize: 10,
