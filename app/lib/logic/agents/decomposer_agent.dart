@@ -82,6 +82,7 @@ class DecomposerAgent implements PixelArtAgent {
     try {
       response = await aiService.generateContent(
         prompt: fullPrompt,
+        imageBytes: context.referenceImage,
         temperature: 0.7,
       );
 

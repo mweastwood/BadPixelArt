@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 abstract class PixelArtAgent {
@@ -164,6 +165,7 @@ class AgentContext {
   final String userPrompt;
   final PixelArtComponent? targetComponent; // Bounding box and sub-description
   final List<List<int>> currentGrid;
+  final Uint8List? referenceImage;
 
   AgentContext({
     required this.gridSize,
@@ -171,6 +173,7 @@ class AgentContext {
     required this.userPrompt,
     this.targetComponent,
     required this.currentGrid,
+    this.referenceImage,
   });
 }
 
