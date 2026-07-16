@@ -180,22 +180,13 @@ class PixelArtScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Left side: Just the Canvas
-                      const Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(child: CanvasGrid()),
-                            SizedBox(height: 16),
-                            _CanvasControlsCard(),
-                          ],
-                        ),
-                      ),
+                      const Expanded(flex: 3, child: CanvasGrid()),
                       const SizedBox(width: 24),
                       // Right side: Controls (Palette & AI Wizard)
                       const Expanded(
                         flex: 2,
                         child: SingleChildScrollView(
+                          padding: EdgeInsets.only(bottom: 120.0),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [WizardControls()],
@@ -207,13 +198,16 @@ class PixelArtScreen extends ConsumerWidget {
                 );
               } else {
                 return SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.only(
+                    left: 16.0,
+                    right: 16.0,
+                    top: 16.0,
+                    bottom: 120.0,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 380, child: CanvasGrid()),
-                      const SizedBox(height: 16),
-                      const _CanvasControlsCard(),
                       const SizedBox(height: 16),
                       const WizardControls(),
                     ],
@@ -222,6 +216,7 @@ class PixelArtScreen extends ConsumerWidget {
               }
             },
           ),
+          floatingActionButton: _buildFloatingActionButtons(context, ref),
         ),
         if (canvasState.isSuggestingPalette)
           Container(
@@ -409,142 +404,96 @@ class PixelArtScreen extends ConsumerWidget {
   }
 }
 
-class _CanvasControlsCard extends ConsumerWidget {
-  const _CanvasControlsCard();
+Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
+  final wizardState = ref.watch(wizardStateProvider);
+  final canvasState = ref.watch(canvasStateProvider);
+  final theme = Theme.of(context);
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final canvasModel = ref.watch(canvasStateProvider);
-    final notifier = ref.read(canvasStateProvider.notifier);
-    final theme = Theme.of(context);
+  if (canvasState.isSuggestingPalette) return null;
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                // Left-aligned AI Controls
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: canvasModel.isGenerating
-                      ? SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            color: theme.colorScheme.onPrimary,
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Icon(Icons.psychology, size: 18),
-                  label: Text(
-                    canvasModel.isGenerating
-                        ? 'AI Drawing...'
-                        : 'Suggest Stroke',
-                  ),
-                  onPressed:
-                      canvasModel.isGenerating ||
-                          canvasModel.aiStatus != AiCoreStatus.available
-                      ? null
-                      : notifier.triggerAiStroke,
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: canvasModel.autoRun
-                      ? 'Pause Auto-Run'
-                      : 'Start Auto-Run',
-                  icon: Icon(
-                    canvasModel.autoRun ? Icons.pause : Icons.play_arrow,
-                    color: canvasModel.autoRun ? Colors.amber : Colors.green,
-                    size: 24,
-                  ),
-                  onPressed: canvasModel.aiStatus == AiCoreStatus.available
-                      ? notifier.toggleAutoRun
-                      : null,
-                ),
-                const Spacer(),
-                // Right-aligned Canvas Actions
-                IconButton(
-                  tooltip: 'Undo',
-                  icon: const Icon(Icons.undo),
-                  onPressed: canvasModel.undoStack.isNotEmpty
-                      ? notifier.undo
-                      : null,
-                ),
-                IconButton(
-                  tooltip: 'Redo',
-                  icon: const Icon(Icons.redo),
-                  onPressed: canvasModel.redoStack.isNotEmpty
-                      ? notifier.redo
-                      : null,
-                ),
-                IconButton(
-                  tooltip: 'Reset Canvas',
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: Colors.redAccent,
-                  ),
-                  onPressed: notifier.resetCanvas,
-                ),
-              ],
+  final step = wizardState.currentStep;
+  final hasBack = step > 0;
+  final hasNext = step < 3;
+
+  String nextLabel = '';
+  Widget? nextIcon;
+  VoidCallback? onNext;
+
+  if (step == 0) {
+    final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
+    nextLabel = 'Choose Color Palette';
+    nextIcon = const Icon(Icons.arrow_forward);
+    onNext = canGoToPalette
+        ? () => ref.read(wizardStateProvider.notifier).setStep(1)
+        : null;
+  } else if (step == 1) {
+    nextLabel = 'Sketch Plan';
+    nextIcon = const Icon(Icons.arrow_forward);
+    onNext = () => ref.read(wizardStateProvider.notifier).setStep(2);
+  } else if (step == 2) {
+    nextLabel = 'Decompose to Shapes';
+    nextIcon = canvasState.isGenerating
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(Colors.white),
             ),
-            if (canvasModel.autoRun) ...[
-              const SizedBox(height: 8),
-              const Divider(),
-              Row(
-                children: [
-                  Icon(
-                    Icons.speed,
-                    color: theme.colorScheme.onSurfaceVariant,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Speed:',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  Expanded(
-                    child: Slider(
-                      min: 0.5,
-                      max: 3.0,
-                      divisions: 5,
-                      value: canvasModel.autoRunSpeed,
-                      label: '${canvasModel.autoRunSpeed}s',
-                      onChanged: notifier.updateSpeed,
-                    ),
-                  ),
-                  Text(
-                    '${canvasModel.autoRunSpeed}s',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
+          )
+        : const Icon(Icons.arrow_forward);
+    onNext = canvasState.isGenerating
+        ? null
+        : () async {
+            final notifier = ref.read(canvasStateProvider.notifier);
+            await notifier.decomposeComponentsToShapes();
+            ref.read(wizardStateProvider.notifier).setStep(3);
+          };
   }
+
+  VoidCallback? onBack;
+  if (step == 1) {
+    onBack = () => ref.read(wizardStateProvider.notifier).setStep(0);
+  } else if (step == 2) {
+    onBack = () => ref.read(wizardStateProvider.notifier).setStep(1);
+  } else if (step == 3) {
+    onBack = () => ref.read(wizardStateProvider.notifier).setStep(2);
+  }
+
+  return Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (hasBack) ...[
+        FloatingActionButton.extended(
+          key: const ValueKey('wizard_back_fab'),
+          heroTag: 'wizard_back_fab',
+          onPressed: onBack,
+          icon: const Icon(Icons.arrow_back),
+          label: Text(step == 3 ? 'Back to Semantic Components' : 'Back'),
+          backgroundColor: theme.colorScheme.surfaceContainerHigh,
+          foregroundColor: theme.colorScheme.onSurface,
+        ),
+        const SizedBox(width: 12),
+      ],
+      if (hasNext) ...[
+        FloatingActionButton.extended(
+          key: const ValueKey('wizard_next_fab'),
+          heroTag: 'wizard_next_fab',
+          onPressed: onNext,
+          icon: nextIcon,
+          label: Text(nextLabel),
+          backgroundColor: onNext != null
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.12),
+          foregroundColor: onNext != null
+              ? theme.colorScheme.onPrimary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+          elevation: onNext != null ? 6.0 : 0.0,
+          highlightElevation: onNext != null ? 12.0 : 0.0,
+        ),
+      ],
+    ],
+  );
 }
 
 Color _getComponentColor(int index) {
