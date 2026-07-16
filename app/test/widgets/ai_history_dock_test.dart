@@ -37,7 +37,7 @@ class MockFilePickerPlatform extends FilePickerPlatform {
   }
 }
 
-class LocalMockAiService implements AiService {
+class LocalMockAiService extends AiService {
   @override
   Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
 

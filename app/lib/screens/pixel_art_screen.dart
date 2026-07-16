@@ -241,7 +241,7 @@ class PixelArtScreen extends ConsumerWidget {
                       ),
                       const SizedBox(height: 20),
                       const Text(
-                        'AI is generating a custom 16-color palette...',
+                        'AI is generating a custom 8-color palette...',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
