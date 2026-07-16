@@ -618,6 +618,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         activePalette: state.palette,
         userPrompt: state.userPrompt,
         currentGrid: state.grid,
+        referenceImage: state.referenceImage,
       );
 
       // Perform 4 concurrent calls to the AI service

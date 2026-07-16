@@ -305,47 +305,6 @@ class _DecomposedComponentsListState
                     );
                   },
                 ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: canvasModel.isGenerating
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.draw_outlined),
-                      label: Text(
-                        canvasModel.isGenerating
-                            ? 'Sketching...'
-                            : 'Sketch Components',
-                      ),
-                      onPressed: canvasModel.isGenerating
-                          ? null
-                          : () => notifier.sketchComponents(),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.merge_type),
-                      label: const Text('Merge Outlines'),
-                      onPressed:
-                          canvasModel.isGenerating ||
-                              components.every((c) => c.grid == null)
-                          ? null
-                          : () => notifier.mergeComponentsToCanvas(),
-                    ),
-                  ),
-                ],
-              ),
             ],
           ],
         ),
