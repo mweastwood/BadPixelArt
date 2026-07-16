@@ -96,61 +96,66 @@ class WizardControls extends ConsumerWidget {
       stepWidget = const Column(
         key: ValueKey('step_3'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          DecomposedComponentsList(initialCollapsed: false),
-          SizedBox(height: 16),
-          AiHistoryDock(),
-        ],
+        children: [DecomposedComponentsList(initialCollapsed: false)],
       );
     }
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 350),
-      curve: Curves.easeInOut,
-      alignment: Alignment.topCenter,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 350),
-        switchInCurve: Curves.easeInOut,
-        switchOutCurve: Curves.easeInOut,
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          final isEntering =
-              child.key == ValueKey('step_${wizardState.currentStep}');
-          final isForward = wizardState.currentStep >= wizardState.prevStep;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              final isEntering =
+                  child.key == ValueKey('step_${wizardState.currentStep}');
+              final isForward = wizardState.currentStep >= wizardState.prevStep;
 
-          Offset beginOffset;
-          if (isEntering) {
-            beginOffset = isForward
-                ? const Offset(1.0, 0.0)
-                : const Offset(-1.0, 0.0);
-          } else {
-            beginOffset = isForward
-                ? const Offset(-1.0, 0.0)
-                : const Offset(1.0, 0.0);
-          }
+              Offset beginOffset;
+              if (isEntering) {
+                beginOffset = isForward
+                    ? const Offset(1.0, 0.0)
+                    : const Offset(-1.0, 0.0);
+              } else {
+                beginOffset = isForward
+                    ? const Offset(-1.0, 0.0)
+                    : const Offset(1.0, 0.0);
+              }
 
-          final slide = Tween<Offset>(
-            begin: beginOffset,
-            end: Offset.zero,
-          ).animate(animation);
+              final slide = Tween<Offset>(
+                begin: beginOffset,
+                end: Offset.zero,
+              ).animate(animation);
 
-          return SlideTransition(
-            position: slide,
-            child: FadeTransition(opacity: animation, child: child),
-          );
-        },
-        layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
-          return Stack(
-            alignment: Alignment.topCenter,
-            children: <Widget>[
-              ...previousChildren.map((w) {
-                return Positioned(left: 0, right: 0, child: w);
-              }),
-              currentChild ?? const SizedBox.shrink(),
-            ],
-          );
-        },
-        child: stepWidget,
-      ),
+              return SlideTransition(
+                position: slide,
+                child: FadeTransition(opacity: animation, child: child),
+              );
+            },
+            layoutBuilder:
+                (Widget? currentChild, List<Widget> previousChildren) {
+                  return Stack(
+                    alignment: Alignment.topCenter,
+                    children: <Widget>[
+                      ...previousChildren.map((w) {
+                        return Positioned(left: 0, right: 0, child: w);
+                      }),
+                      currentChild ?? const SizedBox.shrink(),
+                    ],
+                  );
+                },
+            child: stepWidget,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const AiHistoryDock(),
+      ],
     );
   }
 }

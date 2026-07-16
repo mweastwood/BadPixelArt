@@ -127,7 +127,7 @@ void main() {
         // Verify Step 2 widgets are present (Semantic plan component list)
         expect(find.byType(ColorPaletteGenerator), findsNothing);
         expect(find.byType(DecomposedComponentsList), findsOneWidget);
-        expect(find.byType(AiHistoryDock), findsNothing); // Not in step 2!
+        expect(find.byType(AiHistoryDock), findsOneWidget); // Always visible!
 
         // Tap Back FAB in Step 2 to go back to Step 1
         await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
@@ -156,7 +156,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(DecomposedComponentsList), findsOneWidget);
-        expect(find.byType(AiHistoryDock), findsNothing);
+        expect(find.byType(AiHistoryDock), findsOneWidget);
       },
     );
 
