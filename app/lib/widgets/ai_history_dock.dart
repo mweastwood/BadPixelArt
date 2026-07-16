@@ -252,6 +252,33 @@ class _HistoryItemState extends State<_HistoryItem> {
   bool _expanded = false;
   int _selectedPainterIndex = 0;
 
+  String _getInferenceTitle() {
+    final prompt = widget.entry.prompt;
+    if (prompt.contains('Decompose the drawing instruction')) {
+      return 'Semantic Decomposition';
+    }
+    if (prompt.contains('Decompose the component')) {
+      return 'Shape Decomposition';
+    }
+    if (prompt.contains('color palette generator')) {
+      return 'Palette Suggestion';
+    }
+    if (prompt.contains('AI pixel art critic') &&
+        prompt.contains('evaluating')) {
+      return 'Stroke Evaluation';
+    }
+    if (prompt.contains('AI pixel art painter')) {
+      return 'Stroke Suggestion';
+    }
+    if (prompt.contains('select the single best candidate')) {
+      return 'Candidate Selection (Tournament)';
+    }
+    if (prompt.contains('pixel art describer')) {
+      return 'Describe Canvas';
+    }
+    return 'AI Core Inference';
+  }
+
   void _showRawExchangeDialog(
     BuildContext context, {
     required String title,
@@ -729,7 +756,10 @@ class _HistoryItemState extends State<_HistoryItem> {
                               ? 'Critic picked Painter $criticChoice'
                               : (criticAction == 'undo'
                                     ? 'Stroke rejected by critic'
-                                    : 'Stroke suggested successfully')),
+                                    : (criticAction != null ||
+                                              parsedJson?['tool'] != null
+                                          ? 'Stroke suggested successfully'
+                                          : _getInferenceTitle()))),
                     style: TextStyle(
                       color: widget.entry.isError
                           ? theme.colorScheme.error
@@ -1315,6 +1345,117 @@ class _HistoryItemState extends State<_HistoryItem> {
                     const Divider(),
                     const SizedBox(height: 8),
                   ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'RAW PROMPT:',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 14),
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: widget.entry.prompt),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied prompt to clipboard'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        widget.entry.prompt,
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 10.5,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'RAW RESPONSE:',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 14),
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: widget.entry.response),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Copied response to clipboard'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        },
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        widget.entry.response,
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 10.5,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),

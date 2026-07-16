@@ -355,7 +355,7 @@ void main() {
       expect(model.aiHistory.first.isError, isFalse);
       expect(
         model.aiHistory.first.prompt,
-        contains('Decompose Option 1 Prompt'),
+        contains('Decompose the drawing instruction'),
       );
       expect(model.aiHistory.first.response, contains('"name": "blade"'));
       expect(

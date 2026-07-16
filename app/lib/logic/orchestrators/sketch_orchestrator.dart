@@ -43,15 +43,6 @@ class SketchOrchestrator {
         cleaned = lines.join('\n').trim();
       }
 
-      onLogHistory(
-        AgentHistoryEntry(
-          timestamp: DateTime.now(),
-          prompt: '${agent.name} Prompt:\n$fullPrompt',
-          response: '${agent.name} Response:\n$response',
-          isError: false,
-        ),
-      );
-
       return jsonDecode(cleaned) as Map<String, dynamic>;
     } catch (e) {
       debugPrint('Error running agent ${agent.name}: $e');

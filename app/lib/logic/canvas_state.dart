@@ -313,6 +313,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           modelPreference: 'full',
         ),
       ) {
+    if (_aiService is LoggingAiService) {
+      _aiService.onLog = (entry) {
+        state = state.copyWith(aiHistory: [...state.aiHistory, entry]);
+      };
+    }
     _initModelConfig();
   }
 
@@ -624,26 +629,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       ]);
 
       final List<List<PixelArtComponent>> options = [];
-      final List<AgentHistoryEntry> newHistory = List.from(state.aiHistory);
 
       for (int i = 0; i < results.length; i++) {
         final res = results[i];
         options.add(res.components);
-
-        newHistory.add(
-          AgentHistoryEntry(
-            timestamp: DateTime.now(),
-            prompt: 'Decompose Option ${i + 1} Prompt:\n${res.rawPrompt}',
-            response: 'Decompose Option ${i + 1} Response:\n${res.rawResponse}',
-            isError: false,
-            imageBytes: null,
-          ),
-        );
       }
 
       state = state.copyWith(
         pendingDecompositionOptions: options,
-        aiHistory: newHistory,
         isGenerating: false,
       );
     } catch (e) {
@@ -671,7 +664,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     try {
       final List<PixelArtComponent> updatedComponents = [];
       final agent = ShapeDecomposerAgent();
-      final List<AgentHistoryEntry> newHistory = List.from(state.aiHistory);
 
       for (int i = 0; i < state.decomposedComponents.length; i++) {
         final comp = state.decomposedComponents[i];
@@ -685,22 +677,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
         final shapes = await agent.decomposeComponent(_aiService, context);
         updatedComponents.add(comp.copyWith(shapes: shapes));
-
-        newHistory.add(
-          AgentHistoryEntry(
-            timestamp: DateTime.now(),
-            prompt:
-                'Shape Decomposition for "${comp.name}" Prompt:\n${agent.getFormattedUserPrompt(context, [])}',
-            response:
-                'Shapes generated: ${shapes.map((s) => s.type).join(', ')}',
-            isError: false,
-          ),
-        );
       }
 
       state = state.copyWith(
         decomposedComponents: updatedComponents,
-        aiHistory: newHistory,
         isGenerating: false,
       );
     } catch (e) {
@@ -812,9 +792,75 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 }
 
+class LoggingAiService implements AiService {
+  final AiService _delegate;
+  void Function(AgentHistoryEntry entry)? onLog;
+
+  LoggingAiService(this._delegate);
+
+  @override
+  Future<AiCoreStatus> checkStatus() => _delegate.checkStatus();
+
+  @override
+  Future<void> triggerDownload() => _delegate.triggerDownload();
+
+  @override
+  Future<void> setModelConfig({
+    required String releaseStage,
+    required String preference,
+  }) => _delegate.setModelConfig(
+    releaseStage: releaseStage,
+    preference: preference,
+  );
+
+  @override
+  Future<String?> generateContent({
+    required String prompt,
+    Uint8List? imageBytes,
+    double temperature = 1.0,
+    int? maxOutputTokens,
+  }) async {
+    try {
+      final response = await _delegate.generateContent(
+        prompt: prompt,
+        imageBytes: imageBytes,
+        temperature: temperature,
+        maxOutputTokens: maxOutputTokens,
+      );
+
+      onLog?.call(
+        AgentHistoryEntry(
+          timestamp: DateTime.now(),
+          prompt: prompt,
+          response: response ?? '',
+          isError: response == null,
+          imageBytes: imageBytes,
+        ),
+      );
+      return response;
+    } catch (e) {
+      onLog?.call(
+        AgentHistoryEntry(
+          timestamp: DateTime.now(),
+          prompt: prompt,
+          response: e.toString(),
+          isError: true,
+          imageBytes: imageBytes,
+        ),
+      );
+      rethrow;
+    }
+  }
+}
+
+final loggingAiServiceProvider = Provider<AiService>((ref) {
+  final baseService = ref.watch(aiServiceProvider);
+  return LoggingAiService(baseService);
+});
+
 final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
   ref,
 ) {
-  final aiService = ref.watch(aiServiceProvider);
+  final aiService = ref.watch(loggingAiServiceProvider);
   return CanvasNotifier(aiService);
 });

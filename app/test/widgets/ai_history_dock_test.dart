@@ -147,18 +147,18 @@ void main() {
       await tester.tap(find.byTooltip('View Raw AI Exchange'));
       await tester.pumpAndSettle();
 
-      // Verify prompt and response headers/texts are shown in dialog
-      expect(find.text('RAW PROMPT:'), findsOneWidget);
-      expect(find.text('RAW RESPONSE:'), findsOneWidget);
+      // Verify prompt and response headers/texts are shown in dialog and expanded card
+      expect(find.text('RAW PROMPT:'), findsNWidgets(2));
+      expect(find.text('RAW RESPONSE:'), findsNWidgets(2));
       expect(
         find.text('System Instructions:\nDraw a test sword.'),
-        findsOneWidget,
+        findsNWidgets(2),
       );
       expect(
         find.text(
           '{"understanding":"I see a basic layout.","reasoning":"Adding a structural line.","tool":"line","params":[0,0,5,5]}',
         ),
-        findsOneWidget,
+        findsNWidgets(2),
       );
     });
 
