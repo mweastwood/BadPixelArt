@@ -10,6 +10,7 @@ import 'agents/base_agent.dart';
 import 'agents/decomposer_agent.dart';
 import 'orchestrators/sketch_orchestrator.dart';
 import 'utils/bmp_utils.dart';
+import 'models/color_palette.dart';
 
 export 'utils/bmp_utils.dart';
 
@@ -260,60 +261,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     return combineBmps(bmpsToCombine);
   }
 
-  static final List<Color> grayscalePalette = [
-    const Color(0xFF000000), // Black
-    const Color(0xFF555555), // Dark Gray
-    const Color(0xFFAAAAAA), // Light Gray
-    const Color(0xFFFFFFFF), // White
-  ];
-
-  static final List<Color> primaryPalette = [
-    const Color(0xFF000000), // Black
-    const Color(0xFFFFFFFF), // White
-    const Color(0xFFFF0000), // Red
-    const Color(0xFF00FF00), // Green
-    const Color(0xFF0000FF), // Blue
-    const Color(0xFFFFFF00), // Yellow
-    const Color(0xFFFF00FF), // Magenta
-    const Color(0xFF00FFFF), // Cyan
-  ];
-
-  static final List<Color> gameboyPalette = [
-    const Color(0xFF0F380F),
-    const Color(0xFF306230),
-    const Color(0xFF8BAC0F),
-    const Color(0xFF9BBC0F),
-  ];
-
-  static final List<Color> nesPalette = [
-    const Color(0xFF000000), // Black
-    const Color(0xFFFCBCB0), // Peach/Skin
-    const Color(0xFFF06800), // Red/Orange
-    const Color(0xFFF8B800), // Yellow
-    const Color(0xFF00A800), // Green
-    const Color(0xFF0058F8), // Blue
-    const Color(0xFFD800CC), // Purple
-    const Color(0xFFFFFFFF), // White
-  ];
-
-  static final List<Color> pico8Palette = [
-    const Color(0xFF000000),
-    const Color(0xFF1D2B53),
-    const Color(0xFF7E2553),
-    const Color(0xFF008751),
-    const Color(0xFFAB5236),
-    const Color(0xFF5F574F),
-    const Color(0xFFC2C3C7),
-    const Color(0xFFFFF1E8),
-    const Color(0xFFFF004D),
-    const Color(0xFFFFA300),
-    const Color(0xFFFFEC27),
-    const Color(0xFF00E436),
-    const Color(0xFF29ADFF),
-    const Color(0xFF83769C),
-    const Color(0xFFFF77A8),
-    const Color(0xFFFFCCAA),
-  ];
+  static List<Color> get grayscalePalette => PaletteRegistry.grayscalePalette;
+  static List<Color> get primaryPalette => PaletteRegistry.primaryPalette;
+  static List<Color> get gameboyPalette => PaletteRegistry.gameboyPalette;
+  static List<Color> get nesPalette => PaletteRegistry.nesPalette;
+  static List<Color> get pico8Palette => PaletteRegistry.pico8Palette;
 
   CanvasNotifier(this._aiService)
     : super(
@@ -418,16 +370,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void selectPalette(String name) {
-    List<Color> newPalette = primaryPalette;
-    if (name == 'grayscale') {
-      newPalette = grayscalePalette;
-    } else if (name == 'gameboy') {
-      newPalette = gameboyPalette;
-    } else if (name == 'nes') {
-      newPalette = nesPalette;
-    } else if (name == 'pico8') {
-      newPalette = pico8Palette;
-    }
+    final newPalette = PaletteRegistry.getById(name).colors;
 
     state = state.copyWith(
       paletteName: name,
