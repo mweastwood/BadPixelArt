@@ -234,6 +234,68 @@ void main() {
       },
     );
 
+    testWidgets(
+      'renders CircularProgressIndicator only on the decomposing component',
+      (tester) async {
+        final container = ProviderContainer();
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+          PixelArtComponent(
+            name: 'hilt',
+            description: 'wooden handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+          ),
+        ];
+        container.read(canvasStateProvider.notifier).state = container
+            .read(canvasStateProvider)
+            .copyWith(
+              decomposedComponents: components,
+              isGenerating: true,
+              decomposingComponentIndex: 1,
+            );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(body: ShapeDecompositionList()),
+            ),
+          ),
+        );
+
+        final spinnerFinder = find.byType(CircularProgressIndicator);
+        expect(spinnerFinder, findsOneWidget);
+
+        final bladeRow = find.ancestor(
+          of: find.text('BLADE'),
+          matching: find.byType(Row),
+        );
+        final hiltRow = find.ancestor(
+          of: find.text('HILT'),
+          matching: find.byType(Row),
+        );
+
+        expect(
+          find.descendant(
+            of: bladeRow,
+            matching: find.byType(CircularProgressIndicator),
+          ),
+          findsNothing,
+        );
+        expect(
+          find.descendant(
+            of: hiltRow,
+            matching: find.byType(CircularProgressIndicator),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
+
     testGoldens('ShapeDecompositionList renders disabled state by default', (
       tester,
     ) async {

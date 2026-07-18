@@ -257,7 +257,10 @@ class _ShapeDecompositionListState
                             const SizedBox(width: 12),
                             // Decompose Button
                             IconButton(
-                              icon: canvasModel.isGenerating
+                              icon:
+                                  (canvasModel.isGenerating &&
+                                      canvasModel.decomposingComponentIndex ==
+                                          index)
                                   ? const SizedBox(
                                       width: 16,
                                       height: 16,

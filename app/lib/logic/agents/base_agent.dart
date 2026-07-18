@@ -166,6 +166,7 @@ class AgentContext {
   final PixelArtComponent? targetComponent; // Bounding box and sub-description
   final List<List<int>> currentGrid;
   final Uint8List? referenceImage;
+  final List<PixelArtComponent>? allComponents;
 
   AgentContext({
     required this.gridSize,
@@ -174,6 +175,7 @@ class AgentContext {
     this.targetComponent,
     required this.currentGrid,
     this.referenceImage,
+    this.allComponents,
   });
 }
 
