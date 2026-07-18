@@ -471,7 +471,10 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
           label: Text(nextLabel),
           backgroundColor: onNext != null
               ? theme.colorScheme.primary
-              : theme.colorScheme.onSurface.withValues(alpha: 0.12),
+              : Color.alphaBlend(
+                  theme.colorScheme.onSurface.withValues(alpha: 0.12),
+                  theme.colorScheme.surface,
+                ),
           foregroundColor: onNext != null
               ? theme.colorScheme.onPrimary
               : theme.colorScheme.onSurface.withValues(alpha: 0.38),

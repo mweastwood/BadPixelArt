@@ -303,6 +303,7 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
               TextField(
                 controller: _promptController,
                 onChanged: notifier.updatePrompt,
+                scrollPadding: const EdgeInsets.only(bottom: 140.0),
                 style: TextStyle(color: theme.colorScheme.onSurface),
                 decoration: InputDecoration(
                   labelText: 'User Instructions / Prompt',
