@@ -34,7 +34,18 @@ class ShapeDecomposerAgent implements PixelArtAgent {
     List<PixelArtStepResult> history,
   ) {
     final comp = context.targetComponent!;
-    return 'Decompose the component "${comp.name}" (Description: "${comp.description}") into its fundamental geometric shapes (rectangle, circle, triangle).';
+    final otherComps = context.allComponents
+        ?.where((c) => c.name != comp.name)
+        .map((c) => '"${c.name}" (${c.description})')
+        .join(', ');
+
+    var prompt =
+        'Decompose the component "${comp.name}" (Description: "${comp.description}") into its fundamental geometric shapes (rectangle, circle, triangle).';
+    if (otherComps != null && otherComps.isNotEmpty) {
+      prompt +=
+          '\n\nNote: The other components in this drawing plan are: $otherComps. Do NOT include shapes for these other components in your decomposition. Focus ONLY on decomposing the "${comp.name}" component.';
+    }
+    return prompt;
   }
 
   Future<List<FundamentalShape>> decomposeComponent(

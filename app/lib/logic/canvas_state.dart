@@ -55,6 +55,7 @@ class CanvasModel {
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
   final int? confirmingComponentIndex;
+  final int? decomposingComponentIndex;
 
   const CanvasModel({
     this.gridSize = 16,
@@ -83,6 +84,7 @@ class CanvasModel {
     this.decomposedComponents = const [],
     this.activeComponentIndex = 0,
     this.confirmingComponentIndex,
+    this.decomposingComponentIndex,
   });
 
   CanvasModel copyWith({
@@ -117,6 +119,8 @@ class CanvasModel {
     int? activeComponentIndex,
     int? confirmingComponentIndex,
     bool clearConfirmingComponent = false,
+    int? decomposingComponentIndex,
+    bool clearDecomposingComponent = false,
   }) {
     return CanvasModel(
       gridSize: gridSize ?? this.gridSize,
@@ -155,6 +159,9 @@ class CanvasModel {
       confirmingComponentIndex: clearConfirmingComponent
           ? null
           : (confirmingComponentIndex ?? this.confirmingComponentIndex),
+      decomposingComponentIndex: clearDecomposingComponent
+          ? null
+          : (decomposingComponentIndex ?? this.decomposingComponentIndex),
     );
   }
 
@@ -174,6 +181,7 @@ class CanvasModel {
         isSuggestingPalette == other.isSuggestingPalette &&
         showPaletteSuggestion == other.showPaletteSuggestion &&
         activeComponentIndex == other.activeComponentIndex &&
+        decomposingComponentIndex == other.decomposingComponentIndex &&
         listEquals(palette, other.palette) &&
         listEquals(suggestedPalette, other.suggestedPalette) &&
         listEquals(referenceImage, other.referenceImage) &&
@@ -200,6 +208,7 @@ class CanvasModel {
     isSuggestingPalette,
     showPaletteSuggestion,
     activeComponentIndex,
+    decomposingComponentIndex,
     Object.hashAll(palette),
     suggestedPalette != null ? Object.hashAll(suggestedPalette!) : null,
     referenceImage != null ? Object.hashAll(referenceImage!) : null,
@@ -664,7 +673,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         index >= state.decomposedComponents.length) {
       return;
     }
-    state = state.copyWith(isGenerating: true);
+    state = state.copyWith(
+      isGenerating: true,
+      decomposingComponentIndex: index,
+    );
 
     try {
       final List<PixelArtComponent> updatedComponents = List.from(
@@ -679,6 +691,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         targetComponent: comp,
         currentGrid: state.grid,
         referenceImage: state.referenceImage,
+        allComponents: state.decomposedComponents,
       );
 
       final shapes = await agent.decomposeComponent(_aiService, context);
@@ -687,10 +700,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       state = state.copyWith(
         decomposedComponents: updatedComponents,
         isGenerating: false,
+        clearDecomposingComponent: true,
       );
     } catch (e) {
       debugPrint('Error decomposing component to shapes: $e');
-      state = state.copyWith(isGenerating: false);
+      state = state.copyWith(
+        isGenerating: false,
+        clearDecomposingComponent: true,
+      );
     }
   }
 
@@ -704,12 +721,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
       for (int i = 0; i < state.decomposedComponents.length; i++) {
         final comp = state.decomposedComponents[i];
+        state = state.copyWith(decomposingComponentIndex: i);
         final context = AgentContext(
           gridSize: state.gridSize,
           activePalette: state.palette,
           userPrompt: state.userPrompt,
           targetComponent: comp,
           currentGrid: state.grid,
+          allComponents: state.decomposedComponents,
         );
 
         final shapes = await agent.decomposeComponent(_aiService, context);
@@ -719,10 +738,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       state = state.copyWith(
         decomposedComponents: updatedComponents,
         isGenerating: false,
+        clearDecomposingComponent: true,
       );
     } catch (e) {
       debugPrint('Error decomposing components to shapes: $e');
-      state = state.copyWith(isGenerating: false);
+      state = state.copyWith(
+        isGenerating: false,
+        clearDecomposingComponent: true,
+      );
     }
   }
 

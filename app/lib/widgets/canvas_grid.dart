@@ -178,6 +178,38 @@ class CanvasPainter extends CustomPainter {
           canvas.drawRect(labelRect, labelBgPaint);
 
           textPainter.paint(canvas, Offset(labelRect.left, labelRect.top));
+
+          // Draw the shapes inside this active component
+          if (comp.shapes.isNotEmpty) {
+            final shapePaint = Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0
+              ..color = Colors.amberAccent;
+
+            for (final shape in comp.shapes) {
+              final shapeRect = Rect.fromLTWH(
+                rect.left + shape.relativeBoundingBox.left * rect.width,
+                rect.top + shape.relativeBoundingBox.top * rect.height,
+                shape.relativeBoundingBox.width * rect.width,
+                shape.relativeBoundingBox.height * rect.height,
+              );
+
+              if (shape.type == 'circle') {
+                final radius = min(shapeRect.width, shapeRect.height) / 2;
+                canvas.drawCircle(shapeRect.center, radius, shapePaint);
+              } else if (shape.type == 'triangle') {
+                final path = Path()
+                  ..moveTo(shapeRect.left + shapeRect.width / 2, shapeRect.top)
+                  ..lineTo(shapeRect.left, shapeRect.bottom)
+                  ..lineTo(shapeRect.right, shapeRect.bottom)
+                  ..close();
+                canvas.drawPath(path, shapePaint);
+              } else {
+                // Default to rectangle
+                canvas.drawRect(shapeRect, shapePaint);
+              }
+            }
+          }
         } else {
           borderPaint
             ..color = Colors.white24

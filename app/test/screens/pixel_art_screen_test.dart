@@ -132,6 +132,55 @@ void main() {
         customPump: (tester) async => tester.pump(),
       );
     });
+
+    testGoldens(
+      'PixelArtScreen active component shapes highlighted golden render',
+      (tester) async {
+        final mockAiService = MockAiService();
+        final mockNotifier = CanvasNotifier(mockAiService);
+        final compGrid = List.generate(16, (_) => List.filled(16, 0));
+        for (int y = 2; y <= 10; y++) {
+          compGrid[y][8] = 1;
+        }
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              grid: compGrid,
+              shapes: [
+                FundamentalShape(
+                  type: 'rectangle',
+                  description: 'steel body',
+                  relativeBoundingBox: const Rect.fromLTWH(0.1, 0.1, 0.8, 0.6),
+                ),
+                FundamentalShape(
+                  type: 'circle',
+                  description: 'gem accent',
+                  relativeBoundingBox: const Rect.fromLTWH(0.3, 0.7, 0.4, 0.2),
+                ),
+              ],
+            ),
+          ],
+          activeComponentIndex: 0,
+        );
+
+        await tester.pumpWidgetBuilder(
+          const PixelArtScreen(),
+          wrapper: testMaterialAppWrapper(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+          ),
+        );
+
+        await screenMatchesGolden(
+          tester,
+          'pixel_art_screen_shapes_highlighted',
+        );
+      },
+    );
     testWidgets(
       'shows Choose Drawing Plan dialog when pendingDecompositionOptions is populated',
       (tester) async {
