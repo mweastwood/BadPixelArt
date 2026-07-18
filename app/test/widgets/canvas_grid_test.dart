@@ -147,6 +147,71 @@ void main() {
       },
     );
 
+    testWidgets(
+      'allows manual sculpting by tapping eligible pixels when AI is idle, but locks it while generating',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final compGrid = List.generate(16, (_) => List.filled(16, 0));
+        compGrid[8][8] = 1;
+
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              grid: compGrid,
+            ),
+          ],
+          activeComponentIndex: 0,
+          isGenerating: false,
+        );
+
+        final wizardNotifier = WizardNotifier(3); // Step 3 - sculpting phase
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+              wizardStateProvider.overrideWith((ref) => wizardNotifier),
+            ],
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(width: 300, height: 300, child: CanvasGrid()),
+              ),
+            ),
+          ),
+        );
+
+        // On a 300x300 canvas and 16x16 grid:
+        // Each cell is 300/16 = 18.75 pixels.
+        // Pixel (8, 7) is adjacent (outer border/add candidate), at Offset(8 * 18.75 + 9, 7 * 18.75 + 9) = Offset(159, 140).
+        // Let's tap on (8, 7) (Offset 159, 140) to add it:
+        await tester.tapAt(const Offset(159, 140));
+        await tester.pumpAndSettle();
+
+        // Verify that (8, 7) is now 1 (filled)
+        expect(
+          mockNotifier.state.decomposedComponents[0].grid![7][8],
+          equals(1),
+        );
+
+        // Now set isGenerating = true to simulate AI running
+        mockNotifier.state = mockNotifier.state.copyWith(isGenerating: true);
+        await tester.pumpAndSettle();
+
+        // Tap on (8, 8) (which is a remove candidate since it has background neighbors) at Offset(159, 159):
+        await tester.tapAt(const Offset(159, 159));
+        await tester.pumpAndSettle();
+
+        // Verify that (8, 8) remains 1 (filled) because it is locked down while generating!
+        expect(
+          mockNotifier.state.decomposedComponents[0].grid![8][8],
+          equals(1),
+        );
+      },
+    );
+
     testGoldens('CanvasGrid renders active component drag handles correctly', (
       tester,
     ) async {
