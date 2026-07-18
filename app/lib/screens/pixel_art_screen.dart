@@ -416,40 +416,51 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
   if (canvasState.isSuggestingPalette) return null;
 
   final step = wizardState.currentStep;
-  final hasBack = step > 0;
-  final hasNext = step < 3;
+  final hasBack = step.index > 0;
+  final hasNext = step.index < 3;
 
   String nextLabel = '';
   Widget? nextIcon;
   VoidCallback? onNext;
 
-  if (step == 0) {
+  if (step == WizardStep.setupPrompt) {
     final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
     nextLabel = 'Choose Color Palette';
     nextIcon = const Icon(Icons.arrow_forward);
     onNext = canGoToPalette
-        ? () => ref.read(wizardStateProvider.notifier).setStep(1)
+        ? () => ref
+              .read(wizardStateProvider.notifier)
+              .setStep(WizardStep.selectPalette)
         : null;
-  } else if (step == 1) {
+  } else if (step == WizardStep.selectPalette) {
     nextLabel = 'Sketch Plan';
     nextIcon = const Icon(Icons.arrow_forward);
-    onNext = () => ref.read(wizardStateProvider.notifier).setStep(2);
-  } else if (step == 2) {
+    onNext = () => ref
+        .read(wizardStateProvider.notifier)
+        .setStep(WizardStep.sketchingPlan);
+  } else if (step == WizardStep.sketchingPlan) {
     nextLabel = 'Decompose to Shapes';
     nextIcon = const Icon(Icons.arrow_forward);
     onNext =
         (canvasState.isGenerating || canvasState.decomposedComponents.isEmpty)
         ? null
-        : () => ref.read(wizardStateProvider.notifier).setStep(3);
+        : () => ref
+              .read(wizardStateProvider.notifier)
+              .setStep(WizardStep.componentSculpting);
   }
 
   VoidCallback? onBack;
-  if (step == 1) {
-    onBack = () => ref.read(wizardStateProvider.notifier).setStep(0);
-  } else if (step == 2) {
-    onBack = () => ref.read(wizardStateProvider.notifier).setStep(1);
-  } else if (step == 3) {
-    onBack = () => ref.read(wizardStateProvider.notifier).setStep(2);
+  if (step == WizardStep.selectPalette) {
+    onBack = () =>
+        ref.read(wizardStateProvider.notifier).setStep(WizardStep.setupPrompt);
+  } else if (step == WizardStep.sketchingPlan) {
+    onBack = () => ref
+        .read(wizardStateProvider.notifier)
+        .setStep(WizardStep.selectPalette);
+  } else if (step == WizardStep.componentSculpting) {
+    onBack = () => ref
+        .read(wizardStateProvider.notifier)
+        .setStep(WizardStep.sketchingPlan);
   }
 
   return Row(
@@ -461,7 +472,11 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
           heroTag: 'wizard_back_fab',
           onPressed: onBack,
           icon: const Icon(Icons.arrow_back),
-          label: Text(step == 3 ? 'Back to Semantic Components' : 'Back'),
+          label: Text(
+            step == WizardStep.componentSculpting
+                ? 'Back to Semantic Components'
+                : 'Back',
+          ),
           backgroundColor: theme.colorScheme.surfaceContainerHigh,
           foregroundColor: theme.colorScheme.onSurface,
         ),

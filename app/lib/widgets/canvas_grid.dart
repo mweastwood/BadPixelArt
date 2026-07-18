@@ -35,8 +35,10 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
   Widget build(BuildContext context) {
     final canvasModel = ref.watch(canvasStateProvider);
     final wizardState = ref.watch(wizardStateProvider);
-    final isSketchingPlanPhase = wizardState.currentStep == 2;
-    final isSculptingPhase = wizardState.currentStep == 3;
+    final isSketchingPlanPhase =
+        wizardState.currentStep == WizardStep.sketchingPlan;
+    final isSculptingPhase =
+        wizardState.currentStep == WizardStep.componentSculpting;
 
     return LayoutBuilder(
       builder: (context, constraints) {

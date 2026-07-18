@@ -7,18 +7,29 @@ import 'decomposed_components_list.dart';
 import 'shape_decomposition_list.dart';
 import 'ai_history_dock.dart';
 
+enum WizardStep {
+  setupPrompt,
+  selectPalette,
+  sketchingPlan,
+  componentSculpting,
+}
+
 class WizardState {
-  final int currentStep;
-  final int prevStep;
+  final WizardStep currentStep;
+  final WizardStep prevStep;
   final bool autoAdvanced;
 
   const WizardState({
-    this.currentStep = 0,
-    this.prevStep = 0,
+    this.currentStep = WizardStep.setupPrompt,
+    this.prevStep = WizardStep.setupPrompt,
     this.autoAdvanced = false,
   });
 
-  WizardState copyWith({int? currentStep, int? prevStep, bool? autoAdvanced}) {
+  WizardState copyWith({
+    WizardStep? currentStep,
+    WizardStep? prevStep,
+    bool? autoAdvanced,
+  }) {
     return WizardState(
       currentStep: currentStep ?? this.currentStep,
       prevStep: prevStep ?? this.prevStep,
@@ -28,21 +39,36 @@ class WizardState {
 }
 
 class WizardNotifier extends StateNotifier<WizardState> {
-  WizardNotifier([int initialStep = 0])
-    : super(WizardState(currentStep: initialStep, prevStep: initialStep));
+  WizardNotifier([Object initialStep = WizardStep.setupPrompt])
+    : super(
+        WizardState(
+          currentStep: _parseStep(initialStep),
+          prevStep: _parseStep(initialStep),
+        ),
+      );
 
-  void setStep(int step) {
+  static WizardStep _parseStep(Object step) {
+    if (step is WizardStep) return step;
+    if (step is int) {
+      return WizardStep.values[step.clamp(0, WizardStep.values.length - 1)];
+    }
+    return WizardStep.setupPrompt;
+  }
+
+  void setStep(Object step) {
+    final parsed = _parseStep(step);
     state = state.copyWith(
       prevStep: state.currentStep,
-      currentStep: step,
+      currentStep: parsed,
       autoAdvanced: true,
     );
   }
 
-  void autoAdvance(int step) {
+  void autoAdvance(Object step) {
+    final parsed = _parseStep(step);
     state = state.copyWith(
       prevStep: state.currentStep,
-      currentStep: step,
+      currentStep: parsed,
       autoAdvanced: true,
     );
   }
@@ -64,30 +90,36 @@ class WizardControls extends ConsumerWidget {
 
     // Auto-advancing logic
     if (!wizardState.autoAdvanced &&
-        wizardState.currentStep < 2 &&
+        wizardState.currentStep.index < WizardStep.sketchingPlan.index &&
         canvasState.decomposedComponents.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final hasShapes = canvasState.decomposedComponents.any(
           (c) => c.shapes.isNotEmpty,
         );
-        ref.read(wizardStateProvider.notifier).autoAdvance(hasShapes ? 3 : 2);
+        ref
+            .read(wizardStateProvider.notifier)
+            .autoAdvance(
+              hasShapes
+                  ? WizardStep.componentSculpting
+                  : WizardStep.sketchingPlan,
+            );
       });
     }
 
     Widget stepWidget;
-    if (wizardState.currentStep == 0) {
+    if (wizardState.currentStep == WizardStep.setupPrompt) {
       stepWidget = const Column(
         key: ValueKey('step_0'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [ReferenceImagePrompt(initialCollapsed: false)],
       );
-    } else if (wizardState.currentStep == 1) {
+    } else if (wizardState.currentStep == WizardStep.selectPalette) {
       stepWidget = const Column(
         key: ValueKey('step_1'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [ColorPaletteGenerator()],
       );
-    } else if (wizardState.currentStep == 2) {
+    } else if (wizardState.currentStep == WizardStep.sketchingPlan) {
       stepWidget = const Column(
         key: ValueKey('step_2'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -115,8 +147,10 @@ class WizardControls extends ConsumerWidget {
             switchOutCurve: Curves.easeInOut,
             transitionBuilder: (Widget child, Animation<double> animation) {
               final isEntering =
-                  child.key == ValueKey('step_${wizardState.currentStep}');
-              final isForward = wizardState.currentStep >= wizardState.prevStep;
+                  child.key ==
+                  ValueKey('step_${wizardState.currentStep.index}');
+              final isForward =
+                  wizardState.currentStep.index >= wizardState.prevStep.index;
 
               Offset beginOffset;
               if (isEntering) {
