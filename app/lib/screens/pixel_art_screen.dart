@@ -433,7 +433,8 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
   } else if (step == 2) {
     nextLabel = 'Decompose to Shapes';
     nextIcon = const Icon(Icons.arrow_forward);
-    onNext = canvasState.isGenerating
+    onNext =
+        (canvasState.isGenerating || canvasState.decomposedComponents.isEmpty)
         ? null
         : () => ref.read(wizardStateProvider.notifier).setStep(3);
   }

@@ -113,6 +113,16 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
         await tester.pumpAndSettle();
 
+        // Next FAB should be disabled initially in Step 2 (no drawing plan generated yet)
+        expect(
+          tester
+              .widget<FloatingActionButton>(
+                find.byKey(const ValueKey('wizard_next_fab')),
+              )
+              .onPressed,
+          isNull,
+        );
+
         // Inject components once we are in Step 2 so we have items to show/decompose
         notifier.state = notifier.state.copyWith(
           decomposedComponents: [
@@ -124,6 +134,16 @@ void main() {
           ],
         );
         await tester.pumpAndSettle();
+
+        // Next FAB should now be enabled
+        expect(
+          tester
+              .widget<FloatingActionButton>(
+                find.byKey(const ValueKey('wizard_next_fab')),
+              )
+              .onPressed,
+          isNotNull,
+        );
 
         // Verify Step 2 widgets are present (Semantic plan component list)
         expect(find.byType(ColorPaletteGenerator), findsNothing);
