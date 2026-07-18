@@ -3,18 +3,275 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/agents/base_agent.dart';
+import 'wizard_controls.dart';
 
-class CanvasGrid extends ConsumerWidget {
+enum DragHandle {
+  none,
+  topLeft,
+  topRight,
+  bottomLeft,
+  bottomRight,
+  top,
+  bottom,
+  left,
+  right,
+  center,
+}
+
+class CanvasGrid extends ConsumerStatefulWidget {
   const CanvasGrid({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CanvasGrid> createState() => _CanvasGridState();
+}
+
+class _CanvasGridState extends ConsumerState<CanvasGrid> {
+  DragHandle _activeHandle = DragHandle.none;
+
+  @override
+  Widget build(BuildContext context) {
     final canvasModel = ref.watch(canvasStateProvider);
+    final wizardState = ref.watch(wizardStateProvider);
+    final isSketchingPlanPhase = wizardState.currentStep == 2;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Find the maximum square size that fits
         final size = min(constraints.maxWidth, constraints.maxHeight);
+
+        Widget gridContent = CustomPaint(
+          painter: CanvasPainter(
+            grid: canvasModel.grid,
+            palette: canvasModel.palette,
+            decomposedComponents: canvasModel.decomposedComponents,
+            activeComponentIndex: canvasModel.activeComponentIndex,
+            isSketchingPlanPhase: isSketchingPlanPhase,
+          ),
+          child: GridPaper(
+            color: Colors.grey[800]!.withValues(alpha: 0.2),
+            divisions: 1,
+            subdivisions: 1,
+            interval: size / canvasModel.gridSize,
+            child: Container(),
+          ),
+        );
+
+        if (isSketchingPlanPhase &&
+            canvasModel.decomposedComponents.isNotEmpty) {
+          final activeIndex = canvasModel.activeComponentIndex;
+          if (activeIndex >= 0 &&
+              activeIndex < canvasModel.decomposedComponents.length) {
+            final activeComp = canvasModel.decomposedComponents[activeIndex];
+            final relativeRect = activeComp.relativeBoundingBox;
+            final rect = Rect.fromLTWH(
+              relativeRect.left * size,
+              relativeRect.top * size,
+              relativeRect.width * size,
+              relativeRect.height * size,
+            );
+
+            gridContent = GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onPanStart: (details) {
+                final localPos = details.localPosition;
+                const threshold = 24.0;
+
+                // Check corners
+                if ((localPos - rect.topLeft).distance <= threshold) {
+                  _activeHandle = DragHandle.topLeft;
+                } else if ((localPos - rect.topRight).distance <= threshold) {
+                  _activeHandle = DragHandle.topRight;
+                } else if ((localPos - rect.bottomLeft).distance <= threshold) {
+                  _activeHandle = DragHandle.bottomLeft;
+                } else if ((localPos - rect.bottomRight).distance <=
+                    threshold) {
+                  _activeHandle = DragHandle.bottomRight;
+                }
+                // Check edge midpoints
+                else if ((localPos -
+                            Offset((rect.left + rect.right) / 2, rect.top))
+                        .distance <=
+                    threshold) {
+                  _activeHandle = DragHandle.top;
+                } else if ((localPos -
+                            Offset((rect.left + rect.right) / 2, rect.bottom))
+                        .distance <=
+                    threshold) {
+                  _activeHandle = DragHandle.bottom;
+                } else if ((localPos -
+                            Offset(rect.left, (rect.top + rect.bottom) / 2))
+                        .distance <=
+                    threshold) {
+                  _activeHandle = DragHandle.left;
+                } else if ((localPos -
+                            Offset(rect.right, (rect.top + rect.bottom) / 2))
+                        .distance <=
+                    threshold) {
+                  _activeHandle = DragHandle.right;
+                }
+                // Check center/move
+                else if (rect.contains(localPos)) {
+                  _activeHandle = DragHandle.center;
+                } else {
+                  _activeHandle = DragHandle.none;
+                }
+              },
+              onPanUpdate: (details) {
+                if (_activeHandle == DragHandle.none) return;
+
+                final localPos = details.localPosition;
+                final relativeX = localPos.dx / size;
+                final relativeY = localPos.dy / size;
+                final clampedX = relativeX.clamp(0.0, 1.0);
+                final clampedY = relativeY.clamp(0.0, 1.0);
+                final currentRect = activeComp.relativeBoundingBox;
+                final minSize = 1.0 / canvasModel.gridSize;
+
+                Rect? newRect;
+
+                switch (_activeHandle) {
+                  case DragHandle.topLeft:
+                    double newLeft = clampedX;
+                    double newTop = clampedY;
+                    double newWidth = currentRect.right - newLeft;
+                    double newHeight = currentRect.bottom - newTop;
+                    if (newWidth < minSize) {
+                      newLeft = currentRect.right - minSize;
+                      newWidth = minSize;
+                    }
+                    if (newHeight < minSize) {
+                      newTop = currentRect.bottom - minSize;
+                      newHeight = minSize;
+                    }
+                    newRect = Rect.fromLTWH(
+                      newLeft,
+                      newTop,
+                      newWidth,
+                      newHeight,
+                    );
+                    break;
+                  case DragHandle.topRight:
+                    double newTop = clampedY;
+                    double newWidth = clampedX - currentRect.left;
+                    double newHeight = currentRect.bottom - newTop;
+                    if (newWidth < minSize) newWidth = minSize;
+                    if (newHeight < minSize) {
+                      newTop = currentRect.bottom - minSize;
+                      newHeight = minSize;
+                    }
+                    newRect = Rect.fromLTWH(
+                      currentRect.left,
+                      newTop,
+                      newWidth,
+                      newHeight,
+                    );
+                    break;
+                  case DragHandle.bottomLeft:
+                    double newLeft = clampedX;
+                    double newWidth = currentRect.right - newLeft;
+                    double newHeight = clampedY - currentRect.top;
+                    if (newWidth < minSize) {
+                      newLeft = currentRect.right - minSize;
+                      newWidth = minSize;
+                    }
+                    if (newHeight < minSize) newHeight = minSize;
+                    newRect = Rect.fromLTWH(
+                      newLeft,
+                      currentRect.top,
+                      newWidth,
+                      newHeight,
+                    );
+                    break;
+                  case DragHandle.bottomRight:
+                    double newWidth = clampedX - currentRect.left;
+                    double newHeight = clampedY - currentRect.top;
+                    if (newWidth < minSize) newWidth = minSize;
+                    if (newHeight < minSize) newHeight = minSize;
+                    newRect = Rect.fromLTWH(
+                      currentRect.left,
+                      currentRect.top,
+                      newWidth,
+                      newHeight,
+                    );
+                    break;
+                  case DragHandle.top:
+                    double newTop = clampedY;
+                    double newHeight = currentRect.bottom - newTop;
+                    if (newHeight < minSize) {
+                      newTop = currentRect.bottom - minSize;
+                      newHeight = minSize;
+                    }
+                    newRect = Rect.fromLTWH(
+                      currentRect.left,
+                      newTop,
+                      currentRect.width,
+                      newHeight,
+                    );
+                    break;
+                  case DragHandle.bottom:
+                    double newHeight = clampedY - currentRect.top;
+                    if (newHeight < minSize) newHeight = minSize;
+                    newRect = Rect.fromLTWH(
+                      currentRect.left,
+                      currentRect.top,
+                      currentRect.width,
+                      newHeight,
+                    );
+                    break;
+                  case DragHandle.left:
+                    double newLeft = clampedX;
+                    double newWidth = currentRect.right - newLeft;
+                    if (newWidth < minSize) {
+                      newLeft = currentRect.right - minSize;
+                      newWidth = minSize;
+                    }
+                    newRect = Rect.fromLTWH(
+                      newLeft,
+                      currentRect.top,
+                      newWidth,
+                      currentRect.height,
+                    );
+                    break;
+                  case DragHandle.right:
+                    double newWidth = clampedX - currentRect.left;
+                    if (newWidth < minSize) newWidth = minSize;
+                    newRect = Rect.fromLTWH(
+                      currentRect.left,
+                      currentRect.top,
+                      newWidth,
+                      currentRect.height,
+                    );
+                    break;
+                  case DragHandle.center:
+                    final deltaX = details.delta.dx / size;
+                    final deltaY = details.delta.dy / size;
+                    double newLeft = currentRect.left + deltaX;
+                    double newTop = currentRect.top + deltaY;
+                    newLeft = newLeft.clamp(0.0, 1.0 - currentRect.width);
+                    newTop = newTop.clamp(0.0, 1.0 - currentRect.height);
+                    newRect = Rect.fromLTWH(
+                      newLeft,
+                      newTop,
+                      currentRect.width,
+                      currentRect.height,
+                    );
+                    break;
+                  default:
+                    break;
+                }
+
+                if (newRect != null) {
+                  ref
+                      .read(canvasStateProvider.notifier)
+                      .updateComponentBoundingBox(activeIndex, newRect);
+                }
+              },
+              onPanEnd: (_) {
+                _activeHandle = DragHandle.none;
+              },
+              child: gridContent,
+            );
+          }
+        }
 
         return Center(
           child: SizedBox(
@@ -27,22 +284,7 @@ class CanvasGrid extends ConsumerWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: CustomPaint(
-                  painter: CanvasPainter(
-                    grid: canvasModel.grid,
-                    palette: canvasModel.palette,
-                    decomposedComponents: canvasModel.decomposedComponents,
-                    activeComponentIndex: canvasModel.activeComponentIndex,
-                  ),
-                  child: GridPaper(
-                    color: Colors.grey[800]!.withValues(alpha: 0.2),
-                    divisions: 1,
-                    subdivisions: 1,
-                    interval:
-                        size / canvasModel.gridSize, // Visual helper gridlines
-                    child: Container(),
-                  ),
-                ),
+                child: gridContent,
               ),
             ),
           ),
@@ -57,12 +299,14 @@ class CanvasPainter extends CustomPainter {
   final List<Color> palette;
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
+  final bool isSketchingPlanPhase;
 
   CanvasPainter({
     required this.grid,
     required this.palette,
     required this.decomposedComponents,
     required this.activeComponentIndex,
+    required this.isSketchingPlanPhase,
   });
 
   @override
@@ -210,6 +454,35 @@ class CanvasPainter extends CustomPainter {
               }
             }
           }
+
+          // Draw resize handles if in sketching plan phase
+          if (isSketchingPlanPhase) {
+            final handlePaint = Paint()
+              ..color = Colors.white
+              ..style = PaintingStyle.fill;
+            final handleBorderPaint = Paint()
+              ..color = activeColor
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0;
+
+            const handleRadius = 6.0;
+
+            void drawHandle(Offset center) {
+              canvas.drawCircle(center, handleRadius, handlePaint);
+              canvas.drawCircle(center, handleRadius, handleBorderPaint);
+            }
+
+            drawHandle(rect.topLeft);
+            drawHandle(rect.topRight);
+            drawHandle(rect.bottomLeft);
+            drawHandle(rect.bottomRight);
+
+            // Draw edge midpoints
+            drawHandle(Offset((rect.left + rect.right) / 2, rect.top));
+            drawHandle(Offset((rect.left + rect.right) / 2, rect.bottom));
+            drawHandle(Offset(rect.left, (rect.top + rect.bottom) / 2));
+            drawHandle(Offset(rect.right, (rect.top + rect.bottom) / 2));
+          }
         } else {
           borderPaint
             ..color = Colors.white24
@@ -238,6 +511,7 @@ class CanvasPainter extends CustomPainter {
     return oldDelegate.grid != grid ||
         oldDelegate.palette != palette ||
         oldDelegate.decomposedComponents != decomposedComponents ||
-        oldDelegate.activeComponentIndex != activeComponentIndex;
+        oldDelegate.activeComponentIndex != activeComponentIndex ||
+        oldDelegate.isSketchingPlanPhase != isSketchingPlanPhase;
   }
 }
