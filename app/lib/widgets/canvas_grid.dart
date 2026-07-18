@@ -33,6 +33,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
     final canvasModel = ref.watch(canvasStateProvider);
     final wizardState = ref.watch(wizardStateProvider);
     final isSketchingPlanPhase = wizardState.currentStep == 2;
+    final isSculptingPhase = wizardState.currentStep == 3;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -45,6 +46,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             decomposedComponents: canvasModel.decomposedComponents,
             activeComponentIndex: canvasModel.activeComponentIndex,
             isSketchingPlanPhase: isSketchingPlanPhase,
+            isSculptingPhase: isSculptingPhase,
           ),
           child: GridPaper(
             color: Colors.grey[800]!.withValues(alpha: 0.2),
@@ -300,6 +302,7 @@ class CanvasPainter extends CustomPainter {
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
   final bool isSketchingPlanPhase;
+  final bool isSculptingPhase;
 
   CanvasPainter({
     required this.grid,
@@ -307,6 +310,7 @@ class CanvasPainter extends CustomPainter {
     required this.decomposedComponents,
     required this.activeComponentIndex,
     required this.isSketchingPlanPhase,
+    required this.isSculptingPhase,
   });
 
   @override
@@ -371,6 +375,36 @@ class CanvasPainter extends CustomPainter {
                 cellHeight,
               );
               canvas.drawRect(rect, overlayPaint);
+            }
+          }
+        }
+      }
+    }
+
+    // Draw the active component's filled pixels if in sculpting phase
+    if (isSculptingPhase && decomposedComponents.isNotEmpty) {
+      if (activeComponentIndex >= 0 &&
+          activeComponentIndex < decomposedComponents.length) {
+        final comp = decomposedComponents[activeComponentIndex];
+        if (comp.grid != null) {
+          final activeColor = _getComponentColor(
+            activeComponentIndex,
+          ).withValues(alpha: 0.7);
+          final fillPaint = Paint()
+            ..color = activeColor
+            ..isAntiAlias = false;
+
+          for (int y = 0; y < gridSize; y++) {
+            for (int x = 0; x < gridSize; x++) {
+              if (comp.grid![y][x] > 0) {
+                final rect = Rect.fromLTWH(
+                  x * cellWidth,
+                  y * cellHeight,
+                  cellWidth,
+                  cellHeight,
+                );
+                canvas.drawRect(rect, fillPaint);
+              }
             }
           }
         }
@@ -512,6 +546,7 @@ class CanvasPainter extends CustomPainter {
         oldDelegate.palette != palette ||
         oldDelegate.decomposedComponents != decomposedComponents ||
         oldDelegate.activeComponentIndex != activeComponentIndex ||
-        oldDelegate.isSketchingPlanPhase != isSketchingPlanPhase;
+        oldDelegate.isSketchingPlanPhase != isSketchingPlanPhase ||
+        oldDelegate.isSculptingPhase != isSculptingPhase;
   }
 }

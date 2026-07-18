@@ -22,6 +22,19 @@ class _ShapeDecompositionListState
     _isCollapsed = widget.initialCollapsed;
   }
 
+  Color _getComponentColor(int index) {
+    final colors = [
+      Colors.blue,
+      Colors.amber,
+      Colors.green,
+      Colors.red,
+      Colors.purple,
+      Colors.teal,
+      Colors.orange,
+    ];
+    return colors[index % colors.length];
+  }
+
   @override
   Widget build(BuildContext context) {
     final canvasModel = ref.watch(canvasStateProvider);
@@ -29,6 +42,8 @@ class _ShapeDecompositionListState
     final theme = Theme.of(context);
     final components = canvasModel.decomposedComponents;
     final activeIndex = canvasModel.activeComponentIndex;
+
+    final hasAnyGrid = components.any((comp) => comp.grid != null);
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -48,13 +63,13 @@ class _ShapeDecompositionListState
                 child: Row(
                   children: [
                     Icon(
-                      Icons.category_outlined,
+                      Icons.brush_outlined,
                       color: theme.colorScheme.primary,
                       size: 24,
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Shape Decomposition',
+                      'Component Sculpting',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -103,7 +118,7 @@ class _ShapeDecompositionListState
                     ),
                   ),
                 )
-              else
+              else ...[
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -113,6 +128,9 @@ class _ShapeDecompositionListState
                   itemBuilder: (context, index) {
                     final comp = components[index];
                     final isActive = index == activeIndex;
+                    final isThisDecomposing =
+                        canvasModel.isGenerating &&
+                        canvasModel.decomposingComponentIndex == index;
 
                     return InkWell(
                       onTap: () => notifier.selectComponent(index),
@@ -135,14 +153,30 @@ class _ShapeDecompositionListState
                         ),
                         child: Row(
                           children: [
-                            // BBox icon indicator
-                            Icon(
-                              Icons.crop_free_outlined,
-                              size: 18,
-                              color: isActive
-                                  ? theme.colorScheme.primary
-                                  : theme.colorScheme.onSurfaceVariant,
-                            ),
+                            // Mini Canvas Preview
+                            if (comp.grid != null)
+                              MiniComponentCanvas(
+                                grid: comp.grid!,
+                                color: _getComponentColor(index),
+                              )
+                            else
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: theme.colorScheme.outlineVariant,
+                                    style: BorderStyle.solid,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                  color: theme.colorScheme.surface,
+                                ),
+                                child: Icon(
+                                  Icons.grid_on_outlined,
+                                  size: 20,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -164,103 +198,22 @@ class _ShapeDecompositionListState
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
-                                  if (comp.shapes.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: comp.shapes.map((shape) {
-                                        IconData icon;
-                                        switch (shape.type) {
-                                          case 'circle':
-                                            icon = Icons.circle;
-                                            break;
-                                          case 'triangle':
-                                            icon = Icons.change_history;
-                                            break;
-                                          case 'rectangle':
-                                          default:
-                                            icon = Icons.crop_square;
-                                            break;
-                                        }
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 6,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: theme
-                                                .colorScheme
-                                                .surfaceContainer,
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                            border: Border.all(
-                                              color: theme
-                                                  .colorScheme
-                                                  .outlineVariant,
-                                              width: 0.5,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                icon,
-                                                size: 10,
-                                                color:
-                                                    theme.colorScheme.primary,
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Text(
-                                                shape.description,
-                                                style: theme
-                                                    .textTheme
-                                                    .labelSmall
-                                                    ?.copyWith(
-                                                      fontSize: 9,
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSurfaceVariant,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
                                 ],
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // Bounding Box summary
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'BBox',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.secondary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '[${(comp.relativeBoundingBox.left * 100).round()}%, ${(comp.relativeBoundingBox.top * 100).round()}%]',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    fontFamily: 'monospace',
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 12),
-                            // Decompose Button
+                            // Reset Button
+                            if (comp.grid != null)
+                              IconButton(
+                                icon: const Icon(Icons.restart_alt, size: 20),
+                                tooltip: 'Reset Sculpting',
+                                onPressed: canvasModel.isGenerating
+                                    ? null
+                                    : () => notifier.resetComponentGrid(index),
+                              ),
+                            // Sculpt/Refine Button
                             IconButton(
-                              icon:
-                                  (canvasModel.isGenerating &&
-                                      canvasModel.decomposingComponentIndex ==
-                                          index)
+                              icon: isThisDecomposing
                                   ? const SizedBox(
                                       width: 16,
                                       height: 16,
@@ -269,19 +222,17 @@ class _ShapeDecompositionListState
                                       ),
                                     )
                                   : Icon(
-                                      comp.shapes.isEmpty
-                                          ? Icons.auto_awesome_outlined
-                                          : Icons.refresh_outlined,
+                                      comp.grid == null
+                                          ? Icons.brush_outlined
+                                          : Icons.auto_awesome_outlined,
                                       size: 20,
                                     ),
-                              tooltip: comp.shapes.isEmpty
-                                  ? 'Decompose into Shapes'
-                                  : 'Re-decompose into Shapes',
+                              tooltip: comp.grid == null
+                                  ? 'Initialize & Sculpt'
+                                  : 'Refine Border (Sculpt)',
                               onPressed: canvasModel.isGenerating
                                   ? null
-                                  : () => notifier.decomposeComponentToShapes(
-                                      index,
-                                    ),
+                                  : () => notifier.sculptComponent(index),
                             ),
                           ],
                         ),
@@ -289,10 +240,107 @@ class _ShapeDecompositionListState
                     );
                   },
                 ),
+                if (hasAnyGrid) ...[
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.layers_outlined),
+                    label: const Text('Merge Sculpted Components to Canvas'),
+                    onPressed: canvasModel.isGenerating
+                        ? null
+                        : () {
+                            notifier.mergeComponentsToCanvas();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Merged components to canvas!'),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                  ),
+                ],
+              ],
             ],
           ],
         ),
       ),
     );
+  }
+}
+
+class MiniComponentCanvas extends StatelessWidget {
+  final List<List<int>> grid;
+  final Color color;
+  final double size;
+
+  const MiniComponentCanvas({
+    super.key,
+    required this.grid,
+    required this.color,
+    this.size = 40.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.white24),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: CustomPaint(
+          painter: _MiniCanvasPainter(grid: grid, color: color),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniCanvasPainter extends CustomPainter {
+  final List<List<int>> grid;
+  final Color color;
+
+  _MiniCanvasPainter({required this.grid, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridSize = grid.length;
+    if (gridSize == 0) return;
+    final cellWidth = size.width / gridSize;
+    final cellHeight = size.height / gridSize;
+
+    final bgPaint = Paint()..color = const Color(0xFF1E1E1E);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+
+    final paint = Paint()
+      ..color = color
+      ..isAntiAlias = false;
+
+    for (int y = 0; y < gridSize; y++) {
+      for (int x = 0; x < gridSize; x++) {
+        if (grid[y][x] > 0) {
+          final rect = Rect.fromLTWH(
+            x * cellWidth,
+            y * cellHeight,
+            cellWidth,
+            cellHeight,
+          );
+          canvas.drawRect(rect, paint);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MiniCanvasPainter oldDelegate) {
+    return oldDelegate.grid != grid || oldDelegate.color != color;
   }
 }

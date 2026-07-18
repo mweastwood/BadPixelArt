@@ -23,12 +23,7 @@ class LocalMockAiService extends AiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
-    return '''
-    [
-      {"type": "rectangle", "relativeBoundingBox": {"left": 0.0, "top": 0.0, "width": 1.0, "height": 0.8}, "description": "steel body"},
-      {"type": "triangle", "relativeBoundingBox": {"left": 0.0, "top": 0.8, "width": 1.0, "height": 0.2}, "description": "pointy tip"}
-    ]
-    ''';
+    return '{"remove": [], "add": [{"x": 8, "y": 8}]}';
   }
 
   @override
@@ -50,7 +45,7 @@ void main() {
         );
 
         // Verify the header title
-        expect(find.text('Shape Decomposition'), findsOneWidget);
+        expect(find.text('Component Sculpting'), findsOneWidget);
         expect(
           find.textContaining('No drawing plan generated yet'),
           findsOneWidget,
@@ -87,7 +82,7 @@ void main() {
         expect(find.text('vertical blade'), findsOneWidget);
 
         // Tap the header to collapse
-        await tester.tap(find.text('Shape Decomposition'));
+        await tester.tap(find.text('Component Sculpting'));
         await tester.pumpAndSettle();
 
         // Verify now collapsed (items are hidden, badge is shown)
@@ -95,7 +90,7 @@ void main() {
         expect(find.text('1 parts'), findsOneWidget);
 
         // Tap again to expand
-        await tester.tap(find.text('Shape Decomposition'));
+        await tester.tap(find.text('Component Sculpting'));
         await tester.pumpAndSettle();
 
         expect(find.text('BLADE'), findsOneWidget);
@@ -152,25 +147,17 @@ void main() {
       );
     });
 
-    testWidgets('renders component fundamental shape chips', (tester) async {
+    testWidgets('renders grid preview when component is initialized', (
+      tester,
+    ) async {
       final container = ProviderContainer();
+      final grid = List.generate(16, (y) => List.generate(16, (x) => 1));
       final components = [
         PixelArtComponent(
           name: 'blade',
           description: 'vertical blade',
           relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-          shapes: [
-            FundamentalShape(
-              type: 'rectangle',
-              description: 'steel body',
-              relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 0.8),
-            ),
-            FundamentalShape(
-              type: 'triangle',
-              description: 'pointy tip',
-              relativeBoundingBox: const Rect.fromLTWH(0.0, 0.8, 1.0, 0.2),
-            ),
-          ],
+          grid: grid,
         ),
       ];
       container.read(canvasStateProvider.notifier).state = container
@@ -186,56 +173,54 @@ void main() {
         ),
       );
 
-      // Verify the shapes chips description text is rendered
-      expect(find.text('steel body'), findsOneWidget);
-      expect(find.text('pointy tip'), findsOneWidget);
+      // Verify the MiniComponentCanvas is rendered
+      expect(find.byType(MiniComponentCanvas), findsOneWidget);
+    });
+
+    testWidgets('triggers sculpting for individual component on tap', (
+      tester,
+    ) async {
+      final mockService = LocalMockAiService();
+      final notifier = CanvasNotifier(mockService);
+      final components = [
+        PixelArtComponent(
+          name: 'blade',
+          description: 'vertical blade',
+          relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+        ),
+      ];
+      notifier.state = notifier.state.copyWith(
+        decomposedComponents: components,
+        userPrompt: 'sword',
+        referenceImage: Uint8List.fromList([0, 0, 0, 0]),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockService),
+            canvasStateProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: ShapeDecompositionList()),
+          ),
+        ),
+      );
+
+      // Find the Initialize & Sculpt button (IconButton)
+      final buttonFinder = find.byTooltip('Initialize & Sculpt');
+      expect(buttonFinder, findsOneWidget);
+
+      // Tap to sculpt
+      await tester.tap(buttonFinder);
+      await tester.pumpAndSettle();
+
+      // Verify it updates state and calls AI (the component grid should now be non-null)
+      expect(notifier.state.decomposedComponents[0].grid, isNotNull);
     });
 
     testWidgets(
-      'triggers shape decomposition for individual component on tap',
-      (tester) async {
-        final mockService = LocalMockAiService();
-        final notifier = CanvasNotifier(mockService);
-        final components = [
-          PixelArtComponent(
-            name: 'blade',
-            description: 'vertical blade',
-            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-          ),
-        ];
-        notifier.state = notifier.state.copyWith(
-          decomposedComponents: components,
-          userPrompt: 'sword',
-          referenceImage: Uint8List.fromList([0, 0, 0, 0]),
-        );
-
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              aiServiceProvider.overrideWithValue(mockService),
-              canvasStateProvider.overrideWith((ref) => notifier),
-            ],
-            child: const MaterialApp(
-              home: Scaffold(body: ShapeDecompositionList()),
-            ),
-          ),
-        );
-
-        // Find the Decompose into Shapes button (IconButton)
-        final buttonFinder = find.byTooltip('Decompose into Shapes');
-        expect(buttonFinder, findsOneWidget);
-
-        // Tap to decompose
-        await tester.tap(buttonFinder);
-        await tester.pumpAndSettle();
-
-        // Verify it updates state and calls AI
-        expect(notifier.state.decomposedComponents[0].shapes, isNotEmpty);
-      },
-    );
-
-    testWidgets(
-      'renders CircularProgressIndicator only on the decomposing component',
+      'renders CircularProgressIndicator only on the sculpting component',
       (tester) async {
         final container = ProviderContainer();
         final components = [
@@ -325,13 +310,6 @@ void main() {
             name: 'blade',
             description: 'vertical blade',
             relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-            shapes: [
-              FundamentalShape(
-                type: 'rectangle',
-                description: 'steel body',
-                relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 0.8),
-              ),
-            ],
           ),
         ];
         mockNotifier.state = mockNotifier.state.copyWith(
