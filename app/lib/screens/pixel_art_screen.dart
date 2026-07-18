@@ -197,7 +197,11 @@ class PixelArtScreen extends ConsumerWidget {
                   ),
                 );
               } else {
+                final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
                 return SingleChildScrollView(
+                  physics: isDraggingCanvas
+                      ? const NeverScrollableScrollPhysics()
+                      : const BouncingScrollPhysics(),
                   padding: const EdgeInsets.only(
                     left: 16.0,
                     right: 16.0,

@@ -1031,3 +1031,5 @@ final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
   final aiService = ref.watch(loggingAiServiceProvider);
   return CanvasNotifier(aiService);
 });
+
+final isDraggingCanvasProvider = StateProvider<bool>((ref) => false);
