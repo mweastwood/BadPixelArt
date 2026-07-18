@@ -8,7 +8,7 @@ import 'drawing_commands.dart';
 import 'algorithms/k_means_quantizer.dart';
 import 'agents/base_agent.dart';
 import 'agents/decomposer_agent.dart';
-import 'agents/shape_decomposer_agent.dart';
+import 'agents/shape_sculpter_agent.dart';
 import 'orchestrators/sketch_orchestrator.dart';
 import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
@@ -677,7 +677,15 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(clearConfirmingComponent: true);
   }
 
-  Future<void> decomposeComponentToShapes(int index) async {
+  void resetComponentGrid(int index) {
+    if (index >= 0 && index < state.decomposedComponents.length) {
+      final updated = List<PixelArtComponent>.from(state.decomposedComponents);
+      updated[index] = updated[index].copyWith(grid: null);
+      state = state.copyWith(decomposedComponents: updated);
+    }
+  }
+
+  Future<void> sculptComponent(int index) async {
     if (state.isGenerating ||
         index < 0 ||
         index >= state.decomposedComponents.length) {
@@ -692,8 +700,36 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       final List<PixelArtComponent> updatedComponents = List.from(
         state.decomposedComponents,
       );
-      final comp = updatedComponents[index];
-      final agent = ShapeDecomposerAgent();
+      var comp = updatedComponents[index];
+
+      // Initialize grid with filled bounding box if not already present
+      if (comp.grid == null) {
+        final gridSize = state.gridSize;
+        final List<List<int>> newGrid = List.generate(
+          gridSize,
+          (_) => List.filled(gridSize, 0),
+        );
+        final bbox = comp.relativeBoundingBox;
+        final leftCol = (bbox.left * gridSize).round().clamp(0, gridSize - 1);
+        final topRow = (bbox.top * gridSize).round().clamp(0, gridSize - 1);
+        final rightCol = ((bbox.left + bbox.width) * gridSize).round().clamp(
+          0,
+          gridSize,
+        );
+        final bottomRow = ((bbox.top + bbox.height) * gridSize).round().clamp(
+          0,
+          gridSize,
+        );
+
+        for (int y = topRow; y < bottomRow; y++) {
+          for (int x = leftCol; x < rightCol; x++) {
+            newGrid[y][x] = 1;
+          }
+        }
+        comp = comp.copyWith(grid: newGrid);
+      }
+
+      final agent = ShapeSculpterAgent();
       final context = AgentContext(
         gridSize: state.gridSize,
         activePalette: state.palette,
@@ -704,8 +740,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         allComponents: state.decomposedComponents,
       );
 
-      final shapes = await agent.decomposeComponent(_aiService, context);
-      updatedComponents[index] = comp.copyWith(shapes: shapes);
+      final newGrid = await agent.sculptComponent(_aiService, context);
+      updatedComponents[index] = comp.copyWith(grid: newGrid);
 
       state = state.copyWith(
         decomposedComponents: updatedComponents,
@@ -713,7 +749,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         clearDecomposingComponent: true,
       );
     } catch (e) {
-      debugPrint('Error decomposing component to shapes: $e');
+      debugPrint('Error sculpting component: $e');
       state = state.copyWith(
         isGenerating: false,
         clearDecomposingComponent: true,
@@ -721,17 +757,46 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
-  Future<void> decomposeComponentsToShapes() async {
+  Future<void> sculptComponents() async {
     if (state.isGenerating || state.decomposedComponents.isEmpty) return;
     state = state.copyWith(isGenerating: true);
 
     try {
-      final List<PixelArtComponent> updatedComponents = [];
-      final agent = ShapeDecomposerAgent();
+      final List<PixelArtComponent> updatedComponents = List.from(
+        state.decomposedComponents,
+      );
+      final agent = ShapeSculpterAgent();
 
-      for (int i = 0; i < state.decomposedComponents.length; i++) {
-        final comp = state.decomposedComponents[i];
+      for (int i = 0; i < updatedComponents.length; i++) {
         state = state.copyWith(decomposingComponentIndex: i);
+        var comp = updatedComponents[i];
+
+        if (comp.grid == null) {
+          final gridSize = state.gridSize;
+          final List<List<int>> newGrid = List.generate(
+            gridSize,
+            (_) => List.filled(gridSize, 0),
+          );
+          final bbox = comp.relativeBoundingBox;
+          final leftCol = (bbox.left * gridSize).round().clamp(0, gridSize - 1);
+          final topRow = (bbox.top * gridSize).round().clamp(0, gridSize - 1);
+          final rightCol = ((bbox.left + bbox.width) * gridSize).round().clamp(
+            0,
+            gridSize,
+          );
+          final bottomRow = ((bbox.top + bbox.height) * gridSize).round().clamp(
+            0,
+            gridSize,
+          );
+
+          for (int y = topRow; y < bottomRow; y++) {
+            for (int x = leftCol; x < rightCol; x++) {
+              newGrid[y][x] = 1;
+            }
+          }
+          comp = comp.copyWith(grid: newGrid);
+        }
+
         final context = AgentContext(
           gridSize: state.gridSize,
           activePalette: state.palette,
@@ -741,8 +806,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           allComponents: state.decomposedComponents,
         );
 
-        final shapes = await agent.decomposeComponent(_aiService, context);
-        updatedComponents.add(comp.copyWith(shapes: shapes));
+        final newGrid = await agent.sculptComponent(_aiService, context);
+        updatedComponents[i] = comp.copyWith(grid: newGrid);
       }
 
       state = state.copyWith(
@@ -751,7 +816,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         clearDecomposingComponent: true,
       );
     } catch (e) {
-      debugPrint('Error decomposing components to shapes: $e');
+      debugPrint('Error sculpting components: $e');
       state = state.copyWith(
         isGenerating: false,
         clearDecomposingComponent: true,
