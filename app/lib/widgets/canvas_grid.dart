@@ -28,6 +28,8 @@ class CanvasGrid extends ConsumerStatefulWidget {
 
 class _CanvasGridState extends ConsumerState<CanvasGrid> {
   DragHandle _activeHandle = DragHandle.none;
+  Offset? _dragStartLocalPos;
+  Rect? _dragStartRect;
 
   @override
   Widget build(BuildContext context) {
@@ -76,6 +78,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             gridContent = GestureDetector(
               behavior: HitTestBehavior.opaque,
               onPanStart: (details) {
+                ref.read(isDraggingCanvasProvider.notifier).state = true;
                 final localPos = details.localPosition;
                 const threshold = 24.0;
 
@@ -118,32 +121,50 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                 } else {
                   _activeHandle = DragHandle.none;
                 }
+
+                if (_activeHandle != DragHandle.none) {
+                  _dragStartLocalPos = localPos;
+                  _dragStartRect = activeComp.relativeBoundingBox;
+                } else {
+                  _dragStartLocalPos = null;
+                  _dragStartRect = null;
+                }
               },
               onPanUpdate: (details) {
-                if (_activeHandle == DragHandle.none) return;
+                if (_activeHandle == DragHandle.none ||
+                    _dragStartLocalPos == null ||
+                    _dragStartRect == null) {
+                  return;
+                }
 
-                final localPos = details.localPosition;
-                final relativeX = localPos.dx / size;
-                final relativeY = localPos.dy / size;
-                final clampedX = relativeX.clamp(0.0, 1.0);
-                final clampedY = relativeY.clamp(0.0, 1.0);
-                final currentRect = activeComp.relativeBoundingBox;
                 final minSize = 1.0 / canvasModel.gridSize;
+                final gridSize = canvasModel.gridSize;
+
+                double snapToGrid(double value) {
+                  return ((value * gridSize).round() / gridSize).clamp(
+                    0.0,
+                    1.0,
+                  );
+                }
+
+                final delta = details.localPosition - _dragStartLocalPos!;
+                final deltaX = delta.dx / size;
+                final deltaY = delta.dy / size;
 
                 Rect? newRect;
 
                 switch (_activeHandle) {
                   case DragHandle.topLeft:
-                    double newLeft = clampedX;
-                    double newTop = clampedY;
-                    double newWidth = currentRect.right - newLeft;
-                    double newHeight = currentRect.bottom - newTop;
+                    double newLeft = snapToGrid(_dragStartRect!.left + deltaX);
+                    double newTop = snapToGrid(_dragStartRect!.top + deltaY);
+                    double newWidth = _dragStartRect!.right - newLeft;
+                    double newHeight = _dragStartRect!.bottom - newTop;
                     if (newWidth < minSize) {
-                      newLeft = currentRect.right - minSize;
+                      newLeft = _dragStartRect!.right - minSize;
                       newWidth = minSize;
                     }
                     if (newHeight < minSize) {
-                      newTop = currentRect.bottom - minSize;
+                      newTop = _dragStartRect!.bottom - minSize;
                       newHeight = minSize;
                     }
                     newRect = Rect.fromLTWH(
@@ -154,109 +175,119 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                     );
                     break;
                   case DragHandle.topRight:
-                    double newTop = clampedY;
-                    double newWidth = clampedX - currentRect.left;
-                    double newHeight = currentRect.bottom - newTop;
+                    double newTop = snapToGrid(_dragStartRect!.top + deltaY);
+                    double newWidth = snapToGrid(
+                      _dragStartRect!.width + deltaX,
+                    );
+                    double newHeight = _dragStartRect!.bottom - newTop;
                     if (newWidth < minSize) newWidth = minSize;
                     if (newHeight < minSize) {
-                      newTop = currentRect.bottom - minSize;
+                      newTop = _dragStartRect!.bottom - minSize;
                       newHeight = minSize;
                     }
                     newRect = Rect.fromLTWH(
-                      currentRect.left,
+                      _dragStartRect!.left,
                       newTop,
                       newWidth,
                       newHeight,
                     );
                     break;
                   case DragHandle.bottomLeft:
-                    double newLeft = clampedX;
-                    double newWidth = currentRect.right - newLeft;
-                    double newHeight = clampedY - currentRect.top;
+                    double newLeft = snapToGrid(_dragStartRect!.left + deltaX);
+                    double newWidth = _dragStartRect!.right - newLeft;
+                    double newHeight = snapToGrid(
+                      _dragStartRect!.height + deltaY,
+                    );
                     if (newWidth < minSize) {
-                      newLeft = currentRect.right - minSize;
+                      newLeft = _dragStartRect!.right - minSize;
                       newWidth = minSize;
                     }
                     if (newHeight < minSize) newHeight = minSize;
                     newRect = Rect.fromLTWH(
                       newLeft,
-                      currentRect.top,
+                      _dragStartRect!.top,
                       newWidth,
                       newHeight,
                     );
                     break;
                   case DragHandle.bottomRight:
-                    double newWidth = clampedX - currentRect.left;
-                    double newHeight = clampedY - currentRect.top;
+                    double newWidth = snapToGrid(
+                      _dragStartRect!.width + deltaX,
+                    );
+                    double newHeight = snapToGrid(
+                      _dragStartRect!.height + deltaY,
+                    );
                     if (newWidth < minSize) newWidth = minSize;
                     if (newHeight < minSize) newHeight = minSize;
                     newRect = Rect.fromLTWH(
-                      currentRect.left,
-                      currentRect.top,
+                      _dragStartRect!.left,
+                      _dragStartRect!.top,
                       newWidth,
                       newHeight,
                     );
                     break;
                   case DragHandle.top:
-                    double newTop = clampedY;
-                    double newHeight = currentRect.bottom - newTop;
+                    double newTop = snapToGrid(_dragStartRect!.top + deltaY);
+                    double newHeight = _dragStartRect!.bottom - newTop;
                     if (newHeight < minSize) {
-                      newTop = currentRect.bottom - minSize;
+                      newTop = _dragStartRect!.bottom - minSize;
                       newHeight = minSize;
                     }
                     newRect = Rect.fromLTWH(
-                      currentRect.left,
+                      _dragStartRect!.left,
                       newTop,
-                      currentRect.width,
+                      _dragStartRect!.width,
                       newHeight,
                     );
                     break;
                   case DragHandle.bottom:
-                    double newHeight = clampedY - currentRect.top;
+                    double newHeight = snapToGrid(
+                      _dragStartRect!.height + deltaY,
+                    );
                     if (newHeight < minSize) newHeight = minSize;
                     newRect = Rect.fromLTWH(
-                      currentRect.left,
-                      currentRect.top,
-                      currentRect.width,
+                      _dragStartRect!.left,
+                      _dragStartRect!.top,
+                      _dragStartRect!.width,
                       newHeight,
                     );
                     break;
                   case DragHandle.left:
-                    double newLeft = clampedX;
-                    double newWidth = currentRect.right - newLeft;
+                    double newLeft = snapToGrid(_dragStartRect!.left + deltaX);
+                    double newWidth = _dragStartRect!.right - newLeft;
                     if (newWidth < minSize) {
-                      newLeft = currentRect.right - minSize;
+                      newLeft = _dragStartRect!.right - minSize;
                       newWidth = minSize;
                     }
                     newRect = Rect.fromLTWH(
                       newLeft,
-                      currentRect.top,
+                      _dragStartRect!.top,
                       newWidth,
-                      currentRect.height,
+                      _dragStartRect!.height,
                     );
                     break;
                   case DragHandle.right:
-                    double newWidth = clampedX - currentRect.left;
+                    double newWidth = snapToGrid(
+                      _dragStartRect!.width + deltaX,
+                    );
                     if (newWidth < minSize) newWidth = minSize;
                     newRect = Rect.fromLTWH(
-                      currentRect.left,
-                      currentRect.top,
+                      _dragStartRect!.left,
+                      _dragStartRect!.top,
                       newWidth,
-                      currentRect.height,
+                      _dragStartRect!.height,
                     );
                     break;
                   case DragHandle.center:
-                    final deltaX = details.delta.dx / size;
-                    final deltaY = details.delta.dy / size;
-                    double newLeft = currentRect.left + deltaX;
-                    double newTop = currentRect.top + deltaY;
-                    newLeft = newLeft.clamp(0.0, 1.0 - currentRect.width);
-                    newTop = newTop.clamp(0.0, 1.0 - currentRect.height);
+                    double newLeft = snapToGrid(_dragStartRect!.left + deltaX);
+                    double newTop = snapToGrid(_dragStartRect!.top + deltaY);
+                    newLeft = newLeft.clamp(0.0, 1.0 - _dragStartRect!.width);
+                    newTop = newTop.clamp(0.0, 1.0 - _dragStartRect!.height);
                     newRect = Rect.fromLTWH(
                       newLeft,
                       newTop,
-                      currentRect.width,
-                      currentRect.height,
+                      _dragStartRect!.width,
+                      _dragStartRect!.height,
                     );
                     break;
                   default:
@@ -271,6 +302,11 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
               },
               onPanEnd: (_) {
                 _activeHandle = DragHandle.none;
+                ref.read(isDraggingCanvasProvider.notifier).state = false;
+              },
+              onPanCancel: () {
+                _activeHandle = DragHandle.none;
+                ref.read(isDraggingCanvasProvider.notifier).state = false;
               },
               child: gridContent,
             );
