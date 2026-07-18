@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bad_pixel_art/widgets/canvas_grid.dart';
+import 'package:bad_pixel_art/widgets/wizard_controls.dart';
+import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -39,6 +43,145 @@ void main() {
         wrapper: testMaterialAppWrapper(),
       );
       await screenMatchesGolden(tester, 'canvas_grid_empty');
+    });
+
+    testWidgets(
+      'allows manual resizing of component bounding boxes via dragging in Step 2',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final compGrid = List.generate(16, (_) => List.filled(16, 0));
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              grid: compGrid,
+            ),
+          ],
+          activeComponentIndex: 0,
+        );
+
+        final wizardNotifier = WizardNotifier(2); // Start at Step 2
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+              wizardStateProvider.overrideWith((ref) => wizardNotifier),
+            ],
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(width: 300, height: 300, child: CanvasGrid()),
+              ),
+            ),
+          ),
+        );
+
+        expect(find.byType(CanvasGrid), findsOneWidget);
+
+        // Perform a drag from the bottom-right corner to resize the bounding box
+        // Relative bottom-right is (0.6, 0.7), which maps to (180, 210) in a 300x300 canvas
+        final gesture = await tester.startGesture(const Offset(180, 210));
+        await gesture.moveTo(const Offset(210, 240));
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        final updatedComp = mockNotifier.state.decomposedComponents[0];
+        expect(updatedComp.relativeBoundingBox.right, closeTo(0.7, 0.05));
+        expect(updatedComp.relativeBoundingBox.bottom, closeTo(0.8, 0.05));
+      },
+    );
+
+    testWidgets(
+      'does not allow resizing of non-selected component bounding boxes',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final compGrid = List.generate(16, (_) => List.filled(16, 0));
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              grid: compGrid,
+            ),
+            PixelArtComponent(
+              name: 'hilt',
+              description: 'wooden handle',
+              relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+              grid: compGrid,
+            ),
+          ],
+          activeComponentIndex: 0, // 'blade' is active, 'hilt' is inactive
+        );
+
+        final wizardNotifier = WizardNotifier(2); // Step 2
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+              wizardStateProvider.overrideWith((ref) => wizardNotifier),
+            ],
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(width: 300, height: 300, child: CanvasGrid()),
+              ),
+            ),
+          ),
+        );
+
+        // Try to drag the bottom-right corner of the inactive 'hilt' component (relative 0.55, 0.9 -> absolute 165, 270)
+        final gesture = await tester.startGesture(const Offset(165, 270));
+        await gesture.moveTo(const Offset(195, 290));
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        // Verify the inactive hilt's bounding box remains unchanged
+        final hiltComp = mockNotifier.state.decomposedComponents[1];
+        expect(hiltComp.relativeBoundingBox.left, closeTo(0.45, 1e-9));
+        expect(hiltComp.relativeBoundingBox.top, closeTo(0.7, 1e-9));
+        expect(hiltComp.relativeBoundingBox.width, closeTo(0.1, 1e-9));
+        expect(hiltComp.relativeBoundingBox.height, closeTo(0.2, 1e-9));
+      },
+    );
+
+    testGoldens('CanvasGrid renders active component drag handles correctly', (
+      tester,
+    ) async {
+      final mockNotifier = CanvasNotifier(TestMockAiService());
+      final compGrid = List.generate(16, (_) => List.filled(16, 0));
+      mockNotifier.state = mockNotifier.state.copyWith(
+        decomposedComponents: [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical steel blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            grid: compGrid,
+          ),
+        ],
+        activeComponentIndex: 0,
+      );
+
+      final wizardNotifier = WizardNotifier(2); // Step 2
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1)
+        ..addScenario(
+          'Canvas Grid with Drag Handles',
+          const SizedBox(width: 300, height: 300, child: CanvasGrid()),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: testMaterialAppWrapper(
+          overrides: [
+            canvasStateProvider.overrideWith((ref) => mockNotifier),
+            wizardStateProvider.overrideWith((ref) => wizardNotifier),
+          ],
+        ),
+      );
+      await screenMatchesGolden(tester, 'canvas_grid_drag_handles');
     });
   });
 }

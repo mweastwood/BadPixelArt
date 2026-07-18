@@ -346,6 +346,16 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  void updateComponentBoundingBox(int index, Rect newBoundingBox) {
+    if (index >= 0 && index < state.decomposedComponents.length) {
+      final updated = List<PixelArtComponent>.from(state.decomposedComponents);
+      updated[index] = updated[index].copyWith(
+        relativeBoundingBox: newBoundingBox,
+      );
+      state = state.copyWith(decomposedComponents: updated);
+    }
+  }
+
   void applyDecompositionOption(int index) {
     if (index >= 0 && index < state.pendingDecompositionOptions.length) {
       final selectedComponents = state.pendingDecompositionOptions[index];
