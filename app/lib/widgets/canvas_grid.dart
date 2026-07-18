@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/agents/base_agent.dart';
+import '../logic/agents/shape_sculpter_agent.dart';
 import 'wizard_controls.dart';
 
 enum DragHandle {
@@ -47,6 +48,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             activeComponentIndex: canvasModel.activeComponentIndex,
             isSketchingPlanPhase: isSketchingPlanPhase,
             isSculptingPhase: isSculptingPhase,
+            isGenerating: canvasModel.isGenerating,
           ),
           child: GridPaper(
             color: Colors.grey[800]!.withValues(alpha: 0.2),
@@ -275,6 +277,68 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
           }
         }
 
+        if (isSculptingPhase && canvasModel.decomposedComponents.isNotEmpty) {
+          final activeIndex = canvasModel.activeComponentIndex;
+          if (activeIndex >= 0 &&
+              activeIndex < canvasModel.decomposedComponents.length) {
+            final activeComp = canvasModel.decomposedComponents[activeIndex];
+            if (activeComp.grid != null) {
+              gridContent = GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (details) {
+                  // Only allow if AI is not running
+                  if (canvasModel.isGenerating) return;
+
+                  final localPos = details.localPosition;
+                  final cellWidth = size / canvasModel.gridSize;
+                  final cellHeight = size / canvasModel.gridSize;
+                  final col = (localPos.dx / cellWidth).floor().clamp(
+                    0,
+                    canvasModel.gridSize - 1,
+                  );
+                  final row = (localPos.dy / cellHeight).floor().clamp(
+                    0,
+                    canvasModel.gridSize - 1,
+                  );
+
+                  // Calculate eligible candidates
+                  final candidates = calculateSculptingCandidates(
+                    activeComp.grid!,
+                    canvasModel.gridSize,
+                    activeComp.relativeBoundingBox,
+                  );
+
+                  final removeList = candidates['remove'] ?? [];
+                  final addList = candidates['add'] ?? [];
+
+                  // Check if tapped pixel is in remove candidates
+                  final isRemoveCandidate = removeList.any(
+                    (p) => p['x'] == col && p['y'] == row,
+                  );
+                  if (isRemoveCandidate) {
+                    ref
+                        .read(canvasStateProvider.notifier)
+                        .toggleComponentPixel(activeIndex, col, row, 0);
+                    return;
+                  }
+
+                  // Check if tapped pixel is in add candidates
+                  final isAddCandidate = addList.any(
+                    (p) => p['x'] == col && p['y'] == row,
+                  );
+                  if (isAddCandidate) {
+                    ref
+                        .read(canvasStateProvider.notifier)
+                        .toggleComponentPixel(activeIndex, col, row, 1);
+                    return;
+                  }
+                },
+                child: gridContent,
+              );
+            }
+          }
+        }
+
         return Center(
           child: SizedBox(
             width: size,
@@ -303,6 +367,7 @@ class CanvasPainter extends CustomPainter {
   final int activeComponentIndex;
   final bool isSketchingPlanPhase;
   final bool isSculptingPhase;
+  final bool isGenerating;
 
   CanvasPainter({
     required this.grid,
@@ -311,6 +376,7 @@ class CanvasPainter extends CustomPainter {
     required this.activeComponentIndex,
     required this.isSketchingPlanPhase,
     required this.isSculptingPhase,
+    required this.isGenerating,
   });
 
   @override
@@ -406,6 +472,56 @@ class CanvasPainter extends CustomPainter {
                 canvas.drawRect(rect, fillPaint);
               }
             }
+          }
+        }
+      }
+    }
+
+    // Highlight eligible sculpting pixels if in sculpting phase and AI is not running
+    if (isSculptingPhase && decomposedComponents.isNotEmpty && !isGenerating) {
+      if (activeComponentIndex >= 0 &&
+          activeComponentIndex < decomposedComponents.length) {
+        final comp = decomposedComponents[activeComponentIndex];
+        if (comp.grid != null) {
+          final candidates = calculateSculptingCandidates(
+            comp.grid!,
+            gridSize,
+            comp.relativeBoundingBox,
+          );
+
+          final removeList = candidates['remove'] ?? [];
+          final addList = candidates['add'] ?? [];
+
+          final removePaint = Paint()
+            ..color = Colors.redAccent.withValues(alpha: 0.3)
+            ..isAntiAlias = false;
+
+          final addPaint = Paint()
+            ..color = Colors.greenAccent.withValues(alpha: 0.3)
+            ..isAntiAlias = false;
+
+          for (final p in removeList) {
+            final x = p['x']!;
+            final y = p['y']!;
+            final rect = Rect.fromLTWH(
+              x * cellWidth,
+              y * cellHeight,
+              cellWidth,
+              cellHeight,
+            );
+            canvas.drawRect(rect, removePaint);
+          }
+
+          for (final p in addList) {
+            final x = p['x']!;
+            final y = p['y']!;
+            final rect = Rect.fromLTWH(
+              x * cellWidth,
+              y * cellHeight,
+              cellWidth,
+              cellHeight,
+            );
+            canvas.drawRect(rect, addPaint);
           }
         }
       }
@@ -547,6 +663,7 @@ class CanvasPainter extends CustomPainter {
         oldDelegate.decomposedComponents != decomposedComponents ||
         oldDelegate.activeComponentIndex != activeComponentIndex ||
         oldDelegate.isSketchingPlanPhase != isSketchingPlanPhase ||
-        oldDelegate.isSculptingPhase != isSculptingPhase;
+        oldDelegate.isSculptingPhase != isSculptingPhase ||
+        oldDelegate.isGenerating != isGenerating;
   }
 }

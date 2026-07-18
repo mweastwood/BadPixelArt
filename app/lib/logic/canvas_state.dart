@@ -685,6 +685,22 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  void toggleComponentPixel(int compIndex, int x, int y, int value) {
+    if (state.isGenerating) return;
+    if (compIndex >= 0 && compIndex < state.decomposedComponents.length) {
+      final updated = List<PixelArtComponent>.from(state.decomposedComponents);
+      final comp = updated[compIndex];
+      if (comp.grid != null) {
+        final newGrid = List<List<int>>.from(
+          comp.grid!.map((row) => List<int>.from(row)),
+        );
+        newGrid[y][x] = value;
+        updated[compIndex] = comp.copyWith(grid: newGrid);
+        state = state.copyWith(decomposedComponents: updated);
+      }
+    }
+  }
+
   Future<void> sculptComponent(int index) async {
     if (state.isGenerating ||
         index < 0 ||
