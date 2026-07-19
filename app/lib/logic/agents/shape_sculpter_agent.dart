@@ -104,6 +104,8 @@ class ShapeSculpterAgent implements PixelArtAgent {
     return 'You are an AI pixel art sculpting agent. Your job is to refine the binary pixel grid of a component to better fit its description.\n'
         'You are given an image of the current component pixels (black pixels on a white background) and a list of border pixels that you can add or remove.\n'
         'Your goal is to choose which pixels to remove from the outer border/corners, and which pixels to add, to sculpt a shape that matches the description: "${context.targetComponent?.description}".\n\n'
+        '- IMPORTANT: Select a MAXIMUM of 5 pixels to add and a MAXIMUM of 5 pixels to remove from the candidate lists in a single turn. Do not exceed this limit.\n'
+        '- Candidate coordinates are provided in the format: (x,y).\n\n'
         'Output rules:\n'
         '- You must output EXACTLY a valid JSON object. Do not wrap in markdown tags (e.g. ```json).\n'
         '- The JSON object must contain two arrays:\n'
@@ -133,8 +135,16 @@ class ShapeSculpterAgent implements PixelArtAgent {
       context.gridSize,
       comp.relativeBoundingBox,
     );
-    final removeStr = jsonEncode(candidates['remove']);
-    final addStr = jsonEncode(candidates['add']);
+    final removeList = candidates['remove'];
+    final addList = candidates['add'];
+
+    String formatCompactCoords(List<Map<String, int>>? list) {
+      if (list == null || list.isEmpty) return 'None';
+      return list.map((c) => '(${c['x']},${c['y']})').join(' ');
+    }
+
+    final removeStr = formatCompactCoords(removeList);
+    final addStr = formatCompactCoords(addList);
 
     return 'Sculpt the component "${comp.name}" (Description: "${comp.description}").\n\n'
         'Remove Candidates (pixels on the border you can remove):\n$removeStr\n\n'
