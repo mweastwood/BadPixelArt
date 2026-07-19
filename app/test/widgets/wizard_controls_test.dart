@@ -12,7 +12,6 @@ import 'package:bad_pixel_art/widgets/decomposed_components_list.dart';
 import 'package:bad_pixel_art/widgets/shape_decomposition_list.dart';
 import 'package:bad_pixel_art/widgets/ai_history_dock.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
-import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import '../test_helper.dart';
 
 class WizardMockAiService extends AiService {

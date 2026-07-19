@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bad_pixel_art/widgets/canvas_grid.dart';
 import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
-import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import '../test_helper.dart';
 
 void main() {
