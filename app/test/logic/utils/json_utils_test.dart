@@ -55,5 +55,21 @@ Let me know if you need anything else!
         equals('[\n  {"name": "blade"},\n  {"name": "hilt"}\n]'),
       );
     });
+
+    test('extracts and repairs truncated JSON object', () {
+      final input = '{"remove": [{"x":3,"y":1},{"x":4,"y":1},{"x":12,';
+      expect(
+        cleanJsonString(input),
+        equals('{"remove": [{"x":3,"y":1},{"x":4,"y":1}]}'),
+      );
+    });
+
+    test('extracts and repairs truncated JSON array', () {
+      final input = '[{"name": "blade"},{"name": "hilt"},{"name": "guard';
+      expect(
+        cleanJsonString(input),
+        equals('[{"name": "blade"},{"name": "hilt"}]'),
+      );
+    });
   });
 }
