@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:local_agent/local_agent.dart';
 import 'base_agent.dart';
 import '../utils/bmp_utils.dart';
+import '../utils/json_utils.dart';
 
 Map<String, List<Map<String, int>>> calculateSculptingCandidates(
   List<List<int>> grid,
@@ -168,18 +169,7 @@ class ShapeSculpterAgent implements PixelArtAgent {
 
       if (response == null) return grid;
 
-      var cleaned = response.trim();
-      if (cleaned.startsWith('```')) {
-        final lines = cleaned.split('\n');
-        if (lines.first.startsWith('```')) {
-          lines.removeAt(0);
-        }
-        if (lines.isNotEmpty && lines.last.startsWith('```')) {
-          lines.removeLast();
-        }
-        cleaned = lines.join('\n').trim();
-      }
-
+      final cleaned = cleanJsonString(response);
       final parsed = jsonDecode(cleaned);
       if (parsed is Map<String, dynamic>) {
         final removeList = parsed['remove'] as List? ?? [];
