@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
+import '../logic/agents/base_agent.dart';
 
 class ShapeDecompositionList extends ConsumerStatefulWidget {
   final bool initialCollapsed;
@@ -20,19 +21,6 @@ class _ShapeDecompositionListState
   void initState() {
     super.initState();
     _isCollapsed = widget.initialCollapsed;
-  }
-
-  Color _getComponentColor(int index) {
-    final colors = [
-      Colors.blue,
-      Colors.amber,
-      Colors.green,
-      Colors.red,
-      Colors.purple,
-      Colors.teal,
-      Colors.orange,
-    ];
-    return colors[index % colors.length];
   }
 
   @override
@@ -157,7 +145,7 @@ class _ShapeDecompositionListState
                             if (comp.grid != null)
                               MiniComponentCanvas(
                                 grid: comp.grid!,
-                                color: _getComponentColor(index),
+                                color: PixelArtComponent.getColor(index),
                               )
                             else
                               Container(

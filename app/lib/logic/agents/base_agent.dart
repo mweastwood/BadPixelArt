@@ -74,6 +74,19 @@ class PixelArtComponent {
     this.shapes = const [],
   });
 
+  static Color getColor(int index) {
+    final colors = [
+      Colors.blue,
+      Colors.amber,
+      Colors.green,
+      Colors.red,
+      Colors.purple,
+      Colors.teal,
+      Colors.orange,
+    ];
+    return colors[index % colors.length];
+  }
+
   List<List<int>>? getOutlineGrid() {
     if (grid == null) return null;
     final size = grid!.length;

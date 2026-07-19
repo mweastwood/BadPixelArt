@@ -460,7 +460,7 @@ class CanvasPainter extends CustomPainter {
       final comp = decomposedComponents[i];
       final compOutline = comp.getOutlineGrid();
       if (compOutline != null) {
-        final compColor = _getComponentColor(i);
+        final compColor = PixelArtComponent.getColor(i).withValues(alpha: 0.4);
         final overlayPaint = Paint()
           ..color = compColor
           ..isAntiAlias = false;
@@ -489,7 +489,7 @@ class CanvasPainter extends CustomPainter {
           activeComponentIndex < decomposedComponents.length) {
         final comp = decomposedComponents[activeComponentIndex];
         if (comp.grid != null) {
-          final activeColor = _getComponentColor(
+          final activeColor = PixelArtComponent.getColor(
             activeComponentIndex,
           ).withValues(alpha: 0.7);
           final fillPaint = Paint()
@@ -677,19 +677,6 @@ class CanvasPainter extends CustomPainter {
         }
       }
     }
-  }
-
-  Color _getComponentColor(int index) {
-    final colors = [
-      Colors.blue,
-      Colors.amber,
-      Colors.green,
-      Colors.red,
-      Colors.purple,
-      Colors.teal,
-      Colors.orange,
-    ];
-    return colors[index % colors.length].withValues(alpha: 0.4);
   }
 
   @override
