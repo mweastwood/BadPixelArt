@@ -518,6 +518,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(
       isGenerating: true,
       decomposingComponentIndex: index,
+      activeComponentIndex: index,
     );
 
     try {
@@ -567,7 +568,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       final agent = ShapeSculpterAgent();
 
       for (int i = 0; i < updatedComponents.length; i++) {
-        state = state.copyWith(decomposingComponentIndex: i);
+        state = state.copyWith(
+          decomposingComponentIndex: i,
+          activeComponentIndex: i,
+        );
         var comp = updatedComponents[i];
 
         comp = comp.initializeDefaultGrid(state.gridSize);
@@ -583,10 +587,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
         final newGrid = await agent.sculptComponent(_aiService, context);
         updatedComponents[i] = comp.copyWith(grid: newGrid);
+
+        state = state.copyWith(
+          decomposedComponents: List.from(updatedComponents),
+        );
       }
 
       state = state.copyWith(
-        decomposedComponents: updatedComponents,
         isGenerating: false,
         clearDecomposingComponent: true,
       );
