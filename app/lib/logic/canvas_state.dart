@@ -718,32 +718,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
       var comp = updatedComponents[index];
 
-      // Initialize grid with filled bounding box if not already present
-      if (comp.grid == null) {
-        final gridSize = state.gridSize;
-        final List<List<int>> newGrid = List.generate(
-          gridSize,
-          (_) => List.filled(gridSize, 0),
-        );
-        final bbox = comp.relativeBoundingBox;
-        final leftCol = (bbox.left * gridSize).round().clamp(0, gridSize - 1);
-        final topRow = (bbox.top * gridSize).round().clamp(0, gridSize - 1);
-        final rightCol = ((bbox.left + bbox.width) * gridSize).round().clamp(
-          0,
-          gridSize,
-        );
-        final bottomRow = ((bbox.top + bbox.height) * gridSize).round().clamp(
-          0,
-          gridSize,
-        );
-
-        for (int y = topRow; y < bottomRow; y++) {
-          for (int x = leftCol; x < rightCol; x++) {
-            newGrid[y][x] = 1;
-          }
-        }
-        comp = comp.copyWith(grid: newGrid);
-      }
+      comp = comp.initializeDefaultGrid(state.gridSize);
 
       final agent = ShapeSculpterAgent();
       final context = AgentContext(
@@ -787,31 +762,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         state = state.copyWith(decomposingComponentIndex: i);
         var comp = updatedComponents[i];
 
-        if (comp.grid == null) {
-          final gridSize = state.gridSize;
-          final List<List<int>> newGrid = List.generate(
-            gridSize,
-            (_) => List.filled(gridSize, 0),
-          );
-          final bbox = comp.relativeBoundingBox;
-          final leftCol = (bbox.left * gridSize).round().clamp(0, gridSize - 1);
-          final topRow = (bbox.top * gridSize).round().clamp(0, gridSize - 1);
-          final rightCol = ((bbox.left + bbox.width) * gridSize).round().clamp(
-            0,
-            gridSize,
-          );
-          final bottomRow = ((bbox.top + bbox.height) * gridSize).round().clamp(
-            0,
-            gridSize,
-          );
-
-          for (int y = topRow; y < bottomRow; y++) {
-            for (int x = leftCol; x < rightCol; x++) {
-              newGrid[y][x] = 1;
-            }
-          }
-          comp = comp.copyWith(grid: newGrid);
-        }
+        comp = comp.initializeDefaultGrid(state.gridSize);
 
         final context = AgentContext(
           gridSize: state.gridSize,

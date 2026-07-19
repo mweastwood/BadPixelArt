@@ -87,6 +87,32 @@ class PixelArtComponent {
     return colors[index % colors.length];
   }
 
+  PixelArtComponent initializeDefaultGrid(int gridSize) {
+    if (grid != null) return this;
+    final List<List<int>> newGrid = List.generate(
+      gridSize,
+      (_) => List.filled(gridSize, 0),
+    );
+    final bbox = relativeBoundingBox;
+    final leftCol = (bbox.left * gridSize).round().clamp(0, gridSize - 1);
+    final topRow = (bbox.top * gridSize).round().clamp(0, gridSize - 1);
+    final rightCol = ((bbox.left + bbox.width) * gridSize).round().clamp(
+      0,
+      gridSize,
+    );
+    final bottomRow = ((bbox.top + bbox.height) * gridSize).round().clamp(
+      0,
+      gridSize,
+    );
+
+    for (int y = topRow; y < bottomRow; y++) {
+      for (int x = leftCol; x < rightCol; x++) {
+        newGrid[y][x] = 1;
+      }
+    }
+    return copyWith(grid: newGrid);
+  }
+
   List<List<int>>? getOutlineGrid() {
     if (grid == null) return null;
     final size = grid!.length;
