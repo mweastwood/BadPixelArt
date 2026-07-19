@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
-import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import 'package:local_agent/local_agent.dart';
 import '../test_helper.dart';
 

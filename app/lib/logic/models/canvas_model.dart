@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:local_agent/local_agent.dart';
-import '../agents/base_agent.dart';
+import 'pixel_art_component.dart';
 
 enum CanvasTool { line, circle, fill, hatch }
 

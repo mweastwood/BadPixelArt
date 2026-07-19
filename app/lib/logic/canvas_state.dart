@@ -17,6 +17,7 @@ import 'utils/logging_ai_service.dart';
 
 export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
+export 'models/pixel_art_component.dart';
 
 abstract class AgentCanvas {
   List<List<int>> get grid;

@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
-import '../logic/agents/base_agent.dart';
 import '../logic/agents/shape_sculpter_agent.dart';
 import 'wizard_controls.dart';
 
