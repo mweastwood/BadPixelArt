@@ -32,6 +32,14 @@ class TestMockAiService extends AiService {
     required String releaseStage,
     required String preference,
   }) async {}
+
+  @override
+  Future<int> countTokens({
+    required String prompt,
+    Uint8List? imageBytes,
+  }) async {
+    return 100;
+  }
 }
 
 /// Wraps the widget under test in ProviderScope and MaterialApp.

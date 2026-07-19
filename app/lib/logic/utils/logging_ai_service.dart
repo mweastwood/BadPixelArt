@@ -77,6 +77,10 @@ class LoggingAiService implements AiService {
     );
     return res?.text;
   }
+
+  @override
+  Future<int> countTokens({required String prompt, Uint8List? imageBytes}) =>
+      _delegate.countTokens(prompt: prompt, imageBytes: imageBytes);
 }
 
 final loggingAiServiceProvider = Provider<AiService>((ref) {
