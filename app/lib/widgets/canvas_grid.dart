@@ -387,7 +387,21 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: gridContent,
+                child: Listener(
+                  behavior: HitTestBehavior.opaque,
+                  onPointerDown: (_) {
+                    if (isSketchingPlanPhase || isSculptingPhase) {
+                      ref.read(isDraggingCanvasProvider.notifier).state = true;
+                    }
+                  },
+                  onPointerUp: (_) {
+                    ref.read(isDraggingCanvasProvider.notifier).state = false;
+                  },
+                  onPointerCancel: (_) {
+                    ref.read(isDraggingCanvasProvider.notifier).state = false;
+                  },
+                  child: gridContent,
+                ),
               ),
             ),
           ),
