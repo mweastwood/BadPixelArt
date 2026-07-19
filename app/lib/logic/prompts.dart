@@ -125,7 +125,25 @@ String cleanJsonString(String input) {
     }
     cleaned = lines.join('\n').trim();
   }
-  return cleaned;
+
+  final firstCurly = cleaned.indexOf('{');
+  final firstBracket = cleaned.indexOf('[');
+  int startIdx = -1;
+  int endIdx = -1;
+
+  if (firstCurly != -1 && (firstBracket == -1 || firstCurly < firstBracket)) {
+    startIdx = firstCurly;
+    endIdx = cleaned.lastIndexOf('}');
+  } else if (firstBracket != -1) {
+    startIdx = firstBracket;
+    endIdx = cleaned.lastIndexOf(']');
+  }
+
+  if (startIdx != -1 && endIdx != -1 && endIdx > startIdx) {
+    cleaned = cleaned.substring(startIdx, endIdx + 1);
+  }
+
+  return cleaned.trim();
 }
 
 const List<Color> _fallbackColors = [

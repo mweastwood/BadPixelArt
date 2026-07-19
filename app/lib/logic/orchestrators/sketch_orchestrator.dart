@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:local_agent/local_agent.dart';
 import '../agents/base_agent.dart';
 import '../models/bounded_canvas.dart';
+import '../utils/json_utils.dart';
 import '../agents/sketch_painter_agent.dart';
 import '../agents/sketch_eraser_agent.dart';
 import '../agents/sketch_evaluator_agent.dart';
@@ -32,18 +33,7 @@ class SketchOrchestrator {
       );
       if (response == null) return null;
 
-      var cleaned = response.trim();
-      if (cleaned.startsWith('```')) {
-        final lines = cleaned.split('\n');
-        if (lines.first.startsWith('```')) {
-          lines.removeAt(0);
-        }
-        if (lines.isNotEmpty && lines.last.startsWith('```')) {
-          lines.removeLast();
-        }
-        cleaned = lines.join('\n').trim();
-      }
-
+      final cleaned = cleanJsonString(response);
       return jsonDecode(cleaned) as Map<String, dynamic>;
     } catch (e) {
       debugPrint('Error running agent ${agent.name}: $e');
