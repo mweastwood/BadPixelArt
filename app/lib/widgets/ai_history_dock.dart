@@ -343,13 +343,22 @@ class _HistoryItemState extends State<_HistoryItem> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'RAW PROMPT:',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            'RAW PROMPT:',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _TokenCountBadge(
+                            prompt: prompt,
+                            imageBytes: imageBytes,
+                          ),
+                        ],
                       ),
                       IconButton(
                         icon: const Icon(Icons.copy, size: 14),
@@ -746,6 +755,11 @@ class _HistoryItemState extends State<_HistoryItem> {
                     fontSize: 12,
                     fontFamily: 'monospace',
                   ),
+                ),
+                const SizedBox(width: 12),
+                _TokenCountBadge(
+                  prompt: widget.entry.prompt,
+                  imageBytes: widget.entry.imageBytes,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1462,6 +1476,53 @@ class _HistoryItemState extends State<_HistoryItem> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _TokenCountBadge extends ConsumerWidget {
+  final String prompt;
+  final Uint8List? imageBytes;
+
+  const _TokenCountBadge({required this.prompt, this.imageBytes});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final aiService = ref.watch(aiServiceProvider);
+    return FutureBuilder<int>(
+      future: aiService.countTokens(prompt: prompt, imageBytes: imageBytes),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          );
+        }
+        if (snapshot.hasError || !snapshot.hasData) {
+          return const SizedBox.shrink();
+        }
+        final count = snapshot.data!;
+        final theme = Theme.of(context);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            '$count tokens',
+            style: TextStyle(
+              color: theme.colorScheme.onSecondaryContainer,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        );
+      },
     );
   }
 }
