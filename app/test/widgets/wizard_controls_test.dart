@@ -44,6 +44,14 @@ class WizardMockAiService extends AiService {
     }
     return null;
   }
+
+  @override
+  Future<int> countTokens({
+    required String prompt,
+    Uint8List? imageBytes,
+  }) async {
+    return 100;
+  }
 }
 
 void main() {
