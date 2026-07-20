@@ -16,7 +16,10 @@ void main() {
 
       expect(decoded.type, equals('circle'));
       expect(decoded.description, equals('a circle shape'));
-      expect(decoded.relativeBoundingBox, equals(const Rect.fromLTWH(0.1, 0.2, 0.3, 0.4)));
+      expect(
+        decoded.relativeBoundingBox,
+        equals(const Rect.fromLTWH(0.1, 0.2, 0.3, 0.4)),
+      );
     });
 
     test('PixelArtComponent initializeDefaultGrid sets correct values', () {
