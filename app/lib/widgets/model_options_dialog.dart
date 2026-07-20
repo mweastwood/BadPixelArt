@@ -151,7 +151,7 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 key: const ValueKey('gemini_model_dropdown'),
-                value: _selectedGeminiModel,
+                initialValue: _selectedGeminiModel,
                 decoration: const InputDecoration(
                   labelText: 'Select Gemini Model',
                   border: OutlineInputBorder(),
@@ -200,7 +200,7 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 key: const ValueKey('zhipu_model_dropdown'),
-                value: _selectedZhipuModel,
+                initialValue: _selectedZhipuModel,
                 decoration: const InputDecoration(
                   labelText: 'Select Zhipu Model',
                   border: OutlineInputBorder(),
