@@ -4,7 +4,7 @@ import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_agent/local_agent.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../test_helper.dart';
 
 void main() {

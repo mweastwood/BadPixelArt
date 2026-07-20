@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_agent/local_agent.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import 'package:bad_pixel_art/logic/agents/sketch_painter_agent.dart';
 import 'package:bad_pixel_art/logic/agents/sketch_eraser_agent.dart';

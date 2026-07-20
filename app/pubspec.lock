@@ -134,6 +134,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_agent_core:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: "5d1e6ef5511d859720ec36fc000c295ea34e5555"
+      resolved-ref: "5d1e6ef5511d859720ec36fc000c295ea34e5555"
+      url: "https://github.com/mweastwood/flutter-local-agent.git"
+    source: git
+    version: "0.0.1"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -208,15 +217,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.0"
-  local_agent:
-    dependency: "direct main"
-    description:
-      path: "."
-      ref: "v0.0.13"
-      resolved-ref: "30f55d2acb79ea3a01306d5d47d61a87766dfe8e"
-      url: "https://github.com/mweastwood/flutter-local-agent.git"
-    source: git
-    version: "0.0.1"
   matcher:
     dependency: transitive
     description:
