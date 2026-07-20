@@ -10,6 +10,7 @@ class SettingsState {
   final String zhipuApiKey;
   final String geminiModel;
   final String zhipuModel;
+  final double throttlePercentage;
 
   SettingsState({
     required this.aiEngine,
@@ -17,6 +18,7 @@ class SettingsState {
     required this.zhipuApiKey,
     required this.geminiModel,
     required this.zhipuModel,
+    required this.throttlePercentage,
   });
 
   SettingsState copyWith({
@@ -25,6 +27,7 @@ class SettingsState {
     String? zhipuApiKey,
     String? geminiModel,
     String? zhipuModel,
+    double? throttlePercentage,
   }) {
     return SettingsState(
       aiEngine: aiEngine ?? this.aiEngine,
@@ -32,6 +35,7 @@ class SettingsState {
       zhipuApiKey: zhipuApiKey ?? this.zhipuApiKey,
       geminiModel: geminiModel ?? this.geminiModel,
       zhipuModel: zhipuModel ?? this.zhipuModel,
+      throttlePercentage: throttlePercentage ?? this.throttlePercentage,
     );
   }
 }
@@ -47,6 +51,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           zhipuApiKey: _prefs.getString('zhipuApiKey') ?? '',
           geminiModel: _prefs.getString('geminiModel') ?? 'gemini-3.5-flash',
           zhipuModel: _prefs.getString('zhipuModel') ?? 'glm-4.7-flash',
+          throttlePercentage: _prefs.getDouble('throttlePercentage') ?? 100.0,
         ),
       );
 
@@ -74,6 +79,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     await _prefs.setString('zhipuModel', model);
     state = state.copyWith(zhipuModel: model);
   }
+
+  Future<void> setThrottlePercentage(double value) async {
+    await _prefs.setDouble('throttlePercentage', value);
+    state = state.copyWith(throttlePercentage: value);
+  }
 }
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
@@ -97,12 +107,14 @@ final appAiServiceProvider = Provider<AiService>((ref) {
         baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
         apiKey: settings.geminiApiKey,
         modelName: settings.geminiModel,
+        throttlePercentage: settings.throttlePercentage,
       );
     case AiEngine.zhipuCloud:
       return CloudAiService(
         baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
         apiKey: settings.zhipuApiKey,
         modelName: settings.zhipuModel,
+        throttlePercentage: settings.throttlePercentage,
       );
   }
 });
