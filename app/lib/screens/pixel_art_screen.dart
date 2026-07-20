@@ -419,7 +419,7 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
 
   final step = wizardState.currentStep;
   final hasBack = step.index > 0;
-  final hasNext = step.index < 3;
+  final hasNext = step.index < 4;
 
   String nextLabel = '';
   Widget? nextIcon;
@@ -449,6 +449,14 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
         : () => ref
               .read(wizardStateProvider.notifier)
               .setStep(WizardStep.componentSculpting);
+  } else if (step == WizardStep.componentSculpting) {
+    nextLabel = 'Pick Colors & Outlines';
+    nextIcon = const Icon(Icons.arrow_forward);
+    onNext = canvasState.decomposedComponents.isEmpty
+        ? null
+        : () => ref
+              .read(wizardStateProvider.notifier)
+              .setStep(WizardStep.colorAndOutline);
   }
 
   VoidCallback? onBack;
@@ -463,6 +471,10 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
     onBack = () => ref
         .read(wizardStateProvider.notifier)
         .setStep(WizardStep.sketchingPlan);
+  } else if (step == WizardStep.colorAndOutline) {
+    onBack = () => ref
+        .read(wizardStateProvider.notifier)
+        .setStep(WizardStep.componentSculpting);
   }
 
   return Row(
@@ -477,6 +489,8 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
           label: Text(
             step == WizardStep.componentSculpting
                 ? 'Back to Semantic Components'
+                : step == WizardStep.colorAndOutline
+                ? 'Back to Shape Sculpting'
                 : 'Back',
           ),
           backgroundColor: theme.colorScheme.surfaceContainerHigh,

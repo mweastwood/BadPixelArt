@@ -30,8 +30,6 @@ class _ShapeDecompositionListState
     final components = canvasModel.decomposedComponents;
     final activeIndex = canvasModel.activeComponentIndex;
 
-    final hasAnyGrid = components.any((comp) => comp.grid != null);
-
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -227,30 +225,6 @@ class _ShapeDecompositionListState
                     );
                   },
                 ),
-                if (hasAnyGrid) ...[
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    icon: const Icon(Icons.layers_outlined),
-                    label: const Text('Merge Sculpted Components to Canvas'),
-                    onPressed: canvasModel.isGenerating
-                        ? null
-                        : () {
-                            notifier.mergeComponentsToCanvas();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Merged components to canvas!'),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                  ),
-                ],
               ],
             ],
           ],
