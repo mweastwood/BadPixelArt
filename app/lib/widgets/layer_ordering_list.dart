@@ -63,6 +63,7 @@ class LayerOrderingList extends ConsumerWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: components.length,
+            // ignore: deprecated_member_use
             onReorder: notifier.reorderComponents,
             itemBuilder: (context, index) {
               final comp = components[index];
