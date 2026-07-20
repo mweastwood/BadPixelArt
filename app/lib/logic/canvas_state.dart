@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +15,9 @@ import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
 import 'models/canvas_model.dart';
 import 'utils/logging_ai_service.dart';
+import 'package:drift/drift.dart' as drift;
+import 'utils/database.dart';
+import 'utils/database_helpers.dart';
 
 export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
@@ -107,28 +111,280 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   static List<Color> get nesPalette => PaletteRegistry.nesPalette;
   static List<Color> get pico8Palette => PaletteRegistry.pico8Palette;
 
-  CanvasNotifier(this._aiService)
+  Timer? _saveTimer;
+  bool _isRestoring = false;
+
+  @override
+  set state(CanvasModel value) {
+    super.state = value;
+    _scheduleSave();
+  }
+
+  void _scheduleSave() {
+    if (_isRestoring) return;
+    final isTesting =
+        kDebugMode &&
+        !kIsWeb &&
+        Platform.environment.containsKey('FLUTTER_TEST');
+    if (isTesting) return;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 500), () async {
+      await saveToDb();
+    });
+  }
+
+  // --- DATABASE / PERSISTENCE OPERATIONS ---
+
+  Future<void> saveToDb() async {
+    if (_isRestoring) return;
+    final db = AppDatabaseHelper.db;
+    final now = DateTime.now();
+
+    final creationsCompanion = CreationsCompanion(
+      title: drift.Value(state.title),
+      gridSize: drift.Value(state.gridSize),
+      gridData: drift.Value(serializeGrid(state.grid)),
+      paletteName: drift.Value(state.paletteName),
+      paletteColors: drift.Value(serializePalette(state.palette)),
+      decomposedComponents: drift.Value(
+        serializeComponents(state.decomposedComponents),
+      ),
+      aiHistoryLogs: drift.Value(serializeHistory(state.aiHistory)),
+      referenceImage: drift.Value(state.referenceImage),
+      originalReferenceImage: drift.Value(state.originalReferenceImage),
+      updatedAt: drift.Value(now),
+    );
+
+    if (state.creationId == null) {
+      _isRestoring = true;
+      try {
+        final newCompanion = creationsCompanion.copyWith(
+          createdAt: drift.Value(now),
+        );
+        final newId = await db.createCreation(newCompanion);
+        state = state.copyWith(creationId: newId);
+      } finally {
+        _isRestoring = false;
+      }
+    } else {
+      final updateCompanion = creationsCompanion.copyWith(
+        id: drift.Value(state.creationId!),
+      );
+      await db.updateCreation(updateCompanion);
+    }
+
+    final sessionCompanion = WorkspaceSessionsCompanion(
+      id: const drift.Value(1),
+      activeCreationId: drift.Value(state.creationId),
+      selectedColorIndex: drift.Value(state.selectedColorIndex),
+      selectedTool: drift.Value(state.selectedTool.name),
+      userPrompt: drift.Value(state.userPrompt),
+      lastSavedAt: drift.Value(now),
+    );
+    await db.saveSession(sessionCompanion);
+  }
+
+  Future<void> loadFromDb(int id) async {
+    _isRestoring = true;
+    try {
+      final db = AppDatabaseHelper.db;
+      final creation = await db.getCreationById(id);
+      if (creation == null) return;
+
+      final grid = deserializeGrid(creation.gridData);
+      final palette = deserializePalette(creation.paletteColors);
+      final components = deserializeComponents(creation.decomposedComponents);
+      final history = deserializeHistory(creation.aiHistoryLogs);
+
+      if (state.autoRun) {
+        _autoRunTimer?.cancel();
+      }
+
+      state = state.copyWith(
+        creationId: creation.id,
+        title: creation.title,
+        gridSize: creation.gridSize,
+        grid: grid,
+        paletteName: creation.paletteName,
+        palette: palette,
+        decomposedComponents: components,
+        aiHistory: history,
+        referenceImage: creation.referenceImage,
+        originalReferenceImage: creation.originalReferenceImage,
+        undoStack: const [],
+        redoStack: const [],
+        autoRun: false,
+      );
+
+      final now = DateTime.now();
+      final sessionCompanion = WorkspaceSessionsCompanion(
+        id: const drift.Value(1),
+        activeCreationId: drift.Value(creation.id),
+        selectedColorIndex: drift.Value(state.selectedColorIndex),
+        selectedTool: drift.Value(state.selectedTool.name),
+        userPrompt: drift.Value(state.userPrompt),
+        lastSavedAt: drift.Value(now),
+      );
+      await db.saveSession(sessionCompanion);
+    } finally {
+      _isRestoring = false;
+    }
+  }
+
+  Future<void> loadLastSession() async {
+    _isRestoring = true;
+    try {
+      final db = AppDatabaseHelper.db;
+      final session = await db.getSession();
+      if (session != null && session.activeCreationId != null) {
+        final creation = await db.getCreationById(session.activeCreationId!);
+        if (creation != null) {
+          final grid = deserializeGrid(creation.gridData);
+          final palette = deserializePalette(creation.paletteColors);
+          final components = deserializeComponents(
+            creation.decomposedComponents,
+          );
+          final history = deserializeHistory(creation.aiHistoryLogs);
+
+          final tool = CanvasTool.values.firstWhere(
+            (t) => t.name == session.selectedTool,
+            orElse: () => CanvasTool.line,
+          );
+
+          state = state.copyWith(
+            creationId: creation.id,
+            title: creation.title,
+            gridSize: creation.gridSize,
+            grid: grid,
+            paletteName: creation.paletteName,
+            palette: palette,
+            decomposedComponents: components,
+            aiHistory: history,
+            referenceImage: creation.referenceImage,
+            originalReferenceImage: creation.originalReferenceImage,
+            selectedColorIndex: session.selectedColorIndex,
+            selectedTool: tool,
+            userPrompt: session.userPrompt,
+            undoStack: const [],
+            redoStack: const [],
+          );
+        }
+      }
+    } finally {
+      _isRestoring = false;
+    }
+  }
+
+  Future<void> startNewCanvas() async {
+    _isRestoring = true;
+    try {
+      if (state.autoRun) {
+        _autoRunTimer?.cancel();
+      }
+
+      state = CanvasModel(
+        gridSize: 16,
+        grid: List.generate(16, (_) => List.filled(16, 0)),
+        selectedColorIndex: 1,
+        selectedTool: CanvasTool.line,
+        paletteName: 'primary',
+        palette: primaryPalette,
+        userPrompt: '',
+        aiStatus: AiCoreStatus.available,
+        isGenerating: false,
+        autoRun: false,
+        autoRunSpeed: 1.5,
+        undoStack: const [],
+        redoStack: const [],
+        aiHistory: const [],
+        referenceImage: null,
+        originalReferenceImage: null,
+        modelReleaseStage: state.modelReleaseStage,
+        modelPreference: state.modelPreference,
+      );
+
+      final db = AppDatabaseHelper.db;
+      final now = DateTime.now();
+      final sessionCompanion = WorkspaceSessionsCompanion(
+        id: const drift.Value(1),
+        activeCreationId: const drift.Value.absent(),
+        selectedColorIndex: drift.Value(state.selectedColorIndex),
+        selectedTool: drift.Value(state.selectedTool.name),
+        userPrompt: drift.Value(state.userPrompt),
+        lastSavedAt: drift.Value(now),
+      );
+      await db.saveSession(sessionCompanion);
+    } finally {
+      _isRestoring = false;
+    }
+  }
+
+  Future<void> duplicateCanvas(int id) async {
+    final db = AppDatabaseHelper.db;
+    final creation = await db.getCreationById(id);
+    if (creation == null) return;
+
+    final now = DateTime.now();
+    final duplicateCompanion = CreationsCompanion(
+      title: drift.Value('${creation.title} (Copy)'),
+      gridSize: drift.Value(creation.gridSize),
+      gridData: drift.Value(creation.gridData),
+      paletteName: drift.Value(creation.paletteName),
+      paletteColors: drift.Value(creation.paletteColors),
+      decomposedComponents: drift.Value(creation.decomposedComponents),
+      aiHistoryLogs: drift.Value(creation.aiHistoryLogs),
+      referenceImage: drift.Value(creation.referenceImage),
+      originalReferenceImage: drift.Value(creation.originalReferenceImage),
+      createdAt: drift.Value(now),
+      updatedAt: drift.Value(now),
+    );
+
+    final newId = await db.createCreation(duplicateCompanion);
+    await loadFromDb(newId);
+  }
+
+  Future<void> renameCanvas(String newTitle) async {
+    state = state.copyWith(title: newTitle);
+    await saveToDb();
+  }
+
+  Future<void> deleteCanvas(int id) async {
+    final db = AppDatabaseHelper.db;
+    await db.deleteCreation(id);
+
+    if (state.creationId == id) {
+      final creationsList = await db.getAllCreations();
+      if (creationsList.isNotEmpty) {
+        await loadFromDb(creationsList.first.id);
+      } else {
+        await startNewCanvas();
+      }
+    }
+  }
+
+  CanvasNotifier(this._aiService, {CanvasModel? initialModel})
     : super(
-        CanvasModel(
-          gridSize: 16,
-          grid: List.generate(16, (_) => List.filled(16, 0)),
-          selectedColorIndex: 1, // Start with white/light color
-          selectedTool: CanvasTool.line,
-          paletteName: 'primary',
-          palette: primaryPalette,
-          userPrompt: '',
-          aiStatus: AiCoreStatus.available,
-          isGenerating: false,
-          autoRun: false,
-          autoRunSpeed: 1.5,
-          undoStack: [],
-          redoStack: [],
-          aiHistory: const [],
-          referenceImage: null,
-          originalReferenceImage: null,
-          modelReleaseStage: 'stable',
-          modelPreference: 'full',
-        ),
+        initialModel ??
+            CanvasModel(
+              gridSize: 16,
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+              selectedColorIndex: 1, // Start with white/light color
+              selectedTool: CanvasTool.line,
+              paletteName: 'primary',
+              palette: primaryPalette,
+              userPrompt: '',
+              aiStatus: AiCoreStatus.available,
+              isGenerating: false,
+              autoRun: false,
+              autoRunSpeed: 1.5,
+              undoStack: [],
+              redoStack: [],
+              aiHistory: const [],
+              referenceImage: null,
+              originalReferenceImage: null,
+              modelReleaseStage: 'stable',
+              modelPreference: 'full',
+            ),
       ) {
     if (_aiService is LoggingAiService) {
       _aiService.onLog = (entry) {
@@ -210,6 +466,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   @override
   void dispose() {
     _autoRunTimer?.cancel();
+    _saveTimer?.cancel();
     super.dispose();
   }
 
