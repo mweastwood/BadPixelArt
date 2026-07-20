@@ -7,6 +7,8 @@ enum CanvasTool { line, circle, fill, hatch }
 
 @immutable
 class CanvasModel {
+  final int? creationId;
+  final String title;
   final int gridSize;
   final List<List<int>> grid;
   final int selectedColorIndex;
@@ -36,6 +38,8 @@ class CanvasModel {
   final int? decomposingComponentIndex;
 
   const CanvasModel({
+    this.creationId,
+    this.title = 'Untitled',
     this.gridSize = 16,
     required this.grid,
     required this.selectedColorIndex,
@@ -66,6 +70,9 @@ class CanvasModel {
   });
 
   CanvasModel copyWith({
+    int? creationId,
+    bool clearCreationId = false,
+    String? title,
     int? gridSize,
     List<List<int>>? grid,
     int? selectedColorIndex,
@@ -101,6 +108,8 @@ class CanvasModel {
     bool clearDecomposingComponent = false,
   }) {
     return CanvasModel(
+      creationId: clearCreationId ? null : (creationId ?? this.creationId),
+      title: title ?? this.title,
       gridSize: gridSize ?? this.gridSize,
       grid: grid ?? this.grid,
       selectedColorIndex: selectedColorIndex ?? this.selectedColorIndex,

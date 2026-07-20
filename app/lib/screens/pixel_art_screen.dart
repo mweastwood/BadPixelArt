@@ -9,6 +9,7 @@ import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';
 import '../widgets/decomposed_components_list.dart';
 import '../widgets/wizard_controls.dart';
+import '../widgets/creations_drawer.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -123,6 +124,7 @@ class PixelArtScreen extends ConsumerWidget {
     return Stack(
       children: [
         Scaffold(
+          drawer: const CreationsDrawer(),
           appBar: AppBar(
             title: const Text('Bad Pixel Art'),
             actions: [
