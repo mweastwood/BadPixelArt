@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/widgets/model_options_dialog.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -97,9 +99,24 @@ void main() {
     });
 
     testGoldens('ModelOptionsDialog renders correctly', (tester) async {
+      final geminiPrefs = FakeSharedPreferences();
+      await geminiPrefs.setInt('aiEngine', AiEngine.geminiCloud.index);
+      await geminiPrefs.setString('geminiApiKey', 'mock-gemini-key');
+      await geminiPrefs.setString('geminiModel', 'gemini-3.5-flash');
+
+      final zhipuPrefs = FakeSharedPreferences();
+      await zhipuPrefs.setInt('aiEngine', AiEngine.zhipuCloud.index);
+      await zhipuPrefs.setString('zhipuApiKey', 'mock-zhipu-key');
+      await zhipuPrefs.setString('zhipuModel', 'glm-4.7-flash');
+
+      final zhipuCustomPrefs = FakeSharedPreferences();
+      await zhipuCustomPrefs.setInt('aiEngine', AiEngine.zhipuCloud.index);
+      await zhipuCustomPrefs.setString('zhipuApiKey', 'mock-zhipu-key');
+      await zhipuCustomPrefs.setString('zhipuModel', 'my-custom-model-id');
+
       final builder = GoldenBuilder.column()
         ..addScenario(
-          'Stable & Full Selected',
+          'Stable & Full Selected (Local)',
           ModelOptionsDialog(
             currentReleaseStage: 'stable',
             currentPreference: 'full',
@@ -107,18 +124,55 @@ void main() {
           ),
         )
         ..addScenario(
-          'Preview & Fast Selected',
-          ModelOptionsDialog(
-            currentReleaseStage: 'preview',
-            currentPreference: 'fast',
-            onChanged: (stage, pref) {},
+          'Gemini Cloud Selected',
+          ProviderScope(
+            overrides: [
+              settingsProvider.overrideWith(
+                (ref) => SettingsNotifier(geminiPrefs),
+              ),
+            ],
+            child: ModelOptionsDialog(
+              currentReleaseStage: 'stable',
+              currentPreference: 'full',
+              onChanged: (stage, pref) {},
+            ),
+          ),
+        )
+        ..addScenario(
+          'Zhipu Cloud Selected',
+          ProviderScope(
+            overrides: [
+              settingsProvider.overrideWith(
+                (ref) => SettingsNotifier(zhipuPrefs),
+              ),
+            ],
+            child: ModelOptionsDialog(
+              currentReleaseStage: 'stable',
+              currentPreference: 'full',
+              onChanged: (stage, pref) {},
+            ),
+          ),
+        )
+        ..addScenario(
+          'Zhipu Cloud Custom Model Selected',
+          ProviderScope(
+            overrides: [
+              settingsProvider.overrideWith(
+                (ref) => SettingsNotifier(zhipuCustomPrefs),
+              ),
+            ],
+            child: ModelOptionsDialog(
+              currentReleaseStage: 'stable',
+              currentPreference: 'full',
+              onChanged: (stage, pref) {},
+            ),
           ),
         );
 
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: testMaterialAppWrapper(),
-        surfaceSize: const Size(600, 1300),
+        surfaceSize: const Size(600, 2200),
       );
       await screenMatchesGolden(tester, 'model_options_dialog');
     });
