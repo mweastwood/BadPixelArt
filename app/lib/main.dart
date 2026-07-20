@@ -3,12 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'screens/pixel_art_screen.dart';
 
-void main() {
-  mainCommon();
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
+import 'logic/utils/settings_provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await mainCommon();
 }
 
-void mainCommon() {
-  runApp(const ProviderScope(child: MyApp()));
+Future<void> mainCommon() async {
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        aiServiceProvider.overrideWith(
+          (ref) => ref.watch(appAiServiceProvider),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 enum AppEnvironment { dev, prod }

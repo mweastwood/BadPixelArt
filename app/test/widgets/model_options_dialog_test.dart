@@ -118,7 +118,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: testMaterialAppWrapper(),
-        surfaceSize: const Size(600, 1000),
+        surfaceSize: const Size(600, 1300),
       );
       await screenMatchesGolden(tester, 'model_options_dialog');
     });
