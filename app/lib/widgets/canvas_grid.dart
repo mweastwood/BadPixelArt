@@ -49,8 +49,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             palette: canvasModel.palette,
             decomposedComponents: canvasModel.decomposedComponents,
             activeComponentIndex: canvasModel.activeComponentIndex,
-            isSketchingPlanPhase: isSketchingPlanPhase,
-            isSculptingPhase: isSculptingPhase,
+            currentStep: wizardState.currentStep,
             isGenerating: canvasModel.isGenerating,
           ),
           child: GridPaper(
@@ -416,8 +415,7 @@ class CanvasPainter extends CustomPainter {
   final List<Color> palette;
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
-  final bool isSketchingPlanPhase;
-  final bool isSculptingPhase;
+  final WizardStep currentStep;
   final bool isGenerating;
 
   CanvasPainter({
@@ -425,10 +423,13 @@ class CanvasPainter extends CustomPainter {
     required this.palette,
     required this.decomposedComponents,
     required this.activeComponentIndex,
-    required this.isSketchingPlanPhase,
-    required this.isSculptingPhase,
+    required this.currentStep,
     required this.isGenerating,
   });
+
+  bool get isSketchingPlanPhase => currentStep == WizardStep.sketchingPlan;
+  bool get isSculptingPhase => currentStep == WizardStep.componentSculpting;
+  bool get isColorAndOutlinePhase => currentStep == WizardStep.colorAndOutline;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -448,50 +449,144 @@ class CanvasPainter extends CustomPainter {
       ..color = const Color(0xFF1E1E1E)
       ..isAntiAlias = false;
 
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        final rect = Rect.fromLTWH(
-          x * cellWidth,
-          y * cellHeight,
-          cellWidth,
-          cellHeight,
-        );
-        final colorIndex = grid[y][x];
-
-        if (colorIndex == 0) {
+    if (isColorAndOutlinePhase) {
+      // Draw background checkerboard for all cells
+      for (int y = 0; y < gridSize; y++) {
+        for (int x = 0; x < gridSize; x++) {
+          final rect = Rect.fromLTWH(
+            x * cellWidth,
+            y * cellHeight,
+            cellWidth,
+            cellHeight,
+          );
           final paint = (x + y) % 2 == 0 ? bgPaint1 : bgPaint2;
-          canvas.drawRect(rect, paint);
-        } else {
-          final paint = Paint()
-            ..color = palette[colorIndex - 1]
-            ..isAntiAlias = false;
           canvas.drawRect(rect, paint);
         }
       }
-    }
 
-    // Draw the individual component grids (outlines) as semi-transparent overlays
-    for (int i = 0; i < decomposedComponents.length; i++) {
-      final comp = decomposedComponents[i];
-      final compOutline = comp.getOutlineGrid();
-      if (compOutline != null) {
-        final compColor = PixelArtComponent.getColor(i).withValues(alpha: 0.4);
-        final overlayPaint = Paint()
-          ..color = compColor
-          ..isAntiAlias = false;
+      // Draw component fills
+      for (int i = 0; i < decomposedComponents.length; i++) {
+        final comp = decomposedComponents[i];
+        if (comp.grid != null) {
+          final isSelected = (i == activeComponentIndex);
+          final Color? fillCol = comp.fillColor;
+          if (fillCol != null) {
+            final fillPaint = Paint()
+              ..color = fillCol
+              ..isAntiAlias = false;
+            for (int y = 0; y < gridSize; y++) {
+              for (int x = 0; x < gridSize; x++) {
+                if (comp.grid![y][x] > 0) {
+                  final rect = Rect.fromLTWH(
+                    x * cellWidth,
+                    y * cellHeight,
+                    cellWidth,
+                    cellHeight,
+                  );
+                  canvas.drawRect(rect, fillPaint);
+                }
+              }
+            }
+          } else {
+            final fallbackPaint = Paint()
+              ..color = PixelArtComponent.getColor(
+                i,
+              ).withValues(alpha: isSelected ? 0.25 : 0.1)
+              ..isAntiAlias = false;
+            for (int y = 0; y < gridSize; y++) {
+              for (int x = 0; x < gridSize; x++) {
+                if (comp.grid![y][x] > 0) {
+                  final rect = Rect.fromLTWH(
+                    x * cellWidth,
+                    y * cellHeight,
+                    cellWidth,
+                    cellHeight,
+                  );
+                  canvas.drawRect(rect, fallbackPaint);
+                }
+              }
+            }
+          }
+        }
+      }
 
-        for (int y = 0; y < gridSize; y++) {
-          for (int x = 0; x < gridSize; x++) {
-            if (y < compOutline.length &&
-                x < compOutline[y].length &&
-                compOutline[y][x] > 0) {
-              final rect = Rect.fromLTWH(
-                x * cellWidth,
-                y * cellHeight,
-                cellWidth,
-                cellHeight,
-              );
-              canvas.drawRect(rect, overlayPaint);
+      // Draw component outlines
+      for (int i = 0; i < decomposedComponents.length; i++) {
+        final comp = decomposedComponents[i];
+        final outline = comp.getOutlineGrid();
+        if (outline != null) {
+          final isSelected = (i == activeComponentIndex);
+          final Color outlineCol =
+              comp.outlineColor ??
+              PixelArtComponent.getColor(
+                i,
+              ).withValues(alpha: isSelected ? 0.7 : 0.35);
+          final outlinePaint = Paint()
+            ..color = outlineCol
+            ..isAntiAlias = false;
+          for (int y = 0; y < gridSize; y++) {
+            for (int x = 0; x < gridSize; x++) {
+              if (outline[y][x] > 0) {
+                final rect = Rect.fromLTWH(
+                  x * cellWidth,
+                  y * cellHeight,
+                  cellWidth,
+                  cellHeight,
+                );
+                canvas.drawRect(rect, outlinePaint);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      for (int y = 0; y < gridSize; y++) {
+        for (int x = 0; x < gridSize; x++) {
+          final rect = Rect.fromLTWH(
+            x * cellWidth,
+            y * cellHeight,
+            cellWidth,
+            cellHeight,
+          );
+          final colorIndex = grid[y][x];
+
+          if (colorIndex == 0) {
+            final paint = (x + y) % 2 == 0 ? bgPaint1 : bgPaint2;
+            canvas.drawRect(rect, paint);
+          } else {
+            final paint = Paint()
+              ..color = palette[colorIndex - 1]
+              ..isAntiAlias = false;
+            canvas.drawRect(rect, paint);
+          }
+        }
+      }
+
+      // Draw the individual component grids (outlines) as semi-transparent overlays
+      for (int i = 0; i < decomposedComponents.length; i++) {
+        final comp = decomposedComponents[i];
+        final compOutline = comp.getOutlineGrid();
+        if (compOutline != null) {
+          final compColor = PixelArtComponent.getColor(
+            i,
+          ).withValues(alpha: 0.4);
+          final overlayPaint = Paint()
+            ..color = compColor
+            ..isAntiAlias = false;
+
+          for (int y = 0; y < gridSize; y++) {
+            for (int x = 0; x < gridSize; x++) {
+              if (y < compOutline.length &&
+                  x < compOutline[y].length &&
+                  compOutline[y][x] > 0) {
+                final rect = Rect.fromLTWH(
+                  x * cellWidth,
+                  y * cellHeight,
+                  cellWidth,
+                  cellHeight,
+                );
+                canvas.drawRect(rect, overlayPaint);
+              }
             }
           }
         }

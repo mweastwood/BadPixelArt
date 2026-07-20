@@ -5,6 +5,7 @@ import 'reference_image_prompt.dart';
 import 'color_palette_generator.dart';
 import 'decomposed_components_list.dart';
 import 'shape_decomposition_list.dart';
+import 'component_color_selection_list.dart';
 import 'ai_history_dock.dart';
 
 enum WizardStep {
@@ -12,6 +13,7 @@ enum WizardStep {
   selectPalette,
   sketchingPlan,
   componentSculpting,
+  colorAndOutline,
 }
 
 class WizardState {
@@ -125,11 +127,17 @@ class WizardControls extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [SemanticComponentsList(initialCollapsed: false)],
       );
-    } else {
+    } else if (wizardState.currentStep == WizardStep.componentSculpting) {
       stepWidget = const Column(
         key: ValueKey('step_3'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [ShapeDecompositionList(initialCollapsed: false)],
+      );
+    } else {
+      stepWidget = const Column(
+        key: ValueKey('step_4'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [ComponentColorSelectionList(initialCollapsed: false)],
       );
     }
 

@@ -48,6 +48,8 @@ class PixelArtComponent {
   grid; // Component specific sketch grid (0 = empty, 1 = filled volume)
   final List<FundamentalShape>
   shapes; // Fundamental geometric shapes composing this component
+  final Color? fillColor;
+  final Color? outlineColor;
 
   PixelArtComponent({
     required this.name,
@@ -55,6 +57,8 @@ class PixelArtComponent {
     required this.relativeBoundingBox,
     this.grid,
     this.shapes = const [],
+    this.fillColor,
+    this.outlineColor,
   });
 
   static Color getColor(int index) {
@@ -129,6 +133,8 @@ class PixelArtComponent {
     Rect? relativeBoundingBox,
     List<List<int>>? grid,
     List<FundamentalShape>? shapes,
+    Color? Function()? fillColor,
+    Color? Function()? outlineColor,
   }) {
     return PixelArtComponent(
       name: name ?? this.name,
@@ -136,6 +142,8 @@ class PixelArtComponent {
       relativeBoundingBox: relativeBoundingBox ?? this.relativeBoundingBox,
       grid: grid ?? this.grid,
       shapes: shapes ?? this.shapes,
+      fillColor: fillColor != null ? fillColor() : this.fillColor,
+      outlineColor: outlineColor != null ? outlineColor() : this.outlineColor,
     );
   }
 
@@ -151,6 +159,8 @@ class PixelArtComponent {
       },
       if (grid != null) 'grid': grid,
       'shapes': shapes.map((s) => s.toJson()).toList(),
+      if (fillColor != null) 'fillColor': fillColor!.toARGB32(),
+      if (outlineColor != null) 'outlineColor': outlineColor!.toARGB32(),
     };
   }
 
@@ -165,6 +175,8 @@ class PixelArtComponent {
     final parsedShapes = shapesRaw
         .map((s) => FundamentalShape.fromJson(s as Map<String, dynamic>))
         .toList();
+    final fillColorRaw = json['fillColor'] as int?;
+    final outlineColorRaw = json['outlineColor'] as int?;
 
     return PixelArtComponent(
       name: json['name'] as String,
@@ -177,6 +189,8 @@ class PixelArtComponent {
       ),
       grid: parsedGrid,
       shapes: parsedShapes,
+      fillColor: fillColorRaw != null ? Color(fillColorRaw) : null,
+      outlineColor: outlineColorRaw != null ? Color(outlineColorRaw) : null,
     );
   }
 }

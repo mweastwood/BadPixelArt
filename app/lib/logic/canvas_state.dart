@@ -420,6 +420,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  void updateComponentColors(int index, Color? fillColor, Color? outlineColor) {
+    if (index >= 0 && index < state.decomposedComponents.length) {
+      final updated = List<PixelArtComponent>.from(state.decomposedComponents);
+      updated[index] = updated[index].copyWith(
+        fillColor: fillColor == null ? () => null : () => fillColor,
+        outlineColor: outlineColor == null ? () => null : () => outlineColor,
+      );
+      state = state.copyWith(decomposedComponents: updated);
+    }
+  }
+
   void applyDecompositionOption(int index) {
     if (index >= 0 && index < state.pendingDecompositionOptions.length) {
       final selectedComponents = state.pendingDecompositionOptions[index];
@@ -908,17 +919,60 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       (_) => List.filled(state.gridSize, 0),
     );
 
-    final targetColorIndex = state.selectedColorIndex > 0
-        ? state.selectedColorIndex
-        : 1;
-
     for (final comp in state.decomposedComponents) {
-      final outline = comp.getOutlineGrid();
-      if (outline != null) {
-        for (int y = 0; y < state.gridSize; y++) {
-          for (int x = 0; x < state.gridSize; x++) {
-            if (outline[y][x] > 0) {
-              newGrid[y][x] = targetColorIndex;
+      bool drewAnything = false;
+
+      // 1. Draw fill if set
+      if (comp.fillColor != null && comp.grid != null) {
+        final colorIndex = state.palette.indexWhere(
+          (c) => c.toARGB32() == comp.fillColor!.toARGB32(),
+        );
+        if (colorIndex != -1) {
+          final dbIndex = colorIndex + 1;
+          for (int y = 0; y < state.gridSize; y++) {
+            for (int x = 0; x < state.gridSize; x++) {
+              if (comp.grid![y][x] > 0) {
+                newGrid[y][x] = dbIndex;
+                drewAnything = true;
+              }
+            }
+          }
+        }
+      }
+
+      // 2. Draw outline if set
+      if (comp.outlineColor != null) {
+        final outline = comp.getOutlineGrid();
+        if (outline != null) {
+          final colorIndex = state.palette.indexWhere(
+            (c) => c.toARGB32() == comp.outlineColor!.toARGB32(),
+          );
+          if (colorIndex != -1) {
+            final dbIndex = colorIndex + 1;
+            for (int y = 0; y < state.gridSize; y++) {
+              for (int x = 0; x < state.gridSize; x++) {
+                if (outline[y][x] > 0) {
+                  newGrid[y][x] = dbIndex;
+                  drewAnything = true;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Fallback: if no custom colors were set, draw the outline using the selected/default color index
+      if (!drewAnything) {
+        final outline = comp.getOutlineGrid();
+        if (outline != null) {
+          final targetColorIndex = state.selectedColorIndex > 0
+              ? state.selectedColorIndex
+              : 1;
+          for (int y = 0; y < state.gridSize; y++) {
+            for (int x = 0; x < state.gridSize; x++) {
+              if (outline[y][x] > 0) {
+                newGrid[y][x] = targetColorIndex;
+              }
             }
           }
         }
