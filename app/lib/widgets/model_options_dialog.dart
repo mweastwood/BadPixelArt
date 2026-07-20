@@ -1,39 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../logic/utils/settings_provider.dart';
-
-const List<String> geminiModels = [
-  'gemini-3.5-flash',
-  'gemini-3.1-pro',
-  'gemini-3-flash',
-  'gemini-3.1-flash-lite',
-  'gemini-2.5-pro',
-  'gemini-2.5-flash',
-  'custom',
-];
-
-const List<String> zhipuModels = [
-  'glm-5.2',
-  'glm-5v-turbo',
-  'glm-4.7-flash',
-  'glm-4.7',
-  'glm-4.5-air',
-  'custom',
-];
-
-const Map<String, String> modelUsageLimits = {
-  'gemini-3.5-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
-  'gemini-3.1-pro': 'Free Tier Limits: 2 RPM / 32k TPM / 50 RPD',
-  'gemini-3-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
-  'gemini-3.1-flash-lite': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
-  'gemini-2.5-pro': 'Free Tier Limits: 2 RPM / 32k TPM / 50 RPD',
-  'gemini-2.5-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
-  'glm-5.2': 'Commercial: 2 RPS (Approx. \$1.40 / 1M input tokens)',
-  'glm-5v-turbo': 'Commercial: 2 RPS (Flagship Vision Model)',
-  'glm-4.7-flash': 'Free Tier Limits: 2 RPS (zero cost, completely free)',
-  'glm-4.7': 'Commercial: 2 RPS (Standard capability)',
-  'glm-4.5-air': 'Commercial: 2 RPS (Light, balanced)',
-};
 
 class ModelOptionsDialog extends ConsumerStatefulWidget {
   final String currentReleaseStage;
@@ -61,6 +29,14 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
   late String _selectedZhipuModel;
   late TextEditingController _customGeminiModelController;
   late TextEditingController _customZhipuModelController;
+  late double _throttlePercentage;
+
+  final List<String> _geminiModelsList =
+      CloudModelDatabase.geminiModels.map((m) => m.modelName).toList()
+        ..add('custom');
+  final List<String> _zhipuModelsList =
+      CloudModelDatabase.zhipuModels.map((m) => m.modelName).toList()
+        ..add('custom');
 
   @override
   void initState() {
@@ -72,8 +48,9 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
     _selectedEngine = settings.aiEngine;
     _geminiKeyController = TextEditingController(text: settings.geminiApiKey);
     _zhipuKeyController = TextEditingController(text: settings.zhipuApiKey);
+    _throttlePercentage = settings.throttlePercentage;
 
-    if (geminiModels.contains(settings.geminiModel) &&
+    if (_geminiModelsList.contains(settings.geminiModel) &&
         settings.geminiModel != 'custom') {
       _selectedGeminiModel = settings.geminiModel;
       _customGeminiModelController = TextEditingController(text: '');
@@ -84,7 +61,7 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
       );
     }
 
-    if (zhipuModels.contains(settings.zhipuModel) &&
+    if (_zhipuModelsList.contains(settings.zhipuModel) &&
         settings.zhipuModel != 'custom') {
       _selectedZhipuModel = settings.zhipuModel;
       _customZhipuModelController = TextEditingController(text: '');
@@ -171,7 +148,7 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
-                items: geminiModels.map((model) {
+                items: _geminiModelsList.map((model) {
                   return DropdownMenuItem<String>(
                     value: model,
                     child: Text(model),
@@ -223,7 +200,7 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
-                items: zhipuModels.map((model) {
+                items: _zhipuModelsList.map((model) {
                   return DropdownMenuItem<String>(
                     value: model,
                     child: Text(model),
@@ -253,6 +230,40 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
               _buildUsageLimitLabel(
                 _selectedZhipuModel,
                 _customZhipuModelController.text,
+              ),
+            ],
+            if (_selectedEngine != AiEngine.local) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Rate Limit Throttle: ${_throttlePercentage.round()}%',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Slider(
+                key: const ValueKey('throttle_slider'),
+                value: _throttlePercentage,
+                min: 10.0,
+                max: 100.0,
+                divisions: 9,
+                label: '${_throttlePercentage.round()}%',
+                onChanged: (val) {
+                  setState(() {
+                    _throttlePercentage = val;
+                  });
+                },
+              ),
+              Text(
+                'Delays requests to stay within free tier quotas and avoid rate limit errors.',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.8,
+                  ),
+                ),
               ),
             ],
             if (_selectedEngine == AiEngine.local) ...[
@@ -326,6 +337,7 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
             await settingsNotifier.setAiEngine(_selectedEngine);
             await settingsNotifier.setGeminiApiKey(_geminiKeyController.text);
             await settingsNotifier.setZhipuApiKey(_zhipuKeyController.text);
+            await settingsNotifier.setThrottlePercentage(_throttlePercentage);
 
             final finalGeminiModel = _selectedGeminiModel == 'custom'
                 ? _customGeminiModelController.text
@@ -356,8 +368,9 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
     final String resolvedModel = selectedDropdownValue == 'custom'
         ? customTextValue
         : selectedDropdownValue;
+    final info = CloudModelDatabase.getModelInfo(resolvedModel);
     final String limit =
-        modelUsageLimits[resolvedModel] ??
+        info?.description ??
         'Rate limits: Vary by model provider / account tier';
 
     return Padding(
