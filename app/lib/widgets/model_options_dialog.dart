@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/utils/settings_provider.dart';
 
 const List<String> geminiModels = [
-  'gemini-1.5-flash',
-  'gemini-1.5-pro',
-  'gemini-2.0-flash',
-  'gemini-2.0-pro',
+  'gemini-3.5-flash',
+  'gemini-3.1-pro',
+  'gemini-3-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
   'custom',
 ];
 
@@ -18,10 +20,12 @@ const List<String> zhipuModels = [
 ];
 
 const Map<String, String> modelUsageLimits = {
-  'gemini-1.5-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
-  'gemini-1.5-pro': 'Free Tier Limits: 2 RPM / 32k TPM / 50 RPD',
-  'gemini-2.0-flash': 'Free Tier Limits: 10 RPM / 4M TPM / 1,500 RPD',
-  'gemini-2.0-pro': 'Free Tier Limits: 2 RPM / 32k TPM / 50 RPD',
+  'gemini-3.5-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
+  'gemini-3.1-pro': 'Free Tier Limits: 2 RPM / 32k TPM / 50 RPD',
+  'gemini-3-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
+  'gemini-3.1-flash-lite': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
+  'gemini-2.5-pro': 'Free Tier Limits: 2 RPM / 32k TPM / 50 RPD',
+  'gemini-2.5-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
   'glm-4-flash': 'Free Tier Limits: 2 RPS (zero cost, completely free)',
   'glm-4-air': 'Commercial: 2 RPS (approx. \$0.14 / 1M tokens)',
   'glm-4-plus': 'Commercial: 2 RPS (high capability, paid)',
@@ -65,20 +69,26 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
     _geminiKeyController = TextEditingController(text: settings.geminiApiKey);
     _zhipuKeyController = TextEditingController(text: settings.zhipuApiKey);
 
-    if (geminiModels.contains(settings.geminiModel) && settings.geminiModel != 'custom') {
+    if (geminiModels.contains(settings.geminiModel) &&
+        settings.geminiModel != 'custom') {
       _selectedGeminiModel = settings.geminiModel;
       _customGeminiModelController = TextEditingController(text: '');
     } else {
       _selectedGeminiModel = 'custom';
-      _customGeminiModelController = TextEditingController(text: settings.geminiModel);
+      _customGeminiModelController = TextEditingController(
+        text: settings.geminiModel,
+      );
     }
 
-    if (zhipuModels.contains(settings.zhipuModel) && settings.zhipuModel != 'custom') {
+    if (zhipuModels.contains(settings.zhipuModel) &&
+        settings.zhipuModel != 'custom') {
       _selectedZhipuModel = settings.zhipuModel;
       _customZhipuModelController = TextEditingController(text: '');
     } else {
       _selectedZhipuModel = 'custom';
-      _customZhipuModelController = TextEditingController(text: settings.zhipuModel);
+      _customZhipuModelController = TextEditingController(
+        text: settings.zhipuModel,
+      );
     }
   }
 
@@ -184,7 +194,10 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
                 ),
               ],
               const SizedBox(height: 8),
-              _buildUsageLimitLabel(_selectedGeminiModel, _customGeminiModelController.text),
+              _buildUsageLimitLabel(
+                _selectedGeminiModel,
+                _customGeminiModelController.text,
+              ),
             ] else if (_selectedEngine == AiEngine.zhipuCloud) ...[
               const SizedBox(height: 16),
               TextField(
@@ -233,7 +246,10 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
                 ),
               ],
               const SizedBox(height: 8),
-              _buildUsageLimitLabel(_selectedZhipuModel, _customZhipuModelController.text),
+              _buildUsageLimitLabel(
+                _selectedZhipuModel,
+                _customZhipuModelController.text,
+              ),
             ],
             if (_selectedEngine == AiEngine.local) ...[
               const SizedBox(height: 20),
@@ -307,11 +323,11 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
             await settingsNotifier.setGeminiApiKey(_geminiKeyController.text);
             await settingsNotifier.setZhipuApiKey(_zhipuKeyController.text);
 
-            final finalGeminiModel = _selectedGeminiModel == 'custom' 
-                ? _customGeminiModelController.text 
+            final finalGeminiModel = _selectedGeminiModel == 'custom'
+                ? _customGeminiModelController.text
                 : _selectedGeminiModel;
-            final finalZhipuModel = _selectedZhipuModel == 'custom' 
-                ? _customZhipuModelController.text 
+            final finalZhipuModel = _selectedZhipuModel == 'custom'
+                ? _customZhipuModelController.text
                 : _selectedZhipuModel;
 
             await settingsNotifier.setGeminiModel(finalGeminiModel);
@@ -328,10 +344,17 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
     );
   }
 
-  Widget _buildUsageLimitLabel(String selectedDropdownValue, String customTextValue) {
+  Widget _buildUsageLimitLabel(
+    String selectedDropdownValue,
+    String customTextValue,
+  ) {
     final theme = Theme.of(context);
-    final String resolvedModel = selectedDropdownValue == 'custom' ? customTextValue : selectedDropdownValue;
-    final String limit = modelUsageLimits[resolvedModel] ?? 'Rate limits: Vary by model provider / account tier';
+    final String resolvedModel = selectedDropdownValue == 'custom'
+        ? customTextValue
+        : selectedDropdownValue;
+    final String limit =
+        modelUsageLimits[resolvedModel] ??
+        'Rate limits: Vary by model provider / account tier';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
