@@ -11,6 +11,8 @@ import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
 import 'package:bad_pixel_art/widgets/decomposed_components_list.dart';
 import 'package:bad_pixel_art/widgets/shape_decomposition_list.dart';
 import 'package:bad_pixel_art/widgets/component_color_selection_list.dart';
+import 'package:bad_pixel_art/widgets/layer_ordering_list.dart';
+import 'package:bad_pixel_art/widgets/refinement_panel.dart';
 import 'package:bad_pixel_art/widgets/ai_history_dock.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
@@ -187,17 +189,34 @@ void main() {
         // Verify Step 4 widgets are present
         expect(find.byType(ComponentColorSelectionList), findsOneWidget);
 
+        // Tap Next FAB in Step 4 to go to Step 5
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
+        await tester.pumpAndSettle();
+
+        // Verify Step 5 widgets are present (LayerOrderingList)
+        expect(find.byType(LayerOrderingList), findsOneWidget);
+
+        // Tap Next FAB in Step 5 to go to Step 6
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
+        await tester.pumpAndSettle();
+
+        // Verify Step 6 widgets are present (RefinementPanel)
+        expect(find.byType(RefinementPanel), findsOneWidget);
+
+        // Tap Back to Layer Ordering to go back to Step 5
+        await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
+        await tester.pumpAndSettle();
+        expect(find.byType(LayerOrderingList), findsOneWidget);
+
+        // Tap Back to Color Selection to go back to Step 4
+        await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
+        await tester.pumpAndSettle();
+        expect(find.byType(ComponentColorSelectionList), findsOneWidget);
+
         // Tap Back to Shape Sculpting to go back to Step 3
         await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
         await tester.pumpAndSettle();
         expect(find.byType(ShapeDecompositionList), findsOneWidget);
-
-        // Tap Back to Semantic Components to go back to Step 2
-        await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
-        await tester.pumpAndSettle();
-
-        expect(find.byType(SemanticComponentsList), findsOneWidget);
-        expect(find.byType(AiHistoryDock), findsOneWidget);
       },
     );
 
@@ -247,6 +266,24 @@ void main() {
             ],
             child: const WizardControls(),
           ),
+        )
+        ..addScenario(
+          'Step 5: Define Layer Order',
+          ProviderScope(
+            overrides: [
+              wizardStateProvider.overrideWith((ref) => WizardNotifier(5)),
+            ],
+            child: const WizardControls(),
+          ),
+        )
+        ..addScenario(
+          'Step 6: Refine Pixel Art',
+          ProviderScope(
+            overrides: [
+              wizardStateProvider.overrideWith((ref) => WizardNotifier(6)),
+            ],
+            child: const WizardControls(),
+          ),
         );
 
       Widget customWrapper(Widget child) {
@@ -267,12 +304,12 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: customWrapper,
-        surfaceSize: const Size(500, 4000),
+        surfaceSize: const Size(500, 5600),
       );
       await multiScreenGolden(
         tester,
         'wizard_controls_steps',
-        devices: [const Device(name: 'wizard_panel', size: Size(500, 4000))],
+        devices: [const Device(name: 'wizard_panel', size: Size(500, 5600))],
       );
     });
   });

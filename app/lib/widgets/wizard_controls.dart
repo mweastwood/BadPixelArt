@@ -6,6 +6,8 @@ import 'color_palette_generator.dart';
 import 'decomposed_components_list.dart';
 import 'shape_decomposition_list.dart';
 import 'component_color_selection_list.dart';
+import 'layer_ordering_list.dart';
+import 'refinement_panel.dart';
 import 'ai_history_dock.dart';
 
 enum WizardStep {
@@ -14,6 +16,8 @@ enum WizardStep {
   sketchingPlan,
   componentSculpting,
   colorAndOutline,
+  layerOrderingAndMerge,
+  refinement,
 }
 
 class WizardState {
@@ -133,11 +137,23 @@ class WizardControls extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [ShapeDecompositionList(initialCollapsed: false)],
       );
-    } else {
+    } else if (wizardState.currentStep == WizardStep.colorAndOutline) {
       stepWidget = const Column(
         key: ValueKey('step_4'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [ComponentColorSelectionList(initialCollapsed: false)],
+      );
+    } else if (wizardState.currentStep == WizardStep.layerOrderingAndMerge) {
+      stepWidget = const Column(
+        key: ValueKey('step_5'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [LayerOrderingList(initialCollapsed: false)],
+      );
+    } else {
+      stepWidget = const Column(
+        key: ValueKey('step_6'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [RefinementPanel()],
       );
     }
 
