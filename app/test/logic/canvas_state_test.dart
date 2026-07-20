@@ -697,35 +697,50 @@ void main() {
         // Valid reorder: move A (0) to after B (newIndex: 2)
         notifier.reorderComponents(0, 2);
         expect(
-          container.read(canvasStateProvider).decomposedComponents.map((c) => c.name),
+          container
+              .read(canvasStateProvider)
+              .decomposedComponents
+              .map((c) => c.name),
           equals(['Component B', 'Component A', 'Component C']),
         );
 
         // Invalid oldIndex (negative)
         notifier.reorderComponents(-1, 1);
         expect(
-          container.read(canvasStateProvider).decomposedComponents.map((c) => c.name),
+          container
+              .read(canvasStateProvider)
+              .decomposedComponents
+              .map((c) => c.name),
           equals(['Component B', 'Component A', 'Component C']),
         );
 
         // Invalid oldIndex (too large)
         notifier.reorderComponents(3, 1);
         expect(
-          container.read(canvasStateProvider).decomposedComponents.map((c) => c.name),
+          container
+              .read(canvasStateProvider)
+              .decomposedComponents
+              .map((c) => c.name),
           equals(['Component B', 'Component A', 'Component C']),
         );
 
         // Invalid newIndex (negative)
         notifier.reorderComponents(1, -1);
         expect(
-          container.read(canvasStateProvider).decomposedComponents.map((c) => c.name),
+          container
+              .read(canvasStateProvider)
+              .decomposedComponents
+              .map((c) => c.name),
           equals(['Component B', 'Component A', 'Component C']),
         );
 
         // Invalid newIndex (too large)
         notifier.reorderComponents(1, 4);
         expect(
-          container.read(canvasStateProvider).decomposedComponents.map((c) => c.name),
+          container
+              .read(canvasStateProvider)
+              .decomposedComponents
+              .map((c) => c.name),
           equals(['Component B', 'Component A', 'Component C']),
         );
       });
