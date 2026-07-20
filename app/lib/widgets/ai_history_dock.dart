@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:local_agent/local_agent.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../logic/canvas_state.dart';
 
 class AiHistoryDock extends ConsumerStatefulWidget {

@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:local_agent/local_agent.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 class LoggingAiService implements AiService {
   final AiService _delegate;

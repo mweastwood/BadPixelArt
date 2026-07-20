@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
-import 'package:local_agent/local_agent.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../widgets/canvas_grid.dart';
 import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';

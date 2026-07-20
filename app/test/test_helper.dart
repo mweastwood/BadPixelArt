@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' as gt;
-import 'package:local_agent/local_agent.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 class TestMockAiService extends AiService {
   @override
