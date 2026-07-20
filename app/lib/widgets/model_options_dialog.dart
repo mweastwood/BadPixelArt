@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../logic/utils/settings_provider.dart';
 
-class ModelOptionsDialog extends StatefulWidget {
+class ModelOptionsDialog extends ConsumerStatefulWidget {
   final String currentReleaseStage;
   final String currentPreference;
   final void Function(String releaseStage, String preference) onChanged;
@@ -13,18 +15,33 @@ class ModelOptionsDialog extends StatefulWidget {
   });
 
   @override
-  State<ModelOptionsDialog> createState() => _ModelOptionsDialogState();
+  ConsumerState<ModelOptionsDialog> createState() => _ModelOptionsDialogState();
 }
 
-class _ModelOptionsDialogState extends State<ModelOptionsDialog> {
+class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
   late String _selectedStage;
   late String _selectedPreference;
+  late AiEngine _selectedEngine;
+  late TextEditingController _geminiKeyController;
+  late TextEditingController _zhipuKeyController;
 
   @override
   void initState() {
     super.initState();
     _selectedStage = widget.currentReleaseStage;
     _selectedPreference = widget.currentPreference;
+
+    final settings = ref.read(settingsProvider);
+    _selectedEngine = settings.aiEngine;
+    _geminiKeyController = TextEditingController(text: settings.geminiApiKey);
+    _zhipuKeyController = TextEditingController(text: settings.zhipuApiKey);
+  }
+
+  @override
+  void dispose() {
+    _geminiKeyController.dispose();
+    _zhipuKeyController.dispose();
+    super.dispose();
   }
 
   @override
@@ -32,64 +49,129 @@ class _ModelOptionsDialogState extends State<ModelOptionsDialog> {
     final theme = Theme.of(context);
     return AlertDialog(
       title: const Text('Model Options'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Release Stage',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildOptionCard(
-                key: const ValueKey('stage_stable'),
-                label: 'Stable',
-                isSelected: _selectedStage == 'stable',
-                onTap: () => setState(() => _selectedStage = 'stable'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'AI Engine',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
               ),
-              const SizedBox(width: 12),
-              _buildOptionCard(
-                key: const ValueKey('stage_preview'),
-                label: 'Preview',
-                isSelected: _selectedStage == 'preview',
-                onTap: () => setState(() => _selectedStage = 'preview'),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _buildOptionCard(
+                  key: const ValueKey('engine_local'),
+                  label: 'Local',
+                  isSelected: _selectedEngine == AiEngine.local,
+                  onTap: () => setState(() => _selectedEngine = AiEngine.local),
+                ),
+                const SizedBox(width: 8),
+                _buildOptionCard(
+                  key: const ValueKey('engine_gemini'),
+                  label: 'Gemini Cloud',
+                  isSelected: _selectedEngine == AiEngine.geminiCloud,
+                  onTap: () =>
+                      setState(() => _selectedEngine = AiEngine.geminiCloud),
+                ),
+                const SizedBox(width: 8),
+                _buildOptionCard(
+                  key: const ValueKey('engine_zhipu'),
+                  label: 'Zhipu Cloud',
+                  isSelected: _selectedEngine == AiEngine.zhipuCloud,
+                  onTap: () =>
+                      setState(() => _selectedEngine = AiEngine.zhipuCloud),
+                ),
+              ],
+            ),
+            if (_selectedEngine == AiEngine.geminiCloud) ...[
+              const SizedBox(height: 16),
+              TextField(
+                key: const ValueKey('gemini_api_key_field'),
+                controller: _geminiKeyController,
+                decoration: const InputDecoration(
+                  labelText: 'Gemini API Key',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                obscureText: true,
+              ),
+            ] else if (_selectedEngine == AiEngine.zhipuCloud) ...[
+              const SizedBox(height: 16),
+              TextField(
+                key: const ValueKey('zhipu_api_key_field'),
+                controller: _zhipuKeyController,
+                decoration: const InputDecoration(
+                  labelText: 'Zhipu API Key',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                obscureText: true,
               ),
             ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'Performance Preference',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildOptionCard(
-                key: const ValueKey('preference_full'),
-                label: 'Full (Capable)',
-                isSelected: _selectedPreference == 'full',
-                onTap: () => setState(() => _selectedPreference = 'full'),
+            if (_selectedEngine == AiEngine.local) ...[
+              const SizedBox(height: 20),
+              Text(
+                'Release Stage',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
               ),
-              const SizedBox(width: 12),
-              _buildOptionCard(
-                key: const ValueKey('preference_fast'),
-                label: 'Fast (Low Latency)',
-                isSelected: _selectedPreference == 'fast',
-                onTap: () => setState(() => _selectedPreference = 'fast'),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildOptionCard(
+                    key: const ValueKey('stage_stable'),
+                    label: 'Stable',
+                    isSelected: _selectedStage == 'stable',
+                    onTap: () => setState(() => _selectedStage = 'stable'),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildOptionCard(
+                    key: const ValueKey('stage_preview'),
+                    label: 'Preview',
+                    isSelected: _selectedStage == 'preview',
+                    onTap: () => setState(() => _selectedStage = 'preview'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Performance Preference',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildOptionCard(
+                    key: const ValueKey('preference_full'),
+                    label: 'Full (Capable)',
+                    isSelected: _selectedPreference == 'full',
+                    onTap: () => setState(() => _selectedPreference = 'full'),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildOptionCard(
+                    key: const ValueKey('preference_fast'),
+                    label: 'Fast (Low Latency)',
+                    isSelected: _selectedPreference == 'fast',
+                    onTap: () => setState(() => _selectedPreference = 'fast'),
+                  ),
+                ],
               ),
             ],
-          ),
-        ],
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -98,9 +180,16 @@ class _ModelOptionsDialogState extends State<ModelOptionsDialog> {
         ),
         ElevatedButton(
           key: const ValueKey('save_model_options'),
-          onPressed: () {
+          onPressed: () async {
+            final settingsNotifier = ref.read(settingsProvider.notifier);
+            await settingsNotifier.setAiEngine(_selectedEngine);
+            await settingsNotifier.setGeminiApiKey(_geminiKeyController.text);
+            await settingsNotifier.setZhipuApiKey(_zhipuKeyController.text);
+
             widget.onChanged(_selectedStage, _selectedPreference);
-            Navigator.of(context).pop();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
           },
           child: const Text('Save'),
         ),
