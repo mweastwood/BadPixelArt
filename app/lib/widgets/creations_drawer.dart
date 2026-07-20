@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/utils/database.dart';
 import '../logic/utils/database_helpers.dart';
+import 'package:drift/drift.dart' as drift;
 
 class CreationsDrawer extends ConsumerStatefulWidget {
   const CreationsDrawer({super.key});
@@ -251,10 +252,40 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
+            key: const ValueKey('rename_dialog_confirm_button'),
             onPressed: () async {
               final newTitle = controller.text.trim();
               if (newTitle.isNotEmpty) {
-                await notifier.renameCanvas(newTitle);
+                if (creation.id == ref.read(canvasStateProvider).creationId) {
+                  await notifier.renameCanvas(newTitle);
+                } else {
+                  final db = AppDatabaseHelper.db;
+                  final creationData = await db.getCreationById(creation.id);
+                  if (creationData != null) {
+                    await db.updateCreation(
+                      CreationsCompanion(
+                        id: drift.Value(creation.id),
+                        title: drift.Value(newTitle),
+                        gridSize: drift.Value(creationData.gridSize),
+                        gridData: drift.Value(creationData.gridData),
+                        paletteName: drift.Value(creationData.paletteName),
+                        paletteColors: drift.Value(creationData.paletteColors),
+                        decomposedComponents: drift.Value(
+                          creationData.decomposedComponents,
+                        ),
+                        aiHistoryLogs: drift.Value(creationData.aiHistoryLogs),
+                        referenceImage: drift.Value(
+                          creationData.referenceImage,
+                        ),
+                        originalReferenceImage: drift.Value(
+                          creationData.originalReferenceImage,
+                        ),
+                        createdAt: drift.Value(creationData.createdAt),
+                        updatedAt: drift.Value(DateTime.now()),
+                      ),
+                    );
+                  }
+                }
                 _refreshList();
               }
               if (context.mounted) Navigator.of(context).pop();
