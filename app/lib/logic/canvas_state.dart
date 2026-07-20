@@ -1004,6 +1004,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   void reorderComponents(int oldIndex, int newIndex) {
     final list = List<PixelArtComponent>.from(state.decomposedComponents);
+    if (oldIndex < 0 || oldIndex >= list.length) return;
+    if (newIndex < 0 || newIndex > list.length) return;
     if (oldIndex < newIndex) {
       newIndex -= 1;
     }
