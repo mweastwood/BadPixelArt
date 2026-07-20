@@ -24,6 +24,8 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
   late AiEngine _selectedEngine;
   late TextEditingController _geminiKeyController;
   late TextEditingController _zhipuKeyController;
+  late TextEditingController _geminiModelController;
+  late TextEditingController _zhipuModelController;
 
   @override
   void initState() {
@@ -35,12 +37,16 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
     _selectedEngine = settings.aiEngine;
     _geminiKeyController = TextEditingController(text: settings.geminiApiKey);
     _zhipuKeyController = TextEditingController(text: settings.zhipuApiKey);
+    _geminiModelController = TextEditingController(text: settings.geminiModel);
+    _zhipuModelController = TextEditingController(text: settings.zhipuModel);
   }
 
   @override
   void dispose() {
     _geminiKeyController.dispose();
     _zhipuKeyController.dispose();
+    _geminiModelController.dispose();
+    _zhipuModelController.dispose();
     super.dispose();
   }
 
@@ -101,6 +107,16 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
                 ),
                 obscureText: true,
               ),
+              const SizedBox(height: 16),
+              TextField(
+                key: const ValueKey('gemini_model_field'),
+                controller: _geminiModelController,
+                decoration: const InputDecoration(
+                  labelText: 'Model Name',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
             ] else if (_selectedEngine == AiEngine.zhipuCloud) ...[
               const SizedBox(height: 16),
               TextField(
@@ -112,6 +128,16 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
                   isDense: true,
                 ),
                 obscureText: true,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                key: const ValueKey('zhipu_model_field'),
+                controller: _zhipuModelController,
+                decoration: const InputDecoration(
+                  labelText: 'Model Name',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
               ),
             ],
             if (_selectedEngine == AiEngine.local) ...[
@@ -185,6 +211,8 @@ class _ModelOptionsDialogState extends ConsumerState<ModelOptionsDialog> {
             await settingsNotifier.setAiEngine(_selectedEngine);
             await settingsNotifier.setGeminiApiKey(_geminiKeyController.text);
             await settingsNotifier.setZhipuApiKey(_zhipuKeyController.text);
+            await settingsNotifier.setGeminiModel(_geminiModelController.text);
+            await settingsNotifier.setZhipuModel(_zhipuModelController.text);
 
             widget.onChanged(_selectedStage, _selectedPreference);
             if (context.mounted) {
