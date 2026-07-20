@@ -107,7 +107,7 @@ void main() {
       final zhipuPrefs = FakeSharedPreferences();
       await zhipuPrefs.setInt('aiEngine', AiEngine.zhipuCloud.index);
       await zhipuPrefs.setString('zhipuApiKey', 'mock-zhipu-key');
-      await zhipuPrefs.setString('zhipuModel', 'glm-4-flash');
+      await zhipuPrefs.setString('zhipuModel', 'glm-4.7-flash');
 
       final zhipuCustomPrefs = FakeSharedPreferences();
       await zhipuCustomPrefs.setInt('aiEngine', AiEngine.zhipuCloud.index);

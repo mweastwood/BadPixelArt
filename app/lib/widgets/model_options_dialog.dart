@@ -13,9 +13,11 @@ const List<String> geminiModels = [
 ];
 
 const List<String> zhipuModels = [
-  'glm-4-flash',
-  'glm-4-air',
-  'glm-4-plus',
+  'glm-5.2',
+  'glm-5v-turbo',
+  'glm-4.7-flash',
+  'glm-4.7',
+  'glm-4.5-air',
   'custom',
 ];
 
@@ -26,9 +28,11 @@ const Map<String, String> modelUsageLimits = {
   'gemini-3.1-flash-lite': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
   'gemini-2.5-pro': 'Free Tier Limits: 2 RPM / 32k TPM / 50 RPD',
   'gemini-2.5-flash': 'Free Tier Limits: 15 RPM / 1M TPM / 1,500 RPD',
-  'glm-4-flash': 'Free Tier Limits: 2 RPS (zero cost, completely free)',
-  'glm-4-air': 'Commercial: 2 RPS (approx. \$0.14 / 1M tokens)',
-  'glm-4-plus': 'Commercial: 2 RPS (high capability, paid)',
+  'glm-5.2': 'Commercial: 2 RPS (Approx. \$1.40 / 1M input tokens)',
+  'glm-5v-turbo': 'Commercial: 2 RPS (Flagship Vision Model)',
+  'glm-4.7-flash': 'Free Tier Limits: 2 RPS (zero cost, completely free)',
+  'glm-4.7': 'Commercial: 2 RPS (Standard capability)',
+  'glm-4.5-air': 'Commercial: 2 RPS (Light, balanced)',
 };
 
 class ModelOptionsDialog extends ConsumerStatefulWidget {

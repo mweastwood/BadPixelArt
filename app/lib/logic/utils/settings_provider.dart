@@ -46,7 +46,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
           geminiApiKey: _prefs.getString('geminiApiKey') ?? '',
           zhipuApiKey: _prefs.getString('zhipuApiKey') ?? '',
           geminiModel: _prefs.getString('geminiModel') ?? 'gemini-3.5-flash',
-          zhipuModel: _prefs.getString('zhipuModel') ?? 'glm-4-flash',
+          zhipuModel: _prefs.getString('zhipuModel') ?? 'glm-4.7-flash',
         ),
       );
 
