@@ -419,7 +419,7 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
 
   final step = wizardState.currentStep;
   final hasBack = step.index > 0;
-  final hasNext = step.index < 4;
+  final hasNext = step.index < 6;
 
   String nextLabel = '';
   Widget? nextIcon;
@@ -457,6 +457,21 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
         : () => ref
               .read(wizardStateProvider.notifier)
               .setStep(WizardStep.colorAndOutline);
+  } else if (step == WizardStep.colorAndOutline) {
+    nextLabel = 'Define Layer Order';
+    nextIcon = const Icon(Icons.arrow_forward);
+    onNext = canvasState.decomposedComponents.isEmpty
+        ? null
+        : () => ref
+              .read(wizardStateProvider.notifier)
+              .setStep(WizardStep.layerOrderingAndMerge);
+  } else if (step == WizardStep.layerOrderingAndMerge) {
+    nextLabel = 'Merge & Refine';
+    nextIcon = const Icon(Icons.layers);
+    onNext = () {
+      ref.read(canvasStateProvider.notifier).mergeComponentsToCanvas();
+      ref.read(wizardStateProvider.notifier).setStep(WizardStep.refinement);
+    };
   }
 
   VoidCallback? onBack;
@@ -475,6 +490,14 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
     onBack = () => ref
         .read(wizardStateProvider.notifier)
         .setStep(WizardStep.componentSculpting);
+  } else if (step == WizardStep.layerOrderingAndMerge) {
+    onBack = () => ref
+        .read(wizardStateProvider.notifier)
+        .setStep(WizardStep.colorAndOutline);
+  } else if (step == WizardStep.refinement) {
+    onBack = () => ref
+        .read(wizardStateProvider.notifier)
+        .setStep(WizardStep.layerOrderingAndMerge);
   }
 
   return Row(
@@ -491,6 +514,10 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
                 ? 'Back to Semantic Components'
                 : step == WizardStep.colorAndOutline
                 ? 'Back to Shape Sculpting'
+                : step == WizardStep.layerOrderingAndMerge
+                ? 'Back to Color Selection'
+                : step == WizardStep.refinement
+                ? 'Back to Layer Ordering'
                 : 'Back',
           ),
           backgroundColor: theme.colorScheme.surfaceContainerHigh,

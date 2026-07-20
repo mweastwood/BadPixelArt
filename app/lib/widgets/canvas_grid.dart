@@ -429,7 +429,9 @@ class CanvasPainter extends CustomPainter {
 
   bool get isSketchingPlanPhase => currentStep == WizardStep.sketchingPlan;
   bool get isSculptingPhase => currentStep == WizardStep.componentSculpting;
-  bool get isColorAndOutlinePhase => currentStep == WizardStep.colorAndOutline;
+  bool get isColorAndOutlinePhase =>
+      currentStep == WizardStep.colorAndOutline ||
+      currentStep == WizardStep.layerOrderingAndMerge;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -674,7 +676,8 @@ class CanvasPainter extends CustomPainter {
     }
 
     // Draw component bounding boxes if present
-    if (decomposedComponents.isNotEmpty) {
+    if (decomposedComponents.isNotEmpty &&
+        currentStep != WizardStep.refinement) {
       final borderPaint = Paint()..style = PaintingStyle.stroke;
 
       for (int i = 0; i < decomposedComponents.length; i++) {

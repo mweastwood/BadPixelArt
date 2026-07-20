@@ -159,33 +159,6 @@ class ComponentColorSelectionList extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: 24),
-        ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: theme.colorScheme.primary,
-            foregroundColor: theme.colorScheme.onPrimary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          icon: const Icon(Icons.layers_outlined),
-          label: const Text(
-            'Merge Components with Colors to Canvas',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          onPressed: canvasState.isGenerating
-              ? null
-              : () {
-                  notifier.mergeComponentsToCanvas();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Merged components with colors to canvas!'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-        ),
       ],
     );
   }

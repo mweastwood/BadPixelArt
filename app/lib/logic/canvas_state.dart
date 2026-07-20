@@ -11,6 +11,7 @@ import 'agents/base_agent.dart';
 import 'agents/decomposer_agent.dart';
 import 'agents/shape_sculpter_agent.dart';
 import 'orchestrators/sketch_orchestrator.dart';
+import 'orchestrators/refinement_orchestrator.dart';
 import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
 import 'models/canvas_model.dart';
@@ -998,6 +999,51 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     if (state.autoRun) {
       _autoRunTimer?.cancel();
       _startAutoRunLoop();
+    }
+  }
+
+  void reorderComponents(int oldIndex, int newIndex) {
+    final list = List<PixelArtComponent>.from(state.decomposedComponents);
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    state = state.copyWith(decomposedComponents: list);
+    _scheduleSave();
+  }
+
+  Future<void> refineCanvas(String refinementPrompt) async {
+    if (state.isGenerating) return;
+    state = state.copyWith(isGenerating: true);
+
+    try {
+      final orchestrator = RefinementOrchestrator(_aiService);
+      final promptToUse = refinementPrompt.trim().isNotEmpty
+          ? refinementPrompt
+          : state.userPrompt;
+      final result = await orchestrator.refine(
+        initialGrid: state.grid,
+        gridSize: state.gridSize,
+        palette: state.palette,
+        userPrompt: promptToUse,
+        autoRunSpeed: state.autoRunSpeed,
+        onStep: (updatedGrid) {
+          state = state.copyWith(grid: updatedGrid);
+        },
+        onLogHistory: (log) {
+          final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
+          newHistory.add(log);
+          state = state.copyWith(aiHistory: newHistory);
+        },
+      );
+
+      _pushToUndo(state.grid);
+      state = state.copyWith(grid: result, isGenerating: false);
+      _scheduleSave();
+    } catch (e) {
+      debugPrint('Error refining canvas: $e');
+      state = state.copyWith(isGenerating: false);
     }
   }
 
