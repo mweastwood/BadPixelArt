@@ -27,15 +27,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.macOS:
         return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return web;
       case TargetPlatform.linux:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for linux - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return web;
       default:
         throw UnsupportedError(
           'DefaultFirebaseOptions are not supported for this platform.',
@@ -55,7 +49,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyAqUErD7EV6HwY8CvlXawrPdGB2hXqrxFI',
-    appId: '1:402346842627:android:d409cb5be6382660ae8c36',
+    appId: '1:402346842627:android:9eb48eda1ee5ea8dae8c36',
     messagingSenderId: '402346842627',
     projectId: 'bad-pixel-art-dev',
     storageBucket: 'bad-pixel-art-dev.firebasestorage.app',
