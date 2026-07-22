@@ -41,7 +41,7 @@ dependencies:
   flutter_agent_core:
     git:
       url: https://github.com/mweastwood/flutter-agent-core.git
-      ref: v0.0.16
+      ref: v0.0.17
   shared_preferences: ^2.5.5
   drift: ^2.14.0
   sqlite3_flutter_libs: ^0.5.17

@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
@@ -98,6 +99,35 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsState>(
   dependencies: [sharedPreferencesProvider],
 );
 
+class ZhipuCloudAiService extends CloudAiService {
+  ZhipuCloudAiService({
+    required super.baseUrl,
+    required super.apiKey,
+    required super.modelName,
+    super.throttlePercentage,
+  });
+
+  @override
+  Future<AiResponse?> generateContentRaw({
+    required String prompt,
+    Uint8List? imageBytes,
+    double temperature = 1.0,
+    int? maxOutputTokens,
+  }) async {
+    final info = CloudModelDatabase.getModelInfo(modelName);
+    final isVisionModel =
+        info?.isVision ??
+        (modelName.contains('v') || modelName.contains('vision'));
+    final effectiveImageBytes = isVisionModel ? imageBytes : null;
+    return super.generateContentRaw(
+      prompt: prompt,
+      imageBytes: effectiveImageBytes,
+      temperature: temperature,
+      maxOutputTokens: maxOutputTokens,
+    );
+  }
+}
+
 final appAiServiceProvider = Provider<AiService>((ref) {
   final settings = ref.watch(settingsProvider);
   switch (settings.aiEngine) {
@@ -111,7 +141,7 @@ final appAiServiceProvider = Provider<AiService>((ref) {
         throttlePercentage: settings.throttlePercentage,
       );
     case AiEngine.zhipuCloud:
-      return CloudAiService(
+      return ZhipuCloudAiService(
         baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
         apiKey: settings.zhipuApiKey,
         modelName: settings.zhipuModel,
