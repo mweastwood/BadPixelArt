@@ -114,8 +114,10 @@ class ZhipuCloudAiService extends CloudAiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
+    final info = CloudModelDatabase.getModelInfo(modelName);
     final isVisionModel =
-        modelName.contains('v') || modelName.contains('vision');
+        info?.isVision ??
+        (modelName.contains('v') || modelName.contains('vision'));
     final effectiveImageBytes = isVisionModel ? imageBytes : null;
     return super.generateContentRaw(
       prompt: prompt,
