@@ -122,5 +122,41 @@ void main() {
       final combinedSingle = combineBmps([bmp]);
       expect(combinedSingle.length, equals(822));
     });
+
+    test('convertToPngBytes converts BMP image bytes to PNG format', () async {
+      final grid = List.generate(4, (_) => List.filled(4, 1));
+      final bmpBytes = generateBmp(grid, testPalette);
+      expect(bmpBytes[0], equals(0x42)); // BMP magic 'B'
+      expect(bmpBytes[1], equals(0x4D)); // BMP magic 'M'
+
+      final pngBytes = await convertToPngBytes(bmpBytes);
+      expect(pngBytes.length, greaterThan(0));
+      expect(pngBytes[0], equals(0x89));
+      expect(pngBytes[1], equals(0x50)); // 'P'
+      expect(pngBytes[2], equals(0x4E)); // 'N'
+      expect(pngBytes[3], equals(0x47)); // 'G'
+    });
+
+    test(
+      'convertToPngBytes returns original bytes if already PNG or empty',
+      () async {
+        final empty = Uint8List(0);
+        final resultEmpty = await convertToPngBytes(empty);
+        expect(resultEmpty.length, equals(0));
+
+        final mockPng = Uint8List.fromList([
+          0x89,
+          0x50,
+          0x4E,
+          0x47,
+          0x0D,
+          0x0A,
+          0x1A,
+          0x0A,
+        ]);
+        final resultPng = await convertToPngBytes(mockPng);
+        expect(resultPng, equals(mockPng));
+      },
+    );
   });
 }
