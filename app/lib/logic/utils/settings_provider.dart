@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+import 'bmp_utils.dart';
 
 enum AiEngine { local, geminiCloud, zhipuCloud }
 
@@ -118,7 +119,12 @@ class ZhipuCloudAiService extends CloudAiService {
     final isVisionModel =
         info?.isVision ??
         (modelName.contains('v') || modelName.contains('vision'));
-    final effectiveImageBytes = isVisionModel ? imageBytes : null;
+
+    Uint8List? effectiveImageBytes;
+    if (isVisionModel && imageBytes != null && imageBytes.isNotEmpty) {
+      effectiveImageBytes = await convertToPngBytes(imageBytes);
+    }
+
     return super.generateContentRaw(
       prompt: prompt,
       imageBytes: effectiveImageBytes,

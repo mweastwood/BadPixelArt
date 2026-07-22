@@ -436,3 +436,29 @@ String canvasToTextGrid(List<List<int>> grid) {
 
   return buffer.toString();
 }
+
+/// Converts image bytes (e.g. BMP, JPEG, WEBP) to PNG bytes (`0x89 0x50 0x4E 0x47`).
+/// If [bytes] are already PNG formatted or empty, returns [bytes] directly.
+Future<Uint8List> convertToPngBytes(Uint8List bytes) async {
+  if (bytes.isEmpty) return bytes;
+  if (bytes.length >= 8 &&
+      bytes[0] == 0x89 &&
+      bytes[1] == 0x50 &&
+      bytes[2] == 0x4E &&
+      bytes[3] == 0x47) {
+    return bytes;
+  }
+  try {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final byteData = await frame.image.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
+    if (byteData != null) {
+      return byteData.buffer.asUint8List();
+    }
+  } catch (e) {
+    debugPrint('Error converting image to PNG: $e');
+  }
+  return bytes;
+}
