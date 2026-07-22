@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
+import 'database_connection/connection.dart' as impl;
 
 part 'database.g.dart';
 
@@ -86,11 +83,7 @@ class AppDatabase extends _$AppDatabase {
 }
 
 QueryExecutor _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'bad_pixel_art.db'));
-    return NativeDatabase(file);
-  });
+  return impl.openConnection();
 }
 
 class AppDatabaseHelper {

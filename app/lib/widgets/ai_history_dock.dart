@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,6 +31,16 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
 
     try {
       final String jsonStr = AgentHistoryEntry.serializeList(history);
+
+      if (kIsWeb) {
+        await Clipboard.setData(ClipboardData(text: jsonStr));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('AI History copied to clipboard!')),
+          );
+        }
+        return;
+      }
 
       String? outputFile;
       try {
@@ -110,7 +121,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
   }
 
   String osPathBasename(String path) {
-    return path.split(Platform.isWindows ? '\\' : '/').last;
+    return path.split(RegExp(r'[/\\]')).last;
   }
 
   @override

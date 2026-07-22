@@ -95,6 +95,7 @@ final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsState>(
     final prefs = ref.watch(sharedPreferencesProvider);
     return SettingsNotifier(prefs);
   },
+  dependencies: [sharedPreferencesProvider],
 );
 
 final appAiServiceProvider = Provider<AiService>((ref) {
@@ -117,4 +118,4 @@ final appAiServiceProvider = Provider<AiService>((ref) {
         throttlePercentage: settings.throttlePercentage,
       );
   }
-});
+}, dependencies: [settingsProvider]);
