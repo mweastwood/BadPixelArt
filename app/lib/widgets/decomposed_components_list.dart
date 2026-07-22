@@ -35,29 +35,6 @@ class _SemanticComponentsListState
         canvasModel.referenceImage != null &&
         canvasModel.userPrompt.trim().isNotEmpty;
 
-    // Show options dialog if pendingDecompositionOptions is not empty
-    if (canvasModel.pendingDecompositionOptions.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) {
-            return DecompositionOptionsDialog(
-              options: canvasModel.pendingDecompositionOptions,
-              onSelected: (idx) {
-                notifier.applyDecompositionOption(idx);
-                Navigator.of(context).pop();
-              },
-              onCancel: () {
-                notifier.clearPendingDecompositionOptions();
-                Navigator.of(context).pop();
-              },
-            );
-          },
-        );
-      });
-    }
-
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 2,
@@ -381,10 +358,10 @@ class DecompositionOptionsDialog extends StatelessWidget {
                                       ),
                                       const SizedBox(height: 4),
                                       Expanded(
-                                        child: ListView(
-                                          physics:
-                                              const NeverScrollableScrollPhysics(),
-                                          children: optComponents.map((
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: optComponents.take(4).map((
                                             PixelArtComponent comp,
                                           ) {
                                             return Padding(
