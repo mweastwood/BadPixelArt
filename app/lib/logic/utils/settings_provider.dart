@@ -124,7 +124,6 @@ class ZhipuCloudAiService extends CloudAiService {
     if (isVisionModel && imageBytes != null && imageBytes.isNotEmpty) {
       effectiveImageBytes = await convertToPngBytes(imageBytes);
     }
-
     return super.generateContentRaw(
       prompt: prompt,
       imageBytes: effectiveImageBytes,
