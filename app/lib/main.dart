@@ -88,8 +88,15 @@ Future<void> mainCommon() async {
           (ref) => ref.watch(appAiServiceProvider),
         ),
         canvasStateProvider.overrideWith((ref) {
-          final aiService = ref.watch(loggingAiServiceProvider);
-          return CanvasNotifier(aiService, initialModel: initialModel);
+          final aiService = ref.read(loggingAiServiceProvider);
+          final notifier = CanvasNotifier(
+            aiService,
+            initialModel: initialModel,
+          );
+          ref.listen<AiService>(loggingAiServiceProvider, (_, newService) {
+            notifier.updateAiService(newService);
+          });
+          return notifier;
         }),
       ],
       child: const MyApp(),

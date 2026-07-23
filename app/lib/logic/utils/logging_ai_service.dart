@@ -2,11 +2,14 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
+import 'settings_provider.dart';
+
 class LoggingAiService implements AiService {
   final AiService _delegate;
+  final String? modelName;
   void Function(AgentHistoryEntry entry)? onLog;
 
-  LoggingAiService(this._delegate);
+  LoggingAiService(this._delegate, {this.modelName});
 
   @override
   Future<AiCoreStatus> checkStatus() => _delegate.checkStatus();
@@ -45,6 +48,7 @@ class LoggingAiService implements AiService {
           response: response?.text ?? '',
           isError: response == null,
           imageBytes: imageBytes,
+          modelName: modelName,
         ),
       );
       return response;
@@ -56,6 +60,7 @@ class LoggingAiService implements AiService {
           response: e.toString(),
           isError: true,
           imageBytes: imageBytes,
+          modelName: modelName,
         ),
       );
       rethrow;
@@ -85,5 +90,22 @@ class LoggingAiService implements AiService {
 
 final loggingAiServiceProvider = Provider<AiService>((ref) {
   final baseService = ref.watch(aiServiceProvider);
-  return LoggingAiService(baseService);
+
+  String? currentModelName;
+  try {
+    final settings = ref.read(settingsProvider);
+    switch (settings.aiEngine) {
+      case AiEngine.geminiCloud:
+        currentModelName = settings.geminiModel;
+        break;
+      case AiEngine.zhipuCloud:
+        currentModelName = settings.zhipuModel;
+        break;
+      case AiEngine.local:
+        currentModelName = 'Local Model';
+        break;
+    }
+  } catch (_) {}
+
+  return LoggingAiService(baseService, modelName: currentModelName);
 });

@@ -266,17 +266,17 @@ class _HistoryItemState extends State<_HistoryItem> {
   String _getInferenceTitle() {
     final prompt = widget.entry.prompt;
     if (prompt.contains('Decompose the drawing instruction')) {
-      return 'Semantic Decomposition';
+      return 'Semantic Component Breakdown';
     }
     if (prompt.contains('Decompose the component')) {
-      return 'Shape Decomposition';
+      return 'Shape Breakdown & Decomposition';
     }
     if (prompt.contains('color palette generator')) {
-      return 'Palette Suggestion';
+      return 'AI Palette Suggestion';
     }
     if (prompt.contains('AI pixel art critic') &&
         prompt.contains('evaluating')) {
-      return 'Stroke Evaluation';
+      return 'Stroke Evaluation & Critique';
     }
     if (prompt.contains('AI pixel art painter')) {
       return 'Stroke Suggestion';
@@ -285,7 +285,7 @@ class _HistoryItemState extends State<_HistoryItem> {
       return 'Candidate Selection (Tournament)';
     }
     if (prompt.contains('pixel art describer')) {
-      return 'Describe Canvas';
+      return 'Visual Canvas Description';
     }
     return 'AI Core Inference';
   }
@@ -772,6 +772,28 @@ class _HistoryItemState extends State<_HistoryItem> {
                   prompt: widget.entry.prompt,
                   imageBytes: widget.entry.imageBytes,
                 ),
+                if (widget.entry.modelName != null &&
+                    widget.entry.modelName!.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.entry.modelName!,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

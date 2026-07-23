@@ -290,8 +290,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "v0.0.19"
-      resolved-ref: "3064f473f0488c294802e531e1fb187aa9236f31"
+      ref: "feat/add-gemma-4-models"
+      resolved-ref: ebdf34cb30c2db85a1bd83afbe77050c88734fc4
       url: "https://github.com/mweastwood/flutter-agent-core.git"
     source: git
     version: "0.0.1"

@@ -35,7 +35,7 @@ abstract class AgentCanvas {
 }
 
 class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
-  final AiService _aiService;
+  AiService _aiService;
   Timer? _autoRunTimer;
   Completer<bool>? _confirmationCompleter;
 
@@ -363,6 +363,15 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  void updateAiService(AiService newAiService) {
+    _aiService = newAiService;
+    if (_aiService is LoggingAiService) {
+      (_aiService as LoggingAiService).onLog = (entry) {
+        state = state.copyWith(aiHistory: [...state.aiHistory, entry]);
+      };
+    }
+  }
+
   CanvasNotifier(this._aiService, {CanvasModel? initialModel})
     : super(
         initialModel ??
@@ -388,7 +397,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             ),
       ) {
     if (_aiService is LoggingAiService) {
-      _aiService.onLog = (entry) {
+      (_aiService as LoggingAiService).onLog = (entry) {
         state = state.copyWith(aiHistory: [...state.aiHistory, entry]);
       };
     }
@@ -1071,8 +1080,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
   ref,
 ) {
-  final aiService = ref.watch(loggingAiServiceProvider);
-  return CanvasNotifier(aiService);
+  final aiService = ref.read(loggingAiServiceProvider);
+  final notifier = CanvasNotifier(aiService);
+  ref.listen<AiService>(loggingAiServiceProvider, (_, newService) {
+    notifier.updateAiService(newService);
+  });
+  return notifier;
 });
 
 final isDraggingCanvasProvider = StateProvider<bool>((ref) => false);
