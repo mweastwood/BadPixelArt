@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/prompts.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MockTestAiService extends AiService {
   AiCoreStatus status = AiCoreStatus.available;
@@ -164,6 +166,35 @@ void main() {
         equals(CanvasTool.circle),
       );
     });
+
+    test(
+      'changing AI model in settingsProvider retains canvas state and logs modelName',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final testContainer = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            aiServiceProvider.overrideWithValue(MockTestAiService()),
+          ],
+        );
+
+        final notifier = testContainer.read(canvasStateProvider.notifier);
+        notifier.selectColor(2);
+        notifier.drawPixel(5, 5);
+
+        expect(testContainer.read(canvasStateProvider).grid[5][5], equals(2));
+
+        // Change AI model in settings
+        final settingsNotifier = testContainer.read(settingsProvider.notifier);
+        await settingsNotifier.setGeminiModel('gemini-3.6-flash');
+
+        // Verify canvas grid and state are retained 100%
+        final stateAfter = testContainer.read(canvasStateProvider);
+        expect(stateAfter.grid[5][5], equals(2));
+        expect(stateAfter.selectedColorIndex, equals(2));
+      },
+    );
 
     test('drawPixel draws on grid and saves to undo stack', () {
       final notifier = container.read(canvasStateProvider.notifier);
