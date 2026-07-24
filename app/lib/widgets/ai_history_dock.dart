@@ -296,11 +296,22 @@ class _HistoryItemState extends State<_HistoryItem> {
     required String prompt,
     required String response,
     Uint8List? imageBytes,
+    AgentHistoryEntry? entry,
   }) {
     showDialog(
       context: context,
       builder: (context) {
         final theme = Theme.of(context);
+        final historyEntry =
+            entry ??
+            AgentHistoryEntry(
+              timestamp: DateTime.now(),
+              prompt: prompt,
+              response: response,
+              isError: false,
+              imageBytes: imageBytes,
+            );
+
         return AlertDialog(
           title: Text(
             title,
@@ -365,10 +376,7 @@ class _HistoryItemState extends State<_HistoryItem> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          _TokenCountBadge(
-                            prompt: prompt,
-                            imageBytes: imageBytes,
-                          ),
+                          _TokenCountBadge(entry: historyEntry),
                         ],
                       ),
                       IconButton(
@@ -768,10 +776,7 @@ class _HistoryItemState extends State<_HistoryItem> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                _TokenCountBadge(
-                  prompt: widget.entry.prompt,
-                  imageBytes: widget.entry.imageBytes,
-                ),
+                _TokenCountBadge(entry: widget.entry),
                 if (widget.entry.modelName != null &&
                     widget.entry.modelName!.isNotEmpty) ...[
                   const SizedBox(width: 8),
@@ -1514,16 +1519,76 @@ class _HistoryItemState extends State<_HistoryItem> {
 }
 
 class _TokenCountBadge extends ConsumerWidget {
-  final String prompt;
-  final Uint8List? imageBytes;
+  final AgentHistoryEntry entry;
 
-  const _TokenCountBadge({required this.prompt, this.imageBytes});
+  const _TokenCountBadge({required this.entry});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final inTokens = entry.inputTokens;
+    final outTokens = entry.outputTokens;
+    final cost = entry.estimatedCostUsd;
+
+    if (inTokens != null && outTokens != null) {
+      final costStr = cost != null
+          ? (cost == 0.0
+                ? 'Free'
+                : (cost < 0.0001
+                      ? '<\$0.0001'
+                      : '\$${cost.toStringAsFixed(4)}'))
+          : null;
+
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              'In: $inTokens | Out: $outTokens',
+              style: TextStyle(
+                color: theme.colorScheme.onSecondaryContainer,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          if (costStr != null) ...[
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: cost == 0.0
+                    ? Colors.green.withAlpha(40)
+                    : theme.colorScheme.tertiaryContainer,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                costStr,
+                style: TextStyle(
+                  color: cost == 0.0
+                      ? Colors.green
+                      : theme.colorScheme.onTertiaryContainer,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
+    }
+
     final aiService = ref.watch(aiServiceProvider);
     return FutureBuilder<int>(
-      future: aiService.countTokens(prompt: prompt, imageBytes: imageBytes),
+      future: aiService.countTokens(
+        prompt: entry.prompt,
+        imageBytes: entry.imageBytes,
+      ),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return SizedBox(
@@ -1539,7 +1604,6 @@ class _TokenCountBadge extends ConsumerWidget {
           return const SizedBox.shrink();
         }
         final count = snapshot.data!;
-        final theme = Theme.of(context);
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
