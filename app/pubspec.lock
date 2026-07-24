@@ -290,8 +290,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "v0.0.20"
-      resolved-ref: "477fa87c81c54fb1d9caeada382a78fc747407cc"
+      ref: "feat/token-breakdown-and-cost-estimation"
+      resolved-ref: "33f5542e1bbd090e6504aa7287822d480ec878e9"
       url: "https://github.com/mweastwood/flutter-agent-core.git"
     source: git
     version: "0.0.1"
