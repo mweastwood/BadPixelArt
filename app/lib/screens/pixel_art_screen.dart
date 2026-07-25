@@ -27,6 +27,11 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -192,45 +197,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                 },
               ),
             ],
-            bottom: TabBar(
-              controller: _tabController,
-              tabs: [
-                const Tab(
-                  icon: Icon(Icons.palette_outlined),
-                  text: 'Canvas & Controls',
-                ),
-                Tab(
-                  icon: const Icon(Icons.bug_report_outlined),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('AI History'),
-                      if (history.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${history.length}',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSecondaryContainer,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ),
           body: TabBarView(
             controller: _tabController,
@@ -250,6 +216,34 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
               const SingleChildScrollView(
                 padding: EdgeInsets.all(16.0),
                 child: AiHistoryDock(),
+              ),
+            ],
+          ),
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _tabController.index,
+            onDestinationSelected: (int index) {
+              _tabController.animateTo(index);
+            },
+            destinations: [
+              const NavigationDestination(
+                icon: Icon(Icons.palette_outlined),
+                selectedIcon: Icon(Icons.palette),
+                label: 'Canvas',
+              ),
+              NavigationDestination(
+                icon: history.isEmpty
+                    ? const Icon(Icons.bug_report_outlined)
+                    : Badge(
+                        label: Text('${history.length}'),
+                        child: const Icon(Icons.bug_report_outlined),
+                      ),
+                selectedIcon: history.isEmpty
+                    ? const Icon(Icons.bug_report)
+                    : Badge(
+                        label: Text('${history.length}'),
+                        child: const Icon(Icons.bug_report),
+                      ),
+                label: 'Logs',
               ),
             ],
           ),

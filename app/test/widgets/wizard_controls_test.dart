@@ -178,10 +178,10 @@ void main() {
         expect(find.byType(ShapeDecompositionList), findsOneWidget);
 
         // Verify AI History tab contains AiHistoryDock
-        await tester.tap(find.text('AI History'));
+        await tester.tap(find.text('Logs'));
         await tester.pumpAndSettle();
         expect(find.byType(AiHistoryDock), findsOneWidget);
-        await tester.tap(find.text('Canvas & Controls'));
+        await tester.tap(find.text('Canvas'));
         await tester.pumpAndSettle();
 
         // Tap Next FAB in Step 3 to go to Step 4
