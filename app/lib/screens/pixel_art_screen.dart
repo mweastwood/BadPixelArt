@@ -10,6 +10,7 @@ import '../widgets/model_options_dialog.dart';
 import '../widgets/decomposed_components_list.dart';
 import '../widgets/wizard_controls.dart';
 import '../widgets/creations_drawer.dart';
+import '../widgets/ai_history_dock.dart';
 
 class PixelArtScreen extends ConsumerWidget {
   const PixelArtScreen({super.key});
@@ -222,6 +223,7 @@ class PixelArtScreen extends ConsumerWidget {
               }
             },
           ),
+          bottomSheet: const AiHistoryDock(),
           floatingActionButton: _buildFloatingActionButtons(context, ref),
         ),
         if (canvasState.isSuggestingPalette)

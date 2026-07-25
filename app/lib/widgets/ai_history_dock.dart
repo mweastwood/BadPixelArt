@@ -17,6 +17,28 @@ class AiHistoryDock extends ConsumerStatefulWidget {
 
 class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
   bool _isCollapsed = true;
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
+
+  @override
+  void dispose() {
+    _sheetController.dispose();
+    super.dispose();
+  }
+
+  void _toggleSheet() {
+    setState(() {
+      _isCollapsed = !_isCollapsed;
+    });
+    if (_sheetController.isAttached) {
+      final double target = _isCollapsed ? 0.08 : 0.65;
+      _sheetController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+      );
+    }
+  }
 
   Future<void> _exportHistory(
     BuildContext context,
@@ -52,11 +74,9 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
           type: FileType.custom,
         );
       } catch (e) {
-        // saveFile might not be supported on this platform/shell setup
         outputFile = null;
       }
 
-      // If saveFile is not supported/returns null, try getDirectoryPath to let the user choose where to save
       if (outputFile == null) {
         try {
           final String? selectedDir = await FilePicker.getDirectoryPath(
@@ -72,7 +92,6 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
       }
 
       if (outputFile == null) {
-        // Fallback: save to exports folder, current directory (if not root), or system temp directory
         final exportsDir = Directory(
           '/home/mweastwood/projects/BadPixelArt/exports',
         );
@@ -130,7 +149,254 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
     final history = canvasModel.aiHistory;
+    final double totalCost = history.fold(
+      0.0,
+      (sum, item) => sum + (item.estimatedCostUsd ?? 0.0),
+    );
 
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.hasBoundedHeight) {
+          return _buildCardView(
+            context,
+            history,
+            notifier,
+            theme,
+            canvasModel,
+            totalCost,
+          );
+        }
+
+        return NotificationListener<DraggableScrollableNotification>(
+          onNotification: (notification) {
+            if (notification.extent > 0.15 && _isCollapsed) {
+              setState(() => _isCollapsed = false);
+            } else if (notification.extent <= 0.15 && !_isCollapsed) {
+              setState(() => _isCollapsed = true);
+            }
+            return false;
+          },
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: DraggableScrollableSheet(
+              controller: _sheetController,
+              initialChildSize: 0.08,
+              minChildSize: 0.06,
+              maxChildSize: 0.85,
+              snap: true,
+              snapSizes: const [0.08, 0.65, 0.85],
+              builder: (context, scrollController) {
+                return Material(
+                  elevation: 12,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20),
+                  ),
+                  color: theme.colorScheme.surfaceContainerHigh,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHigh,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant.withAlpha(150),
+                      ),
+                    ),
+                    child: SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.only(bottom: 24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Drag Handle & Header Bar
+                          GestureDetector(
+                            onTap: _toggleSheet,
+                            behavior: HitTestBehavior.opaque,
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 8),
+                                Center(
+                                  child: Container(
+                                    width: 36,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.onSurfaceVariant
+                                          .withAlpha(100),
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0,
+                                    vertical: 8.0,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.bug_report_outlined,
+                                        color: theme.colorScheme.secondary,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'AI History & Debugger',
+                                        style: TextStyle(
+                                          color: theme.colorScheme.onSurface,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      if (history.isNotEmpty) ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: theme
+                                                .colorScheme
+                                                .secondaryContainer,
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${history.length}',
+                                            style: TextStyle(
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSecondaryContainer,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        if (totalCost > 0) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: theme
+                                                  .colorScheme
+                                                  .tertiaryContainer,
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              'Total: \$${totalCost.toStringAsFixed(4)}',
+                                              style: TextStyle(
+                                                color: theme
+                                                    .colorScheme
+                                                    .onTertiaryContainer,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                      const Spacer(),
+                                      if (!_isCollapsed &&
+                                          history.isNotEmpty) ...[
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.file_download_outlined,
+                                          ),
+                                          tooltip: 'Export Logs',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () =>
+                                              _exportHistory(context, history),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.delete_sweep_outlined,
+                                          ),
+                                          tooltip: 'Clear History',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: notifier.clearAiHistory,
+                                        ),
+                                      ],
+                                      Icon(
+                                        _isCollapsed
+                                            ? Icons.keyboard_arrow_up
+                                            : Icons.keyboard_arrow_down,
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                              ],
+                            ),
+                          ),
+                          if (!_isCollapsed) ...[
+                            Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: history.isEmpty
+                                  ? Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 24.0,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'No AI history logs yet.\nTrigger a suggestion to log prompts/responses.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: theme
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                            fontSize: 13,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.separated(
+                                      shrinkWrap: true,
+                                      physics:
+                                          const NeverScrollableScrollPhysics(),
+                                      itemCount: history.length,
+                                      separatorBuilder: (context, index) =>
+                                          const Divider(height: 24),
+                                      itemBuilder: (context, index) {
+                                        final entry =
+                                            history[history.length - 1 - index];
+                                        return _HistoryItem(
+                                          entry: entry,
+                                          palette: canvasModel.palette,
+                                        );
+                                      },
+                                    ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCardView(
+    BuildContext context,
+    List<AgentHistoryEntry> history,
+    CanvasNotifier notifier,
+    ThemeData theme,
+    CanvasModel canvasModel,
+    double totalCost,
+  ) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -139,7 +405,6 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header Row (Tappable to expand/collapse)
             InkWell(
               onTap: () => setState(() => _isCollapsed = !_isCollapsed),
               borderRadius: BorderRadius.circular(8),
@@ -165,7 +430,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (history.isNotEmpty)
+                    if (history.isNotEmpty) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -184,6 +449,28 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                           ),
                         ),
                       ),
+                      if (totalCost > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Total: \$${totalCost.toStringAsFixed(4)}',
+                            style: TextStyle(
+                              color: theme.colorScheme.onTertiaryContainer,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                     const Spacer(),
                     if (!_isCollapsed && history.isNotEmpty) ...[
                       IconButton(
@@ -232,10 +519,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                   separatorBuilder: (context, index) =>
                       const Divider(height: 24),
                   itemBuilder: (context, index) {
-                    final entry =
-                        history[history.length -
-                            1 -
-                            index]; // Show latest first
+                    final entry = history[history.length - 1 - index];
                     return _HistoryItem(
                       entry: entry,
                       palette: canvasModel.palette,
