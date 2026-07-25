@@ -49,6 +49,10 @@ class LoggingAiService implements AiService {
           isError: response == null,
           imageBytes: imageBytes,
           modelName: modelName,
+          inputTokens: response?.inputTokens,
+          outputTokens: response?.outputTokens,
+          totalTokens: response?.totalTokens,
+          estimatedCostUsd: response?.estimatedCostUsd,
         ),
       );
       return response;
