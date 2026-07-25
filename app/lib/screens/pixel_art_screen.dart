@@ -12,14 +12,36 @@ import '../widgets/wizard_controls.dart';
 import '../widgets/creations_drawer.dart';
 import '../widgets/ai_history_dock.dart';
 
-class PixelArtScreen extends ConsumerWidget {
+class PixelArtScreen extends ConsumerStatefulWidget {
   const PixelArtScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PixelArtScreen> createState() => _PixelArtScreenState();
+}
+
+class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final canvasState = ref.watch(canvasStateProvider);
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
+    final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
+    final history = canvasState.aiHistory;
 
     // Global listener for component confirmation dialogs
     ref.listen<
@@ -170,60 +192,67 @@ class PixelArtScreen extends ConsumerWidget {
                 },
               ),
             ],
-          ),
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isLandscape = constraints.maxWidth > 800;
-
-              if (isLandscape) {
-                // Desktop/Tablet Split Layout
-                return Padding(
-                  padding: const EdgeInsets.all(24.0),
+            bottom: TabBar(
+              controller: _tabController,
+              tabs: [
+                const Tab(
+                  icon: Icon(Icons.palette_outlined),
+                  text: 'Canvas & Controls',
+                ),
+                Tab(
+                  icon: const Icon(Icons.bug_report_outlined),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Left side: Just the Canvas
-                      const Expanded(flex: 3, child: CanvasGrid()),
-                      const SizedBox(width: 24),
-                      // Right side: Controls (Palette & AI Wizard)
-                      const Expanded(
-                        flex: 2,
-                        child: SingleChildScrollView(
-                          padding: EdgeInsets.only(bottom: 120.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [WizardControls()],
+                      const Text('AI History'),
+                      if (history.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${history.length}',
+                            style: TextStyle(
+                              color: theme.colorScheme.onSecondaryContainer,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
-                );
-              } else {
-                final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
-                return SingleChildScrollView(
-                  physics: isDraggingCanvas
-                      ? const NeverScrollableScrollPhysics()
-                      : const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(
-                    left: 16.0,
-                    right: 16.0,
-                    top: 16.0,
-                    bottom: 120.0,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const SizedBox(height: 380, child: CanvasGrid()),
-                      const SizedBox(height: 16),
-                      const WizardControls(),
-                    ],
-                  ),
-                );
-              }
-            },
+                ),
+              ],
+            ),
           ),
-          bottomSheet: const AiHistoryDock(),
+          body: TabBarView(
+            controller: _tabController,
+            physics: isDraggingCanvas
+                ? const NeverScrollableScrollPhysics()
+                : const BouncingScrollPhysics(),
+            children: [
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  return _buildCanvasAndControlsPage(
+                    context,
+                    constraints,
+                    isDraggingCanvas,
+                  );
+                },
+              ),
+              const SingleChildScrollView(
+                padding: EdgeInsets.all(16.0),
+                child: AiHistoryDock(),
+              ),
+            ],
+          ),
           floatingActionButton: _buildFloatingActionButtons(context, ref),
         ),
         if (canvasState.isSuggestingPalette)
@@ -346,6 +375,57 @@ class PixelArtScreen extends ConsumerWidget {
           ),
       ],
     );
+  }
+
+  Widget _buildCanvasAndControlsPage(
+    BuildContext context,
+    BoxConstraints constraints,
+    bool isDraggingCanvas,
+  ) {
+    final isLandscape = constraints.maxWidth > 800;
+
+    if (isLandscape) {
+      return Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Expanded(flex: 3, child: CanvasGrid()),
+            const SizedBox(width: 24),
+            const Expanded(
+              flex: 2,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(bottom: 120.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [WizardControls()],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return SingleChildScrollView(
+        physics: isDraggingCanvas
+            ? const NeverScrollableScrollPhysics()
+            : const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(
+          left: 16.0,
+          right: 16.0,
+          top: 16.0,
+          bottom: 120.0,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 380, child: CanvasGrid()),
+            const SizedBox(height: 16),
+            const WizardControls(),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildStatusChip(
