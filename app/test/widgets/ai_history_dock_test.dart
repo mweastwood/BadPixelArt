@@ -539,5 +539,213 @@ void main() {
 
       await screenMatchesGolden(tester, 'ai_history_dock_raw_exchange_dialog');
     });
+
+    testWidgets(
+      'renders chat message bubbles for user prompt and AI response with model and token badges',
+      (tester) async {
+        final entry = AgentHistoryEntry(
+          timestamp: DateTime(2026, 7, 11, 10, 15, 30),
+          prompt: 'User Prompt: Draw a futuristic pixel sword.',
+          response:
+              '{"understanding":"Analyzing blade request","reasoning":"Drawing sword outline","tool":"line","params":[0,0,10,10]}',
+          isError: false,
+          modelName: 'Gemini 3.6 Flash',
+          inputTokens: 150,
+          outputTokens: 85,
+          totalTokens: 235,
+          estimatedCostUsd: 0.0003,
+        );
+
+        final mockService = LocalMockAiService();
+        final notifier = CanvasNotifier(mockService);
+        notifier.state = notifier.state.copyWith(aiHistory: [entry]);
+
+        final widget = ProviderScope(
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockService),
+            canvasStateProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+
+        // Expand history dock
+        await tester.tap(find.text('AI History & Debugger'));
+        await tester.pumpAndSettle();
+
+        // Verify User Message Bubble components
+        expect(find.text('You'), findsOneWidget);
+        expect(find.text('Draw a futuristic pixel sword.'), findsOneWidget);
+        expect(find.text('In: 150'), findsOneWidget);
+
+        // Verify AI Response Bubble components
+        expect(find.text('AI Assistant'), findsOneWidget);
+        expect(find.text('Gemini 3.6 Flash'), findsOneWidget);
+        expect(find.text('Out: 85'), findsOneWidget);
+        expect(find.text('\$0.0003'), findsOneWidget);
+        expect(find.text('Stroke suggested successfully'), findsOneWidget);
+        expect(find.text('Drawing sword outline'), findsOneWidget);
+      },
+    );
+
+    testWidgets('renders error state chat message bubble correctly', (
+      tester,
+    ) async {
+      final entry = AgentHistoryEntry(
+        timestamp: DateTime(2026, 7, 11, 10, 20, 00),
+        prompt: 'User Prompt: Generate complex pattern',
+        response: 'API Quota Exceeded (429)',
+        isError: true,
+        modelName: 'Gemini 3.5 Flash',
+        inputTokens: 100,
+        outputTokens: 0,
+        totalTokens: 100,
+        estimatedCostUsd: 0.0,
+      );
+
+      final mockService = LocalMockAiService();
+      final notifier = CanvasNotifier(mockService);
+      notifier.state = notifier.state.copyWith(aiHistory: [entry]);
+
+      final widget = ProviderScope(
+        overrides: [
+          aiServiceProvider.overrideWithValue(mockService),
+          canvasStateProvider.overrideWith((ref) => notifier),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+
+      // Expand history dock
+      await tester.tap(find.text('AI History & Debugger'));
+      await tester.pumpAndSettle();
+
+      // Verify Error state title and error icons
+      expect(find.text('AI Generation Error'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.text('Gemini 3.5 Flash'), findsOneWidget);
+      expect(find.text('Free'), findsOneWidget);
+    });
+
+    testWidgets(
+      'renders multi-turn conversation feed with date pill dividers and total session cost',
+      (tester) async {
+        final entries = [
+          AgentHistoryEntry(
+            timestamp: DateTime(2026, 7, 11, 10, 0, 0),
+            prompt: 'color palette generator for retro cyber arcade',
+            response: '{"palette":["#000000","#00FFFF","#FF00FF"]}',
+            isError: false,
+            modelName: 'Gemini 3.6 Flash',
+            inputTokens: 50,
+            outputTokens: 30,
+            estimatedCostUsd: 0.0001,
+          ),
+          AgentHistoryEntry(
+            timestamp: DateTime(2026, 7, 11, 10, 5, 0),
+            prompt: 'Decompose the drawing instruction: cyber dragon',
+            response: '{"components":[{"name":"wing"},{"name":"head"}]}',
+            isError: false,
+            modelName: 'Gemini 3.6 Flash',
+            inputTokens: 120,
+            outputTokens: 60,
+            estimatedCostUsd: 0.0002,
+          ),
+          AgentHistoryEntry(
+            timestamp: DateTime(2026, 7, 11, 10, 10, 0),
+            prompt: 'User Prompt: Add glowing eyes to dragon head',
+            response: '{"tool":"pixel","params":[5,5],"color":1}',
+            isError: false,
+            modelName: 'Gemini 3.6 Flash',
+            inputTokens: 200,
+            outputTokens: 90,
+            estimatedCostUsd: 0.0003,
+          ),
+        ];
+
+        final mockService = LocalMockAiService();
+        final notifier = CanvasNotifier(mockService);
+        notifier.state = notifier.state.copyWith(aiHistory: entries);
+
+        final widget = ProviderScope(
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockService),
+            canvasStateProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+
+        // Expand history dock
+        await tester.tap(find.text('AI History & Debugger'));
+        await tester.pumpAndSettle();
+
+        // Verify top total cost summary badge ($0.0001 + $0.0002 + $0.0003 = $0.0006)
+        expect(find.text('Total: \$0.0006'), findsOneWidget);
+
+        // Verify inference titles in timestamp dividers and response status cards
+        expect(find.text('AI Palette Suggestion'), findsNWidgets(2));
+        expect(find.text('Semantic Component Breakdown'), findsNWidgets(2));
+        expect(find.text('AI Core Inference'), findsOneWidget);
+      },
+    );
+
+    testGoldens(
+      'AiHistoryDock renders chat message feed multi-turn conversation',
+      (tester) async {
+        final entries = [
+          AgentHistoryEntry(
+            timestamp: DateTime(2026, 7, 11, 10, 0, 0),
+            prompt: 'color palette generator for retro cyber arcade',
+            response: '{"palette":["#000000","#00FFFF","#FF00FF"]}',
+            isError: false,
+            modelName: 'Gemini 3.6 Flash',
+            inputTokens: 50,
+            outputTokens: 30,
+            estimatedCostUsd: 0.0001,
+          ),
+          AgentHistoryEntry(
+            timestamp: DateTime(2026, 7, 11, 10, 5, 0),
+            prompt: 'User Prompt: Draw a glowing cyber dragon',
+            response:
+                '{"understanding":"Drawing dragon layout","reasoning":"Adding wing outline","tool":"line","params":[0,0,10,10]}',
+            isError: false,
+            modelName: 'Gemini 3.6 Flash',
+            inputTokens: 150,
+            outputTokens: 75,
+            estimatedCostUsd: 0.0002,
+          ),
+        ];
+
+        final mockService = LocalMockAiService();
+        final notifier = CanvasNotifier(mockService);
+        notifier.state = notifier.state.copyWith(aiHistory: entries);
+
+        await tester.pumpWidgetBuilder(
+          const Scaffold(body: SingleChildScrollView(child: AiHistoryDock())),
+          wrapper: testMaterialAppWrapper(
+            overrides: [
+              aiServiceProvider.overrideWithValue(mockService),
+              canvasStateProvider.overrideWith((ref) => notifier),
+            ],
+          ),
+        );
+
+        // Expand history dock
+        await tester.tap(find.text('AI History & Debugger'));
+        await tester.pumpAndSettle();
+
+        await screenMatchesGolden(tester, 'ai_history_dock_chat_multi_turn');
+      },
+    );
   });
 }
