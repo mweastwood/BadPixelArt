@@ -8,7 +8,6 @@ import 'shape_decomposition_list.dart';
 import 'component_color_selection_list.dart';
 import 'layer_ordering_list.dart';
 import 'refinement_panel.dart';
-import 'ai_history_dock.dart';
 
 enum WizardStep {
   setupPrompt,
@@ -212,8 +211,6 @@ class WizardControls extends ConsumerWidget {
             child: stepWidget,
           ),
         ),
-        const SizedBox(height: 16),
-        const AiHistoryDock(),
       ],
     );
   }

@@ -52,11 +52,9 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
           type: FileType.custom,
         );
       } catch (e) {
-        // saveFile might not be supported on this platform/shell setup
         outputFile = null;
       }
 
-      // If saveFile is not supported/returns null, try getDirectoryPath to let the user choose where to save
       if (outputFile == null) {
         try {
           final String? selectedDir = await FilePicker.getDirectoryPath(
@@ -72,7 +70,6 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
       }
 
       if (outputFile == null) {
-        // Fallback: save to exports folder, current directory (if not root), or system temp directory
         final exportsDir = Directory(
           '/home/mweastwood/projects/BadPixelArt/exports',
         );
@@ -130,7 +127,29 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
     final history = canvasModel.aiHistory;
+    final double totalCost = history.fold(
+      0.0,
+      (sum, item) => sum + (item.estimatedCostUsd ?? 0.0),
+    );
 
+    return _buildCardView(
+      context,
+      history,
+      notifier,
+      theme,
+      canvasModel,
+      totalCost,
+    );
+  }
+
+  Widget _buildCardView(
+    BuildContext context,
+    List<AgentHistoryEntry> history,
+    CanvasNotifier notifier,
+    ThemeData theme,
+    CanvasModel canvasModel,
+    double totalCost,
+  ) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -139,7 +158,6 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header Row (Tappable to expand/collapse)
             InkWell(
               onTap: () => setState(() => _isCollapsed = !_isCollapsed),
               borderRadius: BorderRadius.circular(8),
@@ -165,7 +183,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (history.isNotEmpty)
+                    if (history.isNotEmpty) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
@@ -184,6 +202,28 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                           ),
                         ),
                       ),
+                      if (totalCost > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Total: \$${totalCost.toStringAsFixed(4)}',
+                            style: TextStyle(
+                              color: theme.colorScheme.onTertiaryContainer,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                     const Spacer(),
                     if (!_isCollapsed && history.isNotEmpty) ...[
                       IconButton(
@@ -232,10 +272,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
                   separatorBuilder: (context, index) =>
                       const Divider(height: 24),
                   itemBuilder: (context, index) {
-                    final entry =
-                        history[history.length -
-                            1 -
-                            index]; // Show latest first
+                    final entry = history[history.length - 1 - index];
                     return _HistoryItem(
                       entry: entry,
                       palette: canvasModel.palette,
