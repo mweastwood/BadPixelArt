@@ -79,6 +79,14 @@ class WizardNotifier extends StateNotifier<WizardState> {
       autoAdvanced: true,
     );
   }
+
+  void reset() {
+    state = const WizardState(
+      currentStep: WizardStep.selectGridSize,
+      prevStep: WizardStep.selectGridSize,
+      autoAdvanced: false,
+    );
+  }
 }
 
 final wizardStateProvider = StateNotifierProvider<WizardNotifier, WizardState>((
