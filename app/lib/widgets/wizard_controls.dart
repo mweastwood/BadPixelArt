@@ -196,7 +196,6 @@ class WizardControls extends ConsumerWidget {
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     color: theme.colorScheme.onErrorContainer,
-                    value: 0.5,
                   ),
                 ),
                 const SizedBox(width: 12),

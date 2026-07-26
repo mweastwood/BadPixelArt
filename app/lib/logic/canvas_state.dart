@@ -997,6 +997,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           _confirmationCompleter = null;
           return approved;
         },
+        isShouldStop: () => state.isPausing,
       );
 
       final willStop = state.isPausing;
@@ -1241,6 +1242,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           newHistory.add(log);
           state = state.copyWith(aiHistory: newHistory);
         },
+        isShouldStop: () => state.isPausing,
       );
 
       _pushToUndo(state.grid);
