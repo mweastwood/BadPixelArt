@@ -61,7 +61,7 @@ void main() {
           activeComponentIndex: 0,
         );
 
-        final wizardNotifier = WizardNotifier(2); // Start at Step 2
+        final wizardNotifier = WizardNotifier(WizardStep.sketchingPlan);
 
         await tester.pumpWidget(
           ProviderScope(
@@ -115,7 +115,7 @@ void main() {
           activeComponentIndex: 0, // 'blade' is active, 'hilt' is inactive
         );
 
-        final wizardNotifier = WizardNotifier(2); // Step 2
+        final wizardNotifier = WizardNotifier(WizardStep.sketchingPlan);
 
         await tester.pumpWidget(
           ProviderScope(
@@ -166,7 +166,7 @@ void main() {
           isGenerating: false,
         );
 
-        final wizardNotifier = WizardNotifier(3); // Step 3 - sculpting phase
+        final wizardNotifier = WizardNotifier(WizardStep.componentSculpting);
 
         await tester.pumpWidget(
           ProviderScope(
@@ -228,7 +228,7 @@ void main() {
         activeComponentIndex: 0,
       );
 
-      final wizardNotifier = WizardNotifier(2); // Step 2
+      final wizardNotifier = WizardNotifier(WizardStep.sketchingPlan);
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1)
         ..addScenario(

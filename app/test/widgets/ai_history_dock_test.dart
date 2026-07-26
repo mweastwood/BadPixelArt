@@ -81,21 +81,12 @@ class LocalMockAiService extends AiService {
 
 void main() {
   group('AiHistoryDock Widget & Golden Tests', () {
-    testWidgets('starts collapsed, expands on tap, and shows empty state', (
-      tester,
-    ) async {
+    testWidgets('shows empty state directly when no logs', (tester) async {
       await tester.pumpWidget(
         buildTestableWidget(child: const Scaffold(body: AiHistoryDock())),
       );
 
-      // Verify starts collapsed (empty state text should not be visible yet)
-      expect(find.textContaining('No AI history logs yet.'), findsNothing);
-
-      // Tap header to expand
-      await tester.tap(find.text('AI History & Debugger'));
-      await tester.pumpAndSettle();
-
-      // Verify empty state message is visible
+      // Verify empty state message is visible directly without expanding
       expect(find.textContaining('No AI history logs yet.'), findsOneWidget);
     });
 
@@ -134,12 +125,9 @@ void main() {
       );
 
       await tester.pumpWidget(widget);
-
-      // Expand history dock
-      await tester.tap(find.text('AI History & Debugger'));
       await tester.pumpAndSettle();
 
-      // Verify log summary exists
+      // Verify log summary exists directly
       expect(find.text('10:15:30'), findsOneWidget);
       expect(find.text('Stroke suggested successfully'), findsOneWidget);
 
@@ -194,7 +182,7 @@ void main() {
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.5)
         ..addScenario(
-          'History Dock Collapsed',
+          'History Dock Inlined',
           const SingleChildScrollView(child: AiHistoryDock()),
         );
 
@@ -241,9 +229,6 @@ void main() {
           ],
         ),
       );
-
-      // Expand history dock
-      await tester.tap(find.text('AI History & Debugger'));
       await tester.pumpAndSettle();
 
       // Expand history item details so we see prompt/response in the golden
@@ -291,15 +276,9 @@ void main() {
       );
 
       await tester.pumpWidget(widget);
-
-      // Verify download button is not visible initially when collapsed
-      expect(find.byIcon(Icons.file_download_outlined), findsNothing);
-
-      // Expand history dock
-      await tester.tap(find.text('AI History & Debugger'));
       await tester.pumpAndSettle();
 
-      // Find the download button
+      // Find the download button directly
       final exportButton = find.byIcon(Icons.file_download_outlined);
       expect(exportButton, findsOneWidget);
 

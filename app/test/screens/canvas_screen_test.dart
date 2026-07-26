@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/screens/canvas_screen.dart';
 import 'package:bad_pixel_art/widgets/canvas_grid.dart';
 import 'package:bad_pixel_art/widgets/wizard_controls.dart';
-import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
+import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import '../test_helper.dart';
 
 void main() {
@@ -18,7 +18,7 @@ void main() {
 
       expect(find.byType(CanvasGrid), findsOneWidget);
       expect(find.byType(WizardControls), findsOneWidget);
-      expect(find.byType(ReferenceImagePrompt), findsOneWidget);
+      expect(find.byType(GridSizeSelectionCard), findsOneWidget);
     });
 
     testWidgets('CanvasScreen portrait golden render', (tester) async {

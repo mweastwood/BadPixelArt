@@ -5,7 +5,7 @@ import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
 import 'package:bad_pixel_art/screens/creations_screen.dart';
 import 'package:bad_pixel_art/screens/canvas_screen.dart';
 import 'package:bad_pixel_art/screens/logs_screen.dart';
-import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
+import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../test_helper.dart';
@@ -276,7 +276,7 @@ void main() {
 
         // Initially on Canvas tab (CanvasScreen visible)
         expect(find.byType(CanvasScreen), findsOneWidget);
-        expect(find.byType(ReferenceImagePrompt), findsOneWidget);
+        expect(find.byType(GridSizeSelectionCard), findsOneWidget);
 
         // Tap Creations tab (index 0)
         await tester.tap(find.text('Creations'));
@@ -352,7 +352,7 @@ void main() {
         await tester.pumpAndSettle();
 
         // Should auto-navigate back to Canvas tab
-        expect(find.byType(ReferenceImagePrompt), findsOneWidget);
+        expect(find.byType(GridSizeSelectionCard), findsOneWidget);
       },
     );
 
