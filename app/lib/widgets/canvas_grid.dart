@@ -995,12 +995,12 @@ class CanvasScaleToggle extends ConsumerWidget {
           ),
           ButtonSegment<CanvasScaleMode>(
             value: CanvasScaleMode.scaled1x,
-            label: Text('1x Scale'),
+            label: Text('1x'),
             icon: Icon(Icons.crop_original),
           ),
           ButtonSegment<CanvasScaleMode>(
             value: CanvasScaleMode.scaled4x,
-            label: Text('4x Upscaled'),
+            label: Text('4x'),
             icon: Icon(Icons.zoom_in),
           ),
         ],

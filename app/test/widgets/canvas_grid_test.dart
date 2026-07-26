@@ -264,7 +264,7 @@ void main() {
       expect(find.byKey(const ValueKey('scaled_canvas_preview')), findsNothing);
 
       // Switch to 1x Scale mode
-      await tester.tap(find.text('1x Scale'));
+      await tester.tap(find.text('1x'));
       await tester.pumpAndSettle();
 
       expect(
@@ -274,7 +274,7 @@ void main() {
       expect(find.textContaining('1x True Scale'), findsOneWidget);
 
       // Switch to 4x Upscaled mode
-      await tester.tap(find.text('4x Upscaled'));
+      await tester.tap(find.text('4x'));
       await tester.pumpAndSettle();
 
       expect(
