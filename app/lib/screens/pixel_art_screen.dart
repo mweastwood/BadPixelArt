@@ -109,11 +109,25 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
       children: [
         Scaffold(
           appBar: AppBar(
-            title: _tabController.index == 2
-                ? Text(
-                    'Conversation History (${history.length} msgs • \$${totalCost.toStringAsFixed(4)})',
-                  )
-                : const Text('Bad Pixel Art'),
+            title: Row(
+              children: [
+                Text(
+                  _tabController.index == 2
+                      ? 'Conversation History'
+                      : 'Bad Pixel Art',
+                ),
+                const Spacer(),
+                Text(
+                  '${history.length} msgs • \$${totalCost.toStringAsFixed(4)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
             actions: [
               Padding(
                 padding: const EdgeInsets.symmetric(
