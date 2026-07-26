@@ -294,7 +294,7 @@ void main() {
 
         // Verify LogsScreen is visible
         expect(find.byType(LogsScreen), findsOneWidget);
-        expect(find.text('Conversation History'), findsOneWidget);
+        expect(find.textContaining('Conversation History'), findsOneWidget);
 
         // Tap Canvas tab (index 1) to return
         await tester.tap(find.text('Canvas'));

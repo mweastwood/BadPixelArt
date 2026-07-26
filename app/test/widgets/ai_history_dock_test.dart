@@ -48,12 +48,9 @@ void main() {
       );
 
       expect(find.textContaining('No AI history logs yet.'), findsOneWidget);
-      expect(find.text('0 Messages'), findsOneWidget);
     });
 
-    testWidgets('renders chat messages, timestamps, and bottom statistics', (
-      tester,
-    ) async {
+    testWidgets('renders chat messages and timestamps', (tester) async {
       final entry = AgentHistoryEntry(
         timestamp: DateTime(2026, 7, 26, 11, 57, 30),
         prompt: 'Draw a red sword',
@@ -92,10 +89,6 @@ void main() {
 
       // Verify timestamp
       expect(find.textContaining('2026-07-26 11:57:30'), findsNWidgets(2));
-
-      // Verify bottom statistics
-      expect(find.text('1 Messages'), findsOneWidget);
-      expect(find.text('Total Cost: \$0.0025'), findsOneWidget);
     });
 
     testGoldens('AiHistoryDock renders correctly', (tester) async {
