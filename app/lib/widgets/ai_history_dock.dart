@@ -128,127 +128,37 @@ class AiHistoryDock extends ConsumerWidget {
     final canvasModel = ref.watch(canvasStateProvider);
     final theme = Theme.of(context);
     final history = canvasModel.aiHistory;
-    final double totalCost = history.fold(
-      0.0,
-      (sum, item) => sum + (item.estimatedCostUsd ?? 0.0),
-    );
 
-    return Column(
-      children: [
-        // Header Bar
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-          child: Row(
-            children: [
-              Icon(
-                Icons.chat_outlined,
-                color: theme.colorScheme.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Conversation History',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-
-        // Chat Message Feed or Empty State
-        Expanded(
-          child: history.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Text(
-                      'No AI history logs yet.\nTrigger a prompt to view conversation history.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                )
-              : ListView.builder(
-                  reverse: true,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 12.0,
-                  ),
-                  itemCount: history.length,
-                  itemBuilder: (context, index) {
-                    final entry = history[history.length - 1 - index];
-                    return _ChatMessageTurn(entry: entry);
-                  },
-                ),
-        ),
-
-        // Bottom Footer Bar with total cost & total message count
-        Container(
-          padding: const EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 12,
-            bottom: 76,
-          ),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHigh,
-            border: Border(
-              top: BorderSide(
-                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-              ),
+    if (history.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text(
+            'No AI history logs yet.\nTrigger a prompt to view conversation history.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontSize: 13,
+              height: 1.4,
             ),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 16,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    '${history.length} Messages',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                children: [
-                  Icon(
-                    Icons.attach_money,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    'Total Cost: \$${totalCost.toStringAsFixed(4)}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
         ),
-      ],
+      );
+    }
+
+    return ListView.builder(
+      reverse: true,
+      padding: const EdgeInsets.only(
+        left: 16.0,
+        right: 16.0,
+        top: 12.0,
+        bottom: 80.0,
+      ),
+      itemCount: history.length,
+      itemBuilder: (context, index) {
+        final entry = history[history.length - 1 - index];
+        return _ChatMessageTurn(entry: entry);
+      },
     );
   }
 }

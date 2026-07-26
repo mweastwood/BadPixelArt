@@ -100,11 +100,32 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
       }
     });
 
+    final double totalCost = history.fold(
+      0.0,
+      (sum, item) => sum + (item.estimatedCostUsd ?? 0.0),
+    );
+
     return Stack(
       children: [
         Scaffold(
           appBar: AppBar(
-            title: const Text('Bad Pixel Art'),
+            title: _tabController.index == 2
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Conversation History'),
+                      Text(
+                        '${history.length} Messages • Total Cost: \$${totalCost.toStringAsFixed(4)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  )
+                : const Text('Bad Pixel Art'),
             actions: [
               Padding(
                 padding: const EdgeInsets.symmetric(
