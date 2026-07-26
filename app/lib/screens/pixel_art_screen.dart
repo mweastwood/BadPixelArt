@@ -29,15 +29,21 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, initialIndex: 1, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() {});
-      }
-    });
+    _tabController.addListener(_handleTabChange);
+  }
+
+  void _handleTabChange() {
+    if (!_tabController.indexIsChanging) {
+      setState(() {});
+    }
+    if (_tabController.index != 1 && ref.read(canvasStateProvider).autoRun) {
+      ref.read(canvasStateProvider.notifier).stopAutoPlay();
+    }
   }
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -377,9 +383,37 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
 Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
   final wizardState = ref.watch(wizardStateProvider);
   final canvasState = ref.watch(canvasStateProvider);
+  final notifier = ref.read(canvasStateProvider.notifier);
   final theme = Theme.of(context);
 
   if (canvasState.isSuggestingPalette) return null;
+
+  final hasRefImage = canvasState.referenceImage != null;
+  final isAutoPlaying = canvasState.autoRun || canvasState.isPausing;
+
+  if (isAutoPlaying) {
+    return FloatingActionButton(
+      key: const ValueKey('auto_play_fab'),
+      heroTag: 'auto_play_fab',
+      onPressed: () => notifier.stopAutoPlay(),
+      tooltip: canvasState.isPausing
+          ? 'Pausing after current AI step...'
+          : 'Pause Auto-Play',
+      backgroundColor: Colors.orange,
+      foregroundColor: Colors.white,
+      child: canvasState.isPausing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+                value: 0.5,
+              ),
+            )
+          : const Icon(Icons.pause),
+    );
+  }
 
   final step = wizardState.currentStep;
   final hasBack = step.index > 0;
@@ -460,6 +494,23 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
   return Row(
     mainAxisSize: MainAxisSize.min,
     children: [
+      FloatingActionButton(
+        key: const ValueKey('auto_play_fab'),
+        heroTag: 'auto_play_fab',
+        onPressed: hasRefImage ? () => notifier.startAutoPlay(ref) : null,
+        tooltip: hasRefImage
+            ? 'Start Auto-Play Wizard'
+            : 'Upload reference image to enable Auto-Play',
+        backgroundColor: hasRefImage
+            ? theme.colorScheme.tertiary
+            : theme.colorScheme.surfaceContainerHigh,
+        foregroundColor: hasRefImage
+            ? theme.colorScheme.onTertiary
+            : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+        elevation: hasRefImage ? 6.0 : 0.0,
+        child: const Icon(Icons.play_arrow),
+      ),
+      const SizedBox(width: 12),
       if (hasBack) ...[
         FloatingActionButton(
           key: const ValueKey('wizard_back_fab'),

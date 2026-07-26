@@ -28,6 +28,7 @@ class CanvasModel {
   final List<Color>? suggestedPalette;
   final bool isSuggestingPalette;
   final bool isSuggestingDescription;
+  final bool isPausing;
   final bool showPaletteSuggestion;
   final String? nextFocus;
   final String modelReleaseStage;
@@ -60,6 +61,7 @@ class CanvasModel {
     this.suggestedPalette,
     this.isSuggestingPalette = false,
     this.isSuggestingDescription = false,
+    this.isPausing = false,
     this.showPaletteSuggestion = false,
     this.nextFocus,
     this.modelReleaseStage = 'stable',
@@ -96,6 +98,7 @@ class CanvasModel {
     List<Color>? suggestedPalette,
     bool? isSuggestingPalette,
     bool? isSuggestingDescription,
+    bool? isPausing,
     bool? showPaletteSuggestion,
     bool clearSuggestedPalette = false,
     String? nextFocus,
@@ -139,6 +142,7 @@ class CanvasModel {
       isSuggestingPalette: isSuggestingPalette ?? this.isSuggestingPalette,
       isSuggestingDescription:
           isSuggestingDescription ?? this.isSuggestingDescription,
+      isPausing: isPausing ?? this.isPausing,
       showPaletteSuggestion:
           showPaletteSuggestion ?? this.showPaletteSuggestion,
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
