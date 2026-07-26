@@ -26,7 +26,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, initialIndex: 1, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {});
@@ -152,7 +152,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     return Stack(
       children: [
         Scaffold(
-          drawer: const CreationsDrawer(),
           appBar: AppBar(
             title: const Text('Bad Pixel Art'),
             actions: [
@@ -204,6 +203,11 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                 ? const NeverScrollableScrollPhysics()
                 : const BouncingScrollPhysics(),
             children: [
+              CreationsDrawer(
+                onCreationSelected: () {
+                  _tabController.animateTo(1);
+                },
+              ),
               LayoutBuilder(
                 builder: (context, constraints) {
                   return _buildCanvasAndControlsPage(
@@ -226,22 +230,27 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
             },
             destinations: [
               const NavigationDestination(
+                icon: Icon(Icons.collections_outlined),
+                selectedIcon: Icon(Icons.collections),
+                label: 'Creations',
+              ),
+              const NavigationDestination(
                 icon: Icon(Icons.palette_outlined),
                 selectedIcon: Icon(Icons.palette),
                 label: 'Canvas',
               ),
               NavigationDestination(
                 icon: history.isEmpty
-                    ? const Icon(Icons.bug_report_outlined)
+                    ? const Icon(Icons.chat_bubble_outline)
                     : Badge(
                         label: Text('${history.length}'),
-                        child: const Icon(Icons.bug_report_outlined),
+                        child: const Icon(Icons.chat_bubble_outline),
                       ),
                 selectedIcon: history.isEmpty
-                    ? const Icon(Icons.bug_report)
+                    ? const Icon(Icons.chat_bubble)
                     : Badge(
                         label: Text('${history.length}'),
-                        child: const Icon(Icons.bug_report),
+                        child: const Icon(Icons.chat_bubble),
                       ),
                 label: 'Logs',
               ),
