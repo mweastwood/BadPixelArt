@@ -246,7 +246,9 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
               ),
             ],
           ),
-          floatingActionButton: _buildFloatingActionButtons(context, ref),
+          floatingActionButton: _tabController.index == 1
+              ? _buildFloatingActionButtons(context, ref)
+              : null,
         ),
         if (canvasState.isSuggestingPalette)
           Container(

@@ -302,6 +302,38 @@ void main() {
       },
     );
 
+    testWidgets('shows FloatingActionButton only when on Canvas tab', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(child: const PixelArtScreen()),
+      );
+
+      // On Canvas tab (index 1), FAB is visible
+      expect(find.byType(FloatingActionButton), findsWidgets);
+
+      // Tap Creations tab (index 0)
+      await tester.tap(find.text('Creations'));
+      await tester.pumpAndSettle();
+
+      // FAB should NOT be visible on Creations tab
+      expect(find.byType(FloatingActionButton), findsNothing);
+
+      // Tap Logs tab (index 2)
+      await tester.tap(find.text('Logs'));
+      await tester.pumpAndSettle();
+
+      // FAB should NOT be visible on Logs tab
+      expect(find.byType(FloatingActionButton), findsNothing);
+
+      // Return to Canvas tab (index 1)
+      await tester.tap(find.text('Canvas'));
+      await tester.pumpAndSettle();
+
+      // FAB is visible again
+      expect(find.byType(FloatingActionButton), findsWidgets);
+    });
+
     testWidgets(
       'tapping New Canvas in Creations tab auto-navigates back to Canvas tab',
       (tester) async {
