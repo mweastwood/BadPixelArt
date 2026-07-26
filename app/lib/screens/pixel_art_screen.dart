@@ -391,138 +391,150 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
   final hasRefImage = canvasState.referenceImage != null;
   final isAutoPlaying = canvasState.autoRun || canvasState.isPausing;
 
-  if (isAutoPlaying) {
-    return FloatingActionButton(
-      key: const ValueKey('auto_play_fab'),
-      heroTag: 'auto_play_fab',
-      onPressed: () => notifier.stopAutoPlay(),
-      tooltip: canvasState.isPausing
-          ? 'Pausing after current AI step...'
-          : 'Pause Auto-Play',
-      backgroundColor: Colors.orange,
-      foregroundColor: Colors.white,
-      child: canvasState.isPausing
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            )
-          : const Icon(Icons.pause),
-    );
-  }
-
   final step = wizardState.currentStep;
   final hasBack = step.index > 0;
   final hasNext = step.index < 7;
 
   VoidCallback? onNext;
-
-  if (step == WizardStep.selectGridSize) {
-    onNext = () =>
-        ref.read(wizardStateProvider.notifier).setStep(WizardStep.setupPrompt);
-  } else if (step == WizardStep.setupPrompt) {
-    final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
-    onNext = canGoToPalette
-        ? () => ref
-              .read(wizardStateProvider.notifier)
-              .setStep(WizardStep.selectPalette)
-        : null;
-  } else if (step == WizardStep.selectPalette) {
-    onNext = () => ref
-        .read(wizardStateProvider.notifier)
-        .setStep(WizardStep.sketchingPlan);
-  } else if (step == WizardStep.sketchingPlan) {
-    onNext =
-        (canvasState.isGenerating || canvasState.decomposedComponents.isEmpty)
-        ? null
-        : () => ref
-              .read(wizardStateProvider.notifier)
-              .setStep(WizardStep.componentSculpting);
-  } else if (step == WizardStep.componentSculpting) {
-    onNext = canvasState.decomposedComponents.isEmpty
-        ? null
-        : () => ref
-              .read(wizardStateProvider.notifier)
-              .setStep(WizardStep.colorAndOutline);
-  } else if (step == WizardStep.colorAndOutline) {
-    onNext = canvasState.decomposedComponents.isEmpty
-        ? null
-        : () => ref
-              .read(wizardStateProvider.notifier)
-              .setStep(WizardStep.layerOrderingAndMerge);
-  } else if (step == WizardStep.layerOrderingAndMerge) {
-    onNext = () {
-      ref.read(canvasStateProvider.notifier).mergeComponentsToCanvas();
-      ref.read(wizardStateProvider.notifier).setStep(WizardStep.refinement);
-    };
+  if (!isAutoPlaying) {
+    if (step == WizardStep.selectGridSize) {
+      onNext = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.setupPrompt);
+    } else if (step == WizardStep.setupPrompt) {
+      final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
+      onNext = canGoToPalette
+          ? () => ref
+                .read(wizardStateProvider.notifier)
+                .setStep(WizardStep.selectPalette)
+          : null;
+    } else if (step == WizardStep.selectPalette) {
+      onNext = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.sketchingPlan);
+    } else if (step == WizardStep.sketchingPlan) {
+      onNext =
+          (canvasState.isGenerating || canvasState.decomposedComponents.isEmpty)
+          ? null
+          : () => ref
+                .read(wizardStateProvider.notifier)
+                .setStep(WizardStep.componentSculpting);
+    } else if (step == WizardStep.componentSculpting) {
+      onNext = canvasState.decomposedComponents.isEmpty
+          ? null
+          : () => ref
+                .read(wizardStateProvider.notifier)
+                .setStep(WizardStep.colorAndOutline);
+    } else if (step == WizardStep.colorAndOutline) {
+      onNext = canvasState.decomposedComponents.isEmpty
+          ? null
+          : () => ref
+                .read(wizardStateProvider.notifier)
+                .setStep(WizardStep.layerOrderingAndMerge);
+    } else if (step == WizardStep.layerOrderingAndMerge) {
+      onNext = () {
+        ref.read(canvasStateProvider.notifier).mergeComponentsToCanvas();
+        ref.read(wizardStateProvider.notifier).setStep(WizardStep.refinement);
+      };
+    }
   }
 
   VoidCallback? onBack;
-  if (step == WizardStep.setupPrompt) {
-    onBack = () => ref
-        .read(wizardStateProvider.notifier)
-        .setStep(WizardStep.selectGridSize);
-  } else if (step == WizardStep.selectPalette) {
-    onBack = () =>
-        ref.read(wizardStateProvider.notifier).setStep(WizardStep.setupPrompt);
-  } else if (step == WizardStep.sketchingPlan) {
-    onBack = () => ref
-        .read(wizardStateProvider.notifier)
-        .setStep(WizardStep.selectPalette);
-  } else if (step == WizardStep.componentSculpting) {
-    onBack = () => ref
-        .read(wizardStateProvider.notifier)
-        .setStep(WizardStep.sketchingPlan);
-  } else if (step == WizardStep.colorAndOutline) {
-    onBack = () => ref
-        .read(wizardStateProvider.notifier)
-        .setStep(WizardStep.componentSculpting);
-  } else if (step == WizardStep.layerOrderingAndMerge) {
-    onBack = () => ref
-        .read(wizardStateProvider.notifier)
-        .setStep(WizardStep.colorAndOutline);
-  } else if (step == WizardStep.refinement) {
-    onBack = () => ref
-        .read(wizardStateProvider.notifier)
-        .setStep(WizardStep.layerOrderingAndMerge);
+  if (!isAutoPlaying) {
+    if (step == WizardStep.setupPrompt) {
+      onBack = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.selectGridSize);
+    } else if (step == WizardStep.selectPalette) {
+      onBack = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.setupPrompt);
+    } else if (step == WizardStep.sketchingPlan) {
+      onBack = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.selectPalette);
+    } else if (step == WizardStep.componentSculpting) {
+      onBack = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.sketchingPlan);
+    } else if (step == WizardStep.colorAndOutline) {
+      onBack = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.componentSculpting);
+    } else if (step == WizardStep.layerOrderingAndMerge) {
+      onBack = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.colorAndOutline);
+    } else if (step == WizardStep.refinement) {
+      onBack = () => ref
+          .read(wizardStateProvider.notifier)
+          .setStep(WizardStep.layerOrderingAndMerge);
+    }
   }
 
   return Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      FloatingActionButton(
-        key: const ValueKey('auto_play_fab'),
-        heroTag: 'auto_play_fab',
-        onPressed: hasRefImage ? () => notifier.startAutoPlay(ref) : null,
-        tooltip: hasRefImage
-            ? 'Start Auto-Play Wizard'
-            : 'Upload reference image to enable Auto-Play',
-        backgroundColor: hasRefImage
-            ? theme.colorScheme.tertiary
-            : theme.colorScheme.surfaceContainerHigh,
-        foregroundColor: hasRefImage
-            ? theme.colorScheme.onTertiary
-            : theme.colorScheme.onSurface.withValues(alpha: 0.38),
-        elevation: hasRefImage ? 6.0 : 0.0,
-        child: const Icon(Icons.play_arrow),
-      ),
-      const SizedBox(width: 12),
       if (hasBack) ...[
         FloatingActionButton(
           key: const ValueKey('wizard_back_fab'),
           heroTag: 'wizard_back_fab',
           onPressed: onBack,
           tooltip: 'Back',
-          backgroundColor: theme.colorScheme.surfaceContainerHigh,
-          foregroundColor: theme.colorScheme.onSurface,
+          backgroundColor: onBack != null
+              ? theme.colorScheme.surfaceContainerHigh
+              : Color.alphaBlend(
+                  theme.colorScheme.onSurface.withValues(alpha: 0.12),
+                  theme.colorScheme.surface,
+                ),
+          foregroundColor: onBack != null
+              ? theme.colorScheme.onSurface
+              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+          elevation: onBack != null ? 6.0 : 0.0,
           child: const Icon(Icons.arrow_back),
         ),
         const SizedBox(width: 12),
       ],
+      if (isAutoPlaying)
+        FloatingActionButton(
+          key: const ValueKey('auto_play_fab'),
+          heroTag: 'auto_play_fab',
+          onPressed: () => notifier.stopAutoPlay(),
+          tooltip: canvasState.isPausing
+              ? 'Pausing after current AI step...'
+              : 'Pause Auto-Play',
+          backgroundColor: Colors.orange,
+          foregroundColor: Colors.white,
+          child: canvasState.isPausing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Icon(Icons.pause),
+        )
+      else
+        FloatingActionButton(
+          key: const ValueKey('auto_play_fab'),
+          heroTag: 'auto_play_fab',
+          onPressed: hasRefImage ? () => notifier.startAutoPlay(ref) : null,
+          tooltip: hasRefImage
+              ? 'Start Auto-Play Wizard'
+              : 'Upload reference image to enable Auto-Play',
+          backgroundColor: hasRefImage
+              ? theme.colorScheme.tertiary
+              : theme.colorScheme.surfaceContainerHigh,
+          foregroundColor: hasRefImage
+              ? theme.colorScheme.onTertiary
+              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+          elevation: hasRefImage ? 6.0 : 0.0,
+          child: const Icon(Icons.play_arrow),
+        ),
       if (hasNext) ...[
+        const SizedBox(width: 12),
         FloatingActionButton(
           key: const ValueKey('wizard_next_fab'),
           heroTag: 'wizard_next_fab',
