@@ -16,6 +16,7 @@ import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
 import 'models/canvas_model.dart';
 import 'utils/logging_ai_service.dart';
+import '../widgets/wizard_controls.dart';
 import 'package:drift/drift.dart' as drift;
 import 'utils/database.dart';
 import 'utils/database_helpers.dart';
@@ -613,7 +614,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     } catch (e) {
       debugPrint('Error suggesting palette: $e');
     } finally {
-      state = state.copyWith(isSuggestingPalette: false);
+      final willStop = state.isPausing;
+      state = state.copyWith(
+        isSuggestingPalette: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
+      );
     }
   }
 
@@ -637,7 +643,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     } catch (e) {
       debugPrint('Error suggesting description from reference image: $e');
     } finally {
-      state = state.copyWith(isSuggestingDescription: false);
+      final willStop = state.isPausing;
+      state = state.copyWith(
+        isSuggestingDescription: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
+      );
     }
   }
 
@@ -805,13 +816,21 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         options.add(res.components);
       }
 
+      final willStop = state.isPausing;
       state = state.copyWith(
         pendingDecompositionOptions: options,
         isGenerating: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
       );
     } catch (e) {
       debugPrint('Error triggering decomposer: $e');
-      state = state.copyWith(isGenerating: false);
+      final willStop = state.isPausing;
+      state = state.copyWith(
+        isGenerating: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
+      );
     }
   }
 
@@ -980,10 +999,21 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         },
       );
 
-      state = state.copyWith(decomposedComponents: result, isGenerating: false);
+      final willStop = state.isPausing;
+      state = state.copyWith(
+        decomposedComponents: result,
+        isGenerating: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
+      );
     } catch (e) {
       debugPrint('Error in sketching components: $e');
-      state = state.copyWith(isGenerating: false);
+      final willStop = state.isPausing;
+      state = state.copyWith(
+        isGenerating: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
+      );
     }
   }
 
@@ -1057,21 +1087,121 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(grid: newGrid);
   }
 
-  void toggleAutoRun() {
-    final nextAutoRun = !state.autoRun;
-    state = state.copyWith(autoRun: nextAutoRun);
-    if (nextAutoRun) {
-      _startAutoRunLoop();
-    } else {
-      _autoRunTimer?.cancel();
+  Future<void> startAutoPlay(WidgetRef ref) async {
+    if (state.referenceImage == null) return;
+    if (state.autoRun) return;
+
+    state = state.copyWith(autoRun: true, isPausing: false);
+
+    while (state.autoRun) {
+      if (state.isPausing) {
+        state = state.copyWith(autoRun: false, isPausing: false);
+        break;
+      }
+
+      final wizardNotifier = ref.read(wizardStateProvider.notifier);
+      final currentStep = ref.read(wizardStateProvider).currentStep;
+
+      switch (currentStep) {
+        case WizardStep.selectGridSize:
+          await Future.delayed(const Duration(seconds: 1));
+          if (!state.autoRun || state.isPausing) break;
+          wizardNotifier.autoAdvance(WizardStep.setupPrompt);
+          break;
+
+        case WizardStep.setupPrompt:
+          if (state.userPrompt.trim().isEmpty && state.referenceImage != null) {
+            await suggestDescriptionFromReference();
+          }
+          await Future.delayed(const Duration(seconds: 1));
+          if (!state.autoRun || state.isPausing) break;
+          wizardNotifier.autoAdvance(WizardStep.selectPalette);
+          break;
+
+        case WizardStep.selectPalette:
+          if (state.suggestedPalette == null && state.referenceImage != null) {
+            await suggestPaletteFromReference();
+            if (state.suggestedPalette != null) {
+              acceptSuggestedPalette();
+            }
+          } else if (state.suggestedPalette != null &&
+              state.showPaletteSuggestion) {
+            acceptSuggestedPalette();
+          }
+          await Future.delayed(const Duration(seconds: 1));
+          if (!state.autoRun || state.isPausing) break;
+          wizardNotifier.autoAdvance(WizardStep.sketchingPlan);
+          break;
+
+        case WizardStep.sketchingPlan:
+          if (state.decomposedComponents.isEmpty && !state.isGenerating) {
+            await triggerDecomposition();
+            if (state.pendingDecompositionOptions.isNotEmpty) {
+              applyDecompositionOption(0);
+            }
+          }
+          await Future.delayed(const Duration(seconds: 1));
+          if (!state.autoRun || state.isPausing) break;
+          wizardNotifier.autoAdvance(WizardStep.componentSculpting);
+          break;
+
+        case WizardStep.componentSculpting:
+          if (state.decomposedComponents.isNotEmpty) {
+            bool allComplete = state.decomposedComponents.every(
+              (c) => c.grid != null,
+            );
+            if (!allComplete && !state.isGenerating) {
+              await sketchComponents();
+            }
+            await Future.delayed(const Duration(seconds: 1));
+            if (!state.autoRun || state.isPausing) break;
+            wizardNotifier.autoAdvance(WizardStep.colorAndOutline);
+          } else {
+            await Future.delayed(const Duration(seconds: 1));
+            if (!state.autoRun || state.isPausing) break;
+            wizardNotifier.autoAdvance(WizardStep.colorAndOutline);
+          }
+          break;
+
+        case WizardStep.colorAndOutline:
+          await Future.delayed(const Duration(seconds: 1));
+          if (!state.autoRun || state.isPausing) break;
+          wizardNotifier.autoAdvance(WizardStep.layerOrderingAndMerge);
+          break;
+
+        case WizardStep.layerOrderingAndMerge:
+          await Future.delayed(const Duration(seconds: 1));
+          if (!state.autoRun || state.isPausing) break;
+          wizardNotifier.autoAdvance(WizardStep.refinement);
+          break;
+
+        case WizardStep.refinement:
+          state = state.copyWith(autoRun: false, isPausing: false);
+          return;
+      }
+
+      if (state.isPausing) {
+        state = state.copyWith(autoRun: false, isPausing: false);
+        break;
+      }
     }
   }
 
-  void updateSpeed(double speed) {
-    state = state.copyWith(autoRunSpeed: speed);
+  void stopAutoPlay() {
+    if (!state.autoRun && !state.isPausing) return;
+
+    if (state.isGenerating ||
+        state.isSuggestingDescription ||
+        state.isSuggestingPalette) {
+      state = state.copyWith(isPausing: true);
+    } else {
+      state = state.copyWith(autoRun: false, isPausing: false);
+    }
+  }
+
+  void toggleAutoRun() {
     if (state.autoRun) {
-      _autoRunTimer?.cancel();
-      _startAutoRunLoop();
+      stopAutoPlay();
     }
   }
 
@@ -1114,30 +1244,23 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
 
       _pushToUndo(state.grid);
-      state = state.copyWith(grid: result, isGenerating: false);
+      final willStop = state.isPausing;
+      state = state.copyWith(
+        grid: result,
+        isGenerating: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
+      );
       _scheduleSave();
     } catch (e) {
       debugPrint('Error refining canvas: $e');
-      state = state.copyWith(isGenerating: false);
+      final willStop = state.isPausing;
+      state = state.copyWith(
+        isGenerating: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
+      );
     }
-  }
-
-  void _startAutoRunLoop() {
-    _autoRunTimer = Timer.periodic(
-      Duration(milliseconds: (state.autoRunSpeed * 1000).toInt()),
-      (timer) async {
-        if (!state.isGenerating) {
-          final lifecycle = WidgetsBinding.instance.lifecycleState;
-          if (lifecycle == null || lifecycle == AppLifecycleState.resumed) {
-            await triggerAiStroke();
-          } else {
-            debugPrint(
-              'Skipping AI stroke: app is in background/inactive state ($lifecycle)',
-            );
-          }
-        }
-      },
-    );
   }
 }
 
