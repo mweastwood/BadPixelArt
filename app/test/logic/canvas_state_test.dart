@@ -39,8 +39,9 @@ class MockTestAiService extends AiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
-    if (prompt.contains('pixel art describer')) {
-      return 'Mock description of the canvas';
+    if (prompt.contains('pixel art describer') ||
+        prompt.contains('reference image depicts')) {
+      return 'Mock description of reference image';
     }
     if (temperature <= 0.5 &&
         (prompt.contains('16 colors') || prompt.contains('8 colors'))) {
@@ -775,6 +776,40 @@ void main() {
           equals(['Component B', 'Component A', 'Component C']),
         );
       });
+
+      test('suggestDescriptionFromReference updates userPrompt', () async {
+        final mockAiService = MockTestAiService();
+        final notifier = CanvasNotifier(mockAiService);
+
+        notifier.setReferenceImage(Uint8List.fromList([1, 2, 3]));
+        await notifier.suggestDescriptionFromReference();
+
+        expect(notifier.state.userPrompt, isNotEmpty);
+      });
+
+      test(
+        'invalidates future steps when user prompt or reference image changes',
+        () {
+          final mockAiService = MockTestAiService();
+          final notifier = CanvasNotifier(mockAiService);
+
+          notifier.state = notifier.state.copyWith(
+            userPrompt: 'sword',
+            decomposedComponents: [
+              PixelArtComponent(
+                name: 'blade',
+                description: 'steel blade',
+                relativeBoundingBox: Rect.zero,
+              ),
+            ],
+          );
+
+          expect(notifier.state.decomposedComponents, isNotEmpty);
+
+          notifier.updatePrompt('shield');
+          expect(notifier.state.decomposedComponents, isEmpty);
+        },
+      );
     });
   });
 }

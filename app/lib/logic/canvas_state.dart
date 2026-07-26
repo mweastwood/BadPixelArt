@@ -279,8 +279,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   Future<void> startNewCanvas() async {
     _isRestoring = true;
     try {
+      _saveTimer?.cancel();
       if (state.autoRun) {
         _autoRunTimer?.cancel();
+      }
+      if (_confirmationCompleter != null &&
+          !_confirmationCompleter!.isCompleted) {
+        _confirmationCompleter!.complete(false);
+        _confirmationCompleter = null;
       }
 
       state = CanvasModel(
@@ -409,6 +415,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(
       gridSize: newSize,
       grid: List.generate(newSize, (_) => List.filled(newSize, 0)),
+      decomposedComponents: const [],
+      pendingDecompositionOptions: const [],
+      activeComponentIndex: 0,
+      showPaletteSuggestion: false,
+      clearSuggestedPalette: true,
       undoStack: const [],
       redoStack: const [],
     );
@@ -478,8 +489,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       modelPreference: preference,
     );
     await _aiService.setModelConfig(
-      releaseStage: stage,
-      preference: preference,
+      releaseStage: state.modelReleaseStage,
+      preference: state.modelPreference,
     );
     await checkAiStatus();
   }
@@ -488,6 +499,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void dispose() {
     _autoRunTimer?.cancel();
     _saveTimer?.cancel();
+    if (_confirmationCompleter != null &&
+        !_confirmationCompleter!.isCompleted) {
+      _confirmationCompleter!.complete(false);
+      _confirmationCompleter = null;
+    }
     super.dispose();
   }
 
@@ -502,21 +518,30 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     await checkAiStatus();
   }
 
-  void selectPalette(String name) {
-    final newPalette = PaletteRegistry.getById(name).colors;
-
+  void setPalette(String name, List<Color> colors) {
     state = state.copyWith(
       paletteName: name,
-      palette: newPalette,
-      selectedColorIndex: 1,
+      palette: colors,
+      selectedColorIndex: 0,
+      decomposedComponents: const [],
+      pendingDecompositionOptions: const [],
     );
     resetCanvas();
   }
 
-  void selectColor(int index) {
-    if (index >= 0 && index <= state.palette.length) {
+  void selectPalette(String name) {
+    final newPalette = PaletteRegistry.getById(name).colors;
+    setPalette(name, newPalette);
+  }
+
+  void selectColorIndex(int index) {
+    if (index >= 0 && index < state.palette.length) {
       state = state.copyWith(selectedColorIndex: index);
     }
+  }
+
+  void selectColor(int index) {
+    selectColorIndex(index);
   }
 
   void selectTool(CanvasTool tool) {
@@ -524,7 +549,16 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void updatePrompt(String prompt) {
-    state = state.copyWith(userPrompt: prompt);
+    final promptChanged = state.userPrompt != prompt;
+    state = state.copyWith(
+      userPrompt: prompt,
+      decomposedComponents: promptChanged
+          ? const []
+          : state.decomposedComponents,
+      pendingDecompositionOptions: promptChanged
+          ? const []
+          : state.pendingDecompositionOptions,
+    );
   }
 
   void setReferenceImage(Uint8List? bytes, {Uint8List? originalBytes}) {
@@ -534,11 +568,15 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         clearSuggestedPalette: true,
         showPaletteSuggestion: false,
         clearNextFocus: true,
+        decomposedComponents: const [],
+        pendingDecompositionOptions: const [],
       );
     } else {
       state = state.copyWith(
         referenceImage: bytes,
         originalReferenceImage: originalBytes,
+        decomposedComponents: const [],
+        pendingDecompositionOptions: const [],
       );
     }
   }
@@ -549,6 +587,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       state = state.copyWith(
         referenceImage: bmp,
         originalReferenceImage: rawBytes,
+        decomposedComponents: const [],
+        pendingDecompositionOptions: const [],
       );
     }
   }
@@ -579,7 +619,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Future<void> suggestDescriptionFromReference() async {
     final refImg = state.referenceImage;
-    if (refImg == null || state.isGenerating) return;
+    if (refImg == null || state.isGenerating || state.isSuggestingDescription) {
+      return;
+    }
+
+    state = state.copyWith(isSuggestingDescription: true);
 
     try {
       final response = await _aiService.generateContent(
@@ -592,6 +636,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       }
     } catch (e) {
       debugPrint('Error suggesting description from reference image: $e');
+    } finally {
+      state = state.copyWith(isSuggestingDescription: false);
     }
   }
 
