@@ -26,7 +26,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 3, initialIndex: 1, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {});
@@ -203,6 +203,11 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                 ? const NeverScrollableScrollPhysics()
                 : const BouncingScrollPhysics(),
             children: [
+              CreationsDrawer(
+                onCreationSelected: () {
+                  _tabController.animateTo(1);
+                },
+              ),
               LayoutBuilder(
                 builder: (context, constraints) {
                   return _buildCanvasAndControlsPage(
@@ -210,11 +215,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                     constraints,
                     isDraggingCanvas,
                   );
-                },
-              ),
-              CreationsDrawer(
-                onCreationSelected: () {
-                  _tabController.animateTo(0);
                 },
               ),
               const SingleChildScrollView(
@@ -230,14 +230,14 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
             },
             destinations: [
               const NavigationDestination(
-                icon: Icon(Icons.palette_outlined),
-                selectedIcon: Icon(Icons.palette),
-                label: 'Canvas',
-              ),
-              const NavigationDestination(
                 icon: Icon(Icons.collections_outlined),
                 selectedIcon: Icon(Icons.collections),
                 label: 'Creations',
+              ),
+              const NavigationDestination(
+                icon: Icon(Icons.palette_outlined),
+                selectedIcon: Icon(Icons.palette),
+                label: 'Canvas',
               ),
               NavigationDestination(
                 icon: history.isEmpty

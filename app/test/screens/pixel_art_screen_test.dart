@@ -238,21 +238,21 @@ void main() {
           buildTestableWidget(child: const PixelArtScreen()),
         );
 
-        // Verify NavigationBar destinations
+        // Verify NavigationBar destinations (Creations: 0, Canvas: 1, Logs: 2)
         final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
         expect(navBar.destinations, hasLength(3));
 
         final dests = navBar.destinations.cast<NavigationDestination>();
-        expect(dests[0].label, equals('Canvas'));
-        expect(dests[1].label, equals('Creations'));
+        expect(dests[0].label, equals('Creations'));
+        expect(dests[1].label, equals('Canvas'));
         expect(dests[2].label, equals('Logs'));
 
         // Verify destination icons
-        expect((dests[0].icon as Icon).icon, equals(Icons.palette_outlined));
         expect(
-          (dests[1].icon as Icon).icon,
+          (dests[0].icon as Icon).icon,
           equals(Icons.collections_outlined),
         );
+        expect((dests[1].icon as Icon).icon, equals(Icons.palette_outlined));
         expect(
           dests[2].icon,
           isA<Icon>().having(
