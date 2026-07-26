@@ -6,7 +6,9 @@ import '../logic/utils/database_helpers.dart';
 import 'package:drift/drift.dart' as drift;
 
 class CreationsDrawer extends ConsumerStatefulWidget {
-  const CreationsDrawer({super.key});
+  final VoidCallback? onCreationSelected;
+
+  const CreationsDrawer({super.key, this.onCreationSelected});
 
   @override
   ConsumerState<CreationsDrawer> createState() => _CreationsDrawerState();
@@ -38,195 +40,203 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
-    return Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Drawer Header with premium styling
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: theme.dividerColor, width: 0.5),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Creations Gallery',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    tooltip: 'New Canvas',
-                    onPressed: () async {
-                      final navigator = Navigator.of(context);
-                      await notifier.startNewCanvas();
-                      if (mounted) navigator.pop();
-                    },
-                  ),
-                ],
+    return SafeArea(
+      child: Column(
+        children: [
+          // Drawer Header with premium styling
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: theme.dividerColor, width: 0.5),
               ),
             ),
-
-            // Search Box
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: 'Search creations...',
-                  prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                    borderSide: BorderSide.none,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Creations Gallery',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
                   ),
-                  filled: true,
-                  fillColor: theme.colorScheme.surfaceContainerHighest
-                      .withValues(alpha: 0.5),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0.0),
                 ),
-                onChanged: (val) {
-                  setState(() {
-                    _searchQuery = val.trim().toLowerCase();
-                  });
-                },
-              ),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: 'New Canvas',
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    await notifier.startNewCanvas();
+                    if (widget.onCreationSelected != null) {
+                      widget.onCreationSelected!();
+                    } else if (mounted && navigator.canPop()) {
+                      navigator.pop();
+                    }
+                  },
+                ),
+              ],
             ),
+          ),
 
-            // Creations List
-            Expanded(
-              child: FutureBuilder<List<Creation>>(
-                future: _creationsFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+          // Search Box
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search creations...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0.0),
+              ),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val.trim().toLowerCase();
+                });
+              },
+            ),
+          ),
 
-                  if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  }
+          // Creations List
+          Expanded(
+            child: FutureBuilder<List<Creation>>(
+              future: _creationsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                  final list = snapshot.data ?? [];
-                  final filteredList = list.where((item) {
-                    return item.title.toLowerCase().contains(_searchQuery);
-                  }).toList();
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-                  if (filteredList.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.brush_outlined,
-                            size: 48,
+                final list = snapshot.data ?? [];
+                final filteredList = list.where((item) {
+                  return item.title.toLowerCase().contains(_searchQuery);
+                }).toList();
+
+                if (filteredList.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.brush_outlined,
+                          size: 48,
+                          color: theme.disabledColor,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _searchQuery.isEmpty
+                              ? 'No creations yet'
+                              : 'No matching creations',
+                          style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.disabledColor,
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _searchQuery.isEmpty
-                                ? 'No creations yet'
-                                : 'No matching creations',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.disabledColor,
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: filteredList.length,
+                  itemBuilder: (context, index) {
+                    final creation = filteredList[index];
+                    final isCurrent = creation.id == canvasState.creationId;
+
+                    return ListTile(
+                      key: ValueKey('creation_item_${creation.id}'),
+                      selected: isCurrent,
+                      selectedTileColor: theme.colorScheme.primaryContainer
+                          .withValues(alpha: 0.3),
+                      leading: CreationThumbnail(
+                        gridData: creation.gridData,
+                        paletteColors: creation.paletteColors,
+                        gridSize: creation.gridSize,
+                      ),
+                      title: Text(
+                        creation.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          fontWeight: isCurrent
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${creation.gridSize}x${creation.gridSize} • ${_formatDate(creation.updatedAt)}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      onTap: () async {
+                        final navigator = Navigator.of(context);
+                        await notifier.loadFromDb(creation.id);
+                        if (widget.onCreationSelected != null) {
+                          widget.onCreationSelected!();
+                        } else if (context.mounted && navigator.canPop()) {
+                          navigator.pop();
+                        }
+                      },
+                      trailing: PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert),
+                        onSelected: (action) async {
+                          if (action == 'rename') {
+                            _showRenameDialog(context, creation, notifier);
+                          } else if (action == 'duplicate') {
+                            await notifier.duplicateCanvas(creation.id);
+                            _refreshList();
+                          } else if (action == 'delete') {
+                            _showDeleteConfirmDialog(
+                              context,
+                              creation,
+                              notifier,
+                            );
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'rename',
+                            child: ListTile(
+                              leading: Icon(Icons.edit),
+                              title: Text('Rename'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'duplicate',
+                            child: ListTile(
+                              leading: Icon(Icons.copy),
+                              title: Text('Duplicate'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              leading: Icon(Icons.delete, color: Colors.red),
+                              title: Text(
+                                'Delete',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                              contentPadding: EdgeInsets.zero,
                             ),
                           ),
                         ],
                       ),
                     );
-                  }
-
-                  return ListView.builder(
-                    itemCount: filteredList.length,
-                    itemBuilder: (context, index) {
-                      final creation = filteredList[index];
-                      final isCurrent = creation.id == canvasState.creationId;
-
-                      return ListTile(
-                        key: ValueKey('creation_item_${creation.id}'),
-                        selected: isCurrent,
-                        selectedTileColor: theme.colorScheme.primaryContainer
-                            .withValues(alpha: 0.3),
-                        leading: CreationThumbnail(
-                          gridData: creation.gridData,
-                          paletteColors: creation.paletteColors,
-                          gridSize: creation.gridSize,
-                        ),
-                        title: Text(
-                          creation.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: isCurrent
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                        subtitle: Text(
-                          '${creation.gridSize}x${creation.gridSize} • ${_formatDate(creation.updatedAt)}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        onTap: () async {
-                          await notifier.loadFromDb(creation.id);
-                          if (context.mounted) Navigator.of(context).pop();
-                        },
-                        trailing: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert),
-                          onSelected: (action) async {
-                            if (action == 'rename') {
-                              _showRenameDialog(context, creation, notifier);
-                            } else if (action == 'duplicate') {
-                              await notifier.duplicateCanvas(creation.id);
-                              _refreshList();
-                            } else if (action == 'delete') {
-                              _showDeleteConfirmDialog(
-                                context,
-                                creation,
-                                notifier,
-                              );
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'rename',
-                              child: ListTile(
-                                leading: Icon(Icons.edit),
-                                title: Text('Rename'),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'duplicate',
-                              child: ListTile(
-                                leading: Icon(Icons.copy),
-                                title: Text('Duplicate'),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: ListTile(
-                                leading: Icon(Icons.delete, color: Colors.red),
-                                title: Text(
-                                  'Delete',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                                contentPadding: EdgeInsets.zero,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+                  },
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
