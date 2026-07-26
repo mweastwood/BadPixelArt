@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -8,116 +7,125 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../logic/canvas_state.dart';
 
-class AiHistoryDock extends ConsumerWidget {
-  const AiHistoryDock({super.key});
+Future<void> exportAiHistory(
+  BuildContext context,
+  List<AgentHistoryEntry> history,
+) async {
+  if (history.isEmpty) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('No history to export')));
+    return;
+  }
 
-  Future<void> _exportHistory(
-    BuildContext context,
-    List<AgentHistoryEntry> history,
-  ) async {
-    if (history.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No history to export')));
+  try {
+    final String jsonStr = AgentHistoryEntry.serializeList(history);
+
+    if (kIsWeb) {
+      await Clipboard.setData(ClipboardData(text: jsonStr));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI History copied to clipboard!')),
+        );
+      }
       return;
     }
 
+    String? outputFile;
     try {
-      final String jsonStr = AgentHistoryEntry.serializeList(history);
+      outputFile = await FilePicker.saveFile(
+        dialogTitle: 'Save AI History Log',
+        fileName:
+            'ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json',
+        allowedExtensions: ['json'],
+        type: FileType.custom,
+      );
+    } catch (e) {
+      outputFile = null;
+    }
 
-      if (kIsWeb) {
-        await Clipboard.setData(ClipboardData(text: jsonStr));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('AI History copied to clipboard!')),
-          );
-        }
-        return;
-      }
-
-      String? outputFile;
+    if (outputFile == null) {
       try {
-        outputFile = await FilePicker.saveFile(
-          dialogTitle: 'Save AI History Log',
-          fileName:
-              'ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json',
-          allowedExtensions: ['json'],
-          type: FileType.custom,
+        final String? selectedDir = await FilePicker.getDirectoryPath(
+          dialogTitle: 'Select Directory to Save AI History Log',
         );
-      } catch (e) {
+        if (selectedDir != null) {
+          outputFile =
+              '$selectedDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
+        }
+      } catch (_) {
         outputFile = null;
       }
+    }
 
-      if (outputFile == null) {
-        try {
-          final String? selectedDir = await FilePicker.getDirectoryPath(
-            dialogTitle: 'Select Directory to Save AI History Log',
-          );
-          if (selectedDir != null) {
-            outputFile =
-                '$selectedDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
-          }
-        } catch (_) {
-          outputFile = null;
-        }
-      }
-
-      if (outputFile == null) {
-        final exportsDir = Directory(
-          '/home/mweastwood/projects/BadPixelArt/exports',
-        );
-        String targetDir;
-        if (await exportsDir.exists()) {
-          targetDir = exportsDir.path;
+    if (outputFile == null) {
+      final exportsDir = Directory(
+        '/home/mweastwood/projects/BadPixelArt/exports',
+      );
+      String targetDir;
+      if (await exportsDir.exists()) {
+        targetDir = exportsDir.path;
+      } else {
+        final currentPath = Directory.current.path;
+        if (currentPath != '/' && currentPath.isNotEmpty) {
+          targetDir = currentPath;
         } else {
-          final currentPath = Directory.current.path;
-          if (currentPath != '/' && currentPath.isNotEmpty) {
-            targetDir = currentPath;
-          } else {
-            targetDir = Directory.systemTemp.path;
-          }
+          targetDir = Directory.systemTemp.path;
         }
-
-        outputFile =
-            '$targetDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
       }
 
-      final file = File(outputFile);
-      await file.writeAsString(jsonStr);
+      outputFile =
+          '$targetDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
+    }
 
-      if (context.mounted) {
-        final finalPath = outputFile;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Exported successfully to: ${osPathBasename(outputFile)}',
-            ),
-            action: SnackBarAction(
-              label: 'Copy Path',
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: finalPath));
-              },
-            ),
+    final file = File(outputFile);
+    await file.writeAsString(jsonStr);
+
+    if (context.mounted) {
+      final finalPath = outputFile;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Exported successfully to: ${osPathBasename(outputFile)}',
           ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error exporting history: $e')));
-      }
+          action: SnackBarAction(
+            label: 'Copy Path',
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: finalPath));
+            },
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error exporting history: $e')));
     }
   }
+}
 
-  String osPathBasename(String path) {
-    return path.split(RegExp(r'[/\\]')).last;
-  }
+String osPathBasename(String path) {
+  return path.split(RegExp(r'[/\\]')).last;
+}
+
+String formatLogTimestamp(DateTime dt) {
+  final year = dt.year;
+  final month = dt.month.toString().padLeft(2, '0');
+  final day = dt.day.toString().padLeft(2, '0');
+  final hour = dt.hour.toString().padLeft(2, '0');
+  final minute = dt.minute.toString().padLeft(2, '0');
+  final second = dt.second.toString().padLeft(2, '0');
+  return '$year-$month-$day $hour:$minute:$second';
+}
+
+class AiHistoryDock extends ConsumerWidget {
+  const AiHistoryDock({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasModel = ref.watch(canvasStateProvider);
-    final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
     final history = canvasModel.aiHistory;
     final double totalCost = history.fold(
@@ -126,1792 +134,355 @@ class AiHistoryDock extends ConsumerWidget {
     );
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            Icon(
-              Icons.bug_report_outlined,
-              color: theme.colorScheme.secondary,
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'AI History & Debugger',
-              style: TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (history.isNotEmpty) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${history.length}',
-                  style: TextStyle(
-                    color: theme.colorScheme.onSecondaryContainer,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              if (totalCost > 0) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    'Total: \$${totalCost.toStringAsFixed(4)}',
-                    style: TextStyle(
-                      color: theme.colorScheme.onTertiaryContainer,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-            const Spacer(),
-            if (history.isNotEmpty) ...[
-              IconButton(
-                icon: const Icon(Icons.file_download_outlined),
-                tooltip: 'Export Logs',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => _exportHistory(context, history),
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_sweep_outlined),
-                tooltip: 'Clear History',
-                visualDensity: VisualDensity.compact,
-                onPressed: notifier.clearAiHistory,
-              ),
-            ],
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (history.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32.0),
-            child: Center(
-              child: Text(
-                'No AI history logs yet.\nTrigger a suggestion to log prompts/responses.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontSize: 13,
-                  height: 1.4,
-                ),
-              ),
-            ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: history.length,
-            separatorBuilder: (context, index) => const Divider(height: 24),
-            itemBuilder: (context, index) {
-              final entry = history[history.length - 1 - index];
-              return _HistoryItem(entry: entry, palette: canvasModel.palette);
-            },
-          ),
-      ],
-    );
-  }
-}
-
-class _HistoryItem extends StatefulWidget {
-  final AgentHistoryEntry entry;
-  final List<Color> palette;
-  const _HistoryItem({required this.entry, required this.palette});
-
-  @override
-  State<_HistoryItem> createState() => _HistoryItemState();
-}
-
-class _HistoryItemState extends State<_HistoryItem> {
-  bool _expanded = false;
-  int _selectedPainterIndex = 0;
-
-  String _getUserPromptText() {
-    final raw = widget.entry.prompt;
-    if (raw.contains('User Prompt:')) {
-      final parts = raw.split('User Prompt:');
-      if (parts.length > 1) {
-        final userPart = parts.last.trim();
-        final lines = userPart.split('\n');
-        return lines.first;
-      }
-    }
-    if (raw.contains('Draw instruction:')) {
-      final parts = raw.split('Draw instruction:');
-      if (parts.length > 1) return parts.last.split('\n').first.trim();
-    }
-    if (raw.startsWith('System Instructions:\n')) {
-      return raw.substring('System Instructions:\n'.length).trim();
-    }
-    return raw;
-  }
-
-  String _getInferenceTitle() {
-    final prompt = widget.entry.prompt;
-    if (prompt.contains('Decompose the drawing instruction')) {
-      return 'Semantic Component Breakdown';
-    }
-    if (prompt.contains('Decompose the component')) {
-      return 'Shape Breakdown & Decomposition';
-    }
-    if (prompt.contains('color palette generator')) {
-      return 'AI Palette Suggestion';
-    }
-    if (prompt.contains('AI pixel art critic') &&
-        prompt.contains('evaluating')) {
-      return 'Stroke Evaluation & Critique';
-    }
-    if (prompt.contains('AI pixel art painter')) {
-      return 'Stroke Suggestion';
-    }
-    if (prompt.contains('select the single best candidate')) {
-      return 'Candidate Selection (Tournament)';
-    }
-    if (prompt.contains('pixel art describer')) {
-      return 'Visual Canvas Description';
-    }
-    return 'AI Core Inference';
-  }
-
-  void _showRawExchangeDialog(
-    BuildContext context, {
-    required String title,
-    required String prompt,
-    required String response,
-    Uint8List? imageBytes,
-    AgentHistoryEntry? entry,
-  }) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final theme = Theme.of(context);
-        final historyEntry =
-            entry ??
-            AgentHistoryEntry(
-              timestamp: DateTime.now(),
-              prompt: prompt,
-              response: response,
-              isError: false,
-              imageBytes: imageBytes,
-            );
-
-        return AlertDialog(
-          title: Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          content: Container(
-            width: double.maxFinite,
-            constraints: const BoxConstraints(maxHeight: 450),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (imageBytes != null) ...[
-                    Text(
-                      'VISUAL INPUT:',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Center(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: theme.colorScheme.outlineVariant,
-                            width: 1.5,
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: Image.memory(
-                            imageBytes,
-                            height: 128,
-                            width: 128,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'RAW PROMPT:',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _TokenCountBadge(entry: historyEntry),
-                        ],
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 14),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: prompt));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Copied prompt to clipboard'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
-                      ),
-                    ),
-                    child: Text(
-                      prompt,
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'RAW RESPONSE:',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 14),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: response));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Copied response to clipboard'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ],
-                  ),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
-                      ),
-                    ),
-                    child: Text(
-                      response,
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showDescriberDescriptionsDialog(
-    BuildContext context,
-    Map<String, dynamic> describers,
-  ) {
-    final theme = Theme.of(context);
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Row(
+        // Header Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+          child: Row(
             children: [
               Icon(
-                Icons.description,
+                Icons.chat_outlined,
                 color: theme.colorScheme.primary,
                 size: 20,
               ),
               const SizedBox(width: 8),
-              const Text('Canvas Descriptions'),
-            ],
-          ),
-          content: Container(
-            width: double.maxFinite,
-            constraints: const BoxConstraints(maxHeight: 500),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children:
-                    [
-                      'reference',
-                      'starting',
-                      'candidate1',
-                      'candidate2',
-                      'candidate3',
-                    ].map((key) {
-                      final descData = describers[key] as Map<String, dynamic>?;
-                      if (descData == null) return const SizedBox.shrink();
-                      final description =
-                          descData['description'] as String? ?? 'N/A';
-                      final rawPrompt =
-                          descData['rawPrompt'] as String? ?? 'N/A';
-                      final rawResponse =
-                          descData['rawResponse'] as String? ?? 'N/A';
-                      final imgBytesBase64 = descData['imageBytes'] as String?;
-                      final Uint8List? imgBytes = imgBytesBase64 != null
-                          ? base64Decode(imgBytesBase64)
-                          : null;
-
-                      String label = 'Target Reference';
-                      if (key == 'starting') {
-                        label = 'Starting Canvas';
-                      }
-                      if (key == 'candidate1') {
-                        label = 'Candidate 1 (Painter Run 1)';
-                      }
-                      if (key == 'candidate2') {
-                        label = 'Candidate 2 (Painter Run 2)';
-                      }
-                      if (key == 'candidate3') {
-                        label = 'Candidate 3 (Painter Run 3)';
-                      }
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        color: theme.colorScheme.surfaceContainerHigh,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          side: BorderSide(
-                            color: theme.colorScheme.outlineVariant,
-                            width: 1,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10.0,
-                            vertical: 8.0,
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  if (imgBytes != null) ...[
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color:
-                                              theme.colorScheme.outlineVariant,
-                                        ),
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(3),
-                                        child: Image.memory(
-                                          imgBytes,
-                                          fit: BoxFit.contain,
-                                          filterQuality: FilterQuality.none,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  Expanded(
-                                    child: Text(
-                                      label.toUpperCase(),
-                                      style: TextStyle(
-                                        color: theme.colorScheme.primary,
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.code, size: 16),
-                                    tooltip: 'View Raw Describer Exchange',
-                                    visualDensity: VisualDensity.compact,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    onPressed: () {
-                                      _showRawExchangeDialog(
-                                        context,
-                                        title:
-                                            'Raw LLM Exchange: Describer ($label)',
-                                        prompt: rawPrompt,
-                                        response: rawResponse,
-                                        imageBytes: imgBytes,
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                description,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 12.5,
-                                  height: 1.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  bool _useWhiteText(Color color) {
-    return color.computeLuminance() < 0.5;
-  }
-
-  IconData _getToolIcon(String tool) {
-    switch (tool) {
-      case 'error':
-        return Icons.error_outline;
-      case 'undo':
-        return Icons.undo;
-      case 'pixel':
-      case 'pixels':
-        return Icons.gesture;
-      case 'line':
-        return Icons.show_chart;
-      case 'circle':
-      case 'ellipse':
-        return Icons.radio_button_unchecked;
-      case 'circle_filled':
-        return Icons.lens;
-      case 'circle_hatched':
-        return Icons.blur_circular;
-      case 'rectangle':
-        return Icons.check_box_outline_blank;
-      case 'rectangle_filled':
-        return Icons.square;
-      case 'rectangle_hatched':
-        return Icons.grid_view;
-      case 'fill':
-        return Icons.format_color_fill;
-      case 'hatch':
-        return Icons.grain;
-      default:
-        return Icons.brush;
-    }
-  }
-
-  String _formatParamsText(String tool, List<dynamic> params) {
-    if (params.isEmpty) return '';
-    try {
-      switch (tool) {
-        case 'pixel':
-          return 'at (${params[0]}, ${params[1]})';
-        case 'pixels':
-          final coords = [];
-          for (int i = 0; i < params.length - 1; i += 2) {
-            coords.add('(${params[i]}, ${params[i + 1]})');
-          }
-          return 'at ${coords.join(', ')}';
-        case 'line':
-          return 'from (${params[0]}, ${params[1]}) to (${params[2]}, ${params[3]})';
-        case 'circle':
-        case 'circle_filled':
-        case 'circle_hatched':
-        case 'noise_circle':
-          return 'center (${params[0]}, ${params[1]}) radius ${params[2]}';
-        case 'rectangle':
-        case 'rectangle_filled':
-        case 'rectangle_hatched':
-        case 'noise_rectangle':
-          return 'from (${params[0]}, ${params[1]}) to (${params[2]}, ${params[3]})';
-        case 'fill':
-        case 'hatch':
-          return 'start at (${params[0]}, ${params[1]})';
-        case 'ellipse':
-          return 'center (${params[0]}, ${params[1]}) radii (${params[2]}, ${params[3]})';
-        case 'voronoi':
-          return 'with ${params[0]} points';
-      }
-    } catch (_) {}
-    return 'params: ${params.join(', ')}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final timeStr =
-        '${widget.entry.timestamp.hour.toString().padLeft(2, '0')}:${widget.entry.timestamp.minute.toString().padLeft(2, '0')}:${widget.entry.timestamp.second.toString().padLeft(2, '0')}';
-
-    Map<String, dynamic>? parsedJson;
-    try {
-      final decoded = jsonDecode(widget.entry.response);
-      if (decoded is Map<String, dynamic>) {
-        parsedJson = decoded;
-      }
-    } catch (_) {}
-
-    final int? criticChoice = parsedJson?['criticChoice'] as int?;
-    final String? criticReasoning = parsedJson?['criticReasoning'] as String?;
-    final isTournament = criticChoice != null;
-
-    final painterJson = parsedJson?['painter'] as Map<String, dynamic>?;
-    final criticJson = parsedJson?['critic'] as Map<String, dynamic>?;
-
-    final understanding =
-        painterJson?['understanding'] as String? ??
-        parsedJson?['understanding'] as String?;
-    final reasoning =
-        painterJson?['reasoning'] as String? ??
-        parsedJson?['reasoning'] as String?;
-    final criticAction = criticJson?['action'] as String?;
-    final criticReasoningOld = criticJson?['reasoning'] as String?;
-
-    final statusTitle = widget.entry.isError
-        ? 'AI Generation Error'
-        : (isTournament
-              ? 'Critic picked Painter $criticChoice'
-              : (criticAction == 'undo'
-                    ? 'Stroke rejected by critic'
-                    : (criticAction != null || parsedJson?['tool'] != null
-                          ? 'Stroke suggested successfully'
-                          : _getInferenceTitle())));
-
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // -------------------------------------------------------------
-          // Exchange Date / Timestamp Pill Header
-          // -------------------------------------------------------------
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant.withValues(
-                    alpha: 0.5,
-                  ),
+              Text(
+                'Conversation History',
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+
+        // Chat Message Feed or Empty State
+        Expanded(
+          child: history.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Text(
+                      'No AI history logs yet.\nTrigger a prompt to view conversation history.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                )
+              : ListView.builder(
+                  reverse: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 12.0,
+                  ),
+                  itemCount: history.length,
+                  itemBuilder: (context, index) {
+                    final entry = history[history.length - 1 - index];
+                    return _ChatMessageTurn(entry: entry);
+                  },
+                ),
+        ),
+
+        // Bottom Footer Bar with total cost & total message count
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHigh,
+            border: Border(
+              top: BorderSide(
+                color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
                 children: [
                   Icon(
-                    Icons.schedule,
-                    size: 12,
+                    Icons.chat_bubble_outline,
+                    size: 16,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    timeStr,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
                   const SizedBox(width: 6),
                   Text(
-                    '•',
+                    '${history.length} Messages',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 6),
+                ],
+              ),
+              Row(
+                children: [
+                  Icon(
+                    Icons.attach_money,
+                    size: 16,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 2),
                   Text(
-                    _getInferenceTitle(),
+                    'Total Cost: \$${totalCost.toStringAsFixed(4)}',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,
                     ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
-          const SizedBox(height: 10),
-
-          // -------------------------------------------------------------
-          // 1. USER MESSAGE BUBBLE (Outgoing / Input Prompt)
-          // -------------------------------------------------------------
-          Align(
-            alignment: Alignment.centerRight,
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 580),
-              margin: const EdgeInsets.only(left: 32, bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(4),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _TokenCountBadge(
-                        entry: widget.entry,
-                        showInputOnly: true,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'You',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor: theme.colorScheme.primary,
-                        child: Icon(
-                          Icons.person,
-                          size: 12,
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _getUserPromptText(),
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.35,
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                    textAlign: TextAlign.left,
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // -------------------------------------------------------------
-          // 2. AI RESPONSE BUBBLE (Incoming / Output Result)
-          // -------------------------------------------------------------
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 640),
-              margin: const EdgeInsets.only(right: 24, top: 4, bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHigh,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
-                  topRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-                border: Border.all(
-                  color: theme.colorScheme.outlineVariant,
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // AI Avatar Header Row
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 11,
-                        backgroundColor: theme.colorScheme.secondaryContainer,
-                        child: Icon(
-                          Icons.smart_toy,
-                          size: 13,
-                          color: theme.colorScheme.onSecondaryContainer,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'AI Assistant',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      if (widget.entry.modelName != null &&
-                          widget.entry.modelName!.isNotEmpty) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.secondaryContainer,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            widget.entry.modelName!,
-                            style: TextStyle(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                        ),
-                      ],
-                      const Spacer(),
-                      _TokenCountBadge(
-                        entry: widget.entry,
-                        showOutputOnly: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Response Status & Expander Card
-                  InkWell(
-                    onTap: () => setState(() => _expanded = !_expanded),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant.withValues(
-                            alpha: 0.6,
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            widget.entry.isError
-                                ? Icons.error_outline
-                                : (isTournament
-                                      ? Icons.stars
-                                      : (criticAction == 'undo'
-                                            ? Icons.cancel_outlined
-                                            : Icons.check_circle_outline)),
-                            color: widget.entry.isError
-                                ? theme.colorScheme.error
-                                : (isTournament
-                                      ? theme.colorScheme.primary
-                                      : (criticAction == 'undo'
-                                            ? theme.colorScheme.error
-                                            : Colors.green)),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              statusTitle,
-                              style: TextStyle(
-                                color: widget.entry.isError
-                                    ? theme.colorScheme.error
-                                    : (criticAction == 'undo'
-                                          ? theme.colorScheme.error
-                                          : theme.colorScheme.onSurface),
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          if (!isTournament) ...[
-                            IconButton(
-                              icon: const Icon(Icons.code, size: 16),
-                              tooltip: 'View Raw AI Exchange',
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                _showRawExchangeDialog(
-                                  context,
-                                  title: 'Raw LLM Exchange: Stroke Suggestion',
-                                  prompt: widget.entry.prompt,
-                                  response: widget.entry.response,
-                                  imageBytes: widget.entry.imageBytes,
-                                );
-                              },
-                            ),
-                          ],
-                          Icon(
-                            _expanded
-                                ? Icons.arrow_drop_up
-                                : Icons.arrow_drop_down,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Reasoning text snippet if available
-                  if (understanding != null || reasoning != null) ...[
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Text(
-                        reasoning ?? understanding ?? '',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontStyle: FontStyle.italic,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ],
-
-                  // Expanded Details section
-                  if (_expanded) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: theme.colorScheme.outlineVariant,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (isTournament) ...[
-                            // Verdict Card
-                            Card(
-                              color: theme.colorScheme.primaryContainer
-                                  .withValues(alpha: 0.4),
-                              elevation: 0,
-                              margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                  color: theme.colorScheme.primary.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.gavel_outlined,
-                                          size: 16,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            'CRITIC VERDICT: SELECTED PAINTER $criticChoice',
-                                            style: TextStyle(
-                                              color: theme.colorScheme.primary,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.code,
-                                            size: 16,
-                                          ),
-                                          tooltip: 'View Raw Critic Exchange',
-                                          visualDensity: VisualDensity.compact,
-                                          onPressed: () {
-                                            _showRawExchangeDialog(
-                                              context,
-                                              title:
-                                                  'Raw LLM Exchange: Critic Verdict',
-                                              prompt:
-                                                  parsedJson?['criticRawPrompt']
-                                                      as String? ??
-                                                  'N/A',
-                                              response:
-                                                  parsedJson?['criticRawResponse']
-                                                      as String? ??
-                                                  'N/A',
-                                              imageBytes:
-                                                  widget.entry.imageBytes,
-                                            );
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      criticReasoning ??
-                                          'No reasoning provided.',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.onSurface,
-                                        fontSize: 12.5,
-                                        height: 1.3,
-                                      ),
-                                    ),
-                                    (() {
-                                      final nextFocus =
-                                          parsedJson?['criticNextFocus']
-                                              as String?;
-                                      if (nextFocus != null &&
-                                          nextFocus != 'N/A' &&
-                                          nextFocus.isNotEmpty) {
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 8,
-                                          ),
-                                          child: Container(
-                                            width: double.infinity,
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 6,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: theme
-                                                  .colorScheme
-                                                  .secondaryContainer
-                                                  .withValues(alpha: 0.3),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color: theme
-                                                    .colorScheme
-                                                    .secondaryContainer
-                                                    .withValues(alpha: 0.6),
-                                              ),
-                                            ),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Icon(
-                                                  Icons.lightbulb_outline,
-                                                  size: 14,
-                                                  color: theme
-                                                      .colorScheme
-                                                      .secondary,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Expanded(
-                                                  child: Text(
-                                                    'NEXT FOCUS SUGGESTION: $nextFocus',
-                                                    style: TextStyle(
-                                                      color: theme
-                                                          .colorScheme
-                                                          .onSecondaryContainer,
-                                                      fontSize: 11,
-                                                      height: 1.25,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    })(),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // 2x2 Snapshot Grid
-                            if (widget.entry.imageBytes != null) ...[
-                              Text(
-                                'TOURNAMENT COMPARISON GRID (2x2):',
-                                style: TextStyle(
-                                  color: theme.colorScheme.secondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Center(
-                                child: Container(
-                                  width: 160,
-                                  height: 160,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: theme.colorScheme.outlineVariant,
-                                      width: 2,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Image.memory(
-                                      widget.entry.imageBytes!,
-                                      fit: BoxFit.contain,
-                                      filterQuality: FilterQuality.none,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Center(
-                                child: Text(
-                                  'Top-Left: Ref | Top-Right: P1 | Bottom-Left: P2 | Bottom-Right: P3',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Divider(),
-                              const SizedBox(height: 8),
-                            ],
-
-                            // Describer Canvas Descriptions Action Button
-                            if (parsedJson?['describers'] != null) ...[
-                              Center(
-                                child: OutlinedButton.icon(
-                                  onPressed: () =>
-                                      _showDescriberDescriptionsDialog(
-                                        context,
-                                        parsedJson!['describers']
-                                            as Map<String, dynamic>,
-                                      ),
-                                  icon: const Icon(Icons.description, size: 14),
-                                  label: const Text('View Canvas Descriptions'),
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Divider(),
-                              const SizedBox(height: 8),
-                            ],
-
-                            // Tab Buttons for Painter 1, 2, 3
-                            Text(
-                              'PAINTER PROGRESSION TIMELINE:',
-                              style: TextStyle(
-                                color: theme.colorScheme.tertiary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: List.generate(3, (i) {
-                                final isChosen = (criticChoice == i + 1);
-                                final isSelected = (_selectedPainterIndex == i);
-                                return Expanded(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4.0,
-                                    ),
-                                    child: InkWell(
-                                      onTap: () => setState(
-                                        () => _selectedPainterIndex = i,
-                                      ),
-                                      borderRadius: BorderRadius.circular(8),
-                                      child: AnimatedContainer(
-                                        duration: const Duration(
-                                          milliseconds: 150,
-                                        ),
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 8,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? theme
-                                                    .colorScheme
-                                                    .primaryContainer
-                                              : theme
-                                                    .colorScheme
-                                                    .surfaceContainer,
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          border: Border.all(
-                                            color: isChosen
-                                                ? Colors.green
-                                                : (isSelected
-                                                      ? theme
-                                                            .colorScheme
-                                                            .primary
-                                                      : theme
-                                                            .colorScheme
-                                                            .outlineVariant),
-                                            width: isChosen ? 2 : 1,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Icon(
-                                                  isChosen
-                                                      ? Icons.check_circle
-                                                      : Icons.person_outline,
-                                                  size: 13,
-                                                  color: isChosen
-                                                      ? Colors.green
-                                                      : (isSelected
-                                                            ? theme
-                                                                  .colorScheme
-                                                                  .primary
-                                                            : theme
-                                                                  .colorScheme
-                                                                  .onSurfaceVariant),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  'Painter ${i + 1}',
-                                                  style: TextStyle(
-                                                    color: isSelected
-                                                        ? theme
-                                                              .colorScheme
-                                                              .onPrimaryContainer
-                                                        : theme
-                                                              .colorScheme
-                                                              .onSurface,
-                                                    fontWeight: isSelected
-                                                        ? FontWeight.bold
-                                                        : FontWeight.normal,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Strokes List for selected Painter
-                            () {
-                              final List<dynamic>? strokes =
-                                  parsedJson?['painter${_selectedPainterIndex + 1}Strokes']
-                                      as List<dynamic>?;
-                              if (strokes == null || strokes.isEmpty) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12.0,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'No strokes recorded for this Painter.',
-                                      style: TextStyle(
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                              return ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: strokes.length,
-                                itemBuilder: (context, strokeIdx) {
-                                  final stroke = strokes[strokeIdx];
-                                  final tool =
-                                      stroke['tool'] as String? ?? 'unknown';
-                                  final params =
-                                      stroke['params'] as List<dynamic>? ?? [];
-                                  final colorIdx = stroke['color'] as int? ?? 0;
-                                  final isErrorTool = tool == 'error';
-
-                                  Color? strokeColor;
-                                  if (isErrorTool) {
-                                    strokeColor = theme.colorScheme.error;
-                                  } else if (colorIdx >= 0 &&
-                                      colorIdx < widget.palette.length) {
-                                    strokeColor = widget.palette[colorIdx];
-                                  }
-
-                                  return Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: theme
-                                          .colorScheme
-                                          .surfaceContainerLowest,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: theme.colorScheme.outlineVariant
-                                            .withValues(alpha: 0.5),
-                                      ),
-                                    ),
-                                    child: ListTile(
-                                      dense: true,
-                                      leading: Container(
-                                        width: 24,
-                                        height: 24,
-                                        decoration: BoxDecoration(
-                                          color: strokeColor ?? Colors.grey,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: isErrorTool
-                                                ? theme.colorScheme.error
-                                                : theme.colorScheme.outline,
-                                            width: 1,
-                                          ),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          isErrorTool
-                                              ? '!'
-                                              : '${strokeIdx + 1}',
-                                          style: TextStyle(
-                                            color: strokeColor != null
-                                                ? (_useWhiteText(strokeColor)
-                                                      ? Colors.white
-                                                      : Colors.black)
-                                                : Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      title: Row(
-                                        children: [
-                                          Icon(
-                                            _getToolIcon(tool),
-                                            size: 14,
-                                            color: isErrorTool
-                                                ? theme.colorScheme.error
-                                                : theme.colorScheme.secondary,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            tool,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontFamily: 'monospace',
-                                              color: isErrorTool
-                                                  ? theme.colorScheme.error
-                                                  : theme.colorScheme.onSurface,
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      subtitle: Text(
-                                        isErrorTool
-                                            ? (stroke['error'] as String? ??
-                                                  'An error occurred')
-                                            : _formatParamsText(tool, params),
-                                        style: TextStyle(
-                                          color: isErrorTool
-                                              ? theme.colorScheme.error
-                                              : theme
-                                                    .colorScheme
-                                                    .onSurfaceVariant,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.code, size: 14),
-                                        tooltip: 'View Raw Painter Exchange',
-                                        visualDensity: VisualDensity.compact,
-                                        onPressed: () {
-                                          final String? rawImageBase64 =
-                                              stroke['rawImageBase64']
-                                                  as String?;
-                                          final Uint8List? imageBytes =
-                                              rawImageBase64 != null
-                                              ? base64Decode(rawImageBase64)
-                                              : null;
-                                          _showRawExchangeDialog(
-                                            context,
-                                            title:
-                                                'Raw LLM Exchange: Painter ${_selectedPainterIndex + 1} - Turn ${strokeIdx + 1}',
-                                            prompt:
-                                                stroke['rawPrompt']
-                                                    as String? ??
-                                                'N/A',
-                                            response:
-                                                stroke['rawResponse']
-                                                    as String? ??
-                                                'N/A',
-                                            imageBytes: imageBytes,
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            }(),
-                            const SizedBox(height: 12),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                          ] else ...[
-                            // Fallback for non-tournament / legacy entries
-                            if (widget.entry.imageBytes != null) ...[
-                              Text(
-                                'CANVAS SNAPSHOT:',
-                                style: TextStyle(
-                                  color: theme.colorScheme.secondary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Center(
-                                child: Container(
-                                  width: 128,
-                                  height: 128,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: theme.colorScheme.outlineVariant,
-                                      width: 2,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Image.memory(
-                                      widget.entry.imageBytes!,
-                                      fit: BoxFit.contain,
-                                      filterQuality: FilterQuality.none,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Divider(),
-                              const SizedBox(height: 8),
-                            ],
-
-                            if (understanding != null) ...[
-                              Text(
-                                'AI UNDERSTANDING:',
-                                style: TextStyle(
-                                  color: theme.colorScheme.tertiary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                understanding,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Divider(),
-                              const SizedBox(height: 8),
-                            ],
-                            if (reasoning != null) ...[
-                              Text(
-                                'AI REASONING:',
-                                style: TextStyle(
-                                  color: theme.colorScheme.tertiary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                reasoning,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Divider(),
-                              const SizedBox(height: 8),
-                            ],
-                            if (criticAction != null) ...[
-                              Text(
-                                'CRITIC EVALUATION (${criticAction.toUpperCase()}):',
-                                style: TextStyle(
-                                  color: criticAction == 'undo'
-                                      ? theme.colorScheme.error
-                                      : Colors.green,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                criticReasoningOld ?? 'No reasoning provided.',
-                                style: TextStyle(
-                                  color: theme.colorScheme.onSurface,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              const Divider(),
-                              const SizedBox(height: 8),
-                            ],
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'RAW PROMPT:',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.primary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.copy, size: 14),
-                                  onPressed: () {
-                                    Clipboard.setData(
-                                      ClipboardData(text: widget.entry.prompt),
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Copied prompt to clipboard',
-                                        ),
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: theme.colorScheme.outlineVariant,
-                                ),
-                              ),
-                              constraints: const BoxConstraints(maxHeight: 150),
-                              child: SingleChildScrollView(
-                                child: Text(
-                                  widget.entry.prompt,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 10.5,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            const Divider(),
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  'RAW RESPONSE:',
-                                  style: TextStyle(
-                                    color: Colors.green,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.copy, size: 14),
-                                  onPressed: () {
-                                    Clipboard.setData(
-                                      ClipboardData(
-                                        text: widget.entry.response,
-                                      ),
-                                    );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Copied response to clipboard',
-                                        ),
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: theme.colorScheme.outlineVariant,
-                                ),
-                              ),
-                              constraints: const BoxConstraints(maxHeight: 150),
-                              child: SingleChildScrollView(
-                                child: Text(
-                                  widget.entry.response,
-                                  style: TextStyle(
-                                    fontFamily: 'monospace',
-                                    fontSize: 10.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _TokenCountBadge extends ConsumerWidget {
+class _ChatMessageTurn extends StatelessWidget {
   final AgentHistoryEntry entry;
-  final bool showInputOnly;
-  final bool showOutputOnly;
 
-  const _TokenCountBadge({
-    required this.entry,
-    this.showInputOnly = false,
-    this.showOutputOnly = false,
-  });
+  const _ChatMessageTurn({required this.entry});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final timeStr = formatLogTimestamp(entry.timestamp);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // User Message Bubble (Right Aligned)
+        Align(
+          alignment: Alignment.centerRight,
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            margin: const EdgeInsets.only(top: 8, bottom: 4, left: 32),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(4),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      size: 14,
+                      color: theme.colorScheme.onPrimaryContainer.withValues(
+                        alpha: 0.8,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'User',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimaryContainer.withValues(
+                          alpha: 0.8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      timeStr,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        color: theme.colorScheme.onPrimaryContainer.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (entry.imageBytes != null &&
+                    entry.imageBytes!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Image.memory(
+                        entry.imageBytes!,
+                        height: 120,
+                        width: 120,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.none,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                SelectableText(
+                  entry.prompt,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // AI Response Message Bubble (Left Aligned)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.8,
+            ),
+            margin: const EdgeInsets.only(top: 4, bottom: 12, right: 32),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: entry.isError
+                  ? theme.colorScheme.errorContainer
+                  : theme.colorScheme.surfaceContainerHigh,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(16),
+              ),
+              border: Border.all(
+                color: entry.isError
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.auto_awesome,
+                      size: 14,
+                      color: entry.isError
+                          ? theme.colorScheme.onErrorContainer
+                          : theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'AI Assistant',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: entry.isError
+                            ? theme.colorScheme.onErrorContainer
+                            : theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      timeStr,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                SelectableText(
+                  entry.response,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: entry.isError
+                        ? theme.colorScheme.onErrorContainer
+                        : theme.colorScheme.onSurface,
+                  ),
+                ),
+                if (entry.inputTokens != null ||
+                    entry.outputTokens != null ||
+                    (entry.estimatedCostUsd != null &&
+                        entry.estimatedCostUsd! > 0)) ...[
+                  const SizedBox(height: 8),
+                  _TokenCountBadge(entry: entry),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TokenCountBadge extends StatelessWidget {
+  final AgentHistoryEntry entry;
+
+  const _TokenCountBadge({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final inTokens = entry.inputTokens;
     final outTokens = entry.outputTokens;
     final cost = entry.estimatedCostUsd;
 
+    final parts = <String>[];
     if (inTokens != null && outTokens != null) {
-      final costStr = cost != null
-          ? (cost == 0.0
-                ? 'Free'
-                : (cost < 0.0001
-                      ? '<\$0.0001'
-                      : '\$${cost.toStringAsFixed(4)}'))
-          : null;
-
-      String label = 'In: $inTokens | Out: $outTokens';
-      if (showInputOnly) label = 'In: $inTokens';
-      if (showOutputOnly) label = 'Out: $outTokens';
-
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: theme.colorScheme.onSecondaryContainer,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          if (costStr != null && !showInputOnly) ...[
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: cost == 0.0
-                    ? Colors.green.withValues(alpha: 0.15)
-                    : theme.colorScheme.tertiaryContainer,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                costStr,
-                style: TextStyle(
-                  color: cost == 0.0
-                      ? Colors.green
-                      : theme.colorScheme.onTertiaryContainer,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ],
+      parts.add(
+        '${inTokens + outTokens} tokens (${inTokens}in / ${outTokens}out)',
       );
+    } else if (inTokens != null) {
+      parts.add('$inTokens in-tokens');
+    } else if (outTokens != null) {
+      parts.add('$outTokens out-tokens');
+    }
+    if (cost != null && cost > 0) {
+      parts.add('\$${cost.toStringAsFixed(4)}');
     }
 
-    final aiService = ref.watch(aiServiceProvider);
-    return FutureBuilder<int>(
-      future: aiService.countTokens(
-        prompt: entry.prompt,
-        imageBytes: entry.imageBytes,
+    if (parts.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
       ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SizedBox(
-            width: 12,
-            height: 12,
-            child: CircularProgressIndicator(
-              strokeWidth: 1.5,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          );
-        }
-        if (snapshot.hasError || !snapshot.hasData) {
-          return const SizedBox.shrink();
-        }
-        final count = snapshot.data!;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.secondaryContainer,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            '$count tokens',
-            style: TextStyle(
-              color: theme.colorScheme.onSecondaryContainer,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        );
-      },
+      child: Text(
+        parts.join(' • '),
+        style: TextStyle(
+          fontSize: 10,
+          fontFamily: 'monospace',
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }

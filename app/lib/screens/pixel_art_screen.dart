@@ -9,6 +9,7 @@ import '../widgets/model_options_dialog.dart';
 import '../widgets/component_confirmation_dialog.dart';
 import '../widgets/decomposed_components_list.dart';
 import '../widgets/wizard_controls.dart';
+import '../widgets/ai_history_dock.dart';
 import 'creations_screen.dart';
 import 'canvas_screen.dart';
 import 'logs_screen.dart';
@@ -175,7 +176,17 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
           ),
           floatingActionButton: _tabController.index == 1
               ? _buildFloatingActionButtons(context, ref)
-              : null,
+              : (_tabController.index == 2
+                    ? FloatingActionButton(
+                        key: const ValueKey('export_logs_fab'),
+                        heroTag: 'export_logs_fab',
+                        onPressed: () => exportAiHistory(context, history),
+                        tooltip: 'Export Logs',
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        child: const Icon(Icons.file_download_outlined),
+                      )
+                    : null),
         ),
         if (canvasState.isSuggestingPalette)
           Container(

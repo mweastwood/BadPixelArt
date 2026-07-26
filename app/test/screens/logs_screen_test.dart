@@ -13,7 +13,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AiHistoryDock), findsOneWidget);
-      expect(find.text('AI History & Debugger'), findsOneWidget);
+      expect(find.text('Conversation History'), findsOneWidget);
     });
 
     testWidgets('LogsScreen golden render', (tester) async {
