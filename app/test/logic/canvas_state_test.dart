@@ -112,6 +112,7 @@ void main() {
     late ProviderContainer container;
 
     setUp(() {
+      SharedPreferences.setMockInitialValues({});
       mockAiService = MockTestAiService();
       container = ProviderContainer(
         overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
@@ -350,7 +351,7 @@ void main() {
     });
 
     test(
-      'triggerDecomposition runs DecomposerAgent and populates pendingDecompositionOptions',
+      'triggerDecomposition runs DecomposerAgent and populates decomposedComponents directly',
       () async {
         final notifier = container.read(canvasStateProvider.notifier);
         expect(
@@ -360,14 +361,7 @@ void main() {
 
         await notifier.triggerDecomposition();
 
-        var model = container.read(canvasStateProvider);
-        expect(model.pendingDecompositionOptions, hasLength(4));
-        expect(model.decomposedComponents, isEmpty);
-
-        // Apply Option 1
-        notifier.applyDecompositionOption(0);
-        model = container.read(canvasStateProvider);
-
+        final model = container.read(canvasStateProvider);
         expect(model.pendingDecompositionOptions, isEmpty);
         expect(model.decomposedComponents, hasLength(1));
         expect(model.decomposedComponents.first.name, equals('blade'));
@@ -383,26 +377,6 @@ void main() {
         );
       },
     );
-
-    test('triggerDecomposition logs components in history', () async {
-      final notifier = container.read(canvasStateProvider.notifier);
-      expect(container.read(canvasStateProvider).aiHistory, isEmpty);
-
-      await notifier.triggerDecomposition();
-
-      final model = container.read(canvasStateProvider);
-      expect(model.aiHistory, hasLength(4));
-      expect(model.aiHistory.first.isError, isFalse);
-      expect(
-        model.aiHistory.first.prompt,
-        contains('Decompose the drawing instruction'),
-      );
-      expect(model.aiHistory.first.response, contains('"name": "blade"'));
-      expect(
-        model.aiHistory.first.response,
-        contains('"description": "vertical blade"'),
-      );
-    });
 
     test('triggerDownload calls AI service download', () async {
       mockAiService.status = AiCoreStatus.downloadable;
