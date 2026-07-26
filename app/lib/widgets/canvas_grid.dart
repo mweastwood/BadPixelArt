@@ -41,7 +41,10 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final size = min(constraints.maxWidth, constraints.maxHeight);
+        final availableHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight - 56.0
+            : constraints.maxWidth;
+        final size = max(0.0, min(constraints.maxWidth, availableHeight));
 
         Widget gridContent = CustomPaint(
           painter: CanvasPainter(
@@ -375,35 +378,67 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
           }
         }
 
-        return Center(
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Card(
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Listener(
-                  behavior: HitTestBehavior.opaque,
-                  onPointerDown: (_) {
-                    if (isSketchingPlanPhase || isSculptingPhase) {
-                      ref.read(isDraggingCanvasProvider.notifier).state = true;
-                    }
-                  },
-                  onPointerUp: (_) {
-                    ref.read(isDraggingCanvasProvider.notifier).state = false;
-                  },
-                  onPointerCancel: (_) {
-                    ref.read(isDraggingCanvasProvider.notifier).state = false;
-                  },
-                  child: gridContent,
+        final scaleMode = ref.watch(canvasScaleModeProvider);
+
+        Widget cardBody;
+        switch (scaleMode) {
+          case CanvasScaleMode.full:
+            cardBody = Listener(
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (_) {
+                if (isSketchingPlanPhase || isSculptingPhase) {
+                  ref.read(isDraggingCanvasProvider.notifier).state = true;
+                }
+              },
+              onPointerUp: (_) {
+                ref.read(isDraggingCanvasProvider.notifier).state = false;
+              },
+              onPointerCancel: (_) {
+                ref.read(isDraggingCanvasProvider.notifier).state = false;
+              },
+              child: gridContent,
+            );
+            break;
+          case CanvasScaleMode.scaled1x:
+            cardBody = ScaledCanvasPreview(
+              grid: canvasModel.grid,
+              palette: canvasModel.palette,
+              scaleFactor: 1.0,
+              label: '1x True Scale',
+            );
+            break;
+          case CanvasScaleMode.scaled4x:
+            cardBody = ScaledCanvasPreview(
+              grid: canvasModel.grid,
+              palette: canvasModel.palette,
+              scaleFactor: 4.0,
+              label: '4x Upscaled',
+            );
+            break;
+        }
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: size,
+              height: size,
+              child: Card(
+                key: const ValueKey('canvas_grid_card'),
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: cardBody,
                 ),
               ),
             ),
-          ),
+            const SizedBox(height: 12),
+            const CanvasScaleToggle(),
+          ],
         );
       },
     );
@@ -801,5 +836,184 @@ class CanvasPainter extends CustomPainter {
         oldDelegate.isSketchingPlanPhase != isSketchingPlanPhase ||
         oldDelegate.isSculptingPhase != isSculptingPhase ||
         oldDelegate.isGenerating != isGenerating;
+  }
+}
+
+class ScaledCanvasPreview extends StatelessWidget {
+  final List<List<int>> grid;
+  final List<Color> palette;
+  final double scaleFactor;
+  final String label;
+
+  const ScaledCanvasPreview({
+    super.key,
+    required this.grid,
+    required this.palette,
+    required this.scaleFactor,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final gridSize = grid.length;
+    final displayWidth = (gridSize * scaleFactor).toDouble();
+    final displayHeight = (gridSize * scaleFactor).toDouble();
+    final theme = Theme.of(context);
+
+    return Container(
+      key: const ValueKey('scaled_canvas_preview'),
+      width: double.infinity,
+      height: double.infinity,
+      color: const Color(0xFF161616),
+      alignment: Alignment.center,
+      child: Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: displayWidth,
+              height: displayHeight,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black38,
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: CustomPaint(
+                size: Size(displayWidth, displayHeight),
+                painter: MiniPixelPainter(grid: grid, palette: palette),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.tertiaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$label (${displayWidth.toInt()}×${displayHeight.toInt()}px)',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onTertiaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MiniPixelPainter extends CustomPainter {
+  final List<List<int>> grid;
+  final List<Color> palette;
+
+  MiniPixelPainter({required this.grid, required this.palette});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridSize = grid.length;
+    if (gridSize == 0) return;
+    final cellW = size.width / gridSize;
+    final cellH = size.height / gridSize;
+
+    // Checkerboard background
+    final bgPaint1 = Paint()
+      ..color = const Color(0xFF262626)
+      ..isAntiAlias = false;
+    final bgPaint2 = Paint()
+      ..color = const Color(0xFF1E1E1E)
+      ..isAntiAlias = false;
+
+    for (int r = 0; r < gridSize; r++) {
+      for (int c = 0; c < gridSize; c++) {
+        final rect = Rect.fromLTWH(c * cellW, r * cellH, cellW, cellH);
+        final bg = ((r + c) % 2 == 0) ? bgPaint1 : bgPaint2;
+        canvas.drawRect(rect, bg);
+
+        final colorIdx = grid[r][c];
+        if (colorIdx > 0 && colorIdx < palette.length) {
+          final p = Paint()
+            ..color = palette[colorIdx]
+            ..isAntiAlias = false;
+          canvas.drawRect(rect, p);
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant MiniPixelPainter oldDelegate) {
+    return oldDelegate.grid != grid || oldDelegate.palette != palette;
+  }
+}
+
+class CanvasScaleToggle extends ConsumerWidget {
+  const CanvasScaleToggle({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scaleMode = ref.watch(canvasScaleModeProvider);
+    final theme = Theme.of(context);
+
+    return Container(
+      key: const ValueKey('canvas_scale_toggle'),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SegmentedButton<CanvasScaleMode>(
+        segments: const [
+          ButtonSegment<CanvasScaleMode>(
+            value: CanvasScaleMode.full,
+            label: Text('Full'),
+            icon: Icon(Icons.aspect_ratio),
+          ),
+          ButtonSegment<CanvasScaleMode>(
+            value: CanvasScaleMode.scaled1x,
+            label: Text('1x'),
+            icon: Icon(Icons.crop_original),
+          ),
+          ButtonSegment<CanvasScaleMode>(
+            value: CanvasScaleMode.scaled4x,
+            label: Text('4x'),
+            icon: Icon(Icons.zoom_in),
+          ),
+        ],
+        selected: {scaleMode},
+        onSelectionChanged: (newSelection) {
+          ref.read(canvasScaleModeProvider.notifier).state = newSelection.first;
+        },
+        showSelectedIcon: false,
+        style: const ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+    );
   }
 }

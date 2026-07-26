@@ -71,7 +71,7 @@ void main() {
             ],
             child: const MaterialApp(
               home: Scaffold(
-                body: SizedBox(width: 300, height: 300, child: CanvasGrid()),
+                body: SizedBox(width: 300, height: 356, child: CanvasGrid()),
               ),
             ),
           ),
@@ -125,7 +125,7 @@ void main() {
             ],
             child: const MaterialApp(
               home: Scaffold(
-                body: SizedBox(width: 300, height: 300, child: CanvasGrid()),
+                body: SizedBox(width: 300, height: 356, child: CanvasGrid()),
               ),
             ),
           ),
@@ -176,7 +176,7 @@ void main() {
             ],
             child: const MaterialApp(
               home: Scaffold(
-                body: SizedBox(width: 300, height: 300, child: CanvasGrid()),
+                body: SizedBox(width: 300, height: 356, child: CanvasGrid()),
               ),
             ),
           ),
@@ -233,7 +233,7 @@ void main() {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1)
         ..addScenario(
           'Canvas Grid with Drag Handles',
-          const SizedBox(width: 300, height: 300, child: CanvasGrid()),
+          const SizedBox(width: 300, height: 360, child: CanvasGrid()),
         );
 
       await tester.pumpWidgetBuilder(
@@ -246,6 +246,100 @@ void main() {
         ),
       );
       await screenMatchesGolden(tester, 'canvas_grid_drag_handles');
+    });
+
+    testWidgets('toggles scale modes between Full, 1x Scale, and 4x Upscaled', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: const Scaffold(
+            body: SizedBox(width: 300, height: 360, child: CanvasGrid()),
+          ),
+        ),
+      );
+
+      // Default is Full mode
+      expect(find.byKey(const ValueKey('canvas_scale_toggle')), findsOneWidget);
+      expect(find.byKey(const ValueKey('scaled_canvas_preview')), findsNothing);
+
+      // Switch to 1x Scale mode
+      await tester.tap(find.text('1x'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('scaled_canvas_preview')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('1x True Scale'), findsOneWidget);
+
+      // Switch to 4x Upscaled mode
+      await tester.tap(find.text('4x'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('scaled_canvas_preview')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('4x Upscaled (64×64px)'), findsOneWidget);
+
+      // Switch back to Full mode
+      await tester.tap(find.text('Full'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('scaled_canvas_preview')), findsNothing);
+    });
+
+    testGoldens('CanvasGrid renders 1x True Scale golden view', (tester) async {
+      final mockNotifier = CanvasNotifier(TestMockAiService());
+      mockNotifier.state = mockNotifier.state.copyWith(
+        grid: List.generate(16, (r) => List.generate(16, (c) => (r + c) % 4)),
+      );
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1)
+        ..addScenario(
+          '1x Scale Mode',
+          const SizedBox(width: 300, height: 360, child: CanvasGrid()),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: testMaterialAppWrapper(
+          overrides: [
+            canvasStateProvider.overrideWith((ref) => mockNotifier),
+            canvasScaleModeProvider.overrideWith(
+              (ref) => CanvasScaleMode.scaled1x,
+            ),
+          ],
+        ),
+      );
+      await screenMatchesGolden(tester, 'canvas_grid_scaled_1x');
+    });
+
+    testGoldens('CanvasGrid renders 4x Upscaled golden view', (tester) async {
+      final mockNotifier = CanvasNotifier(TestMockAiService());
+      mockNotifier.state = mockNotifier.state.copyWith(
+        grid: List.generate(16, (r) => List.generate(16, (c) => (r + c) % 4)),
+      );
+
+      final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 1)
+        ..addScenario(
+          '4x Upscaled Mode',
+          const SizedBox(width: 300, height: 360, child: CanvasGrid()),
+        );
+
+      await tester.pumpWidgetBuilder(
+        builder.build(),
+        wrapper: testMaterialAppWrapper(
+          overrides: [
+            canvasStateProvider.overrideWith((ref) => mockNotifier),
+            canvasScaleModeProvider.overrideWith(
+              (ref) => CanvasScaleMode.scaled4x,
+            ),
+          ],
+        ),
+      );
+      await screenMatchesGolden(tester, 'canvas_grid_scaled_4x');
     });
   });
 }
