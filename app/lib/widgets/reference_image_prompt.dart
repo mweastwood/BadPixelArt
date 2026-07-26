@@ -332,6 +332,18 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                   ),
                 ),
               ),
+              if (hasRefImage) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    key: const ValueKey('auto_suggest_description_button'),
+                    onPressed: () => notifier.suggestDescriptionFromReference(),
+                    icon: const Icon(Icons.auto_awesome, size: 16),
+                    label: const Text('Auto-suggest Description'),
+                  ),
+                ),
+              ],
             ],
           ],
         ),

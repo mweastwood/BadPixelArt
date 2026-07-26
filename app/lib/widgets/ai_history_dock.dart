@@ -8,15 +8,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../logic/canvas_state.dart';
 
-class AiHistoryDock extends ConsumerStatefulWidget {
+class AiHistoryDock extends ConsumerWidget {
   const AiHistoryDock({super.key});
-
-  @override
-  ConsumerState<AiHistoryDock> createState() => _AiHistoryDockState();
-}
-
-class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
-  bool _isCollapsed = true;
 
   Future<void> _exportHistory(
     BuildContext context,
@@ -122,7 +115,7 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final canvasModel = ref.watch(canvasStateProvider);
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
@@ -132,157 +125,110 @@ class _AiHistoryDockState extends ConsumerState<AiHistoryDock> {
       (sum, item) => sum + (item.estimatedCostUsd ?? 0.0),
     );
 
-    return _buildCardView(
-      context,
-      history,
-      notifier,
-      theme,
-      canvasModel,
-      totalCost,
-    );
-  }
-
-  Widget _buildCardView(
-    BuildContext context,
-    List<AgentHistoryEntry> history,
-    CanvasNotifier notifier,
-    ThemeData theme,
-    CanvasModel canvasModel,
-    double totalCost,
-  ) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
           children: [
-            InkWell(
-              onTap: () => setState(() => _isCollapsed = !_isCollapsed),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 4.0,
-                  horizontal: 4.0,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.bug_report_outlined,
-                      color: theme.colorScheme.secondary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'AI History & Debugger',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    if (history.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.secondaryContainer,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${history.length}',
-                          style: TextStyle(
-                            color: theme.colorScheme.onSecondaryContainer,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      if (totalCost > 0) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.tertiaryContainer,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'Total: \$${totalCost.toStringAsFixed(4)}',
-                            style: TextStyle(
-                              color: theme.colorScheme.onTertiaryContainer,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                    const Spacer(),
-                    if (!_isCollapsed && history.isNotEmpty) ...[
-                      IconButton(
-                        icon: const Icon(Icons.file_download_outlined),
-                        tooltip: 'Export Logs',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => _exportHistory(context, history),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_sweep_outlined),
-                        tooltip: 'Clear History',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: notifier.clearAiHistory,
-                      ),
-                    ],
-                    Icon(
-                      _isCollapsed ? Icons.expand_more : Icons.expand_less,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ],
-                ),
+            Icon(
+              Icons.bug_report_outlined,
+              color: theme.colorScheme.secondary,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'AI History & Debugger',
+              style: TextStyle(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
               ),
             ),
-            if (!_isCollapsed) ...[
-              const SizedBox(height: 12),
-              if (history.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24.0),
-                  child: Center(
-                    child: Text(
-                      'No AI history logs yet.\nTrigger a suggestion to log prompts/responses.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 13,
-                        height: 1.4,
-                      ),
+            const SizedBox(width: 8),
+            if (history.isNotEmpty) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${history.length}',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSecondaryContainer,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (totalCost > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'Total: \$${totalCost.toStringAsFixed(4)}',
+                    style: TextStyle(
+                      color: theme.colorScheme.onTertiaryContainer,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                )
-              else
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: history.length,
-                  separatorBuilder: (context, index) =>
-                      const Divider(height: 24),
-                  itemBuilder: (context, index) {
-                    final entry = history[history.length - 1 - index];
-                    return _HistoryItem(
-                      entry: entry,
-                      palette: canvasModel.palette,
-                    );
-                  },
                 ),
+              ],
+            ],
+            const Spacer(),
+            if (history.isNotEmpty) ...[
+              IconButton(
+                icon: const Icon(Icons.file_download_outlined),
+                tooltip: 'Export Logs',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => _exportHistory(context, history),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_sweep_outlined),
+                tooltip: 'Clear History',
+                visualDensity: VisualDensity.compact,
+                onPressed: notifier.clearAiHistory,
+              ),
             ],
           ],
         ),
-      ),
+        const SizedBox(height: 16),
+        if (history.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32.0),
+            child: Center(
+              child: Text(
+                'No AI history logs yet.\nTrigger a suggestion to log prompts/responses.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: history.length,
+            separatorBuilder: (context, index) => const Divider(height: 24),
+            itemBuilder: (context, index) {
+              final entry = history[history.length - 1 - index];
+              return _HistoryItem(entry: entry, palette: canvasModel.palette);
+            },
+          ),
+      ],
     );
   }
 }

@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
-import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';
 import '../widgets/decomposed_components_list.dart';
 import '../widgets/wizard_controls.dart';
@@ -162,22 +161,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                   horizontal: 8.0,
                 ),
                 child: _buildStatusChip(canvasState.aiStatus, notifier, theme),
-              ),
-              IconButton(
-                key: const ValueKey('grid_size_button'),
-                icon: const Icon(Icons.grid_on),
-                tooltip: 'Select Grid Size',
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => ResolutionSelectorDialog(
-                      currentGridSize: canvasState.gridSize,
-                      onSelected: (size) {
-                        notifier.changeResolution(size);
-                      },
-                    ),
-                  );
-                },
               ),
               IconButton(
                 key: const ValueKey('model_options_button'),
@@ -445,30 +428,25 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
 
   final step = wizardState.currentStep;
   final hasBack = step.index > 0;
-  final hasNext = step.index < 6;
+  final hasNext = step.index < 7;
 
-  String nextLabel = '';
-  Widget? nextIcon;
   VoidCallback? onNext;
 
-  if (step == WizardStep.setupPrompt) {
+  if (step == WizardStep.selectGridSize) {
+    onNext = () =>
+        ref.read(wizardStateProvider.notifier).setStep(WizardStep.setupPrompt);
+  } else if (step == WizardStep.setupPrompt) {
     final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
-    nextLabel = 'Choose Color Palette';
-    nextIcon = const Icon(Icons.arrow_forward);
     onNext = canGoToPalette
         ? () => ref
               .read(wizardStateProvider.notifier)
               .setStep(WizardStep.selectPalette)
         : null;
   } else if (step == WizardStep.selectPalette) {
-    nextLabel = 'Sketch Plan';
-    nextIcon = const Icon(Icons.arrow_forward);
     onNext = () => ref
         .read(wizardStateProvider.notifier)
         .setStep(WizardStep.sketchingPlan);
   } else if (step == WizardStep.sketchingPlan) {
-    nextLabel = 'Decompose to Shapes';
-    nextIcon = const Icon(Icons.arrow_forward);
     onNext =
         (canvasState.isGenerating || canvasState.decomposedComponents.isEmpty)
         ? null
@@ -476,24 +454,18 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
               .read(wizardStateProvider.notifier)
               .setStep(WizardStep.componentSculpting);
   } else if (step == WizardStep.componentSculpting) {
-    nextLabel = 'Pick Colors & Outlines';
-    nextIcon = const Icon(Icons.arrow_forward);
     onNext = canvasState.decomposedComponents.isEmpty
         ? null
         : () => ref
               .read(wizardStateProvider.notifier)
               .setStep(WizardStep.colorAndOutline);
   } else if (step == WizardStep.colorAndOutline) {
-    nextLabel = 'Define Layer Order';
-    nextIcon = const Icon(Icons.arrow_forward);
     onNext = canvasState.decomposedComponents.isEmpty
         ? null
         : () => ref
               .read(wizardStateProvider.notifier)
               .setStep(WizardStep.layerOrderingAndMerge);
   } else if (step == WizardStep.layerOrderingAndMerge) {
-    nextLabel = 'Merge & Refine';
-    nextIcon = const Icon(Icons.layers);
     onNext = () {
       ref.read(canvasStateProvider.notifier).mergeComponentsToCanvas();
       ref.read(wizardStateProvider.notifier).setStep(WizardStep.refinement);
@@ -501,7 +473,11 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
   }
 
   VoidCallback? onBack;
-  if (step == WizardStep.selectPalette) {
+  if (step == WizardStep.setupPrompt) {
+    onBack = () => ref
+        .read(wizardStateProvider.notifier)
+        .setStep(WizardStep.selectGridSize);
+  } else if (step == WizardStep.selectPalette) {
     onBack = () =>
         ref.read(wizardStateProvider.notifier).setStep(WizardStep.setupPrompt);
   } else if (step == WizardStep.sketchingPlan) {
@@ -530,34 +506,23 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
     mainAxisSize: MainAxisSize.min,
     children: [
       if (hasBack) ...[
-        FloatingActionButton.extended(
+        FloatingActionButton(
           key: const ValueKey('wizard_back_fab'),
           heroTag: 'wizard_back_fab',
           onPressed: onBack,
-          icon: const Icon(Icons.arrow_back),
-          label: Text(
-            step == WizardStep.componentSculpting
-                ? 'Back to Semantic Components'
-                : step == WizardStep.colorAndOutline
-                ? 'Back to Shape Sculpting'
-                : step == WizardStep.layerOrderingAndMerge
-                ? 'Back to Color Selection'
-                : step == WizardStep.refinement
-                ? 'Back to Layer Ordering'
-                : 'Back',
-          ),
+          tooltip: 'Back',
           backgroundColor: theme.colorScheme.surfaceContainerHigh,
           foregroundColor: theme.colorScheme.onSurface,
+          child: const Icon(Icons.arrow_back),
         ),
         const SizedBox(width: 12),
       ],
       if (hasNext) ...[
-        FloatingActionButton.extended(
+        FloatingActionButton(
           key: const ValueKey('wizard_next_fab'),
           heroTag: 'wizard_next_fab',
           onPressed: onNext,
-          icon: nextIcon,
-          label: Text(nextLabel),
+          tooltip: 'Next',
           backgroundColor: onNext != null
               ? theme.colorScheme.primary
               : Color.alphaBlend(
@@ -569,6 +534,7 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
               : theme.colorScheme.onSurface.withValues(alpha: 0.38),
           elevation: onNext != null ? 6.0 : 0.0,
           highlightElevation: onNext != null ? 12.0 : 0.0,
+          child: const Icon(Icons.arrow_forward),
         ),
       ],
     ],

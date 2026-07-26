@@ -577,6 +577,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  Future<void> suggestDescriptionFromReference() async {
+    final refImg = state.referenceImage;
+    if (refImg == null || state.isGenerating) return;
+
+    try {
+      final response = await _aiService.generateContent(
+        prompt:
+            'Describe what subject or item this reference image depicts in a concise 1-2 sentence description for a pixel art drawing prompt.',
+        imageBytes: refImg,
+      );
+      if (response != null && response.trim().isNotEmpty) {
+        updatePrompt(response.trim());
+      }
+    } catch (e) {
+      debugPrint('Error suggesting description from reference image: $e');
+    }
+  }
+
   void acceptSuggestedPalette() {
     if (state.suggestedPalette != null) {
       state = state.copyWith(
