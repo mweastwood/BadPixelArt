@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
+import 'package:bad_pixel_art/screens/creations_screen.dart';
+import 'package:bad_pixel_art/screens/canvas_screen.dart';
+import 'package:bad_pixel_art/screens/logs_screen.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
@@ -271,30 +274,31 @@ void main() {
           buildTestableWidget(child: const PixelArtScreen()),
         );
 
-        // Initially on Canvas tab (Step 0 Reference Image Prompt visible)
+        // Initially on Canvas tab (CanvasScreen visible)
+        expect(find.byType(CanvasScreen), findsOneWidget);
         expect(find.byType(ReferenceImagePrompt), findsOneWidget);
 
-        // Tap Creations tab (index 1)
+        // Tap Creations tab (index 0)
         await tester.tap(find.text('Creations'));
         await tester.pumpAndSettle();
 
-        // Verify Creations Gallery title is visible
+        // Verify CreationsScreen is visible
+        expect(find.byType(CreationsScreen), findsOneWidget);
         expect(find.text('Creations Gallery'), findsOneWidget);
-        expect(find.byType(ReferenceImagePrompt), findsNothing);
 
         // Tap Logs tab (index 2)
         await tester.tap(find.text('Logs'));
         await tester.pumpAndSettle();
 
-        // Verify AI History & Debugger title is visible
+        // Verify LogsScreen is visible
+        expect(find.byType(LogsScreen), findsOneWidget);
         expect(find.text('AI History & Debugger'), findsOneWidget);
-        expect(find.text('Creations Gallery'), findsNothing);
 
-        // Tap Canvas tab (index 0) to return
+        // Tap Canvas tab (index 1) to return
         await tester.tap(find.text('Canvas'));
         await tester.pumpAndSettle();
 
-        expect(find.byType(ReferenceImagePrompt), findsOneWidget);
+        expect(find.byType(CanvasScreen), findsOneWidget);
       },
     );
 

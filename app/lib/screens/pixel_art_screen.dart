@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
-import '../widgets/canvas_grid.dart';
+
 import '../widgets/resolution_selector_dialog.dart';
 import '../widgets/model_options_dialog.dart';
 import '../widgets/decomposed_components_list.dart';
 import '../widgets/wizard_controls.dart';
-import '../widgets/creations_drawer.dart';
-import '../widgets/ai_history_dock.dart';
+import 'creations_screen.dart';
+import 'canvas_screen.dart';
+import 'logs_screen.dart';
 
 class PixelArtScreen extends ConsumerStatefulWidget {
   const PixelArtScreen({super.key});
@@ -203,24 +204,13 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                 ? const NeverScrollableScrollPhysics()
                 : const BouncingScrollPhysics(),
             children: [
-              CreationsDrawer(
+              CreationsScreen(
                 onCreationSelected: () {
                   _tabController.animateTo(1);
                 },
               ),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  return _buildCanvasAndControlsPage(
-                    context,
-                    constraints,
-                    isDraggingCanvas,
-                  );
-                },
-              ),
-              const SingleChildScrollView(
-                padding: EdgeInsets.all(16.0),
-                child: AiHistoryDock(),
-              ),
+              const CanvasScreen(),
+              const LogsScreen(),
             ],
           ),
           bottomNavigationBar: NavigationBar(
@@ -378,57 +368,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
           ),
       ],
     );
-  }
-
-  Widget _buildCanvasAndControlsPage(
-    BuildContext context,
-    BoxConstraints constraints,
-    bool isDraggingCanvas,
-  ) {
-    final isLandscape = constraints.maxWidth > 800;
-
-    if (isLandscape) {
-      return Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Expanded(flex: 3, child: CanvasGrid()),
-            const SizedBox(width: 24),
-            const Expanded(
-              flex: 2,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: 120.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [WizardControls()],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    } else {
-      return SingleChildScrollView(
-        physics: isDraggingCanvas
-            ? const NeverScrollableScrollPhysics()
-            : const BouncingScrollPhysics(),
-        padding: const EdgeInsets.only(
-          left: 16.0,
-          right: 16.0,
-          top: 16.0,
-          bottom: 120.0,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 380, child: CanvasGrid()),
-            const SizedBox(height: 16),
-            const WizardControls(),
-          ],
-        ),
-      );
-    }
   }
 
   Widget _buildStatusChip(
