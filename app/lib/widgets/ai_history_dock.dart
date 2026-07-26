@@ -192,7 +192,12 @@ class AiHistoryDock extends ConsumerWidget {
 
         // Bottom Footer Bar with total cost & total message count
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 12,
+            bottom: 76,
+          ),
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHigh,
             border: Border(
