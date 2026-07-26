@@ -50,7 +50,7 @@ class CanvasScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 380, child: CanvasGrid()),
+                const SizedBox(height: 440, child: CanvasGrid()),
                 const SizedBox(height: 16),
                 const WizardControls(),
               ],

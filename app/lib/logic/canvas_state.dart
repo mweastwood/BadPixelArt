@@ -1276,3 +1276,9 @@ final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
 });
 
 final isDraggingCanvasProvider = StateProvider<bool>((ref) => false);
+
+enum CanvasScaleMode { full, scaled1x, scaled4x }
+
+final canvasScaleModeProvider = StateProvider<CanvasScaleMode>(
+  (ref) => CanvasScaleMode.full,
+);
