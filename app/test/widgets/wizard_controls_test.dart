@@ -266,5 +266,15 @@ void main() {
         devices: [const Device(name: 'wizard_panel', size: Size(500, 6400))],
       );
     });
+
+    test('WizardNotifier.reset() resets step to selectGridSize (Step 0)', () {
+      final notifier = WizardNotifier(5);
+      expect(notifier.state.currentStep, equals(WizardStep.colorAndOutline));
+
+      notifier.reset();
+      expect(notifier.state.currentStep, equals(WizardStep.selectGridSize));
+      expect(notifier.state.prevStep, equals(WizardStep.selectGridSize));
+      expect(notifier.state.autoAdvanced, isFalse);
+    });
   });
 }
