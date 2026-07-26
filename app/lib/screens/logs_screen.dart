@@ -7,9 +7,6 @@ class LogsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return const SingleChildScrollView(
-      padding: EdgeInsets.all(16.0),
-      child: AiHistoryDock(),
-    );
+    return const AiHistoryDock();
   }
 }

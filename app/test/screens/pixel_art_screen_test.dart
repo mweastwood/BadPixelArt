@@ -292,7 +292,7 @@ void main() {
 
         // Verify LogsScreen is visible
         expect(find.byType(LogsScreen), findsOneWidget);
-        expect(find.text('AI History & Debugger'), findsOneWidget);
+        expect(find.text('Conversation History'), findsOneWidget);
 
         // Tap Canvas tab (index 1) to return
         await tester.tap(find.text('Canvas'));
@@ -302,38 +302,37 @@ void main() {
       },
     );
 
-    testWidgets('shows FloatingActionButton only when on Canvas tab', (
-      tester,
-    ) async {
+    testWidgets('shows correct FloatingActionButton per tab', (tester) async {
       await tester.pumpWidget(
         buildTestableWidget(child: const PixelArtScreen()),
       );
 
-      // On Canvas tab (index 1), FAB is visible
-      expect(find.byType(FloatingActionButton), findsWidgets);
+      // Default on Canvas tab (index 1): wizard navigation FAB is visible
+      expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
+      expect(find.byKey(const ValueKey('export_logs_fab')), findsNothing);
 
       // Tap Creations tab (index 0)
       await tester.tap(find.text('Creations'));
       await tester.pumpAndSettle();
 
-      // FAB should NOT be visible on Creations tab
+      // No FAB visible on Creations tab
       expect(find.byType(FloatingActionButton), findsNothing);
 
       // Tap Logs tab (index 2)
       await tester.tap(find.text('Logs'));
       await tester.pumpAndSettle();
 
-      // FAB should NOT be visible on Logs tab
-      expect(find.byType(FloatingActionButton), findsNothing);
+      // Export FAB is visible on Logs tab, wizard FAB is not
+      expect(find.byKey(const ValueKey('export_logs_fab')), findsOneWidget);
+      expect(find.byKey(const ValueKey('wizard_next_fab')), findsNothing);
 
       // Return to Canvas tab (index 1)
       await tester.tap(find.text('Canvas'));
       await tester.pumpAndSettle();
 
-      // FAB is visible again
-      expect(find.byType(FloatingActionButton), findsWidgets);
+      // Wizard FAB is visible again
+      expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
     });
-
     testWidgets(
       'tapping New Canvas in Creations tab auto-navigates back to Canvas tab',
       (tester) async {
@@ -397,6 +396,22 @@ void main() {
       await tester.pumpAndSettle();
 
       await screenMatchesGolden(tester, 'pixel_art_screen_logs_tab');
+    });
+
+    testWidgets('renders Export Logs FAB on Logs screen tab', (tester) async {
+      await tester.pumpWidget(
+        buildTestableWidget(child: const PixelArtScreen()),
+      );
+
+      // Default active tab is Canvas (tab index 1)
+      expect(find.byKey(const ValueKey('export_logs_fab')), findsNothing);
+
+      // Tap Logs tab (tab index 2)
+      await tester.tap(find.text('Logs'));
+      await tester.pumpAndSettle();
+
+      // Verify Export Logs FAB appears on Logs tab
+      expect(find.byKey(const ValueKey('export_logs_fab')), findsOneWidget);
     });
   });
 }
