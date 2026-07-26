@@ -118,7 +118,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                 ),
                 const Spacer(),
                 Text(
-                  '${history.length} msgs • \$${totalCost.toStringAsFixed(4)}',
+                  '${history.length} ${history.length == 1 ? 'msg' : 'msgs'} • \$${totalCost.toStringAsFixed(4)}',
                   style: TextStyle(
                     fontSize: 12,
                     color: theme.colorScheme.onSurfaceVariant,
