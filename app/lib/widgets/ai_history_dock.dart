@@ -300,6 +300,26 @@ class _HistoryItemState extends State<_HistoryItem> {
   bool _expanded = false;
   int _selectedPainterIndex = 0;
 
+  String _getUserPromptText() {
+    final raw = widget.entry.prompt;
+    if (raw.contains('User Prompt:')) {
+      final parts = raw.split('User Prompt:');
+      if (parts.length > 1) {
+        final userPart = parts.last.trim();
+        final lines = userPart.split('\n');
+        return lines.first;
+      }
+    }
+    if (raw.contains('Draw instruction:')) {
+      final parts = raw.split('Draw instruction:');
+      if (parts.length > 1) return parts.last.split('\n').first.trim();
+    }
+    if (raw.startsWith('System Instructions:\n')) {
+      return raw.substring('System Instructions:\n'.length).trim();
+    }
+    return raw;
+  }
+
   String _getInferenceTitle() {
     final prompt = widget.entry.prompt;
     if (prompt.contains('Decompose the drawing instruction')) {
@@ -775,161 +795,939 @@ class _HistoryItemState extends State<_HistoryItem> {
     final criticAction = criticJson?['action'] as String?;
     final criticReasoningOld = criticJson?['reasoning'] as String?;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Log Summary Row
-        InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 4.0),
-            child: Row(
-              children: [
-                Icon(
-                  widget.entry.isError
-                      ? Icons.error_outline
-                      : (isTournament
-                            ? Icons.stars
-                            : (criticAction == 'undo'
-                                  ? Icons.cancel_outlined
-                                  : Icons.check_circle_outline)),
-                  color: widget.entry.isError
-                      ? theme.colorScheme.error
-                      : (isTournament
-                            ? theme.colorScheme.primary
-                            : (criticAction == 'undo'
-                                  ? theme.colorScheme.error
-                                  : Colors.green)),
-                  size: 18,
+    final statusTitle = widget.entry.isError
+        ? 'AI Generation Error'
+        : (isTournament
+              ? 'Critic picked Painter $criticChoice'
+              : (criticAction == 'undo'
+                    ? 'Stroke rejected by critic'
+                    : (criticAction != null || parsedJson?['tool'] != null
+                          ? 'Stroke suggested successfully'
+                          : _getInferenceTitle())));
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // -------------------------------------------------------------
+          // Exchange Date / Timestamp Pill Header
+          // -------------------------------------------------------------
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant.withValues(
+                    alpha: 0.5,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  timeStr,
-                  style: TextStyle(
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.schedule,
+                    size: 12,
                     color: theme.colorScheme.onSurfaceVariant,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                const SizedBox(width: 12),
-                _TokenCountBadge(entry: widget.entry),
-                if (widget.entry.modelName != null &&
-                    widget.entry.modelName!.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      widget.entry.modelName!,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                  ),
-                ],
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    widget.entry.isError
-                        ? 'AI Generation Error'
-                        : (isTournament
-                              ? 'Critic picked Painter $criticChoice'
-                              : (criticAction == 'undo'
-                                    ? 'Stroke rejected by critic'
-                                    : (criticAction != null ||
-                                              parsedJson?['tool'] != null
-                                          ? 'Stroke suggested successfully'
-                                          : _getInferenceTitle()))),
-                    style: TextStyle(
-                      color: widget.entry.isError
-                          ? theme.colorScheme.error
-                          : (criticAction == 'undo'
-                                ? theme.colorScheme.error
-                                : theme.colorScheme.onSurface),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (!isTournament) ...[
-                  IconButton(
-                    icon: const Icon(Icons.code, size: 16),
-                    tooltip: 'View Raw AI Exchange',
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      _showRawExchangeDialog(
-                        context,
-                        title: 'Raw LLM Exchange: Stroke Suggestion',
-                        prompt: widget.entry.prompt,
-                        response: widget.entry.response,
-                        imageBytes: widget.entry.imageBytes,
-                      );
-                    },
                   ),
                   const SizedBox(width: 4),
+                  Text(
+                    timeStr,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    '•',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _getInferenceTitle(),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
                 ],
-                Icon(
-                  _expanded ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          const SizedBox(height: 10),
 
-        // Expanded Prompt & Response Detail
-        if (_expanded) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (isTournament) ...[
-                  // Verdict Card
-                  Card(
-                    color: theme.colorScheme.primaryContainer.withValues(
-                      alpha: 0.4,
+          // -------------------------------------------------------------
+          // 1. USER MESSAGE BUBBLE (Outgoing / Input Prompt)
+          // -------------------------------------------------------------
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 580),
+              margin: const EdgeInsets.only(left: 32, bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(4),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _TokenCountBadge(
+                        entry: widget.entry,
+                        showInputOnly: true,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'You',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      CircleAvatar(
+                        radius: 10,
+                        backgroundColor: theme.colorScheme.primary,
+                        child: Icon(
+                          Icons.person,
+                          size: 12,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _getUserPromptText(),
+                    style: TextStyle(
+                      fontSize: 13,
+                      height: 1.35,
+                      color: theme.colorScheme.onPrimaryContainer,
                     ),
-                    elevation: 0,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    textAlign: TextAlign.left,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // -------------------------------------------------------------
+          // 2. AI RESPONSE BUBBLE (Incoming / Output Result)
+          // -------------------------------------------------------------
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 640),
+              margin: const EdgeInsets.only(right: 24, top: 4, bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHigh,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  topRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+                border: Border.all(
+                  color: theme.colorScheme.outlineVariant,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // AI Avatar Header Row
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 11,
+                        backgroundColor: theme.colorScheme.secondaryContainer,
+                        child: Icon(
+                          Icons.smart_toy,
+                          size: 13,
+                          color: theme.colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'AI Assistant',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      if (widget.entry.modelName != null &&
+                          widget.entry.modelName!.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            widget.entry.modelName!,
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      _TokenCountBadge(
+                        entry: widget.entry,
+                        showOutputOnly: true,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Response Status & Expander Card
+                  InkWell(
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: 0.6,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            widget.entry.isError
+                                ? Icons.error_outline
+                                : (isTournament
+                                      ? Icons.stars
+                                      : (criticAction == 'undo'
+                                            ? Icons.cancel_outlined
+                                            : Icons.check_circle_outline)),
+                            color: widget.entry.isError
+                                ? theme.colorScheme.error
+                                : (isTournament
+                                      ? theme.colorScheme.primary
+                                      : (criticAction == 'undo'
+                                            ? theme.colorScheme.error
+                                            : Colors.green)),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              statusTitle,
+                              style: TextStyle(
+                                color: widget.entry.isError
+                                    ? theme.colorScheme.error
+                                    : (criticAction == 'undo'
+                                          ? theme.colorScheme.error
+                                          : theme.colorScheme.onSurface),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          if (!isTournament) ...[
+                            IconButton(
+                              icon: const Icon(Icons.code, size: 16),
+                              tooltip: 'View Raw AI Exchange',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                _showRawExchangeDialog(
+                                  context,
+                                  title: 'Raw LLM Exchange: Stroke Suggestion',
+                                  prompt: widget.entry.prompt,
+                                  response: widget.entry.response,
+                                  imageBytes: widget.entry.imageBytes,
+                                );
+                              },
+                            ),
+                          ],
+                          Icon(
+                            _expanded
+                                ? Icons.arrow_drop_up
+                                : Icons.arrow_drop_down,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ],
                       ),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
+                  ),
+
+                  // Reasoning text snippet if available
+                  if (understanding != null || reasoning != null) ...[
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: Text(
+                        reasoning ?? understanding ?? '',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // Expanded Details section
+                  if (_expanded) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                      ),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.gavel_outlined,
-                                size: 16,
-                                color: theme.colorScheme.primary,
+                          if (isTournament) ...[
+                            // Verdict Card
+                            Card(
+                              color: theme.colorScheme.primaryContainer
+                                  .withValues(alpha: 0.4),
+                              elevation: 0,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: theme.colorScheme.primary.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
                               ),
-                              const SizedBox(width: 6),
-                              Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.gavel_outlined,
+                                          size: 16,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            'CRITIC VERDICT: SELECTED PAINTER $criticChoice',
+                                            style: TextStyle(
+                                              color: theme.colorScheme.primary,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: 0.5,
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.code,
+                                            size: 16,
+                                          ),
+                                          tooltip: 'View Raw Critic Exchange',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () {
+                                            _showRawExchangeDialog(
+                                              context,
+                                              title:
+                                                  'Raw LLM Exchange: Critic Verdict',
+                                              prompt:
+                                                  parsedJson?['criticRawPrompt']
+                                                      as String? ??
+                                                  'N/A',
+                                              response:
+                                                  parsedJson?['criticRawResponse']
+                                                      as String? ??
+                                                  'N/A',
+                                              imageBytes:
+                                                  widget.entry.imageBytes,
+                                            );
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      criticReasoning ??
+                                          'No reasoning provided.',
+                                      style: TextStyle(
+                                        color: theme.colorScheme.onSurface,
+                                        fontSize: 12.5,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                    (() {
+                                      final nextFocus =
+                                          parsedJson?['criticNextFocus']
+                                              as String?;
+                                      if (nextFocus != null &&
+                                          nextFocus != 'N/A' &&
+                                          nextFocus.isNotEmpty) {
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 8,
+                                          ),
+                                          child: Container(
+                                            width: double.infinity,
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: theme
+                                                  .colorScheme
+                                                  .secondaryContainer
+                                                  .withValues(alpha: 0.3),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color: theme
+                                                    .colorScheme
+                                                    .secondaryContainer
+                                                    .withValues(alpha: 0.6),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Icon(
+                                                  Icons.lightbulb_outline,
+                                                  size: 14,
+                                                  color: theme
+                                                      .colorScheme
+                                                      .secondary,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Text(
+                                                    'NEXT FOCUS SUGGESTION: $nextFocus',
+                                                    style: TextStyle(
+                                                      color: theme
+                                                          .colorScheme
+                                                          .onSecondaryContainer,
+                                                      fontSize: 11,
+                                                      height: 1.25,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      return const SizedBox.shrink();
+                                    })(),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // 2x2 Snapshot Grid
+                            if (widget.entry.imageBytes != null) ...[
+                              Text(
+                                'TOURNAMENT COMPARISON GRID (2x2):',
+                                style: TextStyle(
+                                  color: theme.colorScheme.secondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Center(
+                                child: Container(
+                                  width: 160,
+                                  height: 160,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: theme.colorScheme.outlineVariant,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.memory(
+                                      widget.entry.imageBytes!,
+                                      fit: BoxFit.contain,
+                                      filterQuality: FilterQuality.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Center(
                                 child: Text(
-                                  'CRITIC VERDICT: SELECTED PAINTER $criticChoice',
+                                  'Top-Left: Ref | Top-Right: P1 | Bottom-Left: P2 | Bottom-Right: P3',
+                                  style: TextStyle(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                            ],
+
+                            // Describer Canvas Descriptions Action Button
+                            if (parsedJson?['describers'] != null) ...[
+                              Center(
+                                child: OutlinedButton.icon(
+                                  onPressed: () =>
+                                      _showDescriberDescriptionsDialog(
+                                        context,
+                                        parsedJson!['describers']
+                                            as Map<String, dynamic>,
+                                      ),
+                                  icon: const Icon(Icons.description, size: 14),
+                                  label: const Text('View Canvas Descriptions'),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                            ],
+
+                            // Tab Buttons for Painter 1, 2, 3
+                            Text(
+                              'PAINTER PROGRESSION TIMELINE:',
+                              style: TextStyle(
+                                color: theme.colorScheme.tertiary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: List.generate(3, (i) {
+                                final isChosen = (criticChoice == i + 1);
+                                final isSelected = (_selectedPainterIndex == i);
+                                return Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4.0,
+                                    ),
+                                    child: InkWell(
+                                      onTap: () => setState(
+                                        () => _selectedPainterIndex = i,
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 150,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? theme
+                                                    .colorScheme
+                                                    .primaryContainer
+                                              : theme
+                                                    .colorScheme
+                                                    .surfaceContainer,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: isChosen
+                                                ? Colors.green
+                                                : (isSelected
+                                                      ? theme
+                                                            .colorScheme
+                                                            .primary
+                                                      : theme
+                                                            .colorScheme
+                                                            .outlineVariant),
+                                            width: isChosen ? 2 : 1,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  isChosen
+                                                      ? Icons.check_circle
+                                                      : Icons.person_outline,
+                                                  size: 13,
+                                                  color: isChosen
+                                                      ? Colors.green
+                                                      : (isSelected
+                                                            ? theme
+                                                                  .colorScheme
+                                                                  .primary
+                                                            : theme
+                                                                  .colorScheme
+                                                                  .onSurfaceVariant),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Text(
+                                                  'Painter ${i + 1}',
+                                                  style: TextStyle(
+                                                    color: isSelected
+                                                        ? theme
+                                                              .colorScheme
+                                                              .onPrimaryContainer
+                                                        : theme
+                                                              .colorScheme
+                                                              .onSurface,
+                                                    fontWeight: isSelected
+                                                        ? FontWeight.bold
+                                                        : FontWeight.normal,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Strokes List for selected Painter
+                            () {
+                              final List<dynamic>? strokes =
+                                  parsedJson?['painter${_selectedPainterIndex + 1}Strokes']
+                                      as List<dynamic>?;
+                              if (strokes == null || strokes.isEmpty) {
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12.0,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'No strokes recorded for this Painter.',
+                                      style: TextStyle(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: strokes.length,
+                                itemBuilder: (context, strokeIdx) {
+                                  final stroke = strokes[strokeIdx];
+                                  final tool =
+                                      stroke['tool'] as String? ?? 'unknown';
+                                  final params =
+                                      stroke['params'] as List<dynamic>? ?? [];
+                                  final colorIdx = stroke['color'] as int? ?? 0;
+                                  final isErrorTool = tool == 'error';
+
+                                  Color? strokeColor;
+                                  if (isErrorTool) {
+                                    strokeColor = theme.colorScheme.error;
+                                  } else if (colorIdx >= 0 &&
+                                      colorIdx < widget.palette.length) {
+                                    strokeColor = widget.palette[colorIdx];
+                                  }
+
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerLowest,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: theme.colorScheme.outlineVariant
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                    ),
+                                    child: ListTile(
+                                      dense: true,
+                                      leading: Container(
+                                        width: 24,
+                                        height: 24,
+                                        decoration: BoxDecoration(
+                                          color: strokeColor ?? Colors.grey,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: isErrorTool
+                                                ? theme.colorScheme.error
+                                                : theme.colorScheme.outline,
+                                            width: 1,
+                                          ),
+                                        ),
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          isErrorTool
+                                              ? '!'
+                                              : '${strokeIdx + 1}',
+                                          style: TextStyle(
+                                            color: strokeColor != null
+                                                ? (_useWhiteText(strokeColor)
+                                                      ? Colors.white
+                                                      : Colors.black)
+                                                : Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      title: Row(
+                                        children: [
+                                          Icon(
+                                            _getToolIcon(tool),
+                                            size: 14,
+                                            color: isErrorTool
+                                                ? theme.colorScheme.error
+                                                : theme.colorScheme.secondary,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            tool,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: 'monospace',
+                                              color: isErrorTool
+                                                  ? theme.colorScheme.error
+                                                  : theme.colorScheme.onSurface,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      subtitle: Text(
+                                        isErrorTool
+                                            ? (stroke['error'] as String? ??
+                                                  'An error occurred')
+                                            : _formatParamsText(tool, params),
+                                        style: TextStyle(
+                                          color: isErrorTool
+                                              ? theme.colorScheme.error
+                                              : theme
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                      trailing: IconButton(
+                                        icon: const Icon(Icons.code, size: 14),
+                                        tooltip: 'View Raw Painter Exchange',
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () {
+                                          final String? rawImageBase64 =
+                                              stroke['rawImageBase64']
+                                                  as String?;
+                                          final Uint8List? imageBytes =
+                                              rawImageBase64 != null
+                                              ? base64Decode(rawImageBase64)
+                                              : null;
+                                          _showRawExchangeDialog(
+                                            context,
+                                            title:
+                                                'Raw LLM Exchange: Painter ${_selectedPainterIndex + 1} - Turn ${strokeIdx + 1}',
+                                            prompt:
+                                                stroke['rawPrompt']
+                                                    as String? ??
+                                                'N/A',
+                                            response:
+                                                stroke['rawResponse']
+                                                    as String? ??
+                                                'N/A',
+                                            imageBytes: imageBytes,
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }(),
+                            const SizedBox(height: 12),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                          ] else ...[
+                            // Fallback for non-tournament / legacy entries
+                            if (widget.entry.imageBytes != null) ...[
+                              Text(
+                                'CANVAS SNAPSHOT:',
+                                style: TextStyle(
+                                  color: theme.colorScheme.secondary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Center(
+                                child: Container(
+                                  width: 128,
+                                  height: 128,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: theme.colorScheme.outlineVariant,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.memory(
+                                      widget.entry.imageBytes!,
+                                      fit: BoxFit.contain,
+                                      filterQuality: FilterQuality.none,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                            ],
+
+                            if (understanding != null) ...[
+                              Text(
+                                'AI UNDERSTANDING:',
+                                style: TextStyle(
+                                  color: theme.colorScheme.tertiary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                understanding,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                            ],
+                            if (reasoning != null) ...[
+                              Text(
+                                'AI REASONING:',
+                                style: TextStyle(
+                                  color: theme.colorScheme.tertiary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                reasoning,
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                            ],
+                            if (criticAction != null) ...[
+                              Text(
+                                'CRITIC EVALUATION (${criticAction.toUpperCase()}):',
+                                style: TextStyle(
+                                  color: criticAction == 'undo'
+                                      ? theme.colorScheme.error
+                                      : Colors.green,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                criticReasoningOld ?? 'No reasoning provided.',
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(),
+                              const SizedBox(height: 8),
+                            ],
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'RAW PROMPT:',
                                   style: TextStyle(
                                     color: theme.colorScheme.primary,
                                     fontSize: 11,
@@ -937,628 +1735,135 @@ class _HistoryItemState extends State<_HistoryItem> {
                                     letterSpacing: 0.5,
                                   ),
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.code, size: 16),
-                                tooltip: 'View Raw Critic Exchange',
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () {
-                                  _showRawExchangeDialog(
-                                    context,
-                                    title: 'Raw LLM Exchange: Critic Verdict',
-                                    prompt:
-                                        parsedJson?['criticRawPrompt']
-                                            as String? ??
-                                        'N/A',
-                                    response:
-                                        parsedJson?['criticRawResponse']
-                                            as String? ??
-                                        'N/A',
-                                    imageBytes: widget.entry.imageBytes,
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            criticReasoning ?? 'No reasoning provided.',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurface,
-                              fontSize: 12.5,
-                              height: 1.3,
-                            ),
-                          ),
-                          (() {
-                            final nextFocus =
-                                parsedJson?['criticNextFocus'] as String?;
-                            if (nextFocus != null &&
-                                nextFocus != 'N/A' &&
-                                nextFocus.isNotEmpty) {
-                              return Padding(
-                                padding: const EdgeInsets.only(top: 8),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 6,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.secondaryContainer
-                                        .withValues(alpha: 0.3),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(
-                                      color: theme
-                                          .colorScheme
-                                          .secondaryContainer
-                                          .withValues(alpha: 0.6),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(
-                                        Icons.lightbulb_outline,
-                                        size: 14,
-                                        color: theme.colorScheme.secondary,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: Text(
-                                          'NEXT FOCUS SUGGESTION: $nextFocus',
-                                          style: TextStyle(
-                                            color: theme
-                                                .colorScheme
-                                                .onSecondaryContainer,
-                                            fontSize: 11,
-                                            height: 1.25,
-                                          ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy, size: 14),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: widget.entry.prompt),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Copied prompt to clipboard',
                                         ),
+                                        duration: Duration(seconds: 1),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          })(),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // 2x2 Snapshot Grid
-                  if (widget.entry.imageBytes != null) ...[
-                    Text(
-                      'TOURNAMENT COMPARISON GRID (2x2):',
-                      style: TextStyle(
-                        color: theme.colorScheme.secondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Center(
-                      child: Container(
-                        width: 160,
-                        height: 160,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: theme.colorScheme.outlineVariant,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.memory(
-                            widget.entry.imageBytes!,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Center(
-                      child: Text(
-                        'Top-Left: Ref | Top-Right: P1 | Bottom-Left: P2 | Bottom-Right: P3',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                  ],
-
-                  // Describer Canvas Descriptions Action Button
-                  if (parsedJson?['describers'] != null) ...[
-                    Center(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showDescriberDescriptionsDialog(
-                          context,
-                          parsedJson!['describers'] as Map<String, dynamic>,
-                        ),
-                        icon: const Icon(Icons.description, size: 14),
-                        label: const Text('View Canvas Descriptions'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                  ],
-
-                  // Tab Buttons for Painter 1, 2, 3
-                  Text(
-                    'PAINTER PROGRESSION TIMELINE:',
-                    style: TextStyle(
-                      color: theme.colorScheme.tertiary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: List.generate(3, (i) {
-                      final isChosen = (criticChoice == i + 1);
-                      final isSelected = (_selectedPainterIndex == i);
-                      return Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                          child: InkWell(
-                            onTap: () =>
-                                setState(() => _selectedPainterIndex = i),
-                            borderRadius: BorderRadius.circular(8),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? theme.colorScheme.primaryContainer
-                                    : theme.colorScheme.surfaceContainer,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isChosen
-                                      ? Colors.green
-                                      : (isSelected
-                                            ? theme.colorScheme.primary
-                                            : theme.colorScheme.outlineVariant),
-                                  width: isChosen ? 2 : 1,
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        isChosen
-                                            ? Icons.check_circle
-                                            : Icons.person_outline,
-                                        size: 13,
-                                        color: isChosen
-                                            ? Colors.green
-                                            : (isSelected
-                                                  ? theme.colorScheme.primary
-                                                  : theme
-                                                        .colorScheme
-                                                        .onSurfaceVariant),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Painter ${i + 1}',
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? theme
-                                                    .colorScheme
-                                                    .onPrimaryContainer
-                                              : theme.colorScheme.onSurface,
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.normal,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Strokes List for selected Painter
-                  () {
-                    final List<dynamic>? strokes =
-                        parsedJson?['painter${_selectedPainterIndex + 1}Strokes']
-                            as List<dynamic>?;
-                    if (strokes == null || strokes.isEmpty) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        child: Center(
-                          child: Text(
-                            'No strokes recorded for this Painter.',
-                            style: TextStyle(
-                              color: theme.colorScheme.onSurfaceVariant,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: strokes.length,
-                      itemBuilder: (context, strokeIdx) {
-                        final stroke = strokes[strokeIdx];
-                        final tool = stroke['tool'] as String? ?? 'unknown';
-                        final params = stroke['params'] as List<dynamic>? ?? [];
-                        final colorIdx = stroke['color'] as int? ?? 0;
-                        final isErrorTool = tool == 'error';
-
-                        Color? strokeColor;
-                        if (isErrorTool) {
-                          strokeColor = theme.colorScheme.error;
-                        } else if (colorIdx >= 0 &&
-                            colorIdx < widget.palette.length) {
-                          strokeColor = widget.palette[colorIdx];
-                        }
-
-                        return Container(
-                          margin: const EdgeInsets.symmetric(vertical: 4),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerLowest,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: theme.colorScheme.outlineVariant
-                                  .withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: ListTile(
-                            dense: true,
-                            leading: Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: strokeColor ?? Colors.grey,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isErrorTool
-                                      ? theme.colorScheme.error
-                                      : theme.colorScheme.outline,
-                                  width: 1,
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                isErrorTool ? '!' : '${strokeIdx + 1}',
-                                style: TextStyle(
-                                  color: strokeColor != null
-                                      ? (_useWhiteText(strokeColor)
-                                            ? Colors.white
-                                            : Colors.black)
-                                      : Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            title: Row(
-                              children: [
-                                Icon(
-                                  _getToolIcon(tool),
-                                  size: 14,
-                                  color: isErrorTool
-                                      ? theme.colorScheme.error
-                                      : theme.colorScheme.secondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  tool,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'monospace',
-                                    color: isErrorTool
-                                        ? theme.colorScheme.error
-                                        : theme.colorScheme.onSurface,
-                                    fontSize: 12,
-                                  ),
+                                    );
+                                  },
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
                                 ),
                               ],
                             ),
-                            subtitle: Text(
-                              isErrorTool
-                                  ? (stroke['error'] as String? ??
-                                        'An error occurred')
-                                  : _formatParamsText(tool, params),
-                              style: TextStyle(
-                                color: isErrorTool
-                                    ? theme.colorScheme.error
-                                    : theme.colorScheme.onSurfaceVariant,
-                                fontSize: 11,
+                            const SizedBox(height: 6),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainer,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
+                              ),
+                              constraints: const BoxConstraints(maxHeight: 150),
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  widget.entry.prompt,
+                                  style: TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 10.5,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
                               ),
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.code, size: 14),
-                              tooltip: 'View Raw Painter Exchange',
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                final String? rawImageBase64 =
-                                    stroke['rawImageBase64'] as String?;
-                                final Uint8List? imageBytes =
-                                    rawImageBase64 != null
-                                    ? base64Decode(rawImageBase64)
-                                    : null;
-                                _showRawExchangeDialog(
-                                  context,
-                                  title:
-                                      'Raw LLM Exchange: Painter ${_selectedPainterIndex + 1} - Turn ${strokeIdx + 1}',
-                                  prompt:
-                                      stroke['rawPrompt'] as String? ?? 'N/A',
-                                  response:
-                                      stroke['rawResponse'] as String? ?? 'N/A',
-                                  imageBytes: imageBytes,
-                                );
-                              },
+                            const SizedBox(height: 12),
+                            const Divider(),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'RAW RESPONSE:',
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.copy, size: 14),
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(
+                                        text: widget.entry.response,
+                                      ),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Copied response to clipboard',
+                                        ),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  }(),
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                ] else ...[
-                  // Fallback for non-tournament / legacy entries
-                  if (widget.entry.imageBytes != null) ...[
-                    Text(
-                      'CANVAS SNAPSHOT:',
-                      style: TextStyle(
-                        color: theme.colorScheme.secondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Center(
-                      child: Container(
-                        width: 128,
-                        height: 128,
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: theme.colorScheme.outlineVariant,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.memory(
-                            widget.entry.imageBytes!,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                  ],
-
-                  if (understanding != null) ...[
-                    Text(
-                      'AI UNDERSTANDING:',
-                      style: TextStyle(
-                        color: theme.colorScheme.tertiary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      understanding,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                  ],
-                  if (reasoning != null) ...[
-                    Text(
-                      'AI REASONING:',
-                      style: TextStyle(
-                        color: theme.colorScheme.tertiary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      reasoning,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                  ],
-                  if (criticAction != null) ...[
-                    Text(
-                      'CRITIC EVALUATION (${criticAction.toUpperCase()}):',
-                      style: TextStyle(
-                        color: criticAction == 'undo'
-                            ? theme.colorScheme.error
-                            : Colors.green,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      criticReasoningOld ?? 'No reasoning provided.',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                  ],
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'RAW PROMPT:',
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 14),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(text: widget.entry.prompt),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Copied prompt to clipboard'),
-                              duration: Duration(seconds: 1),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainer,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant,
+                                ),
+                              ),
+                              constraints: const BoxConstraints(maxHeight: 150),
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  widget.entry.response,
+                                  style: TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ),
                             ),
-                          );
-                        },
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
+                          ],
+                        ],
                       ),
                     ),
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        widget.entry.prompt,
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 10.5,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'RAW RESPONSE:',
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy, size: 14),
-                        onPressed: () {
-                          Clipboard.setData(
-                            ClipboardData(text: widget.entry.response),
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Copied response to clipboard'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: theme.colorScheme.outlineVariant,
-                      ),
-                    ),
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        widget.entry.response,
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 10.5,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 }
 
 class _TokenCountBadge extends ConsumerWidget {
   final AgentHistoryEntry entry;
+  final bool showInputOnly;
+  final bool showOutputOnly;
 
-  const _TokenCountBadge({required this.entry});
+  const _TokenCountBadge({
+    required this.entry,
+    this.showInputOnly = false,
+    this.showOutputOnly = false,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1576,6 +1881,10 @@ class _TokenCountBadge extends ConsumerWidget {
                       : '\$${cost.toStringAsFixed(4)}'))
           : null;
 
+      String label = 'In: $inTokens | Out: $outTokens';
+      if (showInputOnly) label = 'In: $inTokens';
+      if (showOutputOnly) label = 'Out: $outTokens';
+
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1586,7 +1895,7 @@ class _TokenCountBadge extends ConsumerWidget {
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
-              'In: $inTokens | Out: $outTokens',
+              label,
               style: TextStyle(
                 color: theme.colorScheme.onSecondaryContainer,
                 fontSize: 10,
@@ -1594,13 +1903,13 @@ class _TokenCountBadge extends ConsumerWidget {
               ),
             ),
           ),
-          if (costStr != null) ...[
+          if (costStr != null && !showInputOnly) ...[
             const SizedBox(width: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: cost == 0.0
-                    ? Colors.green.withAlpha(40)
+                    ? Colors.green.withValues(alpha: 0.15)
                     : theme.colorScheme.tertiaryContainer,
                 borderRadius: BorderRadius.circular(4),
               ),
