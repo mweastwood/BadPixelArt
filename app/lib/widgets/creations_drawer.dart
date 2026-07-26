@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/utils/database.dart';
 import '../logic/utils/database_helpers.dart';
+import 'wizard_controls.dart';
 import 'package:drift/drift.dart' as drift;
 
 class CreationsDrawer extends ConsumerStatefulWidget {
@@ -67,6 +68,7 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                   onPressed: () async {
                     final navigator = Navigator.of(context);
                     await notifier.startNewCanvas();
+                    ref.read(wizardStateProvider.notifier).reset();
                     if (widget.onCreationSelected != null) {
                       widget.onCreationSelected!();
                     } else if (mounted && navigator.canPop()) {
@@ -331,6 +333,9 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
             ),
             onPressed: () async {
               await notifier.deleteCanvas(creation.id);
+              if (ref.read(canvasStateProvider).creationId == null) {
+                ref.read(wizardStateProvider.notifier).reset();
+              }
               _refreshList();
               if (context.mounted) Navigator.of(context).pop();
             },

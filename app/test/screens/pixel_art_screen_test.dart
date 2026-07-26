@@ -6,6 +6,7 @@ import 'package:bad_pixel_art/screens/creations_screen.dart';
 import 'package:bad_pixel_art/screens/canvas_screen.dart';
 import 'package:bad_pixel_art/screens/logs_screen.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
+import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../test_helper.dart';
@@ -334,11 +335,16 @@ void main() {
       expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
     });
     testWidgets(
-      'tapping New Canvas in Creations tab auto-navigates back to Canvas tab',
+      'tapping New Canvas in Creations tab resets wizard step to Step 0 and navigates back to Canvas tab',
       (tester) async {
         await tester.pumpWidget(
           buildTestableWidget(child: const PixelArtScreen()),
         );
+
+        // Advance wizard to Step 1 (Reference & Prompt) by tapping Next FAB
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
+        await tester.pumpAndSettle();
+        expect(find.byType(ReferenceImagePrompt), findsOneWidget);
 
         // Switch to Creations tab
         await tester.tap(find.text('Creations'));
@@ -350,8 +356,9 @@ void main() {
         await tester.tap(find.byTooltip('New Canvas'));
         await tester.pumpAndSettle();
 
-        // Should auto-navigate back to Canvas tab
+        // Should auto-navigate back to Canvas tab and reset wizard to Step 0 (GridSizeSelectionCard)
         expect(find.byType(GridSizeSelectionCard), findsOneWidget);
+        expect(find.text('Canvas Resolution'), findsOneWidget);
       },
     );
 
