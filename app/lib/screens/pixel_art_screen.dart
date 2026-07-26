@@ -408,7 +408,6 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: Colors.white,
-                value: 0.5,
               ),
             )
           : const Icon(Icons.pause),

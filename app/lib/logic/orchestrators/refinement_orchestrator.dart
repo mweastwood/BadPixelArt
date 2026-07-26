@@ -45,6 +45,7 @@ class RefinementOrchestrator {
     required double autoRunSpeed,
     required void Function(List<List<int>> updatedGrid) onStep,
     required void Function(AgentHistoryEntry log) onLogHistory,
+    bool Function()? isShouldStop,
   }) async {
     final List<List<int>> workingGrid = List.generate(
       gridSize,
@@ -56,6 +57,7 @@ class RefinementOrchestrator {
     const maxSteps = 5;
 
     while (step < maxSteps) {
+      if (isShouldStop?.call() == true) break;
       step++;
 
       final context = AgentContext(
