@@ -27,6 +27,7 @@ class CanvasModel {
   final List<AgentHistoryEntry> aiHistory;
   final List<Color>? suggestedPalette;
   final bool isSuggestingPalette;
+  final bool isSuggestingDescription;
   final bool showPaletteSuggestion;
   final String? nextFocus;
   final String modelReleaseStage;
@@ -58,6 +59,7 @@ class CanvasModel {
     required this.aiHistory,
     this.suggestedPalette,
     this.isSuggestingPalette = false,
+    this.isSuggestingDescription = false,
     this.showPaletteSuggestion = false,
     this.nextFocus,
     this.modelReleaseStage = 'stable',
@@ -93,6 +95,7 @@ class CanvasModel {
     List<AgentHistoryEntry>? aiHistory,
     List<Color>? suggestedPalette,
     bool? isSuggestingPalette,
+    bool? isSuggestingDescription,
     bool? showPaletteSuggestion,
     bool clearSuggestedPalette = false,
     String? nextFocus,
@@ -134,6 +137,8 @@ class CanvasModel {
           ? null
           : (suggestedPalette ?? this.suggestedPalette),
       isSuggestingPalette: isSuggestingPalette ?? this.isSuggestingPalette,
+      isSuggestingDescription:
+          isSuggestingDescription ?? this.isSuggestingDescription,
       showPaletteSuggestion:
           showPaletteSuggestion ?? this.showPaletteSuggestion,
       nextFocus: clearNextFocus ? null : (nextFocus ?? this.nextFocus),
