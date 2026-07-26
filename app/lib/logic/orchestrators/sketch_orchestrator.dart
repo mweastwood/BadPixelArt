@@ -84,10 +84,12 @@ class SketchOrchestrator {
     onStep,
     required void Function(AgentHistoryEntry log) onLogHistory,
     required Future<bool> Function(int componentIndex) onConfirmComponent,
+    bool Function()? isShouldStop,
   }) async {
     final List<PixelArtComponent> updatedComponents = List.from(components);
 
     for (int i = 0; i < updatedComponents.length; i++) {
+      if (isShouldStop?.call() == true) break;
       var comp = updatedComponents[i];
       var compGrid =
           comp.grid ?? List.generate(gridSize, (_) => List.filled(gridSize, 0));
@@ -97,6 +99,7 @@ class SketchOrchestrator {
       int step = 0;
 
       while (step < 5) {
+        if (isShouldStop?.call() == true) break;
         // Evaluate completion status first (or at loop check)
         final isDone = isComponentDone(
           compGrid,
