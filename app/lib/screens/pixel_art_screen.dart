@@ -206,7 +206,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
             ],
           ),
           floatingActionButton: _tabController.index == 0
-              ? FloatingActionButton.extended(
+              ? FloatingActionButton(
                   key: const ValueKey('new_creation_fab'),
                   heroTag: 'new_creation_fab',
                   onPressed: () async {
@@ -214,11 +214,10 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                     ref.read(wizardStateProvider.notifier).reset();
                     _tabController.animateTo(1);
                   },
-                  icon: const Icon(Icons.add),
-                  label: const Text('New Creation'),
                   tooltip: 'New Creation',
                   backgroundColor: theme.colorScheme.primary,
                   foregroundColor: theme.colorScheme.onPrimary,
+                  child: const Icon(Icons.add),
                 )
               : (_tabController.index == 1
                     ? _buildFloatingActionButtons(context, ref)
