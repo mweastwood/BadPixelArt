@@ -14,30 +14,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(CreationsDrawer), findsOneWidget);
-      expect(find.text('Creations Gallery'), findsOneWidget);
     });
-
-    testWidgets(
-      'invokes onCreationSelected callback when + New Canvas is tapped',
-      (tester) async {
-        bool selected = false;
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: CreationsScreen(
-              onCreationSelected: () {
-                selected = true;
-              },
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        await tester.tap(find.byTooltip('New Canvas'));
-        await tester.pumpAndSettle();
-
-        expect(selected, isTrue);
-      },
-    );
 
     testWidgets('CreationsScreen golden render', (tester) async {
       await tester.pumpWidget(

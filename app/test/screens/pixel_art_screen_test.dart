@@ -303,7 +303,6 @@ void main() {
         expect(find.byType(CanvasScreen), findsOneWidget);
       },
     );
-
     testWidgets('shows correct FloatingActionButton per tab', (tester) async {
       await tester.pumpWidget(
         buildTestableWidget(child: const PixelArtScreen()),
@@ -312,13 +311,15 @@ void main() {
       // Default on Canvas tab (index 1): wizard navigation FAB is visible
       expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
       expect(find.byKey(const ValueKey('export_logs_fab')), findsNothing);
+      expect(find.byKey(const ValueKey('new_creation_fab')), findsNothing);
 
       // Tap Creations tab (index 0)
       await tester.tap(find.text('Creations'));
       await tester.pumpAndSettle();
 
-      // No FAB visible on Creations tab
-      expect(find.byType(FloatingActionButton), findsNothing);
+      // New Creation FAB visible on Creations tab
+      expect(find.byKey(const ValueKey('new_creation_fab')), findsOneWidget);
+      expect(find.byKey(const ValueKey('wizard_next_fab')), findsNothing);
 
       // Tap Logs tab (index 2)
       await tester.tap(find.text('Logs'));
@@ -335,8 +336,9 @@ void main() {
       // Wizard FAB is visible again
       expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
     });
+
     testWidgets(
-      'tapping New Canvas in Creations tab resets wizard step to Step 0 and navigates back to Canvas tab',
+      'tapping New Creation FAB in Creations tab resets wizard step to Step 0 and navigates back to Canvas tab',
       (tester) async {
         await tester.pumpWidget(
           buildTestableWidget(child: const PixelArtScreen()),
@@ -353,8 +355,8 @@ void main() {
 
         expect(find.text('Creations Gallery'), findsOneWidget);
 
-        // Tap + New Canvas button in header
-        await tester.tap(find.byTooltip('New Canvas'));
+        // Tap New Creation FAB
+        await tester.tap(find.byKey(const ValueKey('new_creation_fab')));
         await tester.pumpAndSettle();
 
         // Should auto-navigate back to Canvas tab and reset wizard to Step 0 (GridSizeSelectionCard)

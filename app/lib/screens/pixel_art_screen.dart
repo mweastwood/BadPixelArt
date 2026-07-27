@@ -112,9 +112,11 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
             title: Row(
               children: [
                 Text(
-                  _tabController.index == 2
-                      ? 'Conversation History'
-                      : 'Bad Pixel Art',
+                  _tabController.index == 0
+                      ? 'Creations Gallery'
+                      : (_tabController.index == 2
+                            ? 'Conversation History'
+                            : 'Bad Pixel Art'),
                 ),
                 const Spacer(),
                 Text(
@@ -203,10 +205,24 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
               ),
             ],
           ),
-          floatingActionButton: _tabController.index == 1
-              ? _buildFloatingActionButtons(context, ref)
-              : (_tabController.index == 2
-                    ? FloatingActionButton(
+          floatingActionButton: _tabController.index == 0
+              ? FloatingActionButton.extended(
+                  key: const ValueKey('new_creation_fab'),
+                  heroTag: 'new_creation_fab',
+                  onPressed: () async {
+                    await notifier.startNewCanvas();
+                    ref.read(wizardStateProvider.notifier).reset();
+                    _tabController.animateTo(1);
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('New Creation'),
+                  tooltip: 'New Creation',
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                )
+              : (_tabController.index == 1
+                    ? _buildFloatingActionButtons(context, ref)
+                    : FloatingActionButton(
                         key: const ValueKey('export_logs_fab'),
                         heroTag: 'export_logs_fab',
                         onPressed: () => exportAiHistory(context, history),
@@ -214,8 +230,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: theme.colorScheme.onPrimary,
                         child: const Icon(Icons.file_download_outlined),
-                      )
-                    : null),
+                      )),
         ),
         if (canvasState.isSuggestingPalette)
           Container(
