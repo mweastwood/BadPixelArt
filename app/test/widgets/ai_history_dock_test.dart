@@ -2,7 +2,6 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/widgets/ai_history_dock.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
@@ -36,10 +35,6 @@ class LocalMockAiService extends AiService {
   }) async => 10;
 }
 
-Widget buildTestableWidget({required Widget child}) {
-  return ProviderScope(child: MaterialApp(home: child));
-}
-
 void main() {
   group('AiHistoryDock Widget & Golden Tests', () {
     testWidgets('shows empty state directly when no logs', (tester) async {
@@ -50,12 +45,18 @@ void main() {
       expect(find.textContaining('No AI history logs yet.'), findsOneWidget);
     });
 
-    testWidgets('renders chat messages and timestamps', (tester) async {
+    testWidgets('renders chat messages, model name, and token statistics', (
+      tester,
+    ) async {
       final entry = AgentHistoryEntry(
         timestamp: DateTime(2026, 7, 26, 11, 57, 30),
         prompt: 'Draw a red sword',
         response: 'Adding sword blade pixels',
         isError: false,
+        modelName: 'Gemini 2.0 Flash',
+        inputTokens: 45,
+        outputTokens: 120,
+        totalTokens: 165,
         estimatedCostUsd: 0.0025,
         imageBytes: combineBmps([
           generateBmp(
@@ -72,12 +73,12 @@ void main() {
       final notifier = CanvasNotifier(mockService);
       notifier.state = notifier.state.copyWith(aiHistory: [entry]);
 
-      final widget = ProviderScope(
+      final widget = buildTestableWidget(
+        child: const Scaffold(body: AiHistoryDock()),
         overrides: [
           aiServiceProvider.overrideWithValue(mockService),
           canvasStateProvider.overrideWith((ref) => notifier),
         ],
-        child: const MaterialApp(home: Scaffold(body: AiHistoryDock())),
       );
 
       await tester.pumpWidget(widget);
@@ -86,6 +87,15 @@ void main() {
       // Verify User prompt and AI response text
       expect(find.text('Draw a red sword'), findsOneWidget);
       expect(find.text('Adding sword blade pixels'), findsOneWidget);
+
+      // Verify Model name header
+      expect(find.text('Gemini 2.0 Flash'), findsOneWidget);
+
+      // Verify User input token badge
+      expect(find.text('45 tokens'), findsOneWidget);
+
+      // Verify AI response token badge (N tokens (M total) • cost)
+      expect(find.text('120 tokens (165 total) • \$0.0025'), findsOneWidget);
 
       // Verify timestamp
       expect(find.textContaining('2026-07-26 11:57:30'), findsNWidgets(2));
@@ -97,6 +107,10 @@ void main() {
         prompt: 'Draw a red sword',
         response: 'Adding sword blade pixels',
         isError: false,
+        modelName: 'Gemini 2.0 Flash',
+        inputTokens: 45,
+        outputTokens: 120,
+        totalTokens: 165,
         estimatedCostUsd: 0.0025,
         imageBytes: combineBmps([
           generateBmp(

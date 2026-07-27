@@ -23,6 +23,17 @@ class SettingsState {
     required this.throttlePercentage,
   });
 
+  String get activeModelName {
+    switch (aiEngine) {
+      case AiEngine.local:
+        return 'Local AI Model';
+      case AiEngine.geminiCloud:
+        return geminiModel.isNotEmpty ? geminiModel : 'Gemini 2.0 Flash';
+      case AiEngine.zhipuCloud:
+        return zhipuModel.isNotEmpty ? zhipuModel : 'GLM-4V-Flash';
+    }
+  }
+
   SettingsState copyWith({
     AiEngine? aiEngine,
     String? geminiApiKey,
