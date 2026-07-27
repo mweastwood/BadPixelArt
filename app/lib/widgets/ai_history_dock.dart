@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../logic/canvas_state.dart';
+import '../logic/utils/settings_provider.dart';
 
 Future<void> exportAiHistory(
   BuildContext context,
@@ -163,15 +164,21 @@ class AiHistoryDock extends ConsumerWidget {
   }
 }
 
-class _ChatMessageTurn extends StatelessWidget {
+class _ChatMessageTurn extends ConsumerWidget {
   final AgentHistoryEntry entry;
 
   const _ChatMessageTurn({required this.entry});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final settings = ref.watch(settingsProvider);
     final timeStr = formatLogTimestamp(entry.timestamp);
+
+    final modelDisplayName =
+        (entry.modelName != null && entry.modelName!.trim().isNotEmpty)
+        ? entry.modelName!
+        : settings.activeModelName;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -261,6 +268,10 @@ class _ChatMessageTurn extends StatelessWidget {
                     color: theme.colorScheme.onPrimaryContainer,
                   ),
                 ),
+                if (entry.inputTokens != null && entry.inputTokens! > 0) ...[
+                  const SizedBox(height: 8),
+                  _UserTokenCountBadge(inputTokens: entry.inputTokens!),
+                ],
               ],
             ),
           ),
@@ -306,7 +317,7 @@ class _ChatMessageTurn extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'AI Assistant',
+                      modelDisplayName,
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -342,7 +353,7 @@ class _ChatMessageTurn extends StatelessWidget {
                     (entry.estimatedCostUsd != null &&
                         entry.estimatedCostUsd! > 0)) ...[
                   const SizedBox(height: 8),
-                  _TokenCountBadge(entry: entry),
+                  _ResponseTokenCountBadge(entry: entry),
                 ],
               ],
             ),
@@ -353,28 +364,63 @@ class _ChatMessageTurn extends StatelessWidget {
   }
 }
 
-class _TokenCountBadge extends StatelessWidget {
-  final AgentHistoryEntry entry;
+class _UserTokenCountBadge extends StatelessWidget {
+  final int inputTokens;
 
-  const _TokenCountBadge({required this.entry});
+  const _UserTokenCountBadge({required this.inputTokens});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final inTokens = entry.inputTokens;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Text(
+        '$inputTokens tokens',
+        style: TextStyle(
+          fontSize: 10,
+          fontFamily: 'monospace',
+          color: theme.colorScheme.onPrimaryContainer,
+        ),
+      ),
+    );
+  }
+}
+
+class _ResponseTokenCountBadge extends StatelessWidget {
+  final AgentHistoryEntry entry;
+
+  const _ResponseTokenCountBadge({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final inTokens = entry.inputTokens ?? 0;
     final outTokens = entry.outputTokens;
+    final totalTokens =
+        entry.totalTokens ??
+        (entry.outputTokens != null
+            ? inTokens + outTokens!
+            : (inTokens > 0 ? inTokens : null));
     final cost = entry.estimatedCostUsd;
 
     final parts = <String>[];
-    if (inTokens != null && outTokens != null) {
-      parts.add(
-        '${inTokens + outTokens} tokens (${inTokens}in / ${outTokens}out)',
-      );
-    } else if (inTokens != null) {
-      parts.add('$inTokens in-tokens');
-    } else if (outTokens != null) {
-      parts.add('$outTokens out-tokens');
+    if (outTokens != null) {
+      if (totalTokens != null) {
+        parts.add('$outTokens tokens ($totalTokens total)');
+      } else {
+        parts.add('$outTokens tokens');
+      }
+    } else if (totalTokens != null && totalTokens > 0) {
+      parts.add('$totalTokens tokens');
     }
+
     if (cost != null && cost > 0) {
       parts.add('\$${cost.toStringAsFixed(4)}');
     }
