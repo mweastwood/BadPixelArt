@@ -50,7 +50,6 @@ void main() {
       // Wait for FutureBuilder to resolve
       await tester.pump();
 
-      expect(find.text('Creations Gallery'), findsOneWidget);
       expect(find.text('No creations yet'), findsOneWidget);
     });
 

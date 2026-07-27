@@ -44,42 +44,6 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
     return SafeArea(
       child: Column(
         children: [
-          // Drawer Header with premium styling
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: theme.dividerColor, width: 0.5),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Creations Gallery',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  tooltip: 'New Canvas',
-                  onPressed: () async {
-                    final navigator = Navigator.of(context);
-                    await notifier.startNewCanvas();
-                    ref.read(wizardStateProvider.notifier).reset();
-                    if (widget.onCreationSelected != null) {
-                      widget.onCreationSelected!();
-                    } else if (mounted && navigator.canPop()) {
-                      navigator.pop();
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-
           // Search Box
           Padding(
             padding: const EdgeInsets.all(12.0),
