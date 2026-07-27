@@ -801,28 +801,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         referenceImage: state.referenceImage,
       );
 
-      // Perform 4 concurrent calls to the AI service
-      final results = await Future.wait([
-        agent.decompose(_aiService, context),
-        agent.decompose(_aiService, context),
-        agent.decompose(_aiService, context),
-        agent.decompose(_aiService, context),
-      ]);
-
-      final List<List<PixelArtComponent>> options = [];
-
-      for (int i = 0; i < results.length; i++) {
-        final res = results[i];
-        options.add(res.components);
-      }
+      final res = await agent.decompose(_aiService, context);
 
       final willStop = state.isPausing;
       state = state.copyWith(
-        pendingDecompositionOptions: options,
+        decomposedComponents: res.components,
+        pendingDecompositionOptions: const [],
         isGenerating: false,
         autoRun: willStop ? false : state.autoRun,
         isPausing: false,
       );
+      _scheduleSave();
     } catch (e) {
       debugPrint('Error triggering decomposer: $e');
       final willStop = state.isPausing;
