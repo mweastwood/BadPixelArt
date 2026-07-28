@@ -980,6 +980,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           state = state.copyWith(aiHistory: newHistory);
         },
         onConfirmComponent: (index) async {
+          if (state.autoRun) {
+            return true;
+          }
           _confirmationCompleter = Completer<bool>();
           state = state.copyWith(confirmingComponentIndex: index);
           final approved = await _confirmationCompleter!.future;

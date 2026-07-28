@@ -394,5 +394,59 @@ void main() {
         expect(mockAi._callCount, equals(6));
       },
     );
+
+    test(
+      'sketchComponents auto-approves components when autoRun is true without halting for confirmation',
+      () async {
+        // Mock responses for 2 components:
+        // Component 0: Painter, Eraser, Evaluator (isComplete: true)
+        // Component 1: Painter, Eraser, Evaluator (isComplete: true)
+        final mockResponses = [
+          '{"thought": "drawing blade", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}',
+          '{"thought": "no erase", "erase": []}',
+          '{"isComplete": true, "feedback": "good blade"}',
+          '{"thought": "drawing handle", "tool": "rectangle_filled", "params": [6, 12, 9, 14]}',
+          '{"thought": "no erase", "erase": []}',
+          '{"isComplete": true, "feedback": "good handle"}',
+        ];
+
+        final mockAi = SequentialMockAiService(mockResponses);
+        final container = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(mockAi)],
+        );
+
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        notifier.state = notifier.state.copyWith(
+          autoRun: true,
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            ),
+            PixelArtComponent(
+              name: 'handle',
+              description: 'bottom leather handle',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
+            ),
+          ],
+          userPrompt: 'sword',
+        );
+
+        // Run sketch with autoRun enabled
+        await notifier.sketchComponents();
+
+        final finalComps = container
+            .read(canvasStateProvider)
+            .decomposedComponents;
+        expect(finalComps[0].grid, isNotNull);
+        expect(finalComps[1].grid, isNotNull);
+        expect(
+          container.read(canvasStateProvider).confirmingComponentIndex,
+          isNull,
+        );
+      },
+    );
   });
 }
