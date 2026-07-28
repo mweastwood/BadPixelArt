@@ -7,6 +7,7 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/prompts.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
+import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockTestAiService extends AiService {
@@ -782,6 +783,52 @@ void main() {
 
           notifier.updatePrompt('shield');
           expect(notifier.state.decomposedComponents, isEmpty);
+        },
+      );
+
+      test(
+        'startAutoPlay during componentSculpting sculpts components and advances to colorAndOutline without getting stuck',
+        () async {
+          final mockAiService = MockTestAiService();
+          final container = ProviderContainer(
+            overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
+          );
+          final notifier = container.read(canvasStateProvider.notifier);
+
+          mockAiService.mockResult = {
+            'thought': 'sketching rectangle',
+            'tool': 'rectangle_filled',
+            'params': [6, 2, 9, 10],
+            'isComplete': true,
+          };
+
+          container
+              .read(wizardStateProvider.notifier)
+              .setStep(WizardStep.componentSculpting);
+
+          notifier.state = notifier.state.copyWith(
+            autoRun: true,
+            userPrompt: 'sword',
+            referenceImage: Uint8List.fromList([1, 2, 3]),
+            decomposedComponents: [
+              PixelArtComponent(
+                name: 'blade',
+                description: 'steel blade',
+                relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              ),
+              PixelArtComponent(
+                name: 'handle',
+                description: 'leather handle',
+                relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
+              ),
+            ],
+          );
+
+          await notifier.sketchComponents();
+
+          final comps = notifier.state.decomposedComponents;
+          expect(comps[0].grid, isNotNull);
+          expect(comps[1].grid, isNotNull);
         },
       );
     });

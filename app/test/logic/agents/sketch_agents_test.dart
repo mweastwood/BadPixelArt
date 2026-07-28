@@ -178,13 +178,6 @@ void main() {
 
         final notifier = container.read(canvasStateProvider.notifier);
 
-        // Auto-approve component sketch when requested
-        container.listen<CanvasModel>(canvasStateProvider, (previous, next) {
-          if (next.confirmingComponentIndex != null) {
-            notifier.respondToConfirmation(true);
-          }
-        });
-
         // Set initial components list
         notifier.state = notifier.state.copyWith(
           decomposedComponents: [
@@ -243,12 +236,6 @@ void main() {
 
         final notifier = container.read(canvasStateProvider.notifier);
 
-        container.listen<CanvasModel>(canvasStateProvider, (previous, next) {
-          if (next.confirmingComponentIndex != null) {
-            notifier.respondToConfirmation(true);
-          }
-        });
-
         // Bounding box: X: 6 to 9, Y: 2 to 10
         notifier.state = notifier.state.copyWith(
           decomposedComponents: [
@@ -297,12 +284,6 @@ void main() {
 
         final notifier = container.read(canvasStateProvider.notifier);
 
-        container.listen<CanvasModel>(canvasStateProvider, (previous, next) {
-          if (next.confirmingComponentIndex != null) {
-            notifier.respondToConfirmation(true);
-          }
-        });
-
         notifier.state = notifier.state.copyWith(
           decomposedComponents: [
             PixelArtComponent(
@@ -331,68 +312,49 @@ void main() {
       },
     );
 
-    test(
-      'sketchComponents keeps iterating if the user rejects the evaluation confirmation',
-      () async {
-        // Step 1: Painter returns shape.
-        // Step 2: Eraser returns empty.
-        // Step 3: Evaluator returns complete.
-        // -> User rejects!
-        // Step 4: Painter returns shape again.
-        // Step 5: Eraser returns empty.
-        // Step 6: Evaluator returns complete.
-        // -> User approves!
-        final mockResponses = [
-          '{"thought": "draw", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}', // Painter (Loop 1)
-          '{"thought": "no erase", "erase": []}', // Eraser (Loop 1)
-          '{"isComplete": true, "feedback": "looks good", "suggestions": ""}', // Evaluator (Loop 1)
+    test('sketchComponents sculpts all components sequentially', () async {
+      // Mock responses for 2 components:
+      // Component 0: Painter, Eraser, Evaluator (isComplete: true)
+      // Component 1: Painter, Eraser, Evaluator (isComplete: true)
+      final mockResponses = [
+        '{"thought": "drawing blade", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}',
+        '{"thought": "no erase", "erase": []}',
+        '{"isComplete": true, "feedback": "good blade"}',
+        '{"thought": "drawing handle", "tool": "rectangle_filled", "params": [6, 12, 9, 14]}',
+        '{"thought": "no erase", "erase": []}',
+        '{"isComplete": true, "feedback": "good handle"}',
+      ];
 
-          '{"thought": "draw more", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}', // Painter (Loop 2)
-          '{"thought": "no erase", "erase": []}', // Eraser (Loop 2)
-          '{"isComplete": true, "feedback": "perfect", "suggestions": ""}', // Evaluator (Loop 2)
-        ];
+      final mockAi = SequentialMockAiService(mockResponses);
+      final container = ProviderContainer(
+        overrides: [aiServiceProvider.overrideWithValue(mockAi)],
+      );
 
-        final mockAi = SequentialMockAiService(mockResponses);
-        final container = ProviderContainer(
-          overrides: [aiServiceProvider.overrideWithValue(mockAi)],
-        );
+      final notifier = container.read(canvasStateProvider.notifier);
 
-        final notifier = container.read(canvasStateProvider.notifier);
+      notifier.state = notifier.state.copyWith(
+        decomposedComponents: [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical steel blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+          PixelArtComponent(
+            name: 'handle',
+            description: 'bottom leather handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
+          ),
+        ],
+        userPrompt: 'sword',
+      );
 
-        notifier.state = notifier.state.copyWith(
-          decomposedComponents: [
-            PixelArtComponent(
-              name: 'blade',
-              description: 'vertical steel blade',
-              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-            ),
-          ],
-          userPrompt: 'sword',
-        );
+      await notifier.sketchComponents();
 
-        bool rejectedOnce = false;
-
-        container.listen<CanvasModel>(canvasStateProvider, (previous, next) {
-          if (next.confirmingComponentIndex != null) {
-            if (!rejectedOnce) {
-              rejectedOnce = true;
-              notifier.respondToConfirmation(
-                false,
-              ); // User clicks "No, keep iterating"
-            } else {
-              notifier.respondToConfirmation(
-                true,
-              ); // User clicks "Yes, looks good"
-            }
-          }
-        });
-
-        await notifier.sketchComponents();
-
-        expect(rejectedOnce, isTrue);
-        // Calls to AI service should cover two complete loops (2 * 3 = 6 calls)
-        expect(mockAi._callCount, equals(6));
-      },
-    );
+      final finalComps = container
+          .read(canvasStateProvider)
+          .decomposedComponents;
+      expect(finalComps[0].grid, isNotNull);
+      expect(finalComps[1].grid, isNotNull);
+    });
   });
 }

@@ -6,7 +6,6 @@ import '../logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 import '../widgets/model_options_dialog.dart';
-import '../widgets/component_confirmation_dialog.dart';
 import '../widgets/decomposed_components_list.dart';
 import '../widgets/wizard_controls.dart';
 import '../widgets/ai_history_dock.dart';
@@ -55,24 +54,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     final theme = Theme.of(context);
     final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
     final history = canvasState.aiHistory;
-
-    // Global listener for component confirmation dialogs
-    ref.listen<int?>(
-      canvasStateProvider.select((s) => s.confirmingComponentIndex),
-      (previous, next) {
-        if (next != null) {
-          final comp = ref.read(canvasStateProvider).decomposedComponents[next];
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (context) => ComponentConfirmationDialog(
-              componentIndex: next,
-              component: comp,
-            ),
-          );
-        }
-      },
-    );
 
     // Global listener for decomposition option choose dialog
     ref.listen<CanvasModel>(canvasStateProvider, (previous, next) {
