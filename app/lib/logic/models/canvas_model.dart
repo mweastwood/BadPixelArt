@@ -36,7 +36,6 @@ class CanvasModel {
   final List<List<PixelArtComponent>> pendingDecompositionOptions;
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
-  final int? confirmingComponentIndex;
   final int? decomposingComponentIndex;
 
   const CanvasModel({
@@ -69,7 +68,6 @@ class CanvasModel {
     this.pendingDecompositionOptions = const [],
     this.decomposedComponents = const [],
     this.activeComponentIndex = 0,
-    this.confirmingComponentIndex,
     this.decomposingComponentIndex,
   });
 
@@ -108,8 +106,6 @@ class CanvasModel {
     List<List<PixelArtComponent>>? pendingDecompositionOptions,
     List<PixelArtComponent>? decomposedComponents,
     int? activeComponentIndex,
-    int? confirmingComponentIndex,
-    bool clearConfirmingComponent = false,
     int? decomposingComponentIndex,
     bool clearDecomposingComponent = false,
   }) {
@@ -152,9 +148,6 @@ class CanvasModel {
           pendingDecompositionOptions ?? this.pendingDecompositionOptions,
       decomposedComponents: decomposedComponents ?? this.decomposedComponents,
       activeComponentIndex: activeComponentIndex ?? this.activeComponentIndex,
-      confirmingComponentIndex: clearConfirmingComponent
-          ? null
-          : (confirmingComponentIndex ?? this.confirmingComponentIndex),
       decomposingComponentIndex: clearDecomposingComponent
           ? null
           : (decomposingComponentIndex ?? this.decomposingComponentIndex),

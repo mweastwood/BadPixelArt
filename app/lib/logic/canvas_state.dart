@@ -38,7 +38,6 @@ abstract class AgentCanvas {
 class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   AiService _aiService;
   Timer? _autoRunTimer;
-  Completer<bool>? _confirmationCompleter;
 
   static const int gridSize = 16;
 
@@ -284,11 +283,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       if (state.autoRun) {
         _autoRunTimer?.cancel();
       }
-      if (_confirmationCompleter != null &&
-          !_confirmationCompleter!.isCompleted) {
-        _confirmationCompleter!.complete(false);
-        _confirmationCompleter = null;
-      }
 
       state = CanvasModel(
         gridSize: 16,
@@ -500,11 +494,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void dispose() {
     _autoRunTimer?.cancel();
     _saveTimer?.cancel();
-    if (_confirmationCompleter != null &&
-        !_confirmationCompleter!.isCompleted) {
-      _confirmationCompleter!.complete(false);
-      _confirmationCompleter = null;
-    }
     super.dispose();
   }
 
@@ -827,14 +816,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(aiHistory: const []);
   }
 
-  void respondToConfirmation(bool approved) {
-    if (_confirmationCompleter != null &&
-        !_confirmationCompleter!.isCompleted) {
-      _confirmationCompleter!.complete(approved);
-    }
-    state = state.copyWith(clearConfirmingComponent: true);
-  }
-
   void resetComponentGrid(int index) {
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
@@ -978,16 +959,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
           newHistory.add(log);
           state = state.copyWith(aiHistory: newHistory);
-        },
-        onConfirmComponent: (index) async {
-          if (state.autoRun) {
-            return true;
-          }
-          _confirmationCompleter = Completer<bool>();
-          state = state.copyWith(confirmingComponentIndex: index);
-          final approved = await _confirmationCompleter!.future;
-          _confirmationCompleter = null;
-          return approved;
         },
         isShouldStop: () => state.isPausing,
       );

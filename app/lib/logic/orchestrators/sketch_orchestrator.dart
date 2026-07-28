@@ -83,7 +83,6 @@ class SketchOrchestrator {
     required void Function(int activeIndex, List<PixelArtComponent> updated)
     onStep,
     required void Function(AgentHistoryEntry log) onLogHistory,
-    required Future<bool> Function(int componentIndex) onConfirmComponent,
     bool Function()? isShouldStop,
   }) async {
     final List<PixelArtComponent> updatedComponents = List.from(components);
@@ -108,12 +107,7 @@ class SketchOrchestrator {
           evaluatorApproves,
         );
         if (isDone) {
-          final userApproved = await onConfirmComponent(i);
-          if (userApproved) {
-            break;
-          } else {
-            evaluatorApproves = false;
-          }
+          break;
         }
 
         step++;
