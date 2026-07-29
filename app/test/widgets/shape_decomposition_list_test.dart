@@ -376,5 +376,54 @@ void main() {
         await screenMatchesGolden(tester, 'shape_decomposition_list_enabled');
       },
     );
+
+    testGoldens(
+      'ShapeDecompositionList renders active sculpting status and spinner golden',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+          PixelArtComponent(
+            name: 'hilt',
+            description: 'wooden handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+          ),
+        ];
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: components,
+          userPrompt: 'sword',
+          referenceImage: Uint8List.fromList([0, 0, 0, 0]),
+          isGenerating: true,
+          activeComponentIndex: 0,
+          sculptingStatus: 'Painting shape...',
+        );
+
+        final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.0)
+          ..addScenario(
+            'Active Component Sculpting Status',
+            const ShapeDecompositionList(),
+          );
+
+        await tester.pumpWidgetBuilder(
+          builder.build(),
+          wrapper: testMaterialAppWrapper(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+          ),
+        );
+        await screenMatchesGolden(
+          tester,
+          'shape_decomposition_list_sculpting_status',
+          customPump: (tester) async {
+            await tester.pump(const Duration(milliseconds: 100));
+          },
+        );
+      },
+    );
   });
 }
