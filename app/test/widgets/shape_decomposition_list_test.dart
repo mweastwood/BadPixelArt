@@ -260,7 +260,7 @@ void main() {
         );
 
         final spinnerFinder = find.byType(CircularProgressIndicator);
-        expect(spinnerFinder, findsOneWidget);
+        expect(spinnerFinder, findsWidgets);
 
         final bladeRow = find.ancestor(
           of: find.text('BLADE'),
@@ -283,8 +283,42 @@ void main() {
             of: hiltRow,
             matching: find.byType(CircularProgressIndicator),
           ),
-          findsOneWidget,
+          findsWidgets,
         );
+      },
+    );
+
+    testWidgets(
+      'renders sculptingStatus text and spinner when component is being sculpted',
+      (tester) async {
+        final container = ProviderContainer();
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+        ];
+        container.read(canvasStateProvider.notifier).state = container
+            .read(canvasStateProvider)
+            .copyWith(
+              decomposedComponents: components,
+              isGenerating: true,
+              activeComponentIndex: 0,
+              sculptingStatus: 'Painting shape...',
+            );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(body: ShapeDecompositionList()),
+            ),
+          ),
+        );
+
+        expect(find.text('Painting shape...'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
       },
     );
 
@@ -340,6 +374,55 @@ void main() {
           ),
         );
         await screenMatchesGolden(tester, 'shape_decomposition_list_enabled');
+      },
+    );
+
+    testGoldens(
+      'ShapeDecompositionList renders active sculpting status and spinner golden',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+          PixelArtComponent(
+            name: 'hilt',
+            description: 'wooden handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+          ),
+        ];
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: components,
+          userPrompt: 'sword',
+          referenceImage: Uint8List.fromList([0, 0, 0, 0]),
+          isGenerating: true,
+          activeComponentIndex: 0,
+          sculptingStatus: 'Painting shape...',
+        );
+
+        final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.0)
+          ..addScenario(
+            'Active Component Sculpting Status',
+            const ShapeDecompositionList(),
+          );
+
+        await tester.pumpWidgetBuilder(
+          builder.build(),
+          wrapper: testMaterialAppWrapper(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+          ),
+        );
+        await screenMatchesGolden(
+          tester,
+          'shape_decomposition_list_sculpting_status',
+          customPump: (tester) async {
+            await tester.pump(const Duration(milliseconds: 100));
+          },
+        );
       },
     );
   });
