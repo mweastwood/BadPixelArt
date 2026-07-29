@@ -37,6 +37,7 @@ class CanvasModel {
   final List<PixelArtComponent> decomposedComponents;
   final int activeComponentIndex;
   final int? decomposingComponentIndex;
+  final String? sculptingStatus;
 
   const CanvasModel({
     this.creationId,
@@ -69,6 +70,7 @@ class CanvasModel {
     this.decomposedComponents = const [],
     this.activeComponentIndex = 0,
     this.decomposingComponentIndex,
+    this.sculptingStatus,
   });
 
   CanvasModel copyWith({
@@ -108,6 +110,8 @@ class CanvasModel {
     int? activeComponentIndex,
     int? decomposingComponentIndex,
     bool clearDecomposingComponent = false,
+    String? sculptingStatus,
+    bool clearSculptingStatus = false,
   }) {
     return CanvasModel(
       creationId: clearCreationId ? null : (creationId ?? this.creationId),
@@ -151,6 +155,9 @@ class CanvasModel {
       decomposingComponentIndex: clearDecomposingComponent
           ? null
           : (decomposingComponentIndex ?? this.decomposingComponentIndex),
+      sculptingStatus: clearSculptingStatus
+          ? null
+          : (sculptingStatus ?? this.sculptingStatus),
     );
   }
 

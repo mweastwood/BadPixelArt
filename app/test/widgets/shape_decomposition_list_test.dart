@@ -260,7 +260,7 @@ void main() {
         );
 
         final spinnerFinder = find.byType(CircularProgressIndicator);
-        expect(spinnerFinder, findsOneWidget);
+        expect(spinnerFinder, findsWidgets);
 
         final bladeRow = find.ancestor(
           of: find.text('BLADE'),
@@ -283,8 +283,42 @@ void main() {
             of: hiltRow,
             matching: find.byType(CircularProgressIndicator),
           ),
-          findsOneWidget,
+          findsWidgets,
         );
+      },
+    );
+
+    testWidgets(
+      'renders sculptingStatus text and spinner when component is being sculpted',
+      (tester) async {
+        final container = ProviderContainer();
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+        ];
+        container.read(canvasStateProvider.notifier).state = container
+            .read(canvasStateProvider)
+            .copyWith(
+              decomposedComponents: components,
+              isGenerating: true,
+              activeComponentIndex: 0,
+              sculptingStatus: 'Painting shape...',
+            );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(body: ShapeDecompositionList()),
+            ),
+          ),
+        );
+
+        expect(find.text('Painting shape...'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsWidgets);
       },
     );
 

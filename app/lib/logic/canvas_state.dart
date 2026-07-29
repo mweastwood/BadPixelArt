@@ -850,6 +850,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       isGenerating: true,
       decomposingComponentIndex: index,
       activeComponentIndex: index,
+      sculptingStatus: 'Sculpting shape...',
     );
 
     try {
@@ -878,12 +879,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         decomposedComponents: updatedComponents,
         isGenerating: false,
         clearDecomposingComponent: true,
+        clearSculptingStatus: true,
       );
     } catch (e) {
       debugPrint('Error sculpting component: $e');
       state = state.copyWith(
         isGenerating: false,
         clearDecomposingComponent: true,
+        clearSculptingStatus: true,
       );
     }
   }
@@ -902,6 +905,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         state = state.copyWith(
           decomposingComponentIndex: i,
           activeComponentIndex: i,
+          sculptingStatus: 'Sculpting shape...',
         );
         var comp = updatedComponents[i];
 
@@ -927,19 +931,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       state = state.copyWith(
         isGenerating: false,
         clearDecomposingComponent: true,
+        clearSculptingStatus: true,
       );
     } catch (e) {
       debugPrint('Error sculpting components: $e');
       state = state.copyWith(
         isGenerating: false,
         clearDecomposingComponent: true,
+        clearSculptingStatus: true,
       );
     }
   }
 
   Future<void> sketchComponents() async {
     if (state.isGenerating || state.decomposedComponents.isEmpty) return;
-    state = state.copyWith(isGenerating: true);
+    state = state.copyWith(
+      isGenerating: true,
+      sculptingStatus: 'Sculpting shape...',
+    );
 
     try {
       final orchestrator = SketchOrchestrator(_aiService);
@@ -949,10 +958,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         palette: state.palette,
         userPrompt: state.userPrompt,
         autoRunSpeed: state.autoRunSpeed,
-        onStep: (activeIndex, updated) {
+        onStep: (activeIndex, updated, status) {
           state = state.copyWith(
             activeComponentIndex: activeIndex,
             decomposedComponents: updated,
+            sculptingStatus: status,
           );
         },
         onLogHistory: (log) {
@@ -969,6 +979,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         isGenerating: false,
         autoRun: willStop ? false : state.autoRun,
         isPausing: false,
+        clearSculptingStatus: true,
       );
     } catch (e) {
       debugPrint('Error in sketching components: $e');
@@ -977,6 +988,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         isGenerating: false,
         autoRun: willStop ? false : state.autoRun,
         isPausing: false,
+        clearSculptingStatus: true,
       );
     }
   }

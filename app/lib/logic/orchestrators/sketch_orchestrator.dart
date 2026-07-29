@@ -80,7 +80,11 @@ class SketchOrchestrator {
     required List<Color> palette,
     required String userPrompt,
     required double autoRunSpeed,
-    required void Function(int activeIndex, List<PixelArtComponent> updated)
+    required void Function(
+      int activeIndex,
+      List<PixelArtComponent> updated,
+      String status,
+    )
     onStep,
     required void Function(AgentHistoryEntry log) onLogHistory,
     bool Function()? isShouldStop,
@@ -121,6 +125,7 @@ class SketchOrchestrator {
         );
 
         // 1. Run Painter
+        onStep(i, updatedComponents, 'Painting shape...');
         final painterAgent = SketchPainterAgent();
         final painterJson = await _runAgent(
           painterAgent,
@@ -163,7 +168,7 @@ class SketchOrchestrator {
         // Notify caller and yield
         comp = comp.copyWith(grid: compGrid);
         updatedComponents[i] = comp;
-        onStep(i, updatedComponents);
+        onStep(i, updatedComponents, 'Painting shape...');
         await Future.delayed(
           Duration(milliseconds: (autoRunSpeed * 1000).round()),
         );
@@ -178,6 +183,7 @@ class SketchOrchestrator {
         );
 
         // 2. Run Eraser
+        onStep(i, updatedComponents, 'Trimming pixels...');
         final eraserAgent = SketchEraserAgent();
         final eraserJson = await _runAgent(
           eraserAgent,
@@ -221,12 +227,13 @@ class SketchOrchestrator {
         // Notify caller and yield
         comp = comp.copyWith(grid: compGrid);
         updatedComponents[i] = comp;
-        onStep(i, updatedComponents);
+        onStep(i, updatedComponents, 'Trimming pixels...');
         await Future.delayed(
           Duration(milliseconds: (autoRunSpeed * 1000).round()),
         );
 
         // Re-create context for Evaluator
+        onStep(i, updatedComponents, 'Evaluating shape...');
         final contextForEvaluator = AgentContext(
           gridSize: gridSize,
           activePalette: palette,

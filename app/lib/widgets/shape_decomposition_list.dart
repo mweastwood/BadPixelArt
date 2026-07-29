@@ -115,7 +115,9 @@ class _ShapeDecompositionListState
                     final isActive = index == activeIndex;
                     final isThisDecomposing =
                         canvasModel.isGenerating &&
-                        canvasModel.decomposingComponentIndex == index;
+                        (canvasModel.decomposingComponentIndex != null
+                            ? canvasModel.decomposingComponentIndex == index
+                            : canvasModel.activeComponentIndex == index);
 
                     return InkWell(
                       onTap: () => notifier.selectComponent(index),
@@ -156,11 +158,20 @@ class _ShapeDecompositionListState
                                   borderRadius: BorderRadius.circular(4),
                                   color: theme.colorScheme.surface,
                                 ),
-                                child: Icon(
-                                  Icons.grid_on_outlined,
-                                  size: 20,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
+                                child: isThisDecomposing
+                                    ? Padding(
+                                        padding: const EdgeInsets.all(10.0),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.grid_on_outlined,
+                                        size: 20,
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                      ),
                               ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -183,6 +194,34 @@ class _ShapeDecompositionListState
                                       color: theme.colorScheme.onSurfaceVariant,
                                     ),
                                   ),
+                                  if (isThisDecomposing) ...[
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 12,
+                                          height: 12,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: theme.colorScheme.primary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            canvasModel.sculptingStatus ??
+                                                'Sculpting shape...',
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
