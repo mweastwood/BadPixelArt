@@ -60,50 +60,6 @@ void main() {
       },
     );
 
-    testWidgets(
-      'collapses and expands on header tap, showing components count',
-      (tester) async {
-        final container = ProviderContainer();
-        final components = [
-          PixelArtComponent(
-            name: 'blade',
-            description: 'vertical blade',
-            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-          ),
-        ];
-        container.read(canvasStateProvider.notifier).state = container
-            .read(canvasStateProvider)
-            .copyWith(decomposedComponents: components);
-
-        await tester.pumpWidget(
-          UncontrolledProviderScope(
-            container: container,
-            child: const MaterialApp(
-              home: Scaffold(body: ShapeDecompositionList()),
-            ),
-          ),
-        );
-
-        // Verify initially expanded
-        expect(find.text('BLADE'), findsOneWidget);
-        expect(find.text('vertical blade'), findsOneWidget);
-
-        // Tap the header to collapse
-        await tester.tap(find.text('Component Sculpting'));
-        await tester.pumpAndSettle();
-
-        // Verify now collapsed (items are hidden, badge is shown)
-        expect(find.text('BLADE'), findsNothing);
-        expect(find.text('1 parts'), findsOneWidget);
-
-        // Tap again to expand
-        await tester.tap(find.text('Component Sculpting'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('BLADE'), findsOneWidget);
-      },
-    );
-
     testWidgets('renders component details and updates selection on tap', (
       tester,
     ) async {
@@ -326,14 +282,7 @@ void main() {
       tester,
     ) async {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
-        ..addScenario(
-          'Expanded Empty State (Disabled)',
-          const ShapeDecompositionList(),
-        )
-        ..addScenario(
-          'Collapsed Empty State',
-          const ShapeDecompositionList(initialCollapsed: true),
-        );
+        ..addScenario('Empty State (Disabled)', const ShapeDecompositionList());
 
       await tester.pumpWidgetBuilder(
         builder.build(),

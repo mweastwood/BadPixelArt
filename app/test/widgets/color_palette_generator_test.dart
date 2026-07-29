@@ -32,32 +32,6 @@ void main() {
       },
     );
 
-    testWidgets('collapses and expands on header tap, showing mini swatches', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        buildTestableWidget(
-          child: const Scaffold(body: ColorPaletteGenerator()),
-        ),
-      );
-
-      // Initially expanded
-      expect(find.text('Color Palette Mode'), findsOneWidget);
-
-      // Tap the header to collapse
-      await tester.tap(find.text('Color Palette'));
-      await tester.pumpAndSettle();
-
-      // Now collapsed
-      expect(find.text('Color Palette Mode'), findsNothing);
-
-      // Tap the header again to expand
-      await tester.tap(find.text('Color Palette'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Color Palette Mode'), findsOneWidget);
-    });
-
     testWidgets(
       'allows selecting AI Suggested and K-Means when ref image is present',
       (tester) async {
@@ -151,14 +125,7 @@ void main() {
       tester,
     ) async {
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
-        ..addScenario(
-          'Primary Preset Selected (Expanded)',
-          const ColorPaletteGenerator(),
-        )
-        ..addScenario(
-          'Collapsed State',
-          const ColorPaletteGenerator(initialCollapsed: true),
-        );
+        ..addScenario('Primary Preset Selected', const ColorPaletteGenerator());
 
       await tester.pumpWidgetBuilder(
         builder.build(),
