@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 
 class ComponentColorSelectionList extends ConsumerWidget {
-  final bool initialCollapsed;
-
-  const ComponentColorSelectionList({super.key, this.initialCollapsed = false});
+  const ComponentColorSelectionList({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

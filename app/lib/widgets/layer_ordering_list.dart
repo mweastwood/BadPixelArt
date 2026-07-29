@@ -4,9 +4,7 @@ import '../logic/canvas_state.dart';
 import 'wizard_controls.dart';
 
 class LayerOrderingList extends ConsumerWidget {
-  final bool initialCollapsed;
-
-  const LayerOrderingList({super.key, this.initialCollapsed = false});
+  const LayerOrderingList({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

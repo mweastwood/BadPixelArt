@@ -132,7 +132,7 @@ class WizardControls extends ConsumerWidget {
       stepWidget = const Column(
         key: ValueKey('step_1'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [ReferenceImagePrompt(initialCollapsed: false)],
+        children: [ReferenceImagePrompt()],
       );
     } else if (wizardState.currentStep == WizardStep.selectPalette) {
       stepWidget = const Column(
@@ -144,25 +144,25 @@ class WizardControls extends ConsumerWidget {
       stepWidget = const Column(
         key: ValueKey('step_3'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [SemanticComponentsList(initialCollapsed: false)],
+        children: [SemanticComponentsList()],
       );
     } else if (wizardState.currentStep == WizardStep.componentSculpting) {
       stepWidget = const Column(
         key: ValueKey('step_4'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [ShapeDecompositionList(initialCollapsed: false)],
+        children: [ShapeDecompositionList()],
       );
     } else if (wizardState.currentStep == WizardStep.colorAndOutline) {
       stepWidget = const Column(
         key: ValueKey('step_5'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [ComponentColorSelectionList(initialCollapsed: false)],
+        children: [ComponentColorSelectionList()],
       );
     } else if (wizardState.currentStep == WizardStep.layerOrderingAndMerge) {
       stepWidget = const Column(
         key: ValueKey('step_6'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [LayerOrderingList(initialCollapsed: false)],
+        children: [LayerOrderingList()],
       );
     } else {
       stepWidget = const Column(
