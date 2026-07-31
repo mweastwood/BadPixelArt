@@ -135,7 +135,7 @@ class MyApp extends StatelessWidget {
         }
 
         return MaterialApp(
-          title: 'BadPixelArt',
+          title: 'Bad Pixel Art',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(colorScheme: lightScheme, useMaterial3: true),
           darkTheme: ThemeData(colorScheme: darkScheme, useMaterial3: true),
