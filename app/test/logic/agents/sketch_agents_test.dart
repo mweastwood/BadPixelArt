@@ -162,13 +162,10 @@ void main() {
     test(
       'sketchComponents loops, executes drawing command, and mergeComponentsToCanvas merges',
       () async {
-        // Step 1: Painter returns a rectangle_filled command covering full bounds [6, 2, 9, 10].
-        // Step 2: Eraser returns no action.
-        // Step 3: Evaluator returns complete.
+        // Single turn: Painter draws rectangle and signals completion with empty next turn
         final mockResponses = [
-          '{"thought": "drawing rectangle using full bounds", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}',
-          '{"thought": "no erase needed", "erase": []}',
-          '{"isComplete": true, "feedback": "good outline", "suggestions": ""}',
+          '{"thought": "drawing rectangle using full bounds", "tool": "rectangle_filled", "params": [6, 2, 9, 10], "add": [], "erase": []}',
+          '{"thought": "done", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
         final mockAi = SequentialMockAiService(mockResponses);
@@ -220,13 +217,9 @@ void main() {
     test(
       'sketchComponents strictly ignores drawing commands outside the component bounding box',
       () async {
-        // Step 1: Painter returns a giant rectangle covering the entire canvas (0,0 to 15,15).
-        // Step 2: Eraser returns no action.
-        // Step 3: Evaluator returns complete.
         final mockResponses = [
-          '{"thought": "draw full screen", "tool": "rectangle_filled", "params": [0, 0, 15, 15]}',
-          '{"thought": "no erase", "erase": []}',
-          '{"isComplete": true, "feedback": "complete", "suggestions": ""}',
+          '{"thought": "draw full screen", "tool": "rectangle_filled", "params": [0, 0, 15, 15], "add": [], "erase": []}',
+          '{"thought": "done", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
         final mockAi = SequentialMockAiService(mockResponses);
@@ -266,15 +259,11 @@ void main() {
     );
 
     test(
-      'sketchComponents supports pixel-by-pixel erasing via JSON list',
+      'sketchComponents supports pixel-by-pixel erasing via JSON list in single turn',
       () async {
-        // Step 1: Painter draws full bounding box rectangle.
-        // Step 2: Eraser erases pixel at [8, 2] and [8, 3].
-        // Step 3: Evaluator returns complete.
         final mockResponses = [
-          '{"thought": "draw full bounds", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}',
-          '{"thought": "erase corners", "erase": [[8, 2], [8, 3], [0, 0]]}', // [0,0] is outside bounding box
-          '{"isComplete": true, "feedback": "complete", "suggestions": ""}',
+          '{"thought": "draw full bounds and erase corners in one turn", "tool": "rectangle_filled", "params": [6, 2, 9, 10], "erase": [[8, 2], [8, 3], [0, 0]]}',
+          '{"thought": "done", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
         final mockAi = SequentialMockAiService(mockResponses);
@@ -312,49 +301,83 @@ void main() {
       },
     );
 
-    test('sketchComponents sculpts all components sequentially', () async {
-      // Mock responses for 2 components:
-      // Component 0: Painter, Eraser, Evaluator (isComplete: true)
-      // Component 1: Painter, Eraser, Evaluator (isComplete: true)
-      final mockResponses = [
-        '{"thought": "drawing blade", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}',
-        '{"thought": "no erase", "erase": []}',
-        '{"isComplete": true, "feedback": "good blade"}',
-        '{"thought": "drawing handle", "tool": "rectangle_filled", "params": [6, 12, 9, 14]}',
-        '{"thought": "no erase", "erase": []}',
-        '{"isComplete": true, "feedback": "good handle"}',
-      ];
+    test(
+      'sketchComponents sculpts all components sequentially in single turn each',
+      () async {
+        final mockResponses = [
+          '{"thought": "drawing blade", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}',
+          '{"thought": "blade done", "tool": "", "params": [], "add": [], "erase": []}',
+          '{"thought": "drawing handle", "tool": "rectangle_filled", "params": [6, 12, 9, 14]}',
+          '{"thought": "handle done", "tool": "", "params": [], "add": [], "erase": []}',
+        ];
 
-      final mockAi = SequentialMockAiService(mockResponses);
-      final container = ProviderContainer(
-        overrides: [aiServiceProvider.overrideWithValue(mockAi)],
-      );
+        final mockAi = SequentialMockAiService(mockResponses);
+        final container = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(mockAi)],
+        );
 
-      final notifier = container.read(canvasStateProvider.notifier);
+        final notifier = container.read(canvasStateProvider.notifier);
 
-      notifier.state = notifier.state.copyWith(
-        decomposedComponents: [
-          PixelArtComponent(
-            name: 'blade',
-            description: 'vertical steel blade',
-            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-          ),
-          PixelArtComponent(
-            name: 'handle',
-            description: 'bottom leather handle',
-            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
-          ),
-        ],
-        userPrompt: 'sword',
-      );
+        notifier.state = notifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            ),
+            PixelArtComponent(
+              name: 'handle',
+              description: 'bottom leather handle',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
+            ),
+          ],
+          userPrompt: 'sword',
+        );
 
-      await notifier.sketchComponents();
+        await notifier.sketchComponents();
 
-      final finalComps = container
-          .read(canvasStateProvider)
-          .decomposedComponents;
-      expect(finalComps[0].grid, isNotNull);
-      expect(finalComps[1].grid, isNotNull);
-    });
+        final finalComps = container
+            .read(canvasStateProvider)
+            .decomposedComponents;
+        expect(finalComps[0].grid, isNotNull);
+        expect(finalComps[1].grid, isNotNull);
+      },
+    );
+
+    test(
+      'sketchComponents terminates early when agent returns no instructions (empty tool/add/erase)',
+      () async {
+        // Turn 1 returns no instructions -> immediate exit on turn 1
+        final mockResponses = [
+          '{"thought": "shape is already perfect", "tool": "", "params": [], "add": [], "erase": []}',
+        ];
+
+        final mockAi = SequentialMockAiService(mockResponses);
+        final container = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(mockAi)],
+        );
+
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        notifier.state = notifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            ),
+          ],
+          userPrompt: 'sword',
+        );
+
+        await notifier.sketchComponents();
+
+        final history = container.read(canvasStateProvider).aiHistory;
+        expect(
+          history.any((log) => log.response.contains('Satisfied with shape')),
+          isTrue,
+        );
+      },
+    );
   });
 }

@@ -92,11 +92,31 @@ class ShapeDecompositionList extends ConsumerWidget {
                       ),
                       child: Row(
                         children: [
-                          // Mini Canvas Preview
+                          // Mini Canvas Preview with Completion Overlay
                           if (comp.grid != null)
-                            MiniComponentCanvas(
-                              grid: comp.grid!,
-                              color: PixelArtComponent.getColor(index),
+                            Stack(
+                              children: [
+                                MiniComponentCanvas(
+                                  grid: comp.grid!,
+                                  color: PixelArtComponent.getColor(index),
+                                ),
+                                if (!isThisDecomposing)
+                                  Positioned(
+                                    right: 2,
+                                    bottom: 2,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.surface,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 14,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             )
                           else
                             Container(
@@ -129,14 +149,30 @@ class ShapeDecompositionList extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  comp.name.toUpperCase(),
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: isActive
-                                        ? theme.colorScheme.onPrimaryContainer
-                                        : theme.colorScheme.onSurface,
-                                  ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      comp.name.toUpperCase(),
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: isActive
+                                                ? theme
+                                                      .colorScheme
+                                                      .onPrimaryContainer
+                                                : theme.colorScheme.onSurface,
+                                          ),
+                                    ),
+                                    if (comp.grid != null &&
+                                        !isThisDecomposing) ...[
+                                      const SizedBox(width: 6),
+                                      Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 16,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                    ],
+                                  ],
                                 ),
                                 const SizedBox(height: 2),
                                 Text(

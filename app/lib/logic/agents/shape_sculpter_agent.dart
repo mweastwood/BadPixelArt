@@ -5,6 +5,8 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'base_agent.dart';
 import '../utils/bmp_utils.dart';
 import '../utils/json_utils.dart';
+import '../models/bounded_canvas.dart';
+import '../drawing_commands.dart';
 
 Map<String, List<Map<String, int>>> calculateSculptingCandidates(
   List<List<int>> grid,
@@ -97,25 +99,34 @@ class ShapeSculpterAgent implements PixelArtAgent {
   String get name => 'ShapeSculpter';
 
   @override
-  List<String> get availableTools => [];
+  List<String> get availableTools => [
+    'circle_filled',
+    'rectangle_filled',
+    'ellipse_filled',
+    'triangle',
+  ];
 
   @override
   String getSystemInstruction(AgentContext context) {
-    return 'You are an AI pixel art sculpting agent. Your job is to refine the binary pixel grid of a component to better fit its description.\n'
-        'You are given an image of the current component pixels (black pixels on a white background) and a list of border pixels that you can add or remove.\n'
-        'Your goal is to choose which pixels to remove from the outer border/corners, and which pixels to add, to sculpt a shape that matches the description: "${context.targetComponent?.description}".\n\n'
-        '- IMPORTANT: Select a MAXIMUM of 5 pixels to add and a MAXIMUM of 5 pixels to remove from the candidate lists in a single turn. Do not exceed this limit.\n'
-        '- Candidate coordinates are provided in the format: (x,y).\n\n'
+    final comp = context.targetComponent;
+    final description = comp?.description ?? '';
+
+    return 'You are an AI pixel art sculpting agent. Your job is to refine the binary pixel grid of a component to match its description: "$description".\n'
+        'You can draw shape primitives, add border pixels, and remove border pixels all in a single turn.\n\n'
+        'Available tools and parameters:\n'
+        '- Shape tools (optional, set "tool": "" and "params": [] if not drawing a shape primitive):\n'
+        '  - {"tool": "circle_filled", "params": [centerX, centerY, radius]}\n'
+        '  - {"tool": "rectangle_filled", "params": [x1, y1, x2, y2]}\n'
+        '  - {"tool": "ellipse_filled", "params": [centerX, centerY, rx, ry]}\n'
+        '  - {"tool": "triangle", "params": [x1, y1, x2, y2, x3, y3]}\n'
+        '- Pixel Additions (optional):\n'
+        '  - "add": [{"x": 4, "y": 2}, ...] or [[4, 2], ...]\n'
+        '- Pixel Removals (optional):\n'
+        '  - "remove": [{"x": 4, "y": 2}, ...] or [[4, 2], ...]\n\n'
         'Output rules:\n'
-        '- You must output EXACTLY a valid JSON object. Do not wrap in markdown tags (e.g. ```json).\n'
-        '- The JSON object must contain two arrays:\n'
-        '  1. "remove": A list of coordinate objects from the remove candidates list that should be removed (set to 0).\n'
-        '  2. "add": A list of coordinate objects from the add candidates list that should be added (set to 1).\n'
-        'Example output:\n'
-        '{\n'
-        '  "remove": [{"x": 4, "y": 2}, {"x": 4, "y": 3}],\n'
-        '  "add": [{"x": 5, "y": 4}]\n'
-        '}';
+        '- Output EXACTLY a valid JSON object. Do not wrap in markdown code blocks.\n'
+        '- Format: { "thought": "reasoning", "tool": "", "params": [], "add": [...], "remove": [...] }\n'
+        '- IMPORTANT: If you are ALREADY satisfied with the shape, return empty lists: "tool": "", "params": [], "add": [], "remove": []. Returning no instructions indicates sculpting is done.';
   }
 
   @override
@@ -147,9 +158,9 @@ class ShapeSculpterAgent implements PixelArtAgent {
     final addStr = formatCompactCoords(addList);
 
     return 'Sculpt the component "${comp.name}" (Description: "${comp.description}").\n\n'
-        'Remove Candidates (pixels on the border you can remove):\n$removeStr\n\n'
-        'Add Candidates (pixels adjacent to the border inside the bounding box you can add):\n$addStr\n\n'
-        'Analyze the image of the component shape, compare it to the description, and choose which candidates to remove and add.';
+        'Remove Candidates:\n$removeStr\n\n'
+        'Add Candidates:\n$addStr\n\n'
+        'Provide sculpting instructions (tool, add, remove) or return empty instructions if satisfied:';
   }
 
   Future<List<List<int>>> sculptComponent(
@@ -182,36 +193,65 @@ class ShapeSculpterAgent implements PixelArtAgent {
       final cleaned = cleanJsonString(response);
       final parsed = jsonDecode(cleaned);
       if (parsed is Map<String, dynamic>) {
-        final removeList = parsed['remove'] as List? ?? [];
+        final tool = parsed['tool'] as String? ?? '';
+        final params = List<int>.from(
+          (parsed['params'] as List? ?? []).map((v) => (v as num).toInt()),
+        );
+        final removeList = (parsed['remove'] ?? parsed['erase']) as List? ?? [];
         final addList = parsed['add'] as List? ?? [];
+
+        // Check if agent returned no instructions -> return current grid unchanged
+        if (tool.isEmpty && removeList.isEmpty && addList.isEmpty) {
+          return grid;
+        }
 
         final newGrid = List<List<int>>.from(
           grid.map((row) => List<int>.from(row)),
         );
 
-        for (final item in removeList) {
-          if (item is Map<String, dynamic>) {
-            final x = (item['x'] as num).toInt();
-            final y = (item['y'] as num).toInt();
-            if (x >= 0 &&
-                x < context.gridSize &&
-                y >= 0 &&
-                y < context.gridSize) {
-              newGrid[y][x] = 0;
-            }
+        final boundedCanvas = BoundedCanvas(
+          grid: newGrid,
+          boundingBox: comp.relativeBoundingBox,
+          gridSize: context.gridSize,
+        );
+
+        // 1. Execute shape tool if provided
+        if (tool.isNotEmpty) {
+          final command = DrawingCommandFactory.create(tool, params);
+          if (command != null) {
+            boundedCanvas.executeClamped((tempGrid) {
+              command.execute(tempGrid, 1, context.gridSize);
+            });
           }
         }
 
+        // 2. Execute additions
         for (final item in addList) {
+          int? x, y;
           if (item is Map<String, dynamic>) {
-            final x = (item['x'] as num).toInt();
-            final y = (item['y'] as num).toInt();
-            if (x >= 0 &&
-                x < context.gridSize &&
-                y >= 0 &&
-                y < context.gridSize) {
-              newGrid[y][x] = 1;
-            }
+            x = (item['x'] as num?)?.toInt();
+            y = (item['y'] as num?)?.toInt();
+          } else if (item is List && item.length >= 2) {
+            x = (item[0] as num?)?.toInt();
+            y = (item[1] as num?)?.toInt();
+          }
+          if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
+            boundedCanvas.setPixel(x, y, 1);
+          }
+        }
+
+        // 3. Execute removals
+        for (final item in removeList) {
+          int? x, y;
+          if (item is Map<String, dynamic>) {
+            x = (item['x'] as num?)?.toInt();
+            y = (item['y'] as num?)?.toInt();
+          } else if (item is List && item.length >= 2) {
+            x = (item[0] as num?)?.toInt();
+            y = (item[1] as num?)?.toInt();
+          }
+          if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
+            boundedCanvas.setPixel(x, y, 0);
           }
         }
 
