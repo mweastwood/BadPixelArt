@@ -1,7 +1,6 @@
-import 'dart:math' as math;
 import 'base_command.dart';
 
-/// Command to draw an outlined circle using precision midpoint rounding without extra compass pixels.
+/// Command to draw an outlined circle using Midpoint algorithm without extra compass pixels.
 class CircleCommand implements DrawingCommand {
   static const String usage = 'params [centerX, centerY, radius] (outline)';
 
@@ -39,13 +38,19 @@ class CircleCommand implements DrawingCommand {
 
     int x = 0;
     int y = r;
+    int d = 3 - 2 * r;
     drawCirclePoints(x, y);
 
     while (x < y) {
       x++;
-      y = math.sqrt(r * r - x * x).round();
-      if (x > 0 && y == r) {
-        y = r - 1;
+      if (d > 0) {
+        y--;
+        d = d + 4 * (x - y) + 10;
+      } else {
+        d = d + 4 * x + 6;
+      }
+      if (x == 1 && y == r) {
+        y--;
       }
       if (x <= y) {
         drawCirclePoints(x, y);
