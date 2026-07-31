@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
@@ -212,41 +210,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                         child: const Icon(Icons.file_download_outlined),
                       )),
         ),
-        if (canvasState.isSuggestingPalette)
-          Container(
-            color: Colors.black54,
-            child: Center(
-              child: Card(
-                color: theme.colorScheme.surface,
-                margin: const EdgeInsets.all(32),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(
-                        value:
-                            (!kIsWeb &&
-                                Platform.environment.containsKey(
-                                  'FLUTTER_TEST',
-                                ))
-                            ? 0.5
-                            : null,
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'AI is generating a custom 8-color palette...',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
         if (canvasState.showPaletteSuggestion &&
             canvasState.suggestedPalette != null)
           Container(
