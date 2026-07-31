@@ -1,11 +1,11 @@
 {
-    "name": "bad_pixel_art",
-    "short_name": "bad_pixel_art",
+    "name": "Bad Pixel Art",
+    "short_name": "Bad Pixel Art",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "AI-assisted pixel art generator & editor app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
