@@ -1,13 +1,10 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../agents/base_agent.dart';
 import '../models/bounded_canvas.dart';
 import '../utils/json_utils.dart';
-import '../agents/sketch_painter_agent.dart';
-import '../agents/sketch_eraser_agent.dart';
-import '../agents/sketch_evaluator_agent.dart';
+import '../agents/shape_sculpter_agent.dart';
 import '../drawing_commands.dart';
 
 class SketchOrchestrator {
@@ -98,23 +95,13 @@ class SketchOrchestrator {
           comp.grid ?? List.generate(gridSize, (_) => List.filled(gridSize, 0));
 
       final List<PixelArtStepResult> history = [];
-      bool evaluatorApproves = false;
       int step = 0;
 
-      while (step < 5) {
+      while (step < 3) {
         if (isShouldStop?.call() == true) break;
-        // Evaluate completion status first (or at loop check)
-        final isDone = isComponentDone(
-          compGrid,
-          comp,
-          gridSize,
-          evaluatorApproves,
-        );
-        if (isDone) {
-          break;
-        }
-
         step++;
+
+        onStep(i, updatedComponents, 'Sculpting shape...');
 
         final context = AgentContext(
           gridSize: gridSize,
@@ -124,149 +111,100 @@ class SketchOrchestrator {
           currentGrid: compGrid,
         );
 
-        // 1. Run Painter
-        onStep(i, updatedComponents, 'Painting shape...');
-        final painterAgent = SketchPainterAgent();
-        final painterJson = await _runAgent(
-          painterAgent,
-          context,
-          history,
-          onLogHistory,
-        );
-        if (painterJson != null) {
-          final String thought = painterJson['thought'] as String? ?? '';
-          final String tool = painterJson['tool'] as String? ?? '';
-          final List<int> params = List<int>.from(
-            (painterJson['params'] as List? ?? []).map(
-              (v) => (v as num).toInt(),
-            ),
-          );
+        final agent = ShapeSculpterAgent();
+        final json = await _runAgent(agent, context, history, onLogHistory);
 
+        if (json == null) break;
+
+        final String thought = json['thought'] as String? ?? '';
+        final String tool = json['tool'] as String? ?? '';
+        final List<int> params = List<int>.from(
+          (json['params'] as List? ?? []).map((v) => (v as num).toInt()),
+        );
+        final List<dynamic> rawAdd = json['add'] as List? ?? [];
+        final List<dynamic> rawErase =
+            (json['erase'] ?? json['remove']) as List? ?? [];
+        final bool isExplicitlyComplete = json['isComplete'] as bool? ?? false;
+
+        final boundedCanvas = BoundedCanvas(
+          grid: compGrid,
+          boundingBox: comp.relativeBoundingBox,
+          gridSize: gridSize,
+        );
+
+        // 1. Execute shape tool if provided
+        if (tool.isNotEmpty) {
           final command = DrawingCommandFactory.create(tool, params);
           if (command != null) {
-            final boundedCanvas = BoundedCanvas(
-              grid: compGrid,
-              boundingBox: comp.relativeBoundingBox,
-              gridSize: gridSize,
-            );
             boundedCanvas.executeClamped((tempGrid) {
               command.execute(tempGrid, 1, gridSize);
             });
           }
-
-          history.add(
-            PixelArtStepResult(
-              thought: thought,
-              tool: tool,
-              params: params,
-              colorIndex: 1,
-              feedback: 'Painter executed $tool with params $params.',
-            ),
-          );
         }
 
-        // Notify caller and yield
-        comp = comp.copyWith(grid: compGrid);
-        updatedComponents[i] = comp;
-        onStep(i, updatedComponents, 'Painting shape...');
-        await Future.delayed(
-          Duration(milliseconds: (autoRunSpeed * 1000).round()),
-        );
-
-        // Re-create context for Eraser
-        final contextForEraser = AgentContext(
-          gridSize: gridSize,
-          activePalette: palette,
-          userPrompt: userPrompt,
-          targetComponent: comp,
-          currentGrid: compGrid,
-        );
-
-        // 2. Run Eraser
-        onStep(i, updatedComponents, 'Trimming pixels...');
-        final eraserAgent = SketchEraserAgent();
-        final eraserJson = await _runAgent(
-          eraserAgent,
-          contextForEraser,
-          history,
-          onLogHistory,
-        );
-        if (eraserJson != null) {
-          final String thought = eraserJson['thought'] as String? ?? '';
-          final List<dynamic> eraseCoords = eraserJson['erase'] as List? ?? [];
-          final List<Point<int>> erasedPoints = [];
-
-          final boundedCanvas = BoundedCanvas(
-            grid: compGrid,
-            boundingBox: comp.relativeBoundingBox,
-            gridSize: gridSize,
-          );
-
-          for (final coord in eraseCoords) {
-            if (coord is List && coord.length >= 2) {
-              final x = (coord[0] as num).toInt();
-              final y = (coord[1] as num).toInt();
-              if (boundedCanvas.isWithinBounds(x, y)) {
-                boundedCanvas.setPixel(x, y, 0); // Erase
-                erasedPoints.add(Point(x, y));
-              }
-            }
+        // 2. Execute additions
+        for (final coord in rawAdd) {
+          int? x, y;
+          if (coord is List && coord.length >= 2) {
+            x = (coord[0] as num).toInt();
+            y = (coord[1] as num).toInt();
+          } else if (coord is Map) {
+            x = (coord['x'] as num?)?.toInt();
+            y = (coord['y'] as num?)?.toInt();
           }
-
-          history.add(
-            PixelArtStepResult(
-              thought: thought,
-              tool: 'erase_pixels',
-              params: erasedPoints.expand((p) => [p.x, p.y]).toList(),
-              colorIndex: 0,
-              feedback: 'Eraser removed pixels at coordinates: $eraseCoords.',
-            ),
-          );
+          if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
+            boundedCanvas.setPixel(x, y, 1);
+          }
         }
 
-        // Notify caller and yield
+        // 3. Execute erasures
+        for (final coord in rawErase) {
+          int? x, y;
+          if (coord is List && coord.length >= 2) {
+            x = (coord[0] as num).toInt();
+            y = (coord[1] as num).toInt();
+          } else if (coord is Map) {
+            x = (coord['x'] as num?)?.toInt();
+            y = (coord['y'] as num?)?.toInt();
+          }
+          if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
+            boundedCanvas.setPixel(x, y, 0);
+          }
+        }
+
+        history.add(
+          PixelArtStepResult(
+            thought: thought,
+            tool: tool.isNotEmpty ? tool : 'sculpt',
+            params: params,
+            colorIndex: 1,
+            feedback: 'Single-turn sculpt executed for ${comp.name}.',
+          ),
+        );
+
         comp = comp.copyWith(grid: compGrid);
         updatedComponents[i] = comp;
-        onStep(i, updatedComponents, 'Trimming pixels...');
+        onStep(i, updatedComponents, 'Sculpting shape...');
+
+        // Check if agent returned no instructions or explicitly marked complete
+        final bool hasNoInstructions =
+            tool.isEmpty && rawAdd.isEmpty && rawErase.isEmpty;
+        if (hasNoInstructions || isExplicitlyComplete) {
+          onLogHistory(
+            AgentHistoryEntry(
+              timestamp: DateTime.now(),
+              prompt: 'Sculpt component "${comp.name}"',
+              response:
+                  'Satisfied with shape for "${comp.name}". No further edits.',
+              isError: false,
+            ),
+          );
+          break;
+        }
+
         await Future.delayed(
           Duration(milliseconds: (autoRunSpeed * 1000).round()),
         );
-
-        // Re-create context for Evaluator
-        onStep(i, updatedComponents, 'Evaluating shape...');
-        final contextForEvaluator = AgentContext(
-          gridSize: gridSize,
-          activePalette: palette,
-          userPrompt: userPrompt,
-          targetComponent: comp,
-          currentGrid: compGrid,
-        );
-
-        // 3. Run Evaluator
-        final evaluatorAgent = SketchEvaluatorAgent();
-        final evalJson = await _runAgent(
-          evaluatorAgent,
-          contextForEvaluator,
-          history,
-          onLogHistory,
-        );
-        if (evalJson != null) {
-          evaluatorApproves = evalJson['isComplete'] as bool? ?? false;
-          final String suggestions = evalJson['suggestions'] as String? ?? '';
-
-          history.add(
-            PixelArtStepResult(
-              thought: 'Evaluation step',
-              tool: 'evaluator',
-              params: [],
-              colorIndex: 0,
-              feedback:
-                  'Evaluator complete status: $evaluatorApproves. Suggestions: $suggestions',
-            ),
-          );
-        } else {
-          evaluatorApproves = false;
-        }
       }
     }
 
