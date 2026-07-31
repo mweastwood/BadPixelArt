@@ -1,6 +1,6 @@
 import 'base_command.dart';
 
-/// Command to draw an outlined circle using Bresenham's midpoint circle algorithm.
+/// Command to draw an outlined circle using standard Midpoint Circle algorithm.
 class CircleCommand implements DrawingCommand {
   static const String usage = 'params [centerX, centerY, radius] (outline)';
 
@@ -12,9 +12,12 @@ class CircleCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
-    int x = 0;
-    int y = r;
-    int d = 3 - 2 * r;
+    if (r <= 0) {
+      if (xc >= 0 && xc < gridSize && yc >= 0 && yc < gridSize) {
+        grid[yc][xc] = color;
+      }
+      return;
+    }
 
     void setPixel(int px, int py) {
       if (px >= 0 && px < gridSize && py >= 0 && py < gridSize) {
@@ -33,14 +36,18 @@ class CircleCommand implements DrawingCommand {
       setPixel(xc - y, yc - x);
     }
 
+    int x = 0;
+    int y = r;
+    int d = 1 - r;
     drawCirclePoints(x, y);
-    while (y >= x) {
+
+    while (x < y) {
       x++;
-      if (d > 0) {
-        y--;
-        d = d + 4 * (x - y) + 10;
+      if (d < 0) {
+        d += 2 * x + 1;
       } else {
-        d = d + 4 * x + 6;
+        y--;
+        d += 2 * (x - y) + 1;
       }
       drawCirclePoints(x, y);
     }
