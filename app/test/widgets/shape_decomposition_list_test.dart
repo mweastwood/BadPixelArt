@@ -374,5 +374,82 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'renders completion checkmark badge when component grid is non-null',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final grid = List.generate(16, (_) => List.filled(16, 1));
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            grid: grid,
+          ),
+        ];
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: components,
+          userPrompt: 'sword',
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+            child: const MaterialApp(
+              home: Scaffold(body: ShapeDecompositionList()),
+            ),
+          ),
+        );
+
+        // Checkmark badge icon should be visible next to title and on thumbnail
+        expect(find.byIcon(Icons.check_circle_rounded), findsNWidgets(2));
+      },
+    );
+
+    testGoldens(
+      'ShapeDecompositionList renders completed state golden with checkmark badges',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final grid = List.generate(16, (_) => List.filled(16, 1));
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            grid: grid,
+          ),
+          PixelArtComponent(
+            name: 'hilt',
+            description: 'wooden handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+            grid: grid,
+          ),
+        ];
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: components,
+          userPrompt: 'sword',
+          referenceImage: Uint8List.fromList([0, 0, 0, 0]),
+        );
+
+        final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.0)
+          ..addScenario(
+            'Completed Components with Badges',
+            const ShapeDecompositionList(),
+          );
+
+        await tester.pumpWidgetBuilder(
+          builder.build(),
+          wrapper: testMaterialAppWrapper(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+          ),
+        );
+        await screenMatchesGolden(tester, 'shape_decomposition_list_completed');
+      },
+    );
   });
 }

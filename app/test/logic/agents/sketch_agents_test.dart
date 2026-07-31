@@ -343,5 +343,41 @@ void main() {
         expect(finalComps[1].grid, isNotNull);
       },
     );
+
+    test(
+      'sketchComponents terminates early when agent returns no instructions (empty tool/add/erase)',
+      () async {
+        // Turn 1 returns no instructions -> immediate exit on turn 1
+        final mockResponses = [
+          '{"thought": "shape is already perfect", "tool": "", "params": [], "add": [], "erase": []}',
+        ];
+
+        final mockAi = SequentialMockAiService(mockResponses);
+        final container = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(mockAi)],
+        );
+
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        notifier.state = notifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            ),
+          ],
+          userPrompt: 'sword',
+        );
+
+        await notifier.sketchComponents();
+
+        final history = container.read(canvasStateProvider).aiHistory;
+        expect(
+          history.any((log) => log.response.contains('Satisfied with shape')),
+          isTrue,
+        );
+      },
+    );
   });
 }
