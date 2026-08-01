@@ -46,15 +46,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final canvasState = ref.watch(canvasStateProvider);
-    final notifier = ref.read(canvasStateProvider.notifier);
-    final theme = Theme.of(context);
-    final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
-    final history = canvasState.aiHistory;
-
-    // Global listener for decomposition option choose dialog
+  void _setupDecompositionDialogListener(BuildContext context, WidgetRef ref) {
     ref.listen<CanvasModel>(canvasStateProvider, (previous, next) {
       if (next.pendingDecompositionOptions.isNotEmpty &&
           (previous == null || previous.pendingDecompositionOptions.isEmpty)) {
@@ -79,6 +71,17 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
         );
       }
     });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canvasState = ref.watch(canvasStateProvider);
+    final notifier = ref.read(canvasStateProvider.notifier);
+    final theme = Theme.of(context);
+    final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
+    final history = canvasState.aiHistory;
+
+    _setupDecompositionDialogListener(context, ref);
 
     final double totalCost = history.fold(
       0.0,
