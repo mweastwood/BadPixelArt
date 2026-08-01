@@ -82,14 +82,34 @@ Map<String, List<Map<String, int>>> calculateSculptingCandidates(
   return {'remove': removeCandidates, 'add': addCandidates};
 }
 
-Uint8List generateSculptingBmp(List<List<int>> grid) {
-  final int size = grid.length;
+Uint8List generateCanvasWithSculptingBmp(
+  List<List<int>>? currentGrid,
+  List<Color>? palette,
+  List<List<int>> targetGrid,
+) {
+  final int size = targetGrid.length;
   final List<List<Color>> colorGrid = List.generate(
     size,
-    (y) => List.generate(
-      size,
-      (x) => grid[y][x] > 0 ? const Color(0xFF000000) : const Color(0xFFFFFFFF),
-    ),
+    (y) => List.generate(size, (x) {
+      final targetVal = targetGrid[y][x];
+      if (targetVal > 0) {
+        // Highlight current sculpting component in solid black
+        return const Color(0xFF000000);
+      }
+
+      // Render previously drawn canvas components in their actual palette colors
+      if (currentGrid != null &&
+          currentGrid.length == size &&
+          currentGrid[y].length == size) {
+        final canvasVal = currentGrid[y][x];
+        if (canvasVal > 0 && palette != null && canvasVal < palette.length) {
+          return palette[canvasVal];
+        }
+      }
+
+      // Default background
+      return const Color(0xFFFFFFFF);
+    }),
   );
   return bmpFromColorGrid(colorGrid);
 }
@@ -110,9 +130,37 @@ class ShapeSculpterAgent implements PixelArtAgent {
   String getSystemInstruction(AgentContext context) {
     final comp = context.targetComponent;
     final description = comp?.description ?? '';
+    final gridSize = context.gridSize;
+
+    int minX = 0, maxX = gridSize - 1, minY = 0, maxY = gridSize - 1;
+    if (comp != null) {
+      minX = (comp.relativeBoundingBox.left * gridSize).round().clamp(
+        0,
+        gridSize - 1,
+      );
+      maxX =
+          (((comp.relativeBoundingBox.left + comp.relativeBoundingBox.width) *
+                          gridSize)
+                      .round() -
+                  1)
+              .clamp(0, gridSize - 1);
+      minY = (comp.relativeBoundingBox.top * gridSize).round().clamp(
+        0,
+        gridSize - 1,
+      );
+      maxY =
+          (((comp.relativeBoundingBox.top + comp.relativeBoundingBox.height) *
+                          gridSize)
+                      .round() -
+                  1)
+              .clamp(0, gridSize - 1);
+    }
 
     return 'You are an AI pixel art sculpting agent. Your job is to refine the binary pixel grid of a component to match its description: "$description".\n'
         'You can draw shape primitives, add border pixels, and remove border pixels all in a single turn.\n\n'
+        'ALLOWED DRAWING AREA & BOUNDS (Canvas size: ${gridSize}x$gridSize):\n'
+        '- Component Bounding Box Bounds: X range: $minX to $maxX, Y range: $minY to $maxY\n'
+        '- CRITICAL: All shape primitives and pixel additions MUST be placed within X: [$minX..$maxX] and Y: [$minY..$maxY]. Any pixels outside this range will be cropped out.\n\n'
         'Available tools and parameters:\n'
         '- Shape tools (optional, set "tool": "" and "params": [] if not drawing a shape primitive):\n'
         '  - {"tool": "circle_filled", "params": [centerX, centerY, radius]}\n'
@@ -135,19 +183,37 @@ class ShapeSculpterAgent implements PixelArtAgent {
     List<PixelArtStepResult> history,
   ) {
     final comp = context.targetComponent!;
+    final gridSize = context.gridSize;
     final grid =
-        comp.grid ??
-        List.generate(
-          context.gridSize,
-          (_) => List.filled(context.gridSize, 0),
-        );
+        comp.grid ?? List.generate(gridSize, (_) => List.filled(gridSize, 0));
     final candidates = calculateSculptingCandidates(
       grid,
-      context.gridSize,
+      gridSize,
       comp.relativeBoundingBox,
     );
     final removeList = candidates['remove'];
     final addList = candidates['add'];
+
+    final minX = (comp.relativeBoundingBox.left * gridSize).round().clamp(
+      0,
+      gridSize - 1,
+    );
+    final maxX =
+        (((comp.relativeBoundingBox.left + comp.relativeBoundingBox.width) *
+                        gridSize)
+                    .round() -
+                1)
+            .clamp(0, gridSize - 1);
+    final minY = (comp.relativeBoundingBox.top * gridSize).round().clamp(
+      0,
+      gridSize - 1,
+    );
+    final maxY =
+        (((comp.relativeBoundingBox.top + comp.relativeBoundingBox.height) *
+                        gridSize)
+                    .round() -
+                1)
+            .clamp(0, gridSize - 1);
 
     String formatCompactCoords(List<Map<String, int>>? list) {
       if (list == null || list.isEmpty) return 'None';
@@ -158,6 +224,13 @@ class ShapeSculpterAgent implements PixelArtAgent {
     final addStr = formatCompactCoords(addList);
 
     return 'Sculpt the component "${comp.name}" (Description: "${comp.description}").\n\n'
+        'TARGET COMPONENT BOUNDING BOX (Allowed drawing bounds on ${gridSize}x$gridSize grid):\n'
+        'X range: $minX to $maxX | Y range: $minY to $maxY\n'
+        '(MUST place shape tool parameters and pixel additions strictly within this X and Y range!)\n\n'
+        'CANDIDATES EXPLANATION:\n'
+        '- Remove Candidates: Outer edge pixels of your current shape that can be erased to trim or reshape your component.\n'
+        '- Add Candidates: Empty pixels directly touching your current shape that can be added to expand or curve your component.\n'
+        '- NOTE: If both candidate lists below are "None", NO base shape has been drawn yet! You MUST first use a Shape Tool (e.g. "triangle", "circle_filled", "rectangle_filled") with parameters inside X: [$minX..$maxX] and Y: [$minY..$maxY] to establish the base shape.\n\n'
         'Remove Candidates:\n$removeStr\n\n'
         'Add Candidates:\n$addStr\n\n'
         'Provide sculpting instructions (tool, add, remove) or return empty instructions if satisfied:';
@@ -178,7 +251,11 @@ class ShapeSculpterAgent implements PixelArtAgent {
     final userPrompt = getFormattedUserPrompt(context, []);
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
 
-    final imageBytes = generateSculptingBmp(grid);
+    final imageBytes = generateCanvasWithSculptingBmp(
+      context.currentGrid,
+      context.activePalette,
+      grid,
+    );
 
     try {
       final response = await aiService.generateContentWithContinuation(
