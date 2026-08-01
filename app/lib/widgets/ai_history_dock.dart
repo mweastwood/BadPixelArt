@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../logic/canvas_state.dart';
 import '../logic/utils/settings_provider.dart';
+import '../logic/utils/web_download.dart';
 
 Future<void> exportAiHistory(
   BuildContext context,
@@ -23,10 +24,17 @@ Future<void> exportAiHistory(
     final String jsonStr = AgentHistoryEntry.serializeList(history);
 
     if (kIsWeb) {
+      final fileName =
+          'ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
+      downloadFileWeb(jsonStr, fileName);
       await Clipboard.setData(ClipboardData(text: jsonStr));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI History copied to clipboard!')),
+          const SnackBar(
+            content: Text(
+              'AI History downloaded as JSON and copied to clipboard!',
+            ),
+          ),
         );
       }
       return;
