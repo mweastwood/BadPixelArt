@@ -8,8 +8,14 @@ String serializeGrid(List<List<int>> grid) {
 }
 
 List<List<int>> deserializeGrid(String data) {
-  final List<dynamic> list = jsonDecode(data);
-  return list.map((row) => List<int>.from(row as List)).toList();
+  try {
+    if (data.isEmpty) return [];
+    final List<dynamic> list = jsonDecode(data);
+    return list.map((row) => List<int>.from(row as List)).toList();
+  } catch (e) {
+    debugPrint('Error deserializing grid data: $e');
+    return [];
+  }
 }
 
 String serializePalette(List<Color> palette) {
@@ -20,11 +26,17 @@ String serializePalette(List<Color> palette) {
 }
 
 List<Color> deserializePalette(String data) {
-  final List<dynamic> list = jsonDecode(data);
-  return list.map((hex) {
-    final hexClean = hex.toString().replaceFirst('#', '');
-    return Color(int.parse(hexClean, radix: 16));
-  }).toList();
+  try {
+    if (data.isEmpty) return [];
+    final List<dynamic> list = jsonDecode(data);
+    return list.map((hex) {
+      final hexClean = hex.toString().replaceFirst('#', '');
+      return Color(int.parse(hexClean, radix: 16));
+    }).toList();
+  } catch (e) {
+    debugPrint('Error deserializing palette data: $e');
+    return [];
+  }
 }
 
 String serializeComponents(List<PixelArtComponent> components) {
@@ -33,11 +45,16 @@ String serializeComponents(List<PixelArtComponent> components) {
 }
 
 List<PixelArtComponent> deserializeComponents(String data) {
-  if (data.isEmpty) return [];
-  final List<dynamic> list = jsonDecode(data);
-  return list
-      .map((item) => PixelArtComponent.fromJson(item as Map<String, dynamic>))
-      .toList();
+  try {
+    if (data.isEmpty) return [];
+    final List<dynamic> list = jsonDecode(data);
+    return list
+        .map((item) => PixelArtComponent.fromJson(item as Map<String, dynamic>))
+        .toList();
+  } catch (e) {
+    debugPrint('Error deserializing components data: $e');
+    return [];
+  }
 }
 
 String serializeHistory(List<AgentHistoryEntry> history) {
@@ -46,9 +63,14 @@ String serializeHistory(List<AgentHistoryEntry> history) {
 }
 
 List<AgentHistoryEntry> deserializeHistory(String data) {
-  if (data.isEmpty) return [];
-  final List<dynamic> list = jsonDecode(data);
-  return list
-      .map((item) => AgentHistoryEntry.fromJson(item as Map<String, dynamic>))
-      .toList();
+  try {
+    if (data.isEmpty) return [];
+    final List<dynamic> list = jsonDecode(data);
+    return list
+        .map((item) => AgentHistoryEntry.fromJson(item as Map<String, dynamic>))
+        .toList();
+  } catch (e) {
+    debugPrint('Error deserializing history data: $e');
+    return [];
+  }
 }
