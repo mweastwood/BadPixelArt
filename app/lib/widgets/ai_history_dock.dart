@@ -9,6 +9,26 @@ import '../logic/canvas_state.dart';
 import '../logic/utils/settings_provider.dart';
 import '../logic/utils/web_download.dart';
 
+Future<void> copyAiHistoryToClipboard(
+  BuildContext context,
+  List<AgentHistoryEntry> history,
+) async {
+  if (history.isEmpty) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('No history to copy')));
+    return;
+  }
+
+  final String jsonStr = AgentHistoryEntry.serializeList(history);
+  await Clipboard.setData(ClipboardData(text: jsonStr));
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('AI History copied to clipboard!')),
+    );
+  }
+}
+
 Future<void> exportAiHistory(
   BuildContext context,
   List<AgentHistoryEntry> history,
@@ -27,14 +47,9 @@ Future<void> exportAiHistory(
       final fileName =
           'ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
       downloadFileWeb(jsonStr, fileName);
-      await Clipboard.setData(ClipboardData(text: jsonStr));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'AI History downloaded as JSON and copied to clipboard!',
-            ),
-          ),
+          const SnackBar(content: Text('AI History downloaded as JSON!')),
         );
       }
       return;

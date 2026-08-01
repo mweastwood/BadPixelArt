@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
@@ -200,15 +201,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                 )
               : (_tabController.index == 1
                     ? _buildFloatingActionButtons(context, ref)
-                    : FloatingActionButton(
-                        key: const ValueKey('export_logs_fab'),
-                        heroTag: 'export_logs_fab',
-                        onPressed: () => exportAiHistory(context, history),
-                        tooltip: 'Export Logs',
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        child: const Icon(Icons.file_download_outlined),
-                      )),
+                    : _buildLogsFloatingActionButtons(context, history, theme)),
         ),
         if (canvasState.showPaletteSuggestion &&
             canvasState.suggestedPalette != null)
@@ -535,6 +528,50 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
           child: const Icon(Icons.arrow_forward),
         ),
       ],
+    ],
+  );
+}
+
+Widget _buildLogsFloatingActionButtons(
+  BuildContext context,
+  List<AgentHistoryEntry> history,
+  ThemeData theme,
+) {
+  if (!kIsWeb) {
+    return FloatingActionButton(
+      key: const ValueKey('export_logs_fab'),
+      heroTag: 'export_logs_fab',
+      onPressed: () => exportAiHistory(context, history),
+      tooltip: 'Export Logs',
+      backgroundColor: theme.colorScheme.primary,
+      foregroundColor: theme.colorScheme.onPrimary,
+      child: const Icon(Icons.file_download_outlined),
+    );
+  }
+
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.end,
+    children: [
+      FloatingActionButton.small(
+        key: const ValueKey('copy_logs_fab'),
+        heroTag: 'copy_logs_fab',
+        onPressed: () => copyAiHistoryToClipboard(context, history),
+        tooltip: 'Copy Logs to Clipboard',
+        backgroundColor: theme.colorScheme.secondaryContainer,
+        foregroundColor: theme.colorScheme.onSecondaryContainer,
+        child: const Icon(Icons.content_copy),
+      ),
+      const SizedBox(height: 12),
+      FloatingActionButton(
+        key: const ValueKey('export_logs_fab'),
+        heroTag: 'export_logs_fab',
+        onPressed: () => exportAiHistory(context, history),
+        tooltip: 'Download Logs',
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+        child: const Icon(Icons.file_download_outlined),
+      ),
     ],
   );
 }
