@@ -12,8 +12,11 @@ import 'creations_screen.dart';
 import 'canvas_screen.dart';
 import 'logs_screen.dart';
 
+import '../logic/app_route_manager.dart';
+
 class PixelArtScreen extends ConsumerStatefulWidget {
-  const PixelArtScreen({super.key});
+  final Uri? mockUri;
+  const PixelArtScreen({super.key, this.mockUri});
 
   @override
   ConsumerState<PixelArtScreen> createState() => _PixelArtScreenState();
@@ -22,18 +25,26 @@ class PixelArtScreen extends ConsumerStatefulWidget {
 class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late final AppRouteManager _routeManager;
 
   @override
   void initState() {
     super.initState();
+    _routeManager = AppRouteManager(mockUri: widget.mockUri);
     _tabController = TabController(length: 3, initialIndex: 1, vsync: this);
     _tabController.addListener(_handleTabChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _routeManager.handleUrlParameters(tabController: _tabController);
+      }
+    });
   }
 
   void _handleTabChange() {
     if (!_tabController.indexIsChanging) {
       setState(() {});
     }
+    _routeManager.updateUrlPath(_tabController.index);
     if (_tabController.index != 1 && ref.read(canvasStateProvider).autoRun) {
       ref.read(canvasStateProvider.notifier).stopAutoPlay();
     }
