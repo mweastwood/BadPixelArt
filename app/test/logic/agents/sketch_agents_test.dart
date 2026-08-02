@@ -373,11 +373,11 @@ void main() {
 
         await notifier.sketchComponents();
 
-        final history = container.read(canvasStateProvider).aiHistory;
-        expect(
-          history.any((log) => log.response.contains('Satisfied with shape')),
-          isTrue,
-        );
+        final finalComp = container
+            .read(canvasStateProvider)
+            .decomposedComponents
+            .first;
+        expect(finalComp.isSculpted, isTrue);
       },
     );
 

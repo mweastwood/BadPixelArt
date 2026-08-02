@@ -226,15 +226,6 @@ class SketchOrchestrator {
         final bool hasNoInstructions =
             tool.isEmpty && rawAdd.isEmpty && rawErase.isEmpty;
         if (hasNoInstructions || isExplicitlyComplete) {
-          onLogHistory(
-            AgentHistoryEntry(
-              timestamp: DateTime.now(),
-              prompt: 'Sculpt component "${comp.name}"',
-              response:
-                  'Satisfied with shape for "${comp.name}". No further edits.',
-              isError: false,
-            ),
-          );
           break;
         }
 
