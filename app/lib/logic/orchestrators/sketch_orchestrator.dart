@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../agents/base_agent.dart';
@@ -16,8 +17,9 @@ class SketchOrchestrator {
     PixelArtAgent agent,
     AgentContext context,
     List<PixelArtStepResult> history,
-    void Function(AgentHistoryEntry) onLogHistory,
-  ) async {
+    void Function(AgentHistoryEntry) onLogHistory, {
+    Uint8List? imageBytes,
+  }) async {
     final systemPrompt = agent.getSystemInstruction(context);
     final userPrompt = agent.getFormattedUserPrompt(context, history);
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
@@ -25,6 +27,7 @@ class SketchOrchestrator {
     try {
       final response = await _aiService.generateContentWithContinuation(
         prompt: fullPrompt,
+        imageBytes: imageBytes,
         temperature: 0.2,
         autoContinueLimit: 1,
       );
@@ -133,7 +136,19 @@ class SketchOrchestrator {
         );
 
         final agent = ShapeSculpterAgent();
-        final json = await _runAgent(agent, context, history, onLogHistory);
+        final imageBytes = generateCanvasWithSculptingBmp(
+          existingGrid,
+          palette,
+          compGrid,
+        );
+
+        final json = await _runAgent(
+          agent,
+          context,
+          history,
+          onLogHistory,
+          imageBytes: imageBytes,
+        );
 
         if (json == null) break;
 
