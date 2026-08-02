@@ -190,12 +190,13 @@ void main() {
         // Run sketch
         await notifier.sketchComponents();
 
-        // Verify the component now has its own grid filled
+        // Verify the component now has its own grid filled and isSculpted is true
         final finalComp = container
             .read(canvasStateProvider)
             .decomposedComponents
             .first;
         expect(finalComp.grid, isNotNull);
+        expect(finalComp.isSculpted, isTrue);
 
         // Verify outline grid calculation
         final outline = finalComp.getOutlineGrid()!;
@@ -379,5 +380,88 @@ void main() {
         );
       },
     );
+
+    test(
+      'SketchOrchestrator passes BMP imageBytes and background spatial context, and sets isSculpted: true',
+      () async {
+        final mockResponses = [
+          '{"thought": "drawing blade", "tool": "rectangle_filled", "params": [6, 2, 9, 10]}',
+          '{"thought": "blade complete", "tool": "", "params": [], "add": [], "erase": []}',
+          '{"thought": "drawing handle", "tool": "rectangle_filled", "params": [6, 12, 9, 14]}',
+          '{"thought": "handle complete", "tool": "", "params": [], "add": [], "erase": []}',
+        ];
+
+        final mockAi = ImageCaptureMockAiService(mockResponses);
+        final orchestrator = SketchOrchestrator(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'steel blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          ),
+          PixelArtComponent(
+            name: 'handle',
+            description: 'leather handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
+          ),
+        ];
+
+        final resultComps = await orchestrator.sketch(
+          components: components,
+          gridSize: 16,
+          palette: const [Colors.black, Colors.white, Colors.red],
+          userPrompt: 'sword',
+          autoRunSpeed: 0.0,
+          onStep: (activeIndex, updated, status) {},
+          onLogHistory: (log) {},
+        );
+
+        // 1. Verify imageBytes were passed to every AI call
+        expect(mockAi.capturedImageBytes.length, greaterThanOrEqualTo(2));
+        for (final img in mockAi.capturedImageBytes) {
+          expect(img, isNotNull);
+          expect(img!.length, greaterThan(0));
+        }
+
+        // 2. Verify both components are marked as isSculpted: true
+        expect(resultComps[0].isSculpted, isTrue);
+        expect(resultComps[1].isSculpted, isTrue);
+
+        // 3. Verify spatial context was included in prompts
+        expect(
+          mockAi.capturedPrompts.any(
+            (p) => p.contains(
+              'DRAWING PLAN COMPONENTS (For spatial context & alignment)',
+            ),
+          ),
+          isTrue,
+        );
+      },
+    );
   });
+}
+
+class ImageCaptureMockAiService extends SequentialMockAiService {
+  final List<Uint8List?> capturedImageBytes = [];
+  final List<String> capturedPrompts = [];
+
+  ImageCaptureMockAiService(super.responses);
+
+  @override
+  Future<String?> generateContent({
+    required String prompt,
+    Uint8List? imageBytes,
+    double? temperature,
+    int? maxOutputTokens,
+  }) async {
+    capturedPrompts.add(prompt);
+    capturedImageBytes.add(imageBytes);
+    return super.generateContent(
+      prompt: prompt,
+      imageBytes: imageBytes,
+      temperature: temperature,
+      maxOutputTokens: maxOutputTokens,
+    );
+  }
 }

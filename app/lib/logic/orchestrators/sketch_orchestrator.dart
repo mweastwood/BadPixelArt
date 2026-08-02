@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../agents/base_agent.dart';
@@ -16,8 +17,9 @@ class SketchOrchestrator {
     PixelArtAgent agent,
     AgentContext context,
     List<PixelArtStepResult> history,
-    void Function(AgentHistoryEntry) onLogHistory,
-  ) async {
+    void Function(AgentHistoryEntry) onLogHistory, {
+    Uint8List? imageBytes,
+  }) async {
     final systemPrompt = agent.getSystemInstruction(context);
     final userPrompt = agent.getFormattedUserPrompt(context, history);
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
@@ -25,6 +27,7 @@ class SketchOrchestrator {
     try {
       final response = await _aiService.generateContentWithContinuation(
         prompt: fullPrompt,
+        imageBytes: imageBytes,
         temperature: 0.2,
         autoContinueLimit: 1,
       );
@@ -94,6 +97,26 @@ class SketchOrchestrator {
       var compGrid =
           comp.grid ?? List.generate(gridSize, (_) => List.filled(gridSize, 0));
 
+      // Build background grid of existing components for visual reference
+      final existingGrid = List.generate(
+        gridSize,
+        (_) => List.filled(gridSize, 0),
+      );
+      for (int j = 0; j < updatedComponents.length; j++) {
+        if (j == i) continue;
+        final other = updatedComponents[j];
+        if (other.grid != null) {
+          final colorIdx = (j % (palette.length - 1)) + 1;
+          for (int y = 0; y < gridSize; y++) {
+            for (int x = 0; x < gridSize; x++) {
+              if (other.grid![y][x] > 0) {
+                existingGrid[y][x] = colorIdx;
+              }
+            }
+          }
+        }
+      }
+
       final List<PixelArtStepResult> history = [];
       int step = 0;
 
@@ -108,11 +131,24 @@ class SketchOrchestrator {
           activePalette: palette,
           userPrompt: userPrompt,
           targetComponent: comp,
-          currentGrid: compGrid,
+          currentGrid: existingGrid,
+          allComponents: updatedComponents,
         );
 
         final agent = ShapeSculpterAgent();
-        final json = await _runAgent(agent, context, history, onLogHistory);
+        final imageBytes = generateCanvasWithSculptingBmp(
+          existingGrid,
+          palette,
+          compGrid,
+        );
+
+        final json = await _runAgent(
+          agent,
+          context,
+          history,
+          onLogHistory,
+          imageBytes: imageBytes,
+        );
 
         if (json == null) break;
 
@@ -182,7 +218,7 @@ class SketchOrchestrator {
           ),
         );
 
-        comp = comp.copyWith(grid: compGrid);
+        comp = comp.copyWith(grid: compGrid, isSculpted: true);
         updatedComponents[i] = comp;
         onStep(i, updatedComponents, 'Sculpting shape...');
 
