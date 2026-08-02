@@ -13,6 +13,7 @@ import 'canvas_screen.dart';
 import 'logs_screen.dart';
 
 import '../logic/app_route_manager.dart';
+import '../logic/utils/app_version.dart';
 
 class PixelArtScreen extends ConsumerStatefulWidget {
   final Uri? mockUri;
@@ -99,6 +100,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     return Stack(
       children: [
         Scaffold(
+          drawer: _buildDrawer(context, canvasState, notifier, theme),
           appBar: AppBar(
             title: Row(
               children: [
@@ -363,182 +365,268 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
       ),
     );
   }
-}
 
-Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
-  final wizardState = ref.watch(wizardStateProvider);
-  final canvasState = ref.watch(canvasStateProvider);
-  final notifier = ref.read(canvasStateProvider.notifier);
-  final theme = Theme.of(context);
+  Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
+    final wizardState = ref.watch(wizardStateProvider);
+    final canvasState = ref.watch(canvasStateProvider);
+    final notifier = ref.read(canvasStateProvider.notifier);
+    final theme = Theme.of(context);
 
-  final hasRefImage = canvasState.referenceImage != null;
-  final isAutoPlaying = canvasState.autoRun || canvasState.isPausing;
+    final hasRefImage = canvasState.referenceImage != null;
+    final isAutoPlaying = canvasState.autoRun || canvasState.isPausing;
 
-  final step = wizardState.currentStep;
-  final hasBack = step.index > 0;
-  final hasNext = step.index < 7;
+    final step = wizardState.currentStep;
+    final hasBack = step.index > 0;
+    final hasNext = step.index < 7;
 
-  VoidCallback? onNext;
-  if (!isAutoPlaying) {
-    if (step == WizardStep.selectGridSize) {
-      onNext = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.setupPrompt);
-    } else if (step == WizardStep.setupPrompt) {
-      final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
-      onNext = canGoToPalette
-          ? () => ref
-                .read(wizardStateProvider.notifier)
-                .setStep(WizardStep.selectPalette)
-          : null;
-    } else if (step == WizardStep.selectPalette) {
-      onNext = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.sketchingPlan);
-    } else if (step == WizardStep.sketchingPlan) {
-      onNext =
-          (canvasState.isGenerating || canvasState.decomposedComponents.isEmpty)
-          ? null
-          : () => ref
-                .read(wizardStateProvider.notifier)
-                .setStep(WizardStep.componentSculpting);
-    } else if (step == WizardStep.componentSculpting) {
-      onNext = canvasState.decomposedComponents.isEmpty
-          ? null
-          : () => ref
-                .read(wizardStateProvider.notifier)
-                .setStep(WizardStep.colorAndOutline);
-    } else if (step == WizardStep.colorAndOutline) {
-      onNext = canvasState.decomposedComponents.isEmpty
-          ? null
-          : () => ref
-                .read(wizardStateProvider.notifier)
-                .setStep(WizardStep.layerOrderingAndMerge);
-    } else if (step == WizardStep.layerOrderingAndMerge) {
-      onNext = () {
-        ref.read(canvasStateProvider.notifier).mergeComponentsToCanvas();
-        ref.read(wizardStateProvider.notifier).setStep(WizardStep.refinement);
-      };
+    VoidCallback? onNext;
+    if (!isAutoPlaying) {
+      if (step == WizardStep.selectGridSize) {
+        onNext = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.setupPrompt);
+      } else if (step == WizardStep.setupPrompt) {
+        final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
+        onNext = canGoToPalette
+            ? () => ref
+                  .read(wizardStateProvider.notifier)
+                  .setStep(WizardStep.selectPalette)
+            : null;
+      } else if (step == WizardStep.selectPalette) {
+        onNext = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.sketchingPlan);
+      } else if (step == WizardStep.sketchingPlan) {
+        onNext =
+            (canvasState.isGenerating ||
+                canvasState.decomposedComponents.isEmpty)
+            ? null
+            : () => ref
+                  .read(wizardStateProvider.notifier)
+                  .setStep(WizardStep.componentSculpting);
+      } else if (step == WizardStep.componentSculpting) {
+        onNext = canvasState.decomposedComponents.isEmpty
+            ? null
+            : () => ref
+                  .read(wizardStateProvider.notifier)
+                  .setStep(WizardStep.colorAndOutline);
+      } else if (step == WizardStep.colorAndOutline) {
+        onNext = canvasState.decomposedComponents.isEmpty
+            ? null
+            : () => ref
+                  .read(wizardStateProvider.notifier)
+                  .setStep(WizardStep.layerOrderingAndMerge);
+      } else if (step == WizardStep.layerOrderingAndMerge) {
+        onNext = () {
+          ref.read(canvasStateProvider.notifier).mergeComponentsToCanvas();
+          ref.read(wizardStateProvider.notifier).setStep(WizardStep.refinement);
+        };
+      }
     }
-  }
 
-  VoidCallback? onBack;
-  if (!isAutoPlaying) {
-    if (step == WizardStep.setupPrompt) {
-      onBack = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.selectGridSize);
-    } else if (step == WizardStep.selectPalette) {
-      onBack = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.setupPrompt);
-    } else if (step == WizardStep.sketchingPlan) {
-      onBack = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.selectPalette);
-    } else if (step == WizardStep.componentSculpting) {
-      onBack = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.sketchingPlan);
-    } else if (step == WizardStep.colorAndOutline) {
-      onBack = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.componentSculpting);
-    } else if (step == WizardStep.layerOrderingAndMerge) {
-      onBack = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.colorAndOutline);
-    } else if (step == WizardStep.refinement) {
-      onBack = () => ref
-          .read(wizardStateProvider.notifier)
-          .setStep(WizardStep.layerOrderingAndMerge);
+    VoidCallback? onBack;
+    if (!isAutoPlaying) {
+      if (step == WizardStep.setupPrompt) {
+        onBack = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.selectGridSize);
+      } else if (step == WizardStep.selectPalette) {
+        onBack = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.setupPrompt);
+      } else if (step == WizardStep.sketchingPlan) {
+        onBack = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.selectPalette);
+      } else if (step == WizardStep.componentSculpting) {
+        onBack = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.sketchingPlan);
+      } else if (step == WizardStep.colorAndOutline) {
+        onBack = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.componentSculpting);
+      } else if (step == WizardStep.layerOrderingAndMerge) {
+        onBack = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.colorAndOutline);
+      } else if (step == WizardStep.refinement) {
+        onBack = () => ref
+            .read(wizardStateProvider.notifier)
+            .setStep(WizardStep.layerOrderingAndMerge);
+      }
     }
-  }
 
-  return Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      if (hasBack) ...[
-        FloatingActionButton(
-          key: const ValueKey('wizard_back_fab'),
-          heroTag: 'wizard_back_fab',
-          onPressed: onBack,
-          tooltip: 'Back',
-          backgroundColor: onBack != null
-              ? theme.colorScheme.surfaceContainerHigh
-              : Color.alphaBlend(
-                  theme.colorScheme.onSurface.withValues(alpha: 0.12),
-                  theme.colorScheme.surface,
-                ),
-          foregroundColor: onBack != null
-              ? theme.colorScheme.onSurface
-              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
-          elevation: onBack != null ? 6.0 : 0.0,
-          child: const Icon(Icons.arrow_back),
-        ),
-        const SizedBox(width: 12),
-      ],
-      if (isAutoPlaying)
-        FloatingActionButton(
-          key: const ValueKey('auto_play_fab'),
-          heroTag: 'auto_play_fab',
-          onPressed: () => notifier.stopAutoPlay(),
-          tooltip: canvasState.isPausing
-              ? 'Pausing after current AI step...'
-              : 'Pause Auto-Play',
-          backgroundColor: Colors.orange,
-          foregroundColor: Colors.white,
-          child: canvasState.isPausing
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasBack) ...[
+          FloatingActionButton(
+            key: const ValueKey('wizard_back_fab'),
+            heroTag: 'wizard_back_fab',
+            onPressed: onBack,
+            tooltip: 'Back',
+            backgroundColor: onBack != null
+                ? theme.colorScheme.surfaceContainerHigh
+                : Color.alphaBlend(
+                    theme.colorScheme.onSurface.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
                   ),
-                )
-              : const Icon(Icons.pause),
-        )
-      else
-        FloatingActionButton(
-          key: const ValueKey('auto_play_fab'),
-          heroTag: 'auto_play_fab',
-          onPressed: hasRefImage ? () => notifier.startAutoPlay(ref) : null,
-          tooltip: hasRefImage
-              ? 'Start Auto-Play Wizard'
-              : 'Upload reference image to enable Auto-Play',
-          backgroundColor: hasRefImage
-              ? theme.colorScheme.tertiary
-              : theme.colorScheme.surfaceContainerHigh,
-          foregroundColor: hasRefImage
-              ? theme.colorScheme.onTertiary
-              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
-          elevation: hasRefImage ? 6.0 : 0.0,
-          child: const Icon(Icons.play_arrow),
-        ),
-      if (hasNext) ...[
-        const SizedBox(width: 12),
-        FloatingActionButton(
-          key: const ValueKey('wizard_next_fab'),
-          heroTag: 'wizard_next_fab',
-          onPressed: onNext,
-          tooltip: 'Next',
-          backgroundColor: onNext != null
-              ? theme.colorScheme.primary
-              : Color.alphaBlend(
-                  theme.colorScheme.onSurface.withValues(alpha: 0.12),
-                  theme.colorScheme.surface,
-                ),
-          foregroundColor: onNext != null
-              ? theme.colorScheme.onPrimary
-              : theme.colorScheme.onSurface.withValues(alpha: 0.38),
-          elevation: onNext != null ? 6.0 : 0.0,
-          highlightElevation: onNext != null ? 12.0 : 0.0,
-          child: const Icon(Icons.arrow_forward),
-        ),
+            foregroundColor: onBack != null
+                ? theme.colorScheme.onSurface
+                : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            elevation: onBack != null ? 6.0 : 0.0,
+            child: const Icon(Icons.arrow_back),
+          ),
+          const SizedBox(width: 12),
+        ],
+        if (isAutoPlaying)
+          FloatingActionButton(
+            key: const ValueKey('auto_play_fab'),
+            heroTag: 'auto_play_fab',
+            onPressed: () => notifier.stopAutoPlay(),
+            tooltip: canvasState.isPausing
+                ? 'Pausing after current AI step...'
+                : 'Pause Auto-Play',
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.white,
+            child: canvasState.isPausing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.pause),
+          )
+        else
+          FloatingActionButton(
+            key: const ValueKey('auto_play_fab'),
+            heroTag: 'auto_play_fab',
+            onPressed: hasRefImage ? () => notifier.startAutoPlay(ref) : null,
+            tooltip: hasRefImage
+                ? 'Start Auto-Play Wizard'
+                : 'Upload reference image to enable Auto-Play',
+            backgroundColor: hasRefImage
+                ? theme.colorScheme.tertiary
+                : theme.colorScheme.surfaceContainerHigh,
+            foregroundColor: hasRefImage
+                ? theme.colorScheme.onTertiary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            elevation: hasRefImage ? 6.0 : 0.0,
+            child: const Icon(Icons.play_arrow),
+          ),
+        if (hasNext) ...[
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            key: const ValueKey('wizard_next_fab'),
+            heroTag: 'wizard_next_fab',
+            onPressed: onNext,
+            tooltip: 'Next',
+            backgroundColor: onNext != null
+                ? theme.colorScheme.primary
+                : Color.alphaBlend(
+                    theme.colorScheme.onSurface.withValues(alpha: 0.12),
+                    theme.colorScheme.surface,
+                  ),
+            foregroundColor: onNext != null
+                ? theme.colorScheme.onPrimary
+                : theme.colorScheme.onSurface.withValues(alpha: 0.38),
+            elevation: onNext != null ? 6.0 : 0.0,
+            highlightElevation: onNext != null ? 12.0 : 0.0,
+            child: const Icon(Icons.arrow_forward),
+          ),
+        ],
       ],
-    ],
-  );
+    );
+  }
+
+  Widget _buildDrawer(
+    BuildContext context,
+    CanvasModel canvasState,
+    CanvasNotifier notifier,
+    ThemeData theme,
+  ) {
+    return Drawer(
+      key: const ValueKey('app_hamburger_drawer'),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          DrawerHeader(
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Text(
+                'Menu',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
+          ),
+          ListTile(
+            key: const ValueKey('drawer_creations_tile'),
+            leading: const Icon(Icons.collections_outlined),
+            title: const Text('Creations Gallery'),
+            onTap: () {
+              Navigator.pop(context);
+              _tabController.animateTo(0);
+            },
+          ),
+          ListTile(
+            key: const ValueKey('drawer_canvas_tile'),
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Canvas Studio'),
+            onTap: () {
+              Navigator.pop(context);
+              _tabController.animateTo(1);
+            },
+          ),
+          ListTile(
+            key: const ValueKey('drawer_logs_tile'),
+            leading: const Icon(Icons.chat_bubble_outline),
+            title: const Text('Conversation Logs'),
+            onTap: () {
+              Navigator.pop(context);
+              _tabController.animateTo(2);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            key: const ValueKey('drawer_model_options_tile'),
+            leading: const Icon(Icons.settings),
+            title: const Text('Model Options'),
+            onTap: () {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => ModelOptionsDialog(
+                  currentReleaseStage: canvasState.modelReleaseStage,
+                  currentPreference: canvasState.modelPreference,
+                  onChanged: (stage, preference) {
+                    notifier.setModelConfig(stage, preference);
+                  },
+                ),
+              );
+            },
+          ),
+          const Divider(),
+          ListTile(
+            key: const ValueKey('drawer_version_tile'),
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Version'),
+            trailing: Text(
+              AppVersion.display,
+              style: TextStyle(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 Widget _buildLogsFloatingActionButtons(
