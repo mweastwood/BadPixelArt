@@ -374,8 +374,6 @@ Widget? _buildFloatingActionButtons(BuildContext context, WidgetRef ref) {
   final notifier = ref.read(canvasStateProvider.notifier);
   final theme = Theme.of(context);
 
-  if (canvasState.isSuggestingPalette) return null;
-
   final hasRefImage = canvasState.referenceImage != null;
   final isAutoPlaying = canvasState.autoRun || canvasState.isPausing;
 
