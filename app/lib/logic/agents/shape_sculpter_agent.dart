@@ -223,10 +223,52 @@ class ShapeSculpterAgent implements PixelArtAgent {
     final removeStr = formatCompactCoords(removeList);
     final addStr = formatCompactCoords(addList);
 
+    final StringBuffer otherCompsBuffer = StringBuffer();
+    if (context.allComponents != null && context.allComponents!.isNotEmpty) {
+      otherCompsBuffer.writeln(
+        'DRAWING PLAN COMPONENTS (For spatial context & alignment):',
+      );
+      for (final other in context.allComponents!) {
+        final isCurrent = other.name == comp.name;
+        final oMinX = (other.relativeBoundingBox.left * gridSize).round().clamp(
+          0,
+          gridSize - 1,
+        );
+        final oMaxX =
+            (((other.relativeBoundingBox.left +
+                                other.relativeBoundingBox.width) *
+                            gridSize)
+                        .round() -
+                    1)
+                .clamp(0, gridSize - 1);
+        final oMinY = (other.relativeBoundingBox.top * gridSize).round().clamp(
+          0,
+          gridSize - 1,
+        );
+        final oMaxY =
+            (((other.relativeBoundingBox.top +
+                                other.relativeBoundingBox.height) *
+                            gridSize)
+                        .round() -
+                    1)
+                .clamp(0, gridSize - 1);
+        final statusStr = isCurrent
+            ? '[TARGET COMPONENT]'
+            : (other.isSculpted ? '[Already Sculpted]' : '[Planned]');
+        otherCompsBuffer.writeln(
+          '- "${other.name}" ($statusStr): X: $oMinX..$oMaxX, Y: $oMinY..$oMaxY | "${other.description}"',
+        );
+      }
+      otherCompsBuffer.writeln(
+        'NOTE: The attached image canvas displays all previously sculpted components in color, with your target component overlayed in black. Sculpt your shape so it aligns seamlessly with surrounding components.',
+      );
+    }
+
     return 'Sculpt the component "${comp.name}" (Description: "${comp.description}").\n\n'
         'TARGET COMPONENT BOUNDING BOX (Allowed drawing bounds on ${gridSize}x$gridSize grid):\n'
         'X range: $minX to $maxX | Y range: $minY to $maxY\n'
         '(MUST place shape tool parameters and pixel additions strictly within this X and Y range!)\n\n'
+        '${otherCompsBuffer.isNotEmpty ? '$otherCompsBuffer\n' : ''}'
         'CANDIDATES EXPLANATION:\n'
         '- Remove Candidates: Outer edge pixels of your current shape that can be erased to trim or reshape your component.\n'
         '- Add Candidates: Empty pixels directly touching your current shape that can be added to expand or curve your component.\n'

@@ -190,12 +190,13 @@ void main() {
         // Run sketch
         await notifier.sketchComponents();
 
-        // Verify the component now has its own grid filled
+        // Verify the component now has its own grid filled and isSculpted is true
         final finalComp = container
             .read(canvasStateProvider)
             .decomposedComponents
             .first;
         expect(finalComp.grid, isNotNull);
+        expect(finalComp.isSculpted, isTrue);
 
         // Verify outline grid calculation
         final outline = finalComp.getOutlineGrid()!;

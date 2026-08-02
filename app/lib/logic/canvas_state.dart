@@ -878,15 +878,35 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
       comp = comp.initializeDefaultGrid(state.gridSize);
 
+      // Build background grid of existing components for visual reference
+      final existingGrid = List.generate(
+        state.gridSize,
+        (_) => List.filled(state.gridSize, 0),
+      );
+      for (int j = 0; j < updatedComponents.length; j++) {
+        if (j == index) continue;
+        final other = updatedComponents[j];
+        if (other.grid != null) {
+          final colorIdx = (j % (state.palette.length - 1)) + 1;
+          for (int y = 0; y < state.gridSize; y++) {
+            for (int x = 0; x < state.gridSize; x++) {
+              if (other.grid![y][x] > 0) {
+                existingGrid[y][x] = colorIdx;
+              }
+            }
+          }
+        }
+      }
+
       final agent = ShapeSculpterAgent();
       final context = AgentContext(
         gridSize: state.gridSize,
         activePalette: state.palette,
         userPrompt: state.userPrompt,
         targetComponent: comp,
-        currentGrid: state.grid,
+        currentGrid: existingGrid,
         referenceImage: state.referenceImage,
-        allComponents: state.decomposedComponents,
+        allComponents: updatedComponents,
       );
 
       final newGrid = await agent.sculptComponent(_aiService, context);
@@ -928,13 +948,33 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
         comp = comp.initializeDefaultGrid(state.gridSize);
 
+        // Build background grid of existing components for visual reference
+        final existingGrid = List.generate(
+          state.gridSize,
+          (_) => List.filled(state.gridSize, 0),
+        );
+        for (int j = 0; j < updatedComponents.length; j++) {
+          if (j == i) continue;
+          final other = updatedComponents[j];
+          if (other.grid != null) {
+            final colorIdx = (j % (state.palette.length - 1)) + 1;
+            for (int y = 0; y < state.gridSize; y++) {
+              for (int x = 0; x < state.gridSize; x++) {
+                if (other.grid![y][x] > 0) {
+                  existingGrid[y][x] = colorIdx;
+                }
+              }
+            }
+          }
+        }
+
         final context = AgentContext(
           gridSize: state.gridSize,
           activePalette: state.palette,
           userPrompt: state.userPrompt,
           targetComponent: comp,
-          currentGrid: state.grid,
-          allComponents: state.decomposedComponents,
+          currentGrid: existingGrid,
+          allComponents: updatedComponents,
         );
 
         final newGrid = await agent.sculptComponent(_aiService, context);

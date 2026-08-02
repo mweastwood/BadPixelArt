@@ -94,6 +94,26 @@ class SketchOrchestrator {
       var compGrid =
           comp.grid ?? List.generate(gridSize, (_) => List.filled(gridSize, 0));
 
+      // Build background grid of existing components for visual reference
+      final existingGrid = List.generate(
+        gridSize,
+        (_) => List.filled(gridSize, 0),
+      );
+      for (int j = 0; j < updatedComponents.length; j++) {
+        if (j == i) continue;
+        final other = updatedComponents[j];
+        if (other.grid != null) {
+          final colorIdx = (j % (palette.length - 1)) + 1;
+          for (int y = 0; y < gridSize; y++) {
+            for (int x = 0; x < gridSize; x++) {
+              if (other.grid![y][x] > 0) {
+                existingGrid[y][x] = colorIdx;
+              }
+            }
+          }
+        }
+      }
+
       final List<PixelArtStepResult> history = [];
       int step = 0;
 
@@ -108,7 +128,8 @@ class SketchOrchestrator {
           activePalette: palette,
           userPrompt: userPrompt,
           targetComponent: comp,
-          currentGrid: compGrid,
+          currentGrid: existingGrid,
+          allComponents: updatedComponents,
         );
 
         final agent = ShapeSculpterAgent();
@@ -182,7 +203,7 @@ class SketchOrchestrator {
           ),
         );
 
-        comp = comp.copyWith(grid: compGrid);
+        comp = comp.copyWith(grid: compGrid, isSculpted: true);
         updatedComponents[i] = comp;
         onStep(i, updatedComponents, 'Sculpting shape...');
 
