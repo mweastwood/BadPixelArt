@@ -376,7 +376,7 @@ void main() {
     );
 
     testWidgets(
-      'renders completion checkmark badge when component grid is non-null',
+      'renders single checkmark badge when component is fully sculpted and pending icon when un-sculpted/paused',
       (tester) async {
         final mockNotifier = CanvasNotifier(TestMockAiService());
         final grid = List.generate(16, (_) => List.filled(16, 1));
@@ -386,6 +386,14 @@ void main() {
             description: 'vertical blade',
             relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
             grid: grid,
+            isSculpted: true,
+          ),
+          PixelArtComponent(
+            name: 'hilt',
+            description: 'wooden handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+            grid: grid,
+            isSculpted: false, // Paused / pending
           ),
         ];
         mockNotifier.state = mockNotifier.state.copyWith(
@@ -404,8 +412,10 @@ void main() {
           ),
         );
 
-        // Checkmark badge icon should be visible next to title and on thumbnail
-        expect(find.byIcon(Icons.check_circle_rounded), findsNWidgets(2));
+        // Should find exactly 1 checkmark icon for fully sculpted blade (on thumbnail only, not duplicated)
+        expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+        // Should find 1 pending icon for paused/un-sculpted hilt grid
+        expect(find.byIcon(Icons.pending_rounded), findsOneWidget);
       },
     );
 
@@ -420,12 +430,14 @@ void main() {
             description: 'vertical blade',
             relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
             grid: grid,
+            isSculpted: true,
           ),
           PixelArtComponent(
             name: 'hilt',
             description: 'wooden handle',
             relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
             grid: grid,
+            isSculpted: true,
           ),
         ];
         mockNotifier.state = mockNotifier.state.copyWith(

@@ -50,6 +50,7 @@ class PixelArtComponent {
   shapes; // Fundamental geometric shapes composing this component
   final Color? fillColor;
   final Color? outlineColor;
+  final bool isSculpted;
 
   PixelArtComponent({
     required this.name,
@@ -59,6 +60,7 @@ class PixelArtComponent {
     this.shapes = const [],
     this.fillColor,
     this.outlineColor,
+    this.isSculpted = false,
   });
 
   static Color getColor(int index) {
@@ -135,6 +137,7 @@ class PixelArtComponent {
     List<FundamentalShape>? shapes,
     Color? Function()? fillColor,
     Color? Function()? outlineColor,
+    bool? isSculpted,
   }) {
     return PixelArtComponent(
       name: name ?? this.name,
@@ -144,6 +147,7 @@ class PixelArtComponent {
       shapes: shapes ?? this.shapes,
       fillColor: fillColor != null ? fillColor() : this.fillColor,
       outlineColor: outlineColor != null ? outlineColor() : this.outlineColor,
+      isSculpted: isSculpted ?? this.isSculpted,
     );
   }
 
@@ -161,6 +165,7 @@ class PixelArtComponent {
       'shapes': shapes.map((s) => s.toJson()).toList(),
       if (fillColor != null) 'fillColor': fillColor!.toARGB32(),
       if (outlineColor != null) 'outlineColor': outlineColor!.toARGB32(),
+      'isSculpted': isSculpted,
     };
   }
 
@@ -177,6 +182,7 @@ class PixelArtComponent {
         .toList();
     final fillColorRaw = json['fillColor'] as int?;
     final outlineColorRaw = json['outlineColor'] as int?;
+    final isSculptedRaw = json['isSculpted'] as bool?;
 
     return PixelArtComponent(
       name: json['name'] as String,
@@ -191,6 +197,7 @@ class PixelArtComponent {
       shapes: parsedShapes,
       fillColor: fillColorRaw != null ? Color(fillColorRaw) : null,
       outlineColor: outlineColorRaw != null ? Color(outlineColorRaw) : null,
+      isSculpted: isSculptedRaw ?? (parsedGrid != null),
     );
   }
 }
