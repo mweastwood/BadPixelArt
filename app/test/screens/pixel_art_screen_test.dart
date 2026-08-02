@@ -432,33 +432,36 @@ void main() {
       },
     );
 
-    testWidgets(
-      'navigating away from Canvas tab automatically stops auto-play',
-      (tester) async {
-        final mockAi = MockAiService();
-        final notifier = CanvasNotifier(mockAi);
-        notifier.state = notifier.state.copyWith(
-          referenceImage: Uint8List.fromList([1, 2, 3]),
-          autoRun: true,
-        );
+    testWidgets('navigating away from Canvas tab keeps auto-play running', (
+      tester,
+    ) async {
+      final mockAi = MockAiService();
+      final notifier = CanvasNotifier(mockAi);
+      notifier.state = notifier.state.copyWith(
+        referenceImage: Uint8List.fromList([1, 2, 3]),
+        autoRun: true,
+      );
 
-        await tester.pumpWidget(
-          buildTestableWidget(
-            child: const PixelArtScreen(),
-            overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
-          ),
-        );
-        await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        buildTestableWidget(
+          child: const PixelArtScreen(),
+          overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        expect(notifier.state.autoRun, isTrue);
+      expect(notifier.state.autoRun, isTrue);
 
-        // Switch to Creations tab
-        await tester.tap(find.text('Creations'));
-        await tester.pumpAndSettle();
+      // Switch to Creations tab
+      await tester.tap(find.text('Creations'));
+      await tester.pumpAndSettle();
 
-        expect(notifier.state.autoRun, isFalse);
-      },
-    );
+      // Auto-play should remain active
+      expect(notifier.state.autoRun, isTrue);
+
+      // Clean up before finishing test
+      notifier.stopAutoPlay();
+    });
 
     testGoldens('PixelArtScreen Auto-Play active banner golden render', (
       tester,

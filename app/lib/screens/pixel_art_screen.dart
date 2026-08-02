@@ -45,9 +45,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
       setState(() {});
     }
     _routeManager.updateUrlPath(_tabController.index);
-    if (_tabController.index != 1 && ref.read(canvasStateProvider).autoRun) {
-      ref.read(canvasStateProvider.notifier).stopAutoPlay();
-    }
   }
 
   @override

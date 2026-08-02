@@ -139,19 +139,11 @@ class ShapeDecompositionList extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(4),
                                 color: theme.colorScheme.surface,
                               ),
-                              child: isThisDecomposing
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(10.0),
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.grid_on_outlined,
-                                      size: 20,
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                    ),
+                              child: Icon(
+                                Icons.grid_on_outlined,
+                                size: 20,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
                             ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -217,20 +209,12 @@ class ShapeDecompositionList extends ConsumerWidget {
                             ),
                           // Sculpt/Refine Button
                           IconButton(
-                            icon: isThisDecomposing
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Icon(
-                                    comp.grid == null
-                                        ? Icons.brush_outlined
-                                        : Icons.auto_awesome_outlined,
-                                    size: 20,
-                                  ),
+                            icon: Icon(
+                              comp.grid == null
+                                  ? Icons.brush_outlined
+                                  : Icons.auto_awesome_outlined,
+                              size: 20,
+                            ),
                             tooltip: comp.grid == null
                                 ? 'Initialize & Sculpt'
                                 : 'Refine Border (Sculpt)',

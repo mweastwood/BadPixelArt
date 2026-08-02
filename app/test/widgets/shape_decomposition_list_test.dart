@@ -216,7 +216,7 @@ void main() {
         );
 
         final spinnerFinder = find.byType(CircularProgressIndicator);
-        expect(spinnerFinder, findsWidgets);
+        expect(spinnerFinder, findsOneWidget);
 
         final bladeRow = find.ancestor(
           of: find.text('BLADE'),
@@ -239,13 +239,13 @@ void main() {
             of: hiltRow,
             matching: find.byType(CircularProgressIndicator),
           ),
-          findsWidgets,
+          findsOneWidget,
         );
       },
     );
 
     testWidgets(
-      'renders sculptingStatus text and spinner when component is being sculpted',
+      'renders sculptingStatus text and single spinner when component is being sculpted',
       (tester) async {
         final container = ProviderContainer();
         final components = [
@@ -274,7 +274,7 @@ void main() {
         );
 
         expect(find.text('Painting shape...'), findsOneWidget);
-        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
       },
     );
 
