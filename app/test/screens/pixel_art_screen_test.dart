@@ -514,5 +514,33 @@ void main() {
       );
       notifier.stopAutoPlay();
     });
+
+    testWidgets('opens hamburger drawer and displays version info', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(child: const PixelArtScreen()),
+      );
+      await tester.pump();
+
+      // Open drawer using hamburger button
+      final drawerButton = find.byTooltip('Open navigation menu');
+      expect(drawerButton, findsOneWidget);
+      await tester.tap(drawerButton);
+      await tester.pumpAndSettle();
+
+      // Verify drawer header and tiles
+      expect(
+        find.byKey(const ValueKey('app_hamburger_drawer')),
+        findsOneWidget,
+      );
+      expect(find.text('Bad Pixel Art'), findsNWidgets(2));
+      expect(find.text('Creations Gallery'), findsOneWidget);
+      expect(find.text('Canvas Studio'), findsOneWidget);
+      expect(find.text('Conversation Logs'), findsOneWidget);
+      expect(find.text('Model Options'), findsOneWidget);
+      expect(find.text('Version'), findsOneWidget);
+      expect(find.text('v0.0.0-dev'), findsOneWidget);
+    });
   });
 }

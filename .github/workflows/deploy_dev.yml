@@ -85,7 +85,7 @@ jobs:
           node-version: 20
 
       - name: Build Web App
-        run: flutter build web --release --target lib/main_dev.dart
+        run: flutter build web --release --target lib/main_dev.dart --dart-define=APP_VERSION=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "v0.0.0-dev") --dart-define=GIT_HASH=${{ github.sha }}
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -178,7 +178,7 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/release.keystore
 
       - name: Build Android APK
-        run: flutter build apk --release --flavor dev --target lib/main_dev.dart
+        run: flutter build apk --release --flavor dev --target lib/main_dev.dart --dart-define=APP_VERSION=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || echo "v0.0.0-dev") --dart-define=GIT_HASH=${{ github.sha }}
         env:
           ANDROID_KEYSTORE_PATH: "release.keystore"
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
