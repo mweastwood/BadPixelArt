@@ -91,7 +91,7 @@ void main() {
       // Left = 0.4375, Top = 0.0625, Width = 0.125, Height = 0.625
       expect(
         result.components[0].relativeBoundingBox,
-        equals(const Rect.fromLTWH(0.4375, 0.0625, 0.125, 0.625)),
+        equals(const Rect.fromLTWH(0.4375, 0.0, 0.125, 0.75)),
       );
 
       expect(result.components[1].name, equals('hilt'));
@@ -162,17 +162,10 @@ void main() {
 
         expect(result.components, hasLength(1));
 
-        // Expected math:
-        // Single box: centroid = (0.15, 0.15), width = 0.1, height = 0.1
-        // CoM = (0.15, 0.15)
-        // sMax = 10.0 -> scale = 9.0 -> newWidth = 0.9
-        // newLeft = 0.5 + 9.0 * (0.1 - 0.15) = 0.05
-        // Snapped (gridSize = 16):
-        // Left = (0.05 * 16).round()/16 = 1/16 = 0.0625
-        // Width = ((0.95 * 16).round() - 1)/16 = 14/16 = 0.875
+        // Rescaled to 100% full canvas: 0.0..1.0
         expect(
           result.components[0].relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.0625, 0.0625, 0.875, 0.875)),
+          equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0)),
         );
       },
     );
@@ -201,20 +194,10 @@ void main() {
 
         expect(result.components, hasLength(2));
 
-        // Math verification:
-        // totalArea = 0.04 + 0.01 = 0.05
-        // CoM = (0.27, 0.27)
-        // Limits on S: Box 2 Right limit: S <= 0.5 / (0.6 - 0.27) = 1.51515
-        // scale = 1.363636
-        // Box 1 new Left: 0.5 + 1.363636 * (0.1 - 0.27) = 0.26818
-        // Box 1 new Width: 0.2 * 1.363636 = 0.272727
-        // Snap Box 1 to gridSize = 16:
-        // X1 = (0.26818 * 16).round() = 4 -> 0.25
-        // X2 = (0.5409 * 16).round() = 9 -> 0.5625
-        // Width = 0.3125
+        // Rescaled to 100% full canvas:
         expect(
           result.components[0].relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.25, 0.25, 0.3125, 0.3125)),
+          equals(const Rect.fromLTWH(0.0, 0.0, 0.375, 0.375)),
         );
       },
     );

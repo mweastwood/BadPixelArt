@@ -117,6 +117,60 @@ void main() {
       },
     );
 
+    testWidgets(
+      'displays pixel coordinates and removes component when delete button is pressed',
+      (tester) async {
+        final container = ProviderContainer();
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 0.5, 1.0),
+          ),
+          PixelArtComponent(
+            name: 'hilt',
+            description: 'wooden handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.5, 0.0, 0.5, 0.5),
+          ),
+        ];
+        container.read(canvasStateProvider.notifier).state = container
+            .read(canvasStateProvider)
+            .copyWith(
+              decomposedComponents: components,
+              activeComponentIndex: 0,
+              gridSize: 16,
+            );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(body: SemanticComponentsList()),
+            ),
+          ),
+        );
+
+        // Verify pixel coordinates are displayed (e.g. X: 0..8, Y: 0..16)
+        expect(find.text('[X: 0..8, Y: 0..16]'), findsOneWidget);
+        expect(find.text('[X: 8..16, Y: 0..8]'), findsOneWidget);
+
+        // Verify 2 delete icon buttons
+        final deleteButtons = find.byTooltip('Delete Component');
+        expect(deleteButtons, findsNWidgets(2));
+
+        // Delete first component ('blade')
+        await tester.tap(deleteButtons.first);
+        await tester.pumpAndSettle();
+
+        // Verify 'BLADE' was deleted and only 'HILT' remains
+        final remaining = container
+            .read(canvasStateProvider)
+            .decomposedComponents;
+        expect(remaining.length, equals(1));
+        expect(remaining.first.name, equals('hilt'));
+      },
+    );
+
     testGoldens('DecompositionOptionsDialog renders correctly', (tester) async {
       final option = [
         PixelArtComponent(

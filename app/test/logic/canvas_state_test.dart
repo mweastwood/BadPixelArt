@@ -374,7 +374,7 @@ void main() {
         // After scaling and centering relative to the center of mass
         expect(
           model.decomposedComponents.first.relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.375, 0.0625, 0.25, 0.875)),
+          equals(const Rect.fromLTWH(0.3125, 0.0, 0.375, 1.0)),
         );
       },
     );
