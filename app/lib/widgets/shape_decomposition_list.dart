@@ -110,9 +110,18 @@ class ShapeDecompositionList extends ConsumerWidget {
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
-                                        Icons.check_circle_rounded,
+                                        comp.isSculpted
+                                            ? Icons.check_circle_rounded
+                                            : Icons.pending_rounded,
+                                        key: ValueKey(
+                                          comp.isSculpted
+                                              ? 'sculpted_check_icon_$index'
+                                              : 'sculpted_pending_icon_$index',
+                                        ),
                                         size: 14,
-                                        color: theme.colorScheme.primary,
+                                        color: comp.isSculpted
+                                            ? theme.colorScheme.primary
+                                            : Colors.amber,
                                       ),
                                     ),
                                   ),
@@ -149,30 +158,14 @@ class ShapeDecompositionList extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    Text(
-                                      comp.name.toUpperCase(),
-                                      style: theme.textTheme.bodyMedium
-                                          ?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: isActive
-                                                ? theme
-                                                      .colorScheme
-                                                      .onPrimaryContainer
-                                                : theme.colorScheme.onSurface,
-                                          ),
-                                    ),
-                                    if (comp.grid != null &&
-                                        !isThisDecomposing) ...[
-                                      const SizedBox(width: 6),
-                                      Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 16,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                    ],
-                                  ],
+                                Text(
+                                  comp.name.toUpperCase(),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive
+                                        ? theme.colorScheme.onPrimaryContainer
+                                        : theme.colorScheme.onSurface,
+                                  ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(

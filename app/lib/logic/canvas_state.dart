@@ -819,7 +819,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void resetComponentGrid(int index) {
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
-      updated[index] = updated[index].copyWith(grid: null);
+      updated[index] = updated[index].copyWith(grid: null, isSculpted: false);
       state = state.copyWith(decomposedComponents: updated);
     }
   }
@@ -834,7 +834,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           comp.grid!.map((row) => List<int>.from(row)),
         );
         newGrid[y][x] = value;
-        updated[compIndex] = comp.copyWith(grid: newGrid);
+        updated[compIndex] = comp.copyWith(grid: newGrid, isSculpted: true);
         state = state.copyWith(decomposedComponents: updated);
       }
     }
@@ -873,7 +873,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
 
       final newGrid = await agent.sculptComponent(_aiService, context);
-      updatedComponents[index] = comp.copyWith(grid: newGrid);
+      updatedComponents[index] = comp.copyWith(grid: newGrid, isSculpted: true);
 
       state = state.copyWith(
         decomposedComponents: updatedComponents,
@@ -921,7 +921,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         );
 
         final newGrid = await agent.sculptComponent(_aiService, context);
-        updatedComponents[i] = comp.copyWith(grid: newGrid);
+        updatedComponents[i] = comp.copyWith(grid: newGrid, isSculpted: true);
 
         state = state.copyWith(
           decomposedComponents: List.from(updatedComponents),
