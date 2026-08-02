@@ -463,5 +463,53 @@ void main() {
         await screenMatchesGolden(tester, 'shape_decomposition_list_completed');
       },
     );
+
+    testGoldens(
+      'ShapeDecompositionList renders pending status badge golden when sculpting is paused or unfinished',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final grid = List.generate(16, (_) => List.filled(16, 1));
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'vertical blade',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+            grid: grid,
+            isSculpted: true, // Completed
+          ),
+          PixelArtComponent(
+            name: 'hilt',
+            description: 'wooden handle',
+            relativeBoundingBox: const Rect.fromLTWH(0.45, 0.7, 0.1, 0.2),
+            grid: grid,
+            isSculpted: false, // Paused / pending
+          ),
+        ];
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: components,
+          userPrompt: 'sword',
+          referenceImage: Uint8List.fromList([0, 0, 0, 0]),
+        );
+
+        final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.0)
+          ..addScenario(
+            'Pending & Sculpted Status Badges',
+            const ShapeDecompositionList(),
+          );
+
+        await tester.pumpWidgetBuilder(
+          builder.build(),
+          wrapper: testMaterialAppWrapper(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+            ],
+          ),
+        );
+        await screenMatchesGolden(
+          tester,
+          'shape_decomposition_list_pending_status',
+        );
+      },
+    );
   });
 }
