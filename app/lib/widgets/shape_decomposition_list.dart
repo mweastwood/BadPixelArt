@@ -238,6 +238,14 @@ class ShapeDecompositionList extends ConsumerWidget {
                                 ? null
                                 : () => notifier.sculptComponent(index),
                           ),
+                          // Delete Component Button
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            tooltip: 'Delete Component',
+                            onPressed: canvasModel.isGenerating
+                                ? null
+                                : () => notifier.deleteComponent(index),
+                          ),
                         ],
                       ),
                     ),

@@ -110,11 +110,34 @@ class SemanticComponentsList extends ConsumerWidget {
                   final comp = components[index];
                   final isActive = index == activeIndex;
 
+                  final gridSize = canvasModel.gridSize;
+                  final minX = (comp.relativeBoundingBox.left * gridSize)
+                      .round()
+                      .clamp(0, gridSize - 1);
+                  final minY = (comp.relativeBoundingBox.top * gridSize)
+                      .round()
+                      .clamp(0, gridSize - 1);
+                  final maxX =
+                      ((comp.relativeBoundingBox.left +
+                                  comp.relativeBoundingBox.width) *
+                              gridSize)
+                          .round()
+                          .clamp(1, gridSize);
+                  final maxY =
+                      ((comp.relativeBoundingBox.top +
+                                  comp.relativeBoundingBox.height) *
+                              gridSize)
+                          .round()
+                          .clamp(1, gridSize);
+
                   return InkWell(
                     onTap: () => notifier.selectComponent(index),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: isActive
                             ? theme.colorScheme.primaryContainer.withValues(
@@ -164,7 +187,7 @@ class SemanticComponentsList extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          // Bounding Box summary
+                          // Bounding Box summary in Pixel Coordinates
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
@@ -176,13 +199,21 @@ class SemanticComponentsList extends ConsumerWidget {
                                 ),
                               ),
                               Text(
-                                '[${(comp.relativeBoundingBox.left * 100).round()}%, ${(comp.relativeBoundingBox.top * 100).round()}%]',
+                                '[X: $minX..$maxX, Y: $minY..$maxY]',
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   fontFamily: 'monospace',
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
+                          ),
+                          const SizedBox(width: 4),
+                          // Delete Component Button
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            tooltip: 'Delete Component',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => notifier.deleteComponent(index),
                           ),
                         ],
                       ),

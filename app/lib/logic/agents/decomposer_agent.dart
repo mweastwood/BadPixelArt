@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'base_agent.dart';
@@ -189,79 +190,44 @@ class DecomposerAgent implements PixelArtAgent {
     List<_RawParsedComponent> items,
     int gridSize,
   ) {
-    // 1. Calculate Center of Mass (area-weighted)
-    double totalArea = 0.0;
-    double sumX = 0.0;
-    double sumY = 0.0;
+    if (items.isEmpty) return [];
+
+    // 1. Calculate overall combined bounding box of all raw components
+    double minL = 1.0;
+    double minT = 1.0;
+    double maxR = 0.0;
+    double maxB = 0.0;
 
     for (final item in items) {
       final rect = item.rect;
-      final area = rect.width * rect.height;
-      totalArea += area;
-      sumX += (rect.left + rect.width / 2) * area;
-      sumY += (rect.top + rect.height / 2) * area;
+      if (rect.left < minL) minL = rect.left;
+      if (rect.top < minT) minT = rect.top;
+      if (rect.left + rect.width > maxR) maxR = rect.left + rect.width;
+      if (rect.top + rect.height > maxB) maxB = rect.top + rect.height;
     }
 
-    double xCom, yCom;
-    if (totalArea > 0.0001) {
-      xCom = sumX / totalArea;
-      yCom = sumY / totalArea;
-    } else {
-      // Fallback: geometric center of combined bounds
-      double minL = 1.0, minT = 1.0, maxR = 0.0, maxB = 0.0;
-      for (final item in items) {
-        final rect = item.rect;
-        if (rect.left < minL) minL = rect.left;
-        if (rect.top < minT) minT = rect.top;
-        if (rect.left + rect.width > maxR) maxR = rect.left + rect.width;
-        if (rect.top + rect.height > maxB) maxB = rect.top + rect.height;
-      }
-      xCom = minL + (maxR - minL) / 2;
-      yCom = minT + (maxB - minT) / 2;
-    }
+    final double overallW = (maxR - minL).clamp(0.0001, 1.0);
+    final double overallH = (maxB - minT).clamp(0.0001, 1.0);
 
-    // 2. Calculate Maximum Scale Factor sMax to keep all components in [0, 1]
-    double sMax = 999.0;
-    for (final item in items) {
-      final rect = item.rect;
+    // 2. Scale factor to expand combined bounding box to 100% (1.0) while preserving aspect ratio
+    final double scale = min(1.0 / overallW, 1.0 / overallH);
 
-      final diffLeft = xCom - rect.left;
-      if (diffLeft > 0.0001) {
-        final sVal = 0.5 / diffLeft;
-        if (sVal < sMax) sMax = sVal;
-      }
+    final double scaledW = overallW * scale;
+    final double scaledH = overallH * scale;
 
-      final diffRight = rect.left + rect.width - xCom;
-      if (diffRight > 0.0001) {
-        final sVal = 0.5 / diffRight;
-        if (sVal < sMax) sMax = sVal;
-      }
+    // Centering offsets
+    final double offsetX = (1.0 - scaledW) / 2.0;
+    final double offsetY = (1.0 - scaledH) / 2.0;
 
-      final diffTop = yCom - rect.top;
-      if (diffTop > 0.0001) {
-        final sVal = 0.5 / diffTop;
-        if (sVal < sMax) sMax = sVal;
-      }
-
-      final diffBottom = rect.top + rect.height - yCom;
-      if (diffBottom > 0.0001) {
-        final sVal = 0.5 / diffBottom;
-        if (sVal < sMax) sMax = sVal;
-      }
-    }
-
-    // Target fill: 90% of maximum possible scale for breathing room
-    final double scale = sMax < 999.0 ? sMax * 0.9 : 1.0;
-
-    // 3. Apply Scale & Shift, and Align to Pixels
+    // 3. Apply scale & centering shift, and align to pixel grid
     final List<PixelArtComponent> result = [];
     for (final item in items) {
       final rect = item.rect;
 
+      final newLeft = offsetX + (rect.left - minL) * scale;
+      final newTop = offsetY + (rect.top - minT) * scale;
       final newWidth = rect.width * scale;
       final newHeight = rect.height * scale;
-      final newLeft = 0.5 + scale * (rect.left - xCom);
-      final newTop = 0.5 + scale * (rect.top - yCom);
 
       final scaledRect = Rect.fromLTWH(newLeft, newTop, newWidth, newHeight);
       final alignedRect = _alignRectToPixels(scaledRect, gridSize);
