@@ -556,17 +556,11 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
         padding: EdgeInsets.zero,
         children: [
           DrawerHeader(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer,
-            ),
             child: Align(
               alignment: Alignment.bottomLeft,
               child: Text(
-                'Bad Pixel Art',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: theme.colorScheme.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
+                'Menu',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
             ),
           ),

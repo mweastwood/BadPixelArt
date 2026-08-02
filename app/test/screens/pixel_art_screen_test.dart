@@ -534,7 +534,7 @@ void main() {
         find.byKey(const ValueKey('app_hamburger_drawer')),
         findsOneWidget,
       );
-      expect(find.text('Bad Pixel Art'), findsNWidgets(2));
+      expect(find.text('Menu'), findsOneWidget);
       expect(find.text('Creations Gallery'), findsOneWidget);
       expect(find.text('Canvas Studio'), findsOneWidget);
       expect(find.text('Conversation Logs'), findsOneWidget);
