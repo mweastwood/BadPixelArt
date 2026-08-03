@@ -361,16 +361,42 @@ class _ChatMessageTurn extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                SelectableText(
-                  entry.response,
-                  style: TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 12,
-                    color: entry.isError
-                        ? theme.colorScheme.onErrorContainer
-                        : theme.colorScheme.onSurface,
+                if (entry.response == 'Generating response...') ...[
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Generating response...',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
+                ] else ...[
+                  SelectableText(
+                    entry.response,
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: entry.isError
+                          ? theme.colorScheme.onErrorContainer
+                          : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
                 if (entry.inputTokens != null ||
                     entry.outputTokens != null ||
                     (entry.estimatedCostUsd != null &&

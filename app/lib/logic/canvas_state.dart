@@ -364,13 +364,28 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
-  void updateAiService(AiService newAiService) {
-    _aiService = newAiService;
+  void _setupLoggingAiService() {
     if (_aiService is LoggingAiService) {
-      (_aiService as LoggingAiService).onLog = (entry) {
+      final logging = _aiService as LoggingAiService;
+      logging.onLog = (entry) {
         state = state.copyWith(aiHistory: [...state.aiHistory, entry]);
       };
+      logging.onLogUpdate = (oldEntry, newEntry) {
+        final history = List<AgentHistoryEntry>.from(state.aiHistory);
+        final index = history.indexOf(oldEntry);
+        if (index != -1) {
+          history[index] = newEntry;
+        } else {
+          history.add(newEntry);
+        }
+        state = state.copyWith(aiHistory: history);
+      };
     }
+  }
+
+  void updateAiService(AiService newAiService) {
+    _aiService = newAiService;
+    _setupLoggingAiService();
   }
 
   CanvasNotifier(this._aiService, {CanvasModel? initialModel})
@@ -397,11 +412,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
               modelPreference: 'full',
             ),
       ) {
-    if (_aiService is LoggingAiService) {
-      (_aiService as LoggingAiService).onLog = (entry) {
-        state = state.copyWith(aiHistory: [...state.aiHistory, entry]);
-      };
-    }
+    _setupLoggingAiService();
     _initModelConfig();
   }
 

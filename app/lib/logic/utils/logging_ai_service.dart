@@ -8,6 +8,8 @@ class LoggingAiService implements AiService {
   final AiService _delegate;
   final String? modelName;
   void Function(AgentHistoryEntry entry)? onLog;
+  void Function(AgentHistoryEntry oldEntry, AgentHistoryEntry newEntry)?
+  onLogUpdate;
 
   LoggingAiService(this._delegate, {this.modelName});
 
@@ -33,6 +35,19 @@ class LoggingAiService implements AiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
+    final startTime = DateTime.now();
+    final pendingEntry = AgentHistoryEntry(
+      timestamp: startTime,
+      prompt: prompt,
+      response: 'Generating response...',
+      isError: false,
+      imageBytes: imageBytes,
+      modelName: modelName,
+    );
+
+    // Emit initial pending entry immediately so UI displays active query
+    onLog?.call(pendingEntry);
+
     try {
       final response = await _delegate.generateContentRaw(
         prompt: prompt,
@@ -41,32 +56,41 @@ class LoggingAiService implements AiService {
         maxOutputTokens: maxOutputTokens,
       );
 
-      onLog?.call(
-        AgentHistoryEntry(
-          timestamp: DateTime.now(),
-          prompt: prompt,
-          response: response?.text ?? '',
-          isError: response == null,
-          imageBytes: imageBytes,
-          modelName: modelName,
-          inputTokens: response?.inputTokens,
-          outputTokens: response?.outputTokens,
-          totalTokens: response?.totalTokens,
-          estimatedCostUsd: response?.estimatedCostUsd,
-        ),
+      final completedEntry = AgentHistoryEntry(
+        timestamp: startTime,
+        prompt: prompt,
+        response: response?.text ?? '',
+        isError: response == null,
+        imageBytes: imageBytes,
+        modelName: modelName,
+        inputTokens: response?.inputTokens,
+        outputTokens: response?.outputTokens,
+        totalTokens: response?.totalTokens,
+        estimatedCostUsd: response?.estimatedCostUsd,
       );
+
+      if (onLogUpdate != null) {
+        onLogUpdate!(pendingEntry, completedEntry);
+      } else {
+        onLog?.call(completedEntry);
+      }
+
       return response;
     } catch (e) {
-      onLog?.call(
-        AgentHistoryEntry(
-          timestamp: DateTime.now(),
-          prompt: prompt,
-          response: e.toString(),
-          isError: true,
-          imageBytes: imageBytes,
-          modelName: modelName,
-        ),
+      final errorEntry = AgentHistoryEntry(
+        timestamp: startTime,
+        prompt: prompt,
+        response: e.toString(),
+        isError: true,
+        imageBytes: imageBytes,
+        modelName: modelName,
       );
+
+      if (onLogUpdate != null) {
+        onLogUpdate!(pendingEntry, errorEntry);
+      } else {
+        onLog?.call(errorEntry);
+      }
       rethrow;
     }
   }
