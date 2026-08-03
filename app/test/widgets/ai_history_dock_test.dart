@@ -138,5 +138,40 @@ void main() {
       );
       await screenMatchesGolden(tester, 'ai_history_dock');
     });
+
+    testWidgets(
+      'renders active pending query with spinner and italicized status',
+      (tester) async {
+        final pendingEntry = AgentHistoryEntry(
+          timestamp: DateTime(2026, 8, 2, 17, 30, 0),
+          prompt: 'Decompose prompt: dragon',
+          response: 'Generating response...',
+          isError: false,
+          modelName: 'Gemini 2.0 Flash',
+        );
+
+        final mockService = LocalMockAiService();
+        final notifier = CanvasNotifier(mockService);
+        notifier.state = notifier.state.copyWith(aiHistory: [pendingEntry]);
+
+        final widget = buildTestableWidget(
+          child: const Scaffold(body: AiHistoryDock()),
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockService),
+            canvasStateProvider.overrideWith((ref) => notifier),
+          ],
+        );
+
+        await tester.pumpWidget(widget);
+        await tester.pump();
+
+        // Verify User prompt is displayed
+        expect(find.text('Decompose prompt: dragon'), findsOneWidget);
+
+        // Verify Pending text and CircularProgressIndicator spinner
+        expect(find.text('Generating response...'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      },
+    );
   });
 }

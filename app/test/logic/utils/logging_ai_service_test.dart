@@ -6,7 +6,9 @@ import 'package:bad_pixel_art/logic/utils/logging_ai_service.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 
 class _FakeAiService implements AiService {
-  final Completer<AiResponse?> completer = Completer<AiResponse?>();
+  Completer<AiResponse?> completer = Completer<AiResponse?>();
+  bool shouldThrow = false;
+  String exceptionMessage = 'API quota exceeded';
 
   @override
   Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
@@ -33,6 +35,9 @@ class _FakeAiService implements AiService {
     int? maxOutputTokens,
     dynamic imageBytes,
   }) async {
+    if (shouldThrow) {
+      throw Exception(exceptionMessage);
+    }
     return completer.future;
   }
 
@@ -103,6 +108,50 @@ void main() {
       },
     );
 
+    test(
+      'updates entry with isError: true when AI call throws exception',
+      () async {
+        final fakeService = _FakeAiService()..shouldThrow = true;
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+        final notifier = CanvasNotifier(loggingService);
+
+        // Launch failing query
+        await expectLater(
+          loggingService.generateContentRaw(prompt: 'Failing call'),
+          throwsA(isA<Exception>()),
+        );
+
+        // Verify pending entry turned into error entry in state.aiHistory
+        expect(notifier.state.aiHistory.length, equals(1));
+        expect(notifier.state.aiHistory.first.isError, isTrue);
+        expect(
+          notifier.state.aiHistory.first.response,
+          contains('API quota exceeded'),
+        );
+      },
+    );
+
+    test('falls back to onLog when onLogUpdate is null', () async {
+      final fakeService = _FakeAiService();
+      final loggingService = LoggingAiService(fakeService);
+
+      final loggedEntries = <AgentHistoryEntry>[];
+      loggingService.onLog = (entry) => loggedEntries.add(entry);
+
+      final future = loggingService.generateContentRaw(prompt: 'Fallback test');
+      expect(loggedEntries.length, equals(1));
+      expect(loggedEntries.first.response, equals('Generating response...'));
+
+      fakeService.completer.complete(AiResponse(text: 'Done fallback'));
+      await future;
+
+      expect(loggedEntries.length, equals(2));
+      expect(loggedEntries.last.response, equals('Done fallback'));
+    });
+
     test('CanvasNotifier updates aiHistory state in real time', () async {
       final fakeService = _FakeAiService();
       final loggingService = LoggingAiService(
@@ -136,6 +185,27 @@ void main() {
       // Verify aiHistory updated in place
       expect(notifier.state.aiHistory.length, equals(1));
       expect(notifier.state.aiHistory.first.response, equals('Cat painted'));
+    });
+
+    test('updateAiService re-wires onLog and onLogUpdate callbacks', () async {
+      final fakeService1 = _FakeAiService();
+      final logging1 = LoggingAiService(fakeService1);
+      final notifier = CanvasNotifier(logging1);
+
+      final fakeService2 = _FakeAiService();
+      final logging2 = LoggingAiService(fakeService2);
+
+      notifier.updateAiService(logging2);
+
+      final future = logging2.generateContentRaw(prompt: 'New service call');
+      expect(notifier.state.aiHistory.length, equals(1));
+      expect(notifier.state.aiHistory.first.prompt, equals('New service call'));
+
+      fakeService2.completer.complete(AiResponse(text: 'New response'));
+      await future;
+
+      expect(notifier.state.aiHistory.length, equals(1));
+      expect(notifier.state.aiHistory.first.response, equals('New response'));
     });
   });
 }
