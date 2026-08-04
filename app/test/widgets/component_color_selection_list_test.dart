@@ -29,11 +29,19 @@ void main() {
       tester,
     ) async {
       final mockPalette = [Colors.red, Colors.green, Colors.blue];
+      final solidGrid = List.generate(
+        16,
+        (y) => List.generate(
+          16,
+          (x) => (x >= 1 && x <= 6 && y >= 1 && y <= 6) ? 1 : 0,
+        ),
+      );
       final mockComponents = [
         PixelArtComponent(
           name: 'Blade',
           description: 'A sharp blade',
           relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          grid: solidGrid,
           shapes: [],
         ),
       ];
@@ -201,8 +209,20 @@ class _MockColorCanvasNotifier extends CanvasNotifier {
   }
 
   @override
-  void updateComponentColors(int index, Color? fillColor, Color? outlineColor) {
+  void updateComponentColors(
+    int index,
+    Color? fillColor,
+    Color? outlineColor, {
+    Color? fillColor2,
+    double? gradientAngle,
+  }) {
     if (onUpdateColors != null) onUpdateColors!(index, fillColor, outlineColor);
-    super.updateComponentColors(index, fillColor, outlineColor);
+    super.updateComponentColors(
+      index,
+      fillColor,
+      outlineColor,
+      fillColor2: fillColor2,
+      gradientAngle: gradientAngle,
+    );
   }
 }
