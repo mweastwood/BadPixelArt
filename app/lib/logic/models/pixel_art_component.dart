@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 class FundamentalShape {
@@ -49,6 +50,8 @@ class PixelArtComponent {
   final List<FundamentalShape>
   shapes; // Fundamental geometric shapes composing this component
   final Color? fillColor;
+  final Color? fillColor2;
+  final double gradientAngle; // Angle in degrees (0..360)
   final Color? outlineColor;
   final bool isSculpted;
 
@@ -59,6 +62,8 @@ class PixelArtComponent {
     this.grid,
     this.shapes = const [],
     this.fillColor,
+    this.fillColor2,
+    this.gradientAngle = 90.0,
     this.outlineColor,
     this.isSculpted = false,
   });
@@ -74,6 +79,64 @@ class PixelArtComponent {
       Colors.orange,
     ];
     return colors[index % colors.length];
+  }
+
+  bool get hasInterior {
+    if (grid == null) return false;
+    final size = grid!.length;
+    for (int y = 0; y < size; y++) {
+      for (int x = 0; x < size; x++) {
+        if (grid![y][x] > 0) {
+          if (y > 0 && y < size - 1 && x > 0 && x < size - 1) {
+            if (grid![y - 1][x] > 0 &&
+                grid![y + 1][x] > 0 &&
+                grid![y][x - 1] > 0 &&
+                grid![y][x + 1] > 0) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  static const List<List<double>> bayerMatrix4x4 = [
+    [0.0 / 16, 8.0 / 16, 2.0 / 16, 10.0 / 16],
+    [12.0 / 16, 4.0 / 16, 14.0 / 16, 6.0 / 16],
+    [3.0 / 16, 11.0 / 16, 1.0 / 16, 9.0 / 16],
+    [15.0 / 16, 7.0 / 16, 13.0 / 16, 5.0 / 16],
+  ];
+
+  Color? getPixelFillColor(int x, int y) {
+    if (grid == null || grid![y][x] == 0) return null;
+    if (fillColor == null) return null;
+    if (fillColor2 == null || !hasInterior) return fillColor;
+
+    final size = grid!.length;
+    final rad = gradientAngle * (math.pi / 180.0);
+    final cosA = math.cos(rad);
+    final sinA = math.sin(rad);
+
+    double minP = double.infinity;
+    double maxP = -double.infinity;
+    for (int py = 0; py < size; py++) {
+      for (int px = 0; px < size; px++) {
+        if (grid![py][px] > 0) {
+          final p = px * cosA + py * sinA;
+          if (p < minP) minP = p;
+          if (p > maxP) maxP = p;
+        }
+      }
+    }
+
+    if (maxP <= minP) return fillColor;
+
+    final currentP = x * cosA + y * sinA;
+    final t = ((currentP - minP) / (maxP - minP)).clamp(0.0, 1.0);
+    final ditherThreshold = bayerMatrix4x4[y % 4][x % 4];
+
+    return t > ditherThreshold ? fillColor2 : fillColor;
   }
 
   PixelArtComponent initializeDefaultGrid(int gridSize) {
@@ -136,6 +199,8 @@ class PixelArtComponent {
     List<List<int>>? grid,
     List<FundamentalShape>? shapes,
     Color? Function()? fillColor,
+    Color? Function()? fillColor2,
+    double? gradientAngle,
     Color? Function()? outlineColor,
     bool? isSculpted,
   }) {
@@ -146,6 +211,8 @@ class PixelArtComponent {
       grid: grid ?? this.grid,
       shapes: shapes ?? this.shapes,
       fillColor: fillColor != null ? fillColor() : this.fillColor,
+      fillColor2: fillColor2 != null ? fillColor2() : this.fillColor2,
+      gradientAngle: gradientAngle ?? this.gradientAngle,
       outlineColor: outlineColor != null ? outlineColor() : this.outlineColor,
       isSculpted: isSculpted ?? this.isSculpted,
     );
@@ -164,6 +231,8 @@ class PixelArtComponent {
       if (grid != null) 'grid': grid,
       'shapes': shapes.map((s) => s.toJson()).toList(),
       if (fillColor != null) 'fillColor': fillColor!.toARGB32(),
+      if (fillColor2 != null) 'fillColor2': fillColor2!.toARGB32(),
+      'gradientAngle': gradientAngle,
       if (outlineColor != null) 'outlineColor': outlineColor!.toARGB32(),
       'isSculpted': isSculpted,
     };
@@ -181,6 +250,8 @@ class PixelArtComponent {
         .map((s) => FundamentalShape.fromJson(s as Map<String, dynamic>))
         .toList();
     final fillColorRaw = json['fillColor'] as int?;
+    final fillColor2Raw = json['fillColor2'] as int?;
+    final gradientAngleRaw = json['gradientAngle'] as num?;
     final outlineColorRaw = json['outlineColor'] as int?;
     final isSculptedRaw = json['isSculpted'] as bool?;
 
@@ -196,6 +267,8 @@ class PixelArtComponent {
       grid: parsedGrid,
       shapes: parsedShapes,
       fillColor: fillColorRaw != null ? Color(fillColorRaw) : null,
+      fillColor2: fillColor2Raw != null ? Color(fillColor2Raw) : null,
+      gradientAngle: gradientAngleRaw?.toDouble() ?? 90.0,
       outlineColor: outlineColorRaw != null ? Color(outlineColorRaw) : null,
       isSculpted: isSculptedRaw ?? (parsedGrid != null),
     );

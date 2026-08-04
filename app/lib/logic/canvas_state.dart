@@ -447,11 +447,19 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
-  void updateComponentColors(int index, Color? fillColor, Color? outlineColor) {
+  void updateComponentColors(
+    int index,
+    Color? fillColor,
+    Color? outlineColor, {
+    Color? fillColor2,
+    double? gradientAngle,
+  }) {
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
       updated[index] = updated[index].copyWith(
         fillColor: fillColor == null ? () => null : () => fillColor,
+        fillColor2: fillColor2 == null ? () => null : () => fillColor2,
+        gradientAngle: gradientAngle ?? updated[index].gradientAngle,
         outlineColor: outlineColor == null ? () => null : () => outlineColor,
       );
       state = state.copyWith(decomposedComponents: updated);
@@ -1072,16 +1080,18 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
       // 1. Draw fill if set
       if (comp.fillColor != null && comp.grid != null) {
-        final colorIndex = state.palette.indexWhere(
-          (c) => c.toARGB32() == comp.fillColor!.toARGB32(),
-        );
-        if (colorIndex != -1) {
-          final dbIndex = colorIndex + 1;
-          for (int y = 0; y < state.gridSize; y++) {
-            for (int x = 0; x < state.gridSize; x++) {
-              if (comp.grid![y][x] > 0) {
-                newGrid[y][x] = dbIndex;
-                drewAnything = true;
+        for (int y = 0; y < state.gridSize; y++) {
+          for (int x = 0; x < state.gridSize; x++) {
+            if (comp.grid![y][x] > 0) {
+              final col = comp.getPixelFillColor(x, y);
+              if (col != null) {
+                final colorIndex = state.palette.indexWhere(
+                  (c) => c.toARGB32() == col.toARGB32(),
+                );
+                if (colorIndex != -1) {
+                  newGrid[y][x] = colorIndex + 1;
+                  drewAnything = true;
+                }
               }
             }
           }

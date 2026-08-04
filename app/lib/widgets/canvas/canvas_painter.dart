@@ -65,21 +65,22 @@ class CanvasPainter extends CustomPainter {
         final comp = decomposedComponents[i];
         if (comp.grid != null) {
           final isSelected = (i == activeComponentIndex);
-          final Color? fillCol = comp.fillColor;
-          if (fillCol != null) {
-            final fillPaint = Paint()
-              ..color = fillCol
-              ..isAntiAlias = false;
+          if (comp.fillColor != null) {
+            final fillPaint = Paint()..isAntiAlias = false;
             for (int y = 0; y < gridSize; y++) {
               for (int x = 0; x < gridSize; x++) {
                 if (comp.grid![y][x] > 0) {
-                  final rect = Rect.fromLTWH(
-                    x * cellWidth,
-                    y * cellHeight,
-                    cellWidth,
-                    cellHeight,
-                  );
-                  canvas.drawRect(rect, fillPaint);
+                  final pixelCol = comp.getPixelFillColor(x, y);
+                  if (pixelCol != null) {
+                    fillPaint.color = pixelCol;
+                    final rect = Rect.fromLTWH(
+                      x * cellWidth,
+                      y * cellHeight,
+                      cellWidth,
+                      cellHeight,
+                    );
+                    canvas.drawRect(rect, fillPaint);
+                  }
                 }
               }
             }

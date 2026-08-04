@@ -140,9 +140,26 @@ class LayerOrderingList extends ConsumerWidget {
                                     ),
                                   ),
                                 ),
+                                if (comp.fillColor2 != null) ...[
+                                  const SizedBox(width: 2),
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: comp.fillColor2,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                                 const SizedBox(width: 4),
                                 Text(
-                                  'Filled',
+                                  comp.fillColor2 != null
+                                      ? 'Gradient (${comp.gradientAngle.round()}°)'
+                                      : 'Filled',
                                   style: theme.textTheme.bodySmall,
                                 ),
                                 const SizedBox(width: 12),
