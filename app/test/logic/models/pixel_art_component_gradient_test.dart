@@ -113,5 +113,38 @@ void main() {
         expect(restored.gradientAngle, equals(135.0));
       },
     );
+
+    test(
+      'pre-computes minP, maxP, and hasInterior on component creation and preserves them in copyWith',
+      () {
+        final solidGrid = List.generate(
+          8,
+          (y) => List.generate(
+            8,
+            (x) => (x >= 2 && x <= 5 && y >= 2 && y <= 5) ? 1 : 0,
+          ),
+        );
+        final comp = PixelArtComponent(
+          name: 'square',
+          description: 'square',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: solidGrid,
+          fillColor: Colors.blue,
+          fillColor2: Colors.red,
+          gradientAngle: 90.0,
+        );
+
+        // At 90 degrees, projection p = y. minP should be 2.0 and maxP should be 5.0
+        expect(comp.hasInterior, isTrue);
+        expect(comp.minP, equals(2.0));
+        expect(comp.maxP, equals(5.0));
+
+        // copyWith without modifying grid/angle reuses cached bounds
+        final copied = comp.copyWith(name: 'renamed');
+        expect(copied.minP, equals(2.0));
+        expect(copied.maxP, equals(5.0));
+        expect(copied.hasInterior, isTrue);
+      },
+    );
   });
 }
