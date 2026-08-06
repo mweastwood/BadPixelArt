@@ -54,6 +54,9 @@ class PixelArtComponent {
   final double gradientAngle; // Angle in degrees (0..360)
   final Color? outlineColor;
   final bool isSculpted;
+  final bool hasInterior;
+  final double minP;
+  final double maxP;
 
   PixelArtComponent({
     required this.name,
@@ -66,7 +69,12 @@ class PixelArtComponent {
     this.gradientAngle = 90.0,
     this.outlineColor,
     this.isSculpted = false,
-  });
+    bool? hasInterior,
+    double? minP,
+    double? maxP,
+  }) : hasInterior = hasInterior ?? _calculateHasInterior(grid),
+       minP = minP ?? _calculateMinP(grid, gradientAngle),
+       maxP = maxP ?? _calculateMaxP(grid, gradientAngle);
 
   static Color getColor(int index) {
     final colors = [
@@ -81,17 +89,17 @@ class PixelArtComponent {
     return colors[index % colors.length];
   }
 
-  bool get hasInterior {
+  static bool _calculateHasInterior(List<List<int>>? grid) {
     if (grid == null) return false;
-    final size = grid!.length;
+    final size = grid.length;
     for (int y = 0; y < size; y++) {
       for (int x = 0; x < size; x++) {
-        if (grid![y][x] > 0) {
+        if (grid[y][x] > 0) {
           if (y > 0 && y < size - 1 && x > 0 && x < size - 1) {
-            if (grid![y - 1][x] > 0 &&
-                grid![y + 1][x] > 0 &&
-                grid![y][x - 1] > 0 &&
-                grid![y][x + 1] > 0) {
+            if (grid[y - 1][x] > 0 &&
+                grid[y + 1][x] > 0 &&
+                grid[y][x - 1] > 0 &&
+                grid[y][x + 1] > 0) {
               return true;
             }
           }
@@ -99,6 +107,44 @@ class PixelArtComponent {
       }
     }
     return false;
+  }
+
+  static double _calculateMinP(List<List<int>>? grid, double gradientAngle) {
+    if (grid == null) return double.infinity;
+    final size = grid.length;
+    final rad = gradientAngle * (math.pi / 180.0);
+    final cosA = math.cos(rad);
+    final sinA = math.sin(rad);
+
+    double minP = double.infinity;
+    for (int py = 0; py < size; py++) {
+      for (int px = 0; px < size; px++) {
+        if (grid[py][px] > 0) {
+          final p = px * cosA + py * sinA;
+          if (p < minP) minP = p;
+        }
+      }
+    }
+    return minP;
+  }
+
+  static double _calculateMaxP(List<List<int>>? grid, double gradientAngle) {
+    if (grid == null) return -double.infinity;
+    final size = grid.length;
+    final rad = gradientAngle * (math.pi / 180.0);
+    final cosA = math.cos(rad);
+    final sinA = math.sin(rad);
+
+    double maxP = -double.infinity;
+    for (int py = 0; py < size; py++) {
+      for (int px = 0; px < size; px++) {
+        if (grid[py][px] > 0) {
+          final p = px * cosA + py * sinA;
+          if (p > maxP) maxP = p;
+        }
+      }
+    }
+    return maxP;
   }
 
   static const List<List<double>> bayerMatrix4x4 = [
@@ -112,25 +158,11 @@ class PixelArtComponent {
     if (grid == null || grid![y][x] == 0) return null;
     if (fillColor == null) return null;
     if (fillColor2 == null || !hasInterior) return fillColor;
+    if (maxP <= minP) return fillColor;
 
-    final size = grid!.length;
     final rad = gradientAngle * (math.pi / 180.0);
     final cosA = math.cos(rad);
     final sinA = math.sin(rad);
-
-    double minP = double.infinity;
-    double maxP = -double.infinity;
-    for (int py = 0; py < size; py++) {
-      for (int px = 0; px < size; px++) {
-        if (grid![py][px] > 0) {
-          final p = px * cosA + py * sinA;
-          if (p < minP) minP = p;
-          if (p > maxP) maxP = p;
-        }
-      }
-    }
-
-    if (maxP <= minP) return fillColor;
 
     final currentP = x * cosA + y * sinA;
     final t = ((currentP - minP) / (maxP - minP)).clamp(0.0, 1.0);
@@ -203,18 +235,30 @@ class PixelArtComponent {
     double? gradientAngle,
     Color? Function()? outlineColor,
     bool? isSculpted,
+    bool? hasInterior,
+    double? minP,
+    double? maxP,
   }) {
+    final newGrid = grid ?? this.grid;
+    final newGradientAngle = gradientAngle ?? this.gradientAngle;
+    final gridChanged = grid != null && grid != this.grid;
+    final angleChanged =
+        gradientAngle != null && gradientAngle != this.gradientAngle;
+
     return PixelArtComponent(
       name: name ?? this.name,
       description: description ?? this.description,
       relativeBoundingBox: relativeBoundingBox ?? this.relativeBoundingBox,
-      grid: grid ?? this.grid,
+      grid: newGrid,
       shapes: shapes ?? this.shapes,
       fillColor: fillColor != null ? fillColor() : this.fillColor,
       fillColor2: fillColor2 != null ? fillColor2() : this.fillColor2,
-      gradientAngle: gradientAngle ?? this.gradientAngle,
+      gradientAngle: newGradientAngle,
       outlineColor: outlineColor != null ? outlineColor() : this.outlineColor,
       isSculpted: isSculpted ?? this.isSculpted,
+      hasInterior: hasInterior ?? (gridChanged ? null : this.hasInterior),
+      minP: minP ?? ((gridChanged || angleChanged) ? null : this.minP),
+      maxP: maxP ?? ((gridChanged || angleChanged) ? null : this.maxP),
     );
   }
 

@@ -113,5 +113,34 @@ void main() {
         expect(restored.gradientAngle, equals(135.0));
       },
     );
+
+    test('getPixelFillColor scales efficiently (O(1) per query)', () {
+      final solid32 = List.generate(32, (y) => List.generate(32, (x) => 1));
+      final comp = PixelArtComponent(
+        name: 'perf_test',
+        description: 'perf_test',
+        relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+        grid: solid32,
+        fillColor: Colors.blue,
+        fillColor2: Colors.red,
+        gradientAngle: 45.0,
+      );
+
+      final stopwatch = Stopwatch()..start();
+      int count = 0;
+      for (int i = 0; i < 1000; i++) {
+        for (int y = 0; y < 32; y++) {
+          for (int x = 0; x < 32; x++) {
+            if (comp.getPixelFillColor(x, y) != null) {
+              count++;
+            }
+          }
+        }
+      }
+      stopwatch.stop();
+
+      expect(count, equals(1000 * 32 * 32));
+      expect(stopwatch.elapsedMilliseconds, lessThan(200));
+    });
   });
 }
