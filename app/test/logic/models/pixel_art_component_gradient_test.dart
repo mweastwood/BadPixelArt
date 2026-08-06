@@ -114,33 +114,37 @@ void main() {
       },
     );
 
-    test('getPixelFillColor scales efficiently (O(1) per query)', () {
-      final solid32 = List.generate(32, (y) => List.generate(32, (x) => 1));
-      final comp = PixelArtComponent(
-        name: 'perf_test',
-        description: 'perf_test',
-        relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
-        grid: solid32,
-        fillColor: Colors.blue,
-        fillColor2: Colors.red,
-        gradientAngle: 45.0,
-      );
+    test(
+      'pre-computes minP, maxP, and hasInterior on component creation and preserves them in copyWith',
+      () {
+        final solidGrid = List.generate(
+          8,
+          (y) => List.generate(
+            8,
+            (x) => (x >= 2 && x <= 5 && y >= 2 && y <= 5) ? 1 : 0,
+          ),
+        );
+        final comp = PixelArtComponent(
+          name: 'square',
+          description: 'square',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: solidGrid,
+          fillColor: Colors.blue,
+          fillColor2: Colors.red,
+          gradientAngle: 90.0,
+        );
 
-      final stopwatch = Stopwatch()..start();
-      int count = 0;
-      for (int i = 0; i < 1000; i++) {
-        for (int y = 0; y < 32; y++) {
-          for (int x = 0; x < 32; x++) {
-            if (comp.getPixelFillColor(x, y) != null) {
-              count++;
-            }
-          }
-        }
-      }
-      stopwatch.stop();
+        // At 90 degrees, projection p = y. minP should be 2.0 and maxP should be 5.0
+        expect(comp.hasInterior, isTrue);
+        expect(comp.minP, equals(2.0));
+        expect(comp.maxP, equals(5.0));
 
-      expect(count, equals(1000 * 32 * 32));
-      expect(stopwatch.elapsedMilliseconds, lessThan(200));
-    });
+        // copyWith without modifying grid/angle reuses cached bounds
+        final copied = comp.copyWith(name: 'renamed');
+        expect(copied.minP, equals(2.0));
+        expect(copied.maxP, equals(5.0));
+        expect(copied.hasInterior, isTrue);
+      },
+    );
   });
 }
