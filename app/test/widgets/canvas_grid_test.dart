@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
@@ -6,6 +7,38 @@ import 'package:bad_pixel_art/widgets/canvas_grid.dart';
 import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
+
+/// Helper to calculate an absolute screen offset relative to the [CanvasGrid] widget bounds.
+Offset _getCanvasOffset(
+  WidgetTester tester, {
+  required double relativeX,
+  required double relativeY,
+}) {
+  final gridRect = tester.getRect(find.byType(CanvasGrid));
+  final availableHeight = gridRect.height.isFinite
+      ? gridRect.height - 56.0
+      : gridRect.width;
+  final canvasSide = math.max(0.0, math.min(gridRect.width, availableHeight));
+  return gridRect.topLeft +
+      Offset(relativeX * canvasSide, relativeY * canvasSide);
+}
+
+/// Helper to calculate an absolute screen offset for the center of a specific grid cell (x, y) relative to [CanvasGrid].
+Offset _getGridCellOffset(
+  WidgetTester tester, {
+  required int gridX,
+  required int gridY,
+  required int gridSize,
+}) {
+  final gridRect = tester.getRect(find.byType(CanvasGrid));
+  final availableHeight = gridRect.height.isFinite
+      ? gridRect.height - 56.0
+      : gridRect.width;
+  final canvasSide = math.max(0.0, math.min(gridRect.width, availableHeight));
+  final cellSize = canvasSide / gridSize;
+  return gridRect.topLeft +
+      Offset((gridX + 0.5) * cellSize, (gridY + 0.5) * cellSize);
+}
 
 void main() {
   group('CanvasGrid Widget Tests', () {
@@ -79,10 +112,22 @@ void main() {
 
         expect(find.byType(CanvasGrid), findsOneWidget);
 
-        // Perform a drag from the bottom-right corner to resize the bounding box
-        // Relative bottom-right is (0.6, 0.7), which maps to (180, 210) in a 300x300 canvas
-        final gesture = await tester.startGesture(const Offset(180, 210));
-        await gesture.moveTo(const Offset(210, 240));
+        // Perform a drag from the bottom-right corner to resize the bounding box.
+        // Target offsets are calculated dynamically relative to the CanvasGrid finder.
+        final comp = mockNotifier.state.decomposedComponents[0];
+        final dragStartPos = _getCanvasOffset(
+          tester,
+          relativeX: comp.relativeBoundingBox.right,
+          relativeY: comp.relativeBoundingBox.bottom,
+        );
+        final dragTargetPos = _getCanvasOffset(
+          tester,
+          relativeX: 0.7,
+          relativeY: 0.8,
+        );
+
+        final gesture = await tester.startGesture(dragStartPos);
+        await gesture.moveTo(dragTargetPos);
         await gesture.up();
         await tester.pumpAndSettle();
 
@@ -131,9 +176,22 @@ void main() {
           ),
         );
 
-        // Try to drag the bottom-right corner of the inactive 'hilt' component (relative 0.55, 0.9 -> absolute 165, 270)
-        final gesture = await tester.startGesture(const Offset(165, 270));
-        await gesture.moveTo(const Offset(195, 290));
+        // Try to drag the bottom-right corner of the inactive 'hilt' component.
+        // Offsets calculated dynamically relative to the CanvasGrid finder.
+        final hiltCompInitial = mockNotifier.state.decomposedComponents[1];
+        final dragStartPos = _getCanvasOffset(
+          tester,
+          relativeX: hiltCompInitial.relativeBoundingBox.right,
+          relativeY: hiltCompInitial.relativeBoundingBox.bottom,
+        );
+        final dragTargetPos = _getCanvasOffset(
+          tester,
+          relativeX: 0.65,
+          relativeY: 290 / 300,
+        );
+
+        final gesture = await tester.startGesture(dragStartPos);
+        await gesture.moveTo(dragTargetPos);
         await gesture.up();
         await tester.pumpAndSettle();
 
@@ -182,11 +240,15 @@ void main() {
           ),
         );
 
-        // On a 300x300 canvas and 16x16 grid:
-        // Each cell is 300/16 = 18.75 pixels.
-        // Pixel (8, 7) is adjacent (outer border/add candidate), at Offset(8 * 18.75 + 9, 7 * 18.75 + 9) = Offset(159, 140).
-        // Let's tap on (8, 7) (Offset 159, 140) to add it:
-        await tester.tapAt(const Offset(159, 140));
+        // Pixel (8, 7) is adjacent (outer border/add candidate).
+        // Calculate cell position dynamically relative to CanvasGrid finder.
+        final cell87Pos = _getGridCellOffset(
+          tester,
+          gridX: 8,
+          gridY: 7,
+          gridSize: mockNotifier.state.gridSize,
+        );
+        await tester.tapAt(cell87Pos);
         await tester.pumpAndSettle();
 
         // Verify that (8, 7) is now 1 (filled)
@@ -199,8 +261,14 @@ void main() {
         mockNotifier.state = mockNotifier.state.copyWith(isGenerating: true);
         await tester.pumpAndSettle();
 
-        // Tap on (8, 8) (which is a remove candidate since it has background neighbors) at Offset(159, 159):
-        await tester.tapAt(const Offset(159, 159));
+        // Tap on (8, 8) (which is a remove candidate since it has background neighbors).
+        final cell88Pos = _getGridCellOffset(
+          tester,
+          gridX: 8,
+          gridY: 8,
+          gridSize: mockNotifier.state.gridSize,
+        );
+        await tester.tapAt(cell88Pos);
         await tester.pumpAndSettle();
 
         // Verify that (8, 8) remains 1 (filled) because it is locked down while generating!
