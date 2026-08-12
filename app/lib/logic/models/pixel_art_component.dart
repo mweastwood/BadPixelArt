@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../utils/coordinate_converter.dart';
 
 class FundamentalShape {
   final String type; // 'rectangle', 'circle', 'triangle'
@@ -39,6 +40,11 @@ class FundamentalShape {
       ),
     );
   }
+
+  /// Returns integer pixel grid bounds for this shape relative to [parentBounds].
+  GridBounds subGridBounds(GridBounds parentBounds) {
+    return relativeBoundingBox.toSubGridBounds(parentBounds);
+  }
 }
 
 class PixelArtComponent {
@@ -75,6 +81,11 @@ class PixelArtComponent {
   }) : hasInterior = hasInterior ?? _calculateHasInterior(grid),
        minP = minP ?? _calculateMinP(grid, gradientAngle),
        maxP = maxP ?? _calculateMaxP(grid, gradientAngle);
+
+  /// Returns integer pixel grid bounds for this component for a given [gridSize].
+  GridBounds gridBounds(int gridSize) {
+    return relativeBoundingBox.toGridBounds(gridSize);
+  }
 
   static Color getColor(int index) {
     final colors = [
@@ -177,20 +188,10 @@ class PixelArtComponent {
       gridSize,
       (_) => List.filled(gridSize, 0),
     );
-    final bbox = relativeBoundingBox;
-    final leftCol = (bbox.left * gridSize).round().clamp(0, gridSize - 1);
-    final topRow = (bbox.top * gridSize).round().clamp(0, gridSize - 1);
-    final rightCol = ((bbox.left + bbox.width) * gridSize).round().clamp(
-      0,
-      gridSize,
-    );
-    final bottomRow = ((bbox.top + bbox.height) * gridSize).round().clamp(
-      0,
-      gridSize,
-    );
+    final bounds = gridBounds(gridSize);
 
-    for (int y = topRow; y < bottomRow; y++) {
-      for (int x = leftCol; x < rightCol; x++) {
+    for (int y = bounds.topRow; y < bounds.bottomRow; y++) {
+      for (int x = bounds.leftCol; x < bounds.rightCol; x++) {
         newGrid[y][x] = 1;
       }
     }

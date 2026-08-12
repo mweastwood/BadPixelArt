@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../utils/coordinate_converter.dart';
 
 class BoundedCanvas {
   final List<List<int>> grid;
   final Rect boundingBox;
   final int gridSize;
 
+  late final GridBounds bounds;
   late final int minX;
   late final int maxX;
   late final int minY;
@@ -15,15 +17,16 @@ class BoundedCanvas {
     required this.boundingBox,
     required this.gridSize,
   }) {
-    minX = (boundingBox.left * gridSize).round();
-    maxX = ((boundingBox.left + boundingBox.width) * gridSize).round() - 1;
-    minY = (boundingBox.top * gridSize).round();
-    maxY = ((boundingBox.top + boundingBox.height) * gridSize).round() - 1;
+    bounds = boundingBox.toGridBounds(gridSize);
+    minX = bounds.minX;
+    maxX = bounds.maxX;
+    minY = bounds.minY;
+    maxY = bounds.maxY;
   }
 
   /// Checks if a coordinate is within the bounded area.
   bool isWithinBounds(int x, int y) {
-    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+    return bounds.containsPixel(x, y);
   }
 
   /// Sets a pixel at (x, y) if it falls within both the grid boundaries and the bounding box.
@@ -51,3 +54,4 @@ class BoundedCanvas {
     }
   }
 }
+

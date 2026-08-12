@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'base_agent.dart';
+import '../utils/coordinate_converter.dart';
 import '../utils/json_utils.dart';
 
 class DecomposerResult {
@@ -246,20 +247,7 @@ class DecomposerAgent implements PixelArtAgent {
   }
 
   Rect _alignRectToPixels(Rect rect, int gridSize) {
-    final x1 = (rect.left * gridSize).round().clamp(0, gridSize);
-    final y1 = (rect.top * gridSize).round().clamp(0, gridSize);
-    var x2 = ((rect.left + rect.width) * gridSize).round().clamp(0, gridSize);
-    var y2 = ((rect.top + rect.height) * gridSize).round().clamp(0, gridSize);
-
-    if (x2 <= x1) x2 = (x1 + 1).clamp(0, gridSize);
-    if (y2 <= y1) y2 = (y1 + 1).clamp(0, gridSize);
-
-    return Rect.fromLTWH(
-      x1 / gridSize,
-      y1 / gridSize,
-      (x2 - x1) / gridSize,
-      (y2 - y1) / gridSize,
-    );
+    return CoordinateConverter.alignRectToGrid(rect, gridSize);
   }
 
   List<PixelArtComponent> _getDefaultComponents(AgentContext context) {
