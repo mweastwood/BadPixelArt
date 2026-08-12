@@ -119,6 +119,25 @@ void main() {
       expect(subBounds.maxX, equals(7));
       expect(subBounds.minY, equals(4));
       expect(subBounds.maxY, equals(7));
+
+      final emptyShape = FundamentalShape(
+        type: 'rectangle',
+        relativeBoundingBox: const Rect.fromLTWH(0.5, 0.5, 0.0, 0.0),
+        description: 'empty shape',
+      );
+      final subBoundsEmpty = emptyShape.subGridBounds(
+        parentBounds,
+        ensureNonEmpty: false,
+      );
+      expect(subBoundsEmpty.isEmpty, isTrue);
+
+      final subBoundsNonEmpty = emptyShape.subGridBounds(
+        parentBounds,
+        ensureNonEmpty: true,
+      );
+      expect(subBoundsNonEmpty.isNotEmpty, isTrue);
+      expect(subBoundsNonEmpty.width, equals(1));
+      expect(subBoundsNonEmpty.height, equals(1));
     });
 
     test('PixelArtComponent gridBounds returns component grid bounds', () {
@@ -133,6 +152,17 @@ void main() {
       expect(bounds.rightCol, equals(8));
       expect(bounds.topRow, equals(0));
       expect(bounds.bottomRow, equals(16));
+
+      final emptyComp = PixelArtComponent(
+        name: 'empty',
+        description: 'empty comp',
+        relativeBoundingBox: const Rect.fromLTWH(0.5, 0.5, 0.0, 0.0),
+      );
+      expect(emptyComp.gridBounds(16, ensureNonEmpty: false).isEmpty, isTrue);
+      final nonEmp = emptyComp.gridBounds(16, ensureNonEmpty: true);
+      expect(nonEmp.isNotEmpty, isTrue);
+      expect(nonEmp.width, equals(1));
+      expect(nonEmp.height, equals(1));
     });
 
     test('0-width empty GridBounds reports empty range with maxX < minX', () {

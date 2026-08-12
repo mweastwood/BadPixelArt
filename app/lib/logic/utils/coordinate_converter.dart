@@ -129,7 +129,13 @@ extension RectGridExtension on Rect {
   }
 
   /// Converts relative shape bounds (0.0 to 1.0 within parent component) to sub-grid bounds within [parentBounds].
-  GridBounds toSubGridBounds(GridBounds parentBounds) {
+  ///
+  /// If [ensureNonEmpty] is `true`, ensures `rightCol > leftCol` and `bottomRow > topRow` (minimum 1 pixel width/height)
+  /// when [parentBounds] is not empty.
+  GridBounds toSubGridBounds(
+    GridBounds parentBounds, {
+    bool ensureNonEmpty = false,
+  }) {
     if (parentBounds.isEmpty) {
       return GridBounds(
         leftCol: parentBounds.leftCol,
@@ -157,8 +163,35 @@ extension RectGridExtension on Rect {
         .round()
         .clamp(parentBounds.topRow, parentBounds.bottomRow);
 
-    if (subRightCol < subLeftCol) subRightCol = subLeftCol;
-    if (subBottomRow < subTopRow) subBottomRow = subTopRow;
+    if (ensureNonEmpty) {
+      if (subLeftCol >= parentBounds.rightCol) {
+        subLeftCol = (parentBounds.rightCol - 1).clamp(
+          parentBounds.leftCol,
+          parentBounds.rightCol,
+        );
+      }
+      if (subTopRow >= parentBounds.bottomRow) {
+        subTopRow = (parentBounds.bottomRow - 1).clamp(
+          parentBounds.topRow,
+          parentBounds.bottomRow,
+        );
+      }
+      if (subRightCol <= subLeftCol) {
+        subRightCol = (subLeftCol + 1).clamp(
+          parentBounds.leftCol,
+          parentBounds.rightCol,
+        );
+      }
+      if (subBottomRow <= subTopRow) {
+        subBottomRow = (subTopRow + 1).clamp(
+          parentBounds.topRow,
+          parentBounds.bottomRow,
+        );
+      }
+    } else {
+      if (subRightCol < subLeftCol) subRightCol = subLeftCol;
+      if (subBottomRow < subTopRow) subBottomRow = subTopRow;
+    }
 
     return GridBounds(
       leftCol: subLeftCol,

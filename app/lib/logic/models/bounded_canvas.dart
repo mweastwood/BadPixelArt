@@ -45,11 +45,9 @@ class BoundedCanvas {
   void executeClamped(void Function(List<List<int>> targetGrid) drawAction) {
     final tempGrid = grid.map((row) => List<int>.from(row)).toList();
     drawAction(tempGrid);
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        if (isWithinBounds(x, y)) {
-          grid[y][x] = tempGrid[y][x];
-        }
+    for (int y = bounds.topRow; y < bounds.bottomRow; y++) {
+      for (int x = bounds.leftCol; x < bounds.rightCol; x++) {
+        grid[y][x] = tempGrid[y][x];
       }
     }
   }

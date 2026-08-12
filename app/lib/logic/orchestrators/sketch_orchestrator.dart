@@ -50,6 +50,8 @@ class SketchOrchestrator {
     if (!evaluatorApproves) return false;
 
     final bounds = comp.gridBounds(gridSize);
+    if (bounds.isEmpty) return false;
+
     final minX = bounds.minX;
     final maxX = bounds.maxX;
     final minY = bounds.minY;

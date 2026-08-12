@@ -42,8 +42,16 @@ class FundamentalShape {
   }
 
   /// Returns integer pixel grid bounds for this shape relative to [parentBounds].
-  GridBounds subGridBounds(GridBounds parentBounds) {
-    return relativeBoundingBox.toSubGridBounds(parentBounds);
+  ///
+  /// If [ensureNonEmpty] is `true`, ensures non-empty sub-grid bounds within non-empty [parentBounds].
+  GridBounds subGridBounds(
+    GridBounds parentBounds, {
+    bool ensureNonEmpty = false,
+  }) {
+    return relativeBoundingBox.toSubGridBounds(
+      parentBounds,
+      ensureNonEmpty: ensureNonEmpty,
+    );
   }
 }
 
@@ -83,8 +91,13 @@ class PixelArtComponent {
        maxP = maxP ?? _calculateMaxP(grid, gradientAngle);
 
   /// Returns integer pixel grid bounds for this component for a given [gridSize].
-  GridBounds gridBounds(int gridSize) {
-    return relativeBoundingBox.toGridBounds(gridSize);
+  ///
+  /// If [ensureNonEmpty] is `true`, ensures non-empty grid bounds (at least 1 pixel width and height).
+  GridBounds gridBounds(int gridSize, {bool ensureNonEmpty = false}) {
+    return relativeBoundingBox.toGridBounds(
+      gridSize,
+      ensureNonEmpty: ensureNonEmpty,
+    );
   }
 
   static Color getColor(int index) {
