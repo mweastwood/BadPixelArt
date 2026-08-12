@@ -150,9 +150,9 @@ void main() {
           ),
         );
 
-        // Verify pixel coordinates are displayed (e.g. X: 0..8, Y: 0..16)
-        expect(find.text('[X: 0..8, Y: 0..16]'), findsOneWidget);
-        expect(find.text('[X: 8..16, Y: 0..8]'), findsOneWidget);
+        // Verify pixel coordinates are displayed (e.g. X: 0..7, Y: 0..15)
+        expect(find.text('[X: 0..7, Y: 0..15]'), findsOneWidget);
+        expect(find.text('[X: 8..15, Y: 0..7]'), findsOneWidget);
 
         // Verify 2 delete icon buttons
         final deleteButtons = find.byTooltip('Delete Component');
