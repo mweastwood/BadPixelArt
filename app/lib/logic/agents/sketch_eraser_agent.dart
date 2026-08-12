@@ -13,11 +13,11 @@ class SketchEraserAgent implements PixelArtAgent {
     if (comp == null) return 'No target component provided.';
 
     final gridSize = context.gridSize;
-    final bbox = comp.relativeBoundingBox;
-    final minX = (bbox.left * gridSize).round();
-    final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-    final minY = (bbox.top * gridSize).round();
-    final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+    final bounds = comp.gridBounds(gridSize);
+    final minX = bounds.minX;
+    final maxX = bounds.maxX;
+    final minY = bounds.minY;
+    final maxY = bounds.maxY;
 
     return 'You are an AI pixel art eraser agent named "sketch_eraser". Your goal is to REMOVE pixels (erase) to sculpt, smooth out outlines, or create curves for a specific component: "${comp.name}" (${comp.description}).\n'
         'You are given a list of all active pixels on the outline/border of the current shape.\n'
@@ -37,11 +37,11 @@ class SketchEraserAgent implements PixelArtAgent {
     final comp = context.targetComponent!;
     final compGrid = context.currentGrid;
     final gridSize = context.gridSize;
-    final bbox = comp.relativeBoundingBox;
-    final minX = (bbox.left * gridSize).round();
-    final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-    final minY = (bbox.top * gridSize).round();
-    final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+    final bounds = comp.gridBounds(gridSize);
+    final minX = bounds.minX;
+    final maxX = bounds.maxX;
+    final minY = bounds.minY;
+    final maxY = bounds.maxY;
 
     final List<String> borderCoords = [];
     for (int y = minY; y <= maxY; y++) {

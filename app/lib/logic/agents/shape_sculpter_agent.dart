@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'base_agent.dart';
 import '../utils/bmp_utils.dart';
+import '../utils/coordinate_converter.dart';
 import '../utils/json_utils.dart';
 import '../models/bounded_canvas.dart';
 import '../drawing_commands.dart';
@@ -16,30 +17,14 @@ Map<String, List<Map<String, int>>> calculateSculptingCandidates(
   final List<Map<String, int>> removeCandidates = [];
   final List<Map<String, int>> addCandidates = [];
 
-  final leftCol = (relativeBoundingBox.left * gridSize).round().clamp(
-    0,
-    gridSize - 1,
-  );
-  final topRow = (relativeBoundingBox.top * gridSize).round().clamp(
-    0,
-    gridSize - 1,
-  );
-  final rightCol =
-      ((relativeBoundingBox.left + relativeBoundingBox.width) * gridSize)
-          .round()
-          .clamp(0, gridSize);
-  final bottomRow =
-      ((relativeBoundingBox.top + relativeBoundingBox.height) * gridSize)
-          .round()
-          .clamp(0, gridSize);
+  final bounds = relativeBoundingBox.toGridBounds(gridSize);
 
   final dx = [0, 0, -1, 1];
   final dy = [-1, 1, 0, 0];
 
   for (int y = 0; y < gridSize; y++) {
     for (int x = 0; x < gridSize; x++) {
-      final isInsideBox =
-          (x >= leftCol && x < rightCol && y >= topRow && y < bottomRow);
+      final isInsideBox = bounds.containsPixel(x, y);
       final val = grid[y][x];
 
       if (val > 0) {
@@ -134,26 +119,11 @@ class ShapeSculpterAgent implements PixelArtAgent {
 
     int minX = 0, maxX = gridSize - 1, minY = 0, maxY = gridSize - 1;
     if (comp != null) {
-      minX = (comp.relativeBoundingBox.left * gridSize).round().clamp(
-        0,
-        gridSize - 1,
-      );
-      maxX =
-          (((comp.relativeBoundingBox.left + comp.relativeBoundingBox.width) *
-                          gridSize)
-                      .round() -
-                  1)
-              .clamp(0, gridSize - 1);
-      minY = (comp.relativeBoundingBox.top * gridSize).round().clamp(
-        0,
-        gridSize - 1,
-      );
-      maxY =
-          (((comp.relativeBoundingBox.top + comp.relativeBoundingBox.height) *
-                          gridSize)
-                      .round() -
-                  1)
-              .clamp(0, gridSize - 1);
+      final bounds = comp.gridBounds(gridSize);
+      minX = bounds.minX;
+      maxX = bounds.maxX;
+      minY = bounds.minY;
+      maxY = bounds.maxY;
     }
 
     return 'You are an AI pixel art sculpting agent. Your job is to refine the binary pixel grid of a component to match its description: "$description".\n'
@@ -194,26 +164,11 @@ class ShapeSculpterAgent implements PixelArtAgent {
     final removeList = candidates['remove'];
     final addList = candidates['add'];
 
-    final minX = (comp.relativeBoundingBox.left * gridSize).round().clamp(
-      0,
-      gridSize - 1,
-    );
-    final maxX =
-        (((comp.relativeBoundingBox.left + comp.relativeBoundingBox.width) *
-                        gridSize)
-                    .round() -
-                1)
-            .clamp(0, gridSize - 1);
-    final minY = (comp.relativeBoundingBox.top * gridSize).round().clamp(
-      0,
-      gridSize - 1,
-    );
-    final maxY =
-        (((comp.relativeBoundingBox.top + comp.relativeBoundingBox.height) *
-                        gridSize)
-                    .round() -
-                1)
-            .clamp(0, gridSize - 1);
+    final bounds = comp.gridBounds(gridSize);
+    final minX = bounds.minX;
+    final maxX = bounds.maxX;
+    final minY = bounds.minY;
+    final maxY = bounds.maxY;
 
     String formatCompactCoords(List<Map<String, int>>? list) {
       if (list == null || list.isEmpty) return 'None';
@@ -230,28 +185,11 @@ class ShapeSculpterAgent implements PixelArtAgent {
       );
       for (final other in context.allComponents!) {
         final isCurrent = other.name == comp.name;
-        final oMinX = (other.relativeBoundingBox.left * gridSize).round().clamp(
-          0,
-          gridSize - 1,
-        );
-        final oMaxX =
-            (((other.relativeBoundingBox.left +
-                                other.relativeBoundingBox.width) *
-                            gridSize)
-                        .round() -
-                    1)
-                .clamp(0, gridSize - 1);
-        final oMinY = (other.relativeBoundingBox.top * gridSize).round().clamp(
-          0,
-          gridSize - 1,
-        );
-        final oMaxY =
-            (((other.relativeBoundingBox.top +
-                                other.relativeBoundingBox.height) *
-                            gridSize)
-                        .round() -
-                    1)
-                .clamp(0, gridSize - 1);
+        final oBounds = other.gridBounds(gridSize);
+        final oMinX = oBounds.minX;
+        final oMaxX = oBounds.maxX;
+        final oMinY = oBounds.minY;
+        final oMaxY = oBounds.maxY;
         final statusStr = isCurrent
             ? '[TARGET COMPONENT]'
             : (other.isSculpted ? '[Already Sculpted]' : '[Planned]');

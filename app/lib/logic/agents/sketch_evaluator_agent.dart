@@ -25,11 +25,11 @@ class SketchEvaluatorAgent implements PixelArtAgent {
     if (comp == null) return 'No target component provided.';
 
     final gridSize = context.gridSize;
-    final bbox = comp.relativeBoundingBox;
-    final minX = (bbox.left * gridSize).round();
-    final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-    final minY = (bbox.top * gridSize).round();
-    final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+    final bounds = comp.gridBounds(gridSize);
+    final minX = bounds.minX;
+    final maxX = bounds.maxX;
+    final minY = bounds.minY;
+    final maxY = bounds.maxY;
 
     return 'You are an AI pixel art evaluator agent named "sketch_evaluator". Your job is to inspect the current grid of a component: "${comp.name}" (${comp.description}) and decide if it is finished and represents the shape volume well.\n'
         'The drawing is restricted to the bounding box: X: $minX to $maxX, Y: $minY to $maxY.\n\n'

@@ -154,6 +154,17 @@ void main() {
           orchestrator.isComponentDone(completeGrid, comp, 16, true),
           isTrue,
         );
+
+        // Case 5: Component with empty bounds returns false even if evaluator approves
+        final emptyBoundsComp = PixelArtComponent(
+          name: 'empty',
+          description: 'empty component',
+          relativeBoundingBox: const Rect.fromLTWH(0.5, 0.5, 0.0, 0.0),
+        );
+        expect(
+          orchestrator.isComponentDone(completeGrid, emptyBoundsComp, 16, true),
+          isFalse,
+        );
       },
     );
   });

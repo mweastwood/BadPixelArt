@@ -18,11 +18,11 @@ class SketchPainterAgent implements PixelArtAgent {
     if (comp == null) return 'No target component provided.';
 
     final gridSize = context.gridSize;
-    final bbox = comp.relativeBoundingBox;
-    final minX = (bbox.left * gridSize).round();
-    final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-    final minY = (bbox.top * gridSize).round();
-    final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+    final bounds = comp.gridBounds(gridSize);
+    final minX = bounds.minX;
+    final maxX = bounds.maxX;
+    final minY = bounds.minY;
+    final maxY = bounds.maxY;
 
     final shapesInstruction = StringBuffer();
     if (comp.shapes.isNotEmpty) {
@@ -30,21 +30,9 @@ class SketchPainterAgent implements PixelArtAgent {
         '\nThis component is decomposed into the following fundamental geometric shapes that you should draw:',
       );
       for (final shape in comp.shapes) {
-        final sBox = shape.relativeBoundingBox;
-        final sMinX = (minX + sBox.left * (maxX - minX + 1)).round();
-        final sMaxX =
-            (minX + (sBox.left + sBox.width) * (maxX - minX + 1)).round() - 1;
-        final sMinY = (minY + sBox.top * (maxY - minY + 1)).round();
-        final sMaxY =
-            (minY + (sBox.top + sBox.height) * (maxY - minY + 1)).round() - 1;
-
-        final sMinXClamped = sMinX.clamp(minX, maxX);
-        final sMaxXClamped = sMaxX.clamp(minX, maxX);
-        final sMinYClamped = sMinY.clamp(minY, maxY);
-        final sMaxYClamped = sMaxY.clamp(minY, maxY);
-
+        final sBounds = shape.subGridBounds(bounds);
         shapesInstruction.writeln(
-          '- A "${shape.type}" representing: "${shape.description}" inside local/absolute bounds: X in [$sMinXClamped, $sMaxXClamped], Y in [$sMinYClamped, $sMaxYClamped]',
+          '- A "${shape.type}" representing: "${shape.description}" inside local/absolute bounds: X in [${sBounds.minX}, ${sBounds.maxX}], Y in [${sBounds.minY}, ${sBounds.maxY}]',
         );
       }
       shapesInstruction.writeln(
