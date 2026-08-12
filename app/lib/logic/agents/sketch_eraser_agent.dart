@@ -1,5 +1,4 @@
 import 'base_agent.dart';
-import '../utils/coordinate_converter.dart';
 
 class SketchEraserAgent implements PixelArtAgent {
   @override
