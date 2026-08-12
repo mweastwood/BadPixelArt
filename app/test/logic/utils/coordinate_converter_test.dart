@@ -134,5 +134,81 @@ void main() {
       expect(bounds.topRow, equals(0));
       expect(bounds.bottomRow, equals(16));
     });
+
+    test('0-width empty GridBounds reports empty range with maxX < minX', () {
+      const emptyBounds = GridBounds(
+        leftCol: 8,
+        topRow: 8,
+        rightCol: 8,
+        bottomRow: 8,
+      );
+
+      expect(emptyBounds.isEmpty, isTrue);
+      expect(emptyBounds.width, equals(0));
+      expect(emptyBounds.height, equals(0));
+      expect(emptyBounds.minX, equals(8));
+      expect(emptyBounds.maxX, equals(7));
+      expect(emptyBounds.minY, equals(8));
+      expect(emptyBounds.maxY, equals(7));
+
+      final recreated = GridBounds.fromMinMax(
+        minX: emptyBounds.minX,
+        maxX: emptyBounds.maxX,
+        minY: emptyBounds.minY,
+        maxY: emptyBounds.maxY,
+      );
+      expect(recreated, equals(emptyBounds));
+    });
+
+    test(
+      'sub-grid bounds calculation within empty parent bounds does not overflow',
+      () {
+        const emptyParent = GridBounds(
+          leftCol: 8,
+          topRow: 8,
+          rightCol: 8,
+          bottomRow: 8,
+        );
+        const rect = Rect.fromLTWH(0.0, 0.0, 1.0, 1.0);
+        final subBounds = rect.toSubGridBounds(emptyParent);
+
+        expect(subBounds.isEmpty, isTrue);
+        expect(subBounds.rightCol, lessThanOrEqualTo(emptyParent.rightCol));
+        expect(subBounds.bottomRow, lessThanOrEqualTo(emptyParent.bottomRow));
+        expect(subBounds.leftCol, equals(8));
+        expect(subBounds.rightCol, equals(8));
+      },
+    );
+
+    test(
+      'out-of-bounds grid boundaries at gridSize clamp correctly when ensureNonEmpty is true',
+      () {
+        const rectAtBoundary = Rect.fromLTWH(1.0, 1.0, 0.0, 0.0);
+        final boundsNonEmpty = rectAtBoundary.toGridBounds(
+          16,
+          ensureNonEmpty: true,
+        );
+
+        expect(boundsNonEmpty.leftCol, equals(15));
+        expect(boundsNonEmpty.rightCol, equals(16));
+        expect(boundsNonEmpty.topRow, equals(15));
+        expect(boundsNonEmpty.bottomRow, equals(16));
+        expect(boundsNonEmpty.minX, equals(15));
+        expect(boundsNonEmpty.maxX, equals(15));
+        expect(boundsNonEmpty.minY, equals(15));
+        expect(boundsNonEmpty.maxY, equals(15));
+        expect(boundsNonEmpty.isNotEmpty, isTrue);
+
+        final boundsEmpty = rectAtBoundary.toGridBounds(
+          16,
+          ensureNonEmpty: false,
+        );
+        expect(boundsEmpty.leftCol, equals(16));
+        expect(boundsEmpty.rightCol, equals(16));
+        expect(boundsEmpty.minX, equals(16));
+        expect(boundsEmpty.maxX, equals(15));
+        expect(boundsEmpty.isEmpty, isTrue);
+      },
+    );
   });
 }

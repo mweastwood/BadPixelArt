@@ -45,13 +45,13 @@ class GridBounds {
   int get minX => leftCol;
 
   /// 0-indexed inclusive maximum X pixel coordinate.
-  int get maxX => (rightCol - 1 < leftCol) ? leftCol : rightCol - 1;
+  int get maxX => rightCol - 1;
 
   /// 0-indexed inclusive minimum Y pixel coordinate.
   int get minY => topRow;
 
   /// 0-indexed inclusive maximum Y pixel coordinate.
-  int get maxY => (bottomRow - 1 < topRow) ? topRow : bottomRow - 1;
+  int get maxY => bottomRow - 1;
 
   /// Width in grid cells/pixels.
   int get width => rightCol - leftCol;
@@ -119,40 +119,52 @@ extension RectGridExtension on Rect {
     int y2 = ((top + height) * gridSize).round().clamp(0, gridSize);
 
     if (ensureNonEmpty) {
+      if (x1 >= gridSize) x1 = gridSize - 1;
+      if (y1 >= gridSize) y1 = gridSize - 1;
       if (x2 <= x1) x2 = (x1 + 1).clamp(0, gridSize);
       if (y2 <= y1) y2 = (y1 + 1).clamp(0, gridSize);
     }
 
-    return GridBounds(
-      leftCol: x1,
-      topRow: y1,
-      rightCol: x2,
-      bottomRow: y2,
-    );
+    return GridBounds(leftCol: x1, topRow: y1, rightCol: x2, bottomRow: y2);
   }
 
   /// Converts relative shape bounds (0.0 to 1.0 within parent component) to sub-grid bounds within [parentBounds].
   GridBounds toSubGridBounds(GridBounds parentBounds) {
+    if (parentBounds.isEmpty) {
+      return GridBounds(
+        leftCol: parentBounds.leftCol,
+        topRow: parentBounds.topRow,
+        rightCol: parentBounds.leftCol,
+        bottomRow: parentBounds.topRow,
+      );
+    }
+
     final parentWidth = parentBounds.width;
     final parentHeight = parentBounds.height;
 
-    final sMinX = (parentBounds.minX + left * parentWidth).round();
-    final sMaxX =
-        (parentBounds.minX + (left + width) * parentWidth).round() - 1;
-    final sMinY = (parentBounds.minY + top * parentHeight).round();
-    final sMaxY =
-        (parentBounds.minY + (top + height) * parentHeight).round() - 1;
+    int subLeftCol = (parentBounds.leftCol + left * parentWidth).round().clamp(
+      parentBounds.leftCol,
+      parentBounds.rightCol,
+    );
+    int subRightCol = (parentBounds.leftCol + (left + width) * parentWidth)
+        .round()
+        .clamp(parentBounds.leftCol, parentBounds.rightCol);
+    int subTopRow = (parentBounds.topRow + top * parentHeight).round().clamp(
+      parentBounds.topRow,
+      parentBounds.bottomRow,
+    );
+    int subBottomRow = (parentBounds.topRow + (top + height) * parentHeight)
+        .round()
+        .clamp(parentBounds.topRow, parentBounds.bottomRow);
 
-    final clampedMinX = sMinX.clamp(parentBounds.minX, parentBounds.maxX);
-    final clampedMaxX = sMaxX.clamp(parentBounds.minX, parentBounds.maxX);
-    final clampedMinY = sMinY.clamp(parentBounds.minY, parentBounds.maxY);
-    final clampedMaxY = sMaxY.clamp(parentBounds.minY, parentBounds.maxY);
+    if (subRightCol < subLeftCol) subRightCol = subLeftCol;
+    if (subBottomRow < subTopRow) subBottomRow = subTopRow;
 
-    return GridBounds.fromMinMax(
-      minX: clampedMinX,
-      maxX: clampedMaxX,
-      minY: clampedMinY,
-      maxY: clampedMaxY,
+    return GridBounds(
+      leftCol: subLeftCol,
+      topRow: subTopRow,
+      rightCol: subRightCol,
+      bottomRow: subBottomRow,
     );
   }
 }

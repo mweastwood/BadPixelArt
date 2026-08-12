@@ -94,4 +94,3 @@ class SketchEraserAgent implements PixelArtAgent {
     return sb.toString();
   }
 }
-

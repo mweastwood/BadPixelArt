@@ -49,11 +49,11 @@ class SketchOrchestrator {
   ) {
     if (!evaluatorApproves) return false;
 
-    final bbox = comp.relativeBoundingBox;
-    final minX = (bbox.left * gridSize).round();
-    final maxX = ((bbox.left + bbox.width) * gridSize).round() - 1;
-    final minY = (bbox.top * gridSize).round();
-    final maxY = ((bbox.top + bbox.height) * gridSize).round() - 1;
+    final bounds = comp.gridBounds(gridSize);
+    final minX = bounds.minX;
+    final maxX = bounds.maxX;
+    final minY = bounds.minY;
+    final maxY = bounds.maxY;
 
     bool touchMinX = false;
     bool touchMaxX = false;

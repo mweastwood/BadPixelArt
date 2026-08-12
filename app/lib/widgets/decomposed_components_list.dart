@@ -110,25 +110,11 @@ class SemanticComponentsList extends ConsumerWidget {
                   final comp = components[index];
                   final isActive = index == activeIndex;
 
-                  final gridSize = canvasModel.gridSize;
-                  final minX = (comp.relativeBoundingBox.left * gridSize)
-                      .round()
-                      .clamp(0, gridSize - 1);
-                  final minY = (comp.relativeBoundingBox.top * gridSize)
-                      .round()
-                      .clamp(0, gridSize - 1);
-                  final maxX =
-                      ((comp.relativeBoundingBox.left +
-                                  comp.relativeBoundingBox.width) *
-                              gridSize)
-                          .round()
-                          .clamp(1, gridSize);
-                  final maxY =
-                      ((comp.relativeBoundingBox.top +
-                                  comp.relativeBoundingBox.height) *
-                              gridSize)
-                          .round()
-                          .clamp(1, gridSize);
+                  final bounds = comp.gridBounds(canvasModel.gridSize);
+                  final minX = bounds.minX;
+                  final minY = bounds.minY;
+                  final maxX = bounds.maxX;
+                  final maxY = bounds.maxY;
 
                   return InkWell(
                     onTap: () => notifier.selectComponent(index),
