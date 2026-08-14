@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/agents/shape_sculpter_agent.dart';
-import 'wizard_controls.dart';
+import '../logic/wizard_state.dart';
 import 'canvas/canvas_painter.dart';
 export 'canvas/canvas_painter.dart';
 import 'canvas/scaled_canvas_preview.dart';

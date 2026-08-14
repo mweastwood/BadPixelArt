@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../widgets/wizard_controls.dart';
+import '../wizard_state.dart';
 import '../canvas_state.dart';
 
 /// Controller for executing the automated AutoPlay wizard step-by-step loop.

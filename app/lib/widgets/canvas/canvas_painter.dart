@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../logic/models/pixel_art_component.dart';
 import '../../logic/agents/shape_sculpter_agent.dart';
-import '../wizard_controls.dart';
+import '../../logic/wizard_state.dart';
 
 class CanvasPainter extends CustomPainter {
   final List<List<int>> grid;
