@@ -1,22 +1,14 @@
-import 'dart:convert';
-import 'dart:ui';
-import 'package:flutter/foundation.dart';
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
-import 'package:bad_pixel_art/logic/prompts.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
-import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class MockTestAiService extends AiService {
   AiCoreStatus status = AiCoreStatus.available;
   bool triggerDownloadCalled = false;
-  Uint8List? lastCanvasImage;
-  String? lastPrompt;
-  Map<String, dynamic>? mockResult;
-  int callCount = 0;
 
   @override
   Future<AiCoreStatus> checkStatus() async => status;
@@ -40,30 +32,6 @@ class MockTestAiService extends AiService {
     double temperature = 1.0,
     int? maxOutputTokens,
   }) async {
-    if (prompt.contains('pixel art describer') ||
-        prompt.contains('reference image depicts')) {
-      return 'Mock description of reference image';
-    }
-    if (temperature <= 0.5 &&
-        (prompt.contains('16 colors') || prompt.contains('8 colors'))) {
-      final List<String> mockPalette = List.generate(8, (i) {
-        final val = (i * 0x22).toRadixString(16).padLeft(2, '0');
-        return '#$val$val$val';
-      });
-      return '["${mockPalette.join('", "')}"]';
-    }
-
-    if (prompt.contains('evaluating candidate drawings')) {
-      return jsonEncode({
-        'choice': 1,
-        'reasoning': 'Critic picked 1',
-        'nextFocus': 'Critic suggestion',
-      });
-    }
-
-    lastCanvasImage = imageBytes;
-    lastPrompt = prompt;
-
     if (prompt.contains('decomposer') || prompt.contains('Decompose')) {
       return '''
       [
@@ -76,26 +44,7 @@ class MockTestAiService extends AiService {
       ]
       ''';
     }
-
-    if (mockResult == null) return null;
-
-    if (mockResult!['tool'] == 'undo') {
-      int turn = 1;
-      if (prompt.contains('- {')) {
-        turn = RegExp(r'- \{').allMatches(prompt).length + 1;
-      }
-      if (turn == 1) {
-        return jsonEncode({
-          'tool': 'pixel',
-          'params': [10, 10],
-          'color': 2,
-        });
-      } else {
-        return jsonEncode({'tool': 'undo', 'params': []});
-      }
-    }
-
-    return jsonEncode(mockResult);
+    return null;
   }
 
   @override
@@ -135,20 +84,6 @@ void main() {
       expect(model.redoStack, isEmpty);
       expect(model.grid.length, equals(CanvasNotifier.gridSize));
       expect(model.grid[0].length, equals(CanvasNotifier.gridSize));
-    });
-
-    test('selectPalette resets canvas and changes palette', () {
-      final notifier = container.read(canvasStateProvider.notifier);
-
-      notifier.drawPixel(5, 5); // Draw a pixel
-      expect(container.read(canvasStateProvider).undoStack, isNotEmpty);
-
-      notifier.selectPalette('grayscale');
-      final model = container.read(canvasStateProvider);
-      expect(model.paletteName, equals('grayscale'));
-      expect(model.palette.length, equals(4));
-      expect(model.grid[5][5], equals(0)); // Reset canvas check
-      expect(model.undoStack, isEmpty);
     });
 
     test('selectColor updates selectedColorIndex', () {
@@ -352,34 +287,6 @@ void main() {
       expect(grid[12][12], equals(1)); // (12+12)%2 == 0
     });
 
-    test(
-      'triggerDecomposition runs DecomposerAgent and populates decomposedComponents directly',
-      () async {
-        final notifier = container.read(canvasStateProvider.notifier);
-        expect(
-          container.read(canvasStateProvider).decomposedComponents,
-          isEmpty,
-        );
-
-        await notifier.triggerDecomposition();
-
-        final model = container.read(canvasStateProvider);
-        expect(model.pendingDecompositionOptions, isEmpty);
-        expect(model.decomposedComponents, hasLength(1));
-        expect(model.decomposedComponents.first.name, equals('blade'));
-        expect(
-          model.decomposedComponents.first.description,
-          equals('vertical blade'),
-        );
-        // Snapped bounds verification:
-        // After scaling and centering relative to the center of mass
-        expect(
-          model.decomposedComponents.first.relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.3125, 0.0, 0.375, 1.0)),
-        );
-      },
-    );
-
     test('triggerDownload calls AI service download', () async {
       mockAiService.status = AiCoreStatus.downloadable;
       final notifier = container.read(canvasStateProvider.notifier);
@@ -401,438 +308,29 @@ void main() {
       expect(container.read(canvasStateProvider).aiHistory, isEmpty);
     });
 
-    test('generateBmp produces valid 24-bit BMP header and data', () {
-      final grid = List.generate(
-        CanvasNotifier.gridSize,
-        (_) => List.filled(CanvasNotifier.gridSize, 0),
-      );
-      grid[0][0] = 2;
-
-      final bmp = generateBmp(grid, CanvasNotifier.primaryPalette);
-
-      // Verify file size is 822 bytes (54 header + 16 * 16 * 3)
-      expect(bmp.length, equals(822));
-
-      // BM signature
-      expect(bmp[0], equals(0x42)); // 'B'
-      expect(bmp[1], equals(0x4D)); // 'M'
-
-      final ByteData bd = ByteData.sublistView(bmp);
-
-      // Offset to pixel data
-      expect(bd.getUint32(10, Endian.little), equals(54));
-
-      // DIB header size (40)
-      expect(bd.getUint32(14, Endian.little), equals(40));
-
-      // Width and Height (16)
-      expect(bd.getUint32(18, Endian.little), equals(CanvasNotifier.gridSize));
-      expect(bd.getUint32(22, Endian.little), equals(CanvasNotifier.gridSize));
-
-      // Color planes (1)
-      expect(bd.getUint16(26, Endian.little), equals(1));
-
-      // Bits per pixel (24)
-      expect(bd.getUint16(28, Endian.little), equals(24));
-
-      // Compression (0 = BI_RGB)
-      expect(bd.getUint32(30, Endian.little), equals(0));
-    });
-
-    group('combineBmps tests', () {
-      test('combineBmps with empty list returns 1x1 dummy BMP', () {
-        final combined = combineBmps([]);
-        expect(
-          combined.length,
-          equals(58),
-        ); // 54 header + 1 * 1 * 3 bytes + 1 padding byte = 58
-        final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(1)); // width
-        expect(bd.getUint32(22, Endian.little), equals(1)); // height
-      });
-
-      test('combineBmps with single BMP returns 16x16 BMP', () {
-        final grid = List.generate(
-          CanvasNotifier.gridSize,
-          (_) => List.filled(CanvasNotifier.gridSize, 0),
-        );
-        final bmp = generateBmp(grid, CanvasNotifier.primaryPalette);
-        final combined = combineBmps([bmp]);
-        expect(combined.length, equals(822)); // 54 header + 16 * 16 * 3 = 822
-        final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(16)); // width
-        expect(bd.getUint32(22, Endian.little), equals(16)); // height
-      });
-
-      test('combineBmps with two BMPs concatenates side-by-side correctly', () {
-        final grid1 = List.generate(
-          CanvasNotifier.gridSize,
-          (_) => List.filled(CanvasNotifier.gridSize, 3),
-        ); // Filled with red (index 3, maps to palette[2])
-        final grid2 = List.generate(
-          CanvasNotifier.gridSize,
-          (_) => List.filled(CanvasNotifier.gridSize, 5),
-        ); // Filled with blue (index 5, maps to palette[4])
-
-        final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
-        final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
-
-        final combined = combineBmps([bmp1, bmp2]);
-
-        // File size should be 3126 (54 header + 32 * 32 * 3)
-        expect(combined.length, equals(3126));
-
-        final ByteData bd = ByteData.sublistView(combined);
-        expect(bd.getUint32(18, Endian.little), equals(32)); // width
-        expect(bd.getUint32(22, Endian.little), equals(32)); // height
-
-        // Stride is 32 * 3 = 96. Pixel (10, 10) in left panel (grid1) starts at y_bmp=26, x_bmp=10.
-        final offsetLeft = 54 + 26 * 96 + 10 * 3;
-        expect(combined[offsetLeft], equals(0)); // blue
-        expect(combined[offsetLeft + 1], equals(0)); // green
-        expect(combined[offsetLeft + 2], equals(255)); // red
-
-        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=26, x_bmp=16+10=26
-        final offsetRight = 54 + 26 * 96 + 26 * 3;
-        expect(combined[offsetRight], equals(255)); // blue
-        expect(combined[offsetRight + 1], equals(0)); // green
-        expect(combined[offsetRight + 2], equals(0)); // red
-      });
-
-      test(
-        'combineBmps with three BMPs concatenates side-by-side correctly',
-        () {
-          final grid1 = List.generate(
-            CanvasNotifier.gridSize,
-            (_) => List.filled(CanvasNotifier.gridSize, 3),
-          ); // Red (index 3, maps to palette[2])
-          final grid2 = List.generate(
-            CanvasNotifier.gridSize,
-            (_) => List.filled(CanvasNotifier.gridSize, 4),
-          ); // Green (index 4, maps to palette[3])
-          final grid3 = List.generate(
-            CanvasNotifier.gridSize,
-            (_) => List.filled(CanvasNotifier.gridSize, 5),
-          ); // Blue (index 5, maps to palette[4])
-
-          final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
-          final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
-          final bmp3 = generateBmp(grid3, CanvasNotifier.primaryPalette);
-
-          final combined = combineBmps([bmp1, bmp2, bmp3]);
-
-          // File size should be 3126 (54 header + 32 * 32 * 3)
-          expect(combined.length, equals(3126));
-
-          final ByteData bd = ByteData.sublistView(combined);
-          expect(bd.getUint32(18, Endian.little), equals(32)); // width
-          expect(bd.getUint32(22, Endian.little), equals(32)); // height
-
-          // Stride is 32 * 3 = 96.
-          // Left panel (grid1): pixel (10, 10) -> padded y_bmp=26, x_bmp=10
-          final offsetLeft = 54 + 26 * 96 + 10 * 3;
-          expect(combined[offsetLeft], equals(0)); // blue
-          expect(combined[offsetLeft + 1], equals(0)); // green
-          expect(combined[offsetLeft + 2], equals(255)); // red
-
-          // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=26, x_bmp=26
-          final offsetMiddle = 54 + 26 * 96 + 26 * 3;
-          expect(combined[offsetMiddle], equals(0)); // blue
-          expect(combined[offsetMiddle + 1], equals(255)); // green
-          expect(combined[offsetMiddle + 2], equals(0)); // red
-
-          // Right panel (grid3): pixel (10, 10) -> padded y_bmp=10, x_bmp=10
-          final offsetRight = 54 + 10 * 96 + 10 * 3;
-          expect(combined[offsetRight], equals(255)); // blue
-          expect(combined[offsetRight + 1], equals(0)); // green
-          expect(combined[offsetRight + 2], equals(0)); // red
-        },
-      );
-    });
-
     test(
-      'setReferenceImage with originalBytes sets both referenceImage and originalReferenceImage',
+      'changeResolution switches grid size and clears history/undo/redo stacks',
       () {
         final notifier = container.read(canvasStateProvider.notifier);
-        final rawPngBytes = Uint8List.fromList([0, 1, 2, 3]);
-        final modelBmpBytes = Uint8List.fromList([4, 5, 6, 7]);
 
-        notifier.setReferenceImage(modelBmpBytes, originalBytes: rawPngBytes);
+        expect(notifier.state.gridSize, equals(16));
+        expect(notifier.state.grid.length, equals(16));
 
-        final state = container.read(canvasStateProvider);
-        expect(state.originalReferenceImage, equals(rawPngBytes));
-        expect(state.referenceImage, equals(modelBmpBytes));
+        notifier.drawPixel(0, 0);
+        expect(notifier.state.undoStack.isNotEmpty, isTrue);
+
+        notifier.changeResolution(8);
+
+        final updatedState = container.read(canvasStateProvider);
+        expect(updatedState.gridSize, equals(8));
+        expect(updatedState.grid.length, equals(8));
+        expect(updatedState.grid[0].length, equals(8));
+        expect(updatedState.undoStack.isEmpty, isTrue);
+        expect(updatedState.redoStack.isEmpty, isTrue);
+
+        notifier.changeResolution(12);
+        expect(container.read(canvasStateProvider).gridSize, equals(8));
       },
     );
-
-    test('setting reference image to null clears both images', () {
-      final notifier = container.read(canvasStateProvider.notifier);
-      final rawPngBytes = Uint8List.fromList([0, 1, 2, 3]);
-      final modelBmpBytes = Uint8List.fromList([4, 5, 6, 7]);
-
-      notifier.setReferenceImage(modelBmpBytes, originalBytes: rawPngBytes);
-      expect(container.read(canvasStateProvider).referenceImage, isNotNull);
-      expect(
-        container.read(canvasStateProvider).originalReferenceImage,
-        isNotNull,
-      );
-
-      notifier.setReferenceImage(null);
-      expect(container.read(canvasStateProvider).referenceImage, isNull);
-      expect(
-        container.read(canvasStateProvider).originalReferenceImage,
-        isNull,
-      );
-    });
-
-    group('AI Suggested Palette tests', () {
-      test('parsePaletteColors parses clean JSON list correctly', () {
-        const jsonResponse = '["#ff0000", "#00ff00", "#0000ff"]';
-        final colors = parsePaletteColors(jsonResponse);
-        expect(colors.length, equals(8));
-        expect(colors[0], equals(const Color(0xFFFF0000)));
-        expect(colors[1], equals(const Color(0xFF00FF00)));
-        expect(colors[2], equals(const Color(0xFF0000FF)));
-      });
-
-      test('parsePaletteColors extracts colors via regex fallback', () {
-        const textResponse =
-            'Here are the suggested colors: #ff55aa and #00bbcc.';
-        final colors = parsePaletteColors(textResponse);
-        expect(colors.length, equals(8));
-        expect(colors[0], equals(const Color(0xFFFF55AA)));
-        expect(colors[1], equals(const Color(0xFF00BBCC)));
-      });
-
-      test(
-        'suggestPaletteFromReference triggers suggestion and shows palette',
-        () async {
-          final notifier = container.read(canvasStateProvider.notifier);
-          final refBmp = Uint8List.fromList([1, 2, 3]);
-          notifier.setReferenceImage(refBmp);
-
-          await notifier.suggestPaletteFromReference();
-
-          final state = container.read(canvasStateProvider);
-          expect(state.suggestedPalette, isNotNull);
-          expect(state.suggestedPalette!.length, equals(8));
-          expect(state.showPaletteSuggestion, isTrue);
-        },
-      );
-
-      test('acceptSuggestedPalette updates palette and resets canvas', () {
-        final notifier = container.read(canvasStateProvider.notifier);
-        final suggested = List.generate(8, (i) => Color(0xFF000000 + i));
-
-        notifier.state = notifier.state.copyWith(
-          suggestedPalette: suggested,
-          showPaletteSuggestion: true,
-        );
-
-        notifier.acceptSuggestedPalette();
-
-        final state = container.read(canvasStateProvider);
-        expect(state.paletteName, equals('suggested'));
-        expect(state.palette, equals(suggested));
-        expect(state.showPaletteSuggestion, isFalse);
-        expect(state.selectedColorIndex, equals(0));
-      });
-
-      test('rejectSuggestedPalette clears suggestion', () {
-        final notifier = container.read(canvasStateProvider.notifier);
-        final suggested = List.generate(16, (i) => Color(0xFF000000 + i));
-
-        notifier.state = notifier.state.copyWith(
-          suggestedPalette: suggested,
-          showPaletteSuggestion: true,
-        );
-
-        notifier.rejectSuggestedPalette();
-
-        final state = container.read(canvasStateProvider);
-        expect(state.showPaletteSuggestion, isFalse);
-        expect(state.suggestedPalette, isNull);
-      });
-
-      test(
-        'changeResolution switches grid size and clears history/undo/redo stacks',
-        () {
-          final notifier = container.read(canvasStateProvider.notifier);
-
-          expect(notifier.state.gridSize, equals(16));
-          expect(notifier.state.grid.length, equals(16));
-
-          notifier.drawPixel(0, 0);
-          expect(notifier.state.undoStack.isNotEmpty, isTrue);
-
-          notifier.changeResolution(8);
-
-          final updatedState = container.read(canvasStateProvider);
-          expect(updatedState.gridSize, equals(8));
-          expect(updatedState.grid.length, equals(8));
-          expect(updatedState.grid[0].length, equals(8));
-          expect(updatedState.undoStack.isEmpty, isTrue);
-          expect(updatedState.redoStack.isEmpty, isTrue);
-
-          notifier.changeResolution(12);
-          expect(container.read(canvasStateProvider).gridSize, equals(8));
-        },
-      );
-
-      test('reorderComponents reorders correctly and bounds checks inputs', () {
-        final notifier = container.read(canvasStateProvider.notifier);
-
-        final compA = PixelArtComponent(
-          name: 'Component A',
-          description: 'A',
-          relativeBoundingBox: Rect.zero,
-        );
-        final compB = PixelArtComponent(
-          name: 'Component B',
-          description: 'B',
-          relativeBoundingBox: Rect.zero,
-        );
-        final compC = PixelArtComponent(
-          name: 'Component C',
-          description: 'C',
-          relativeBoundingBox: Rect.zero,
-        );
-
-        notifier.state = notifier.state.copyWith(
-          decomposedComponents: [compA, compB, compC],
-        );
-
-        // Valid reorder: move A (0) to after B (newIndex: 2)
-        notifier.reorderComponents(0, 2);
-        expect(
-          container
-              .read(canvasStateProvider)
-              .decomposedComponents
-              .map((c) => c.name),
-          equals(['Component B', 'Component A', 'Component C']),
-        );
-
-        // Invalid oldIndex (negative)
-        notifier.reorderComponents(-1, 1);
-        expect(
-          container
-              .read(canvasStateProvider)
-              .decomposedComponents
-              .map((c) => c.name),
-          equals(['Component B', 'Component A', 'Component C']),
-        );
-
-        // Invalid oldIndex (too large)
-        notifier.reorderComponents(3, 1);
-        expect(
-          container
-              .read(canvasStateProvider)
-              .decomposedComponents
-              .map((c) => c.name),
-          equals(['Component B', 'Component A', 'Component C']),
-        );
-
-        // Invalid newIndex (negative)
-        notifier.reorderComponents(1, -1);
-        expect(
-          container
-              .read(canvasStateProvider)
-              .decomposedComponents
-              .map((c) => c.name),
-          equals(['Component B', 'Component A', 'Component C']),
-        );
-
-        // Invalid newIndex (too large)
-        notifier.reorderComponents(1, 4);
-        expect(
-          container
-              .read(canvasStateProvider)
-              .decomposedComponents
-              .map((c) => c.name),
-          equals(['Component B', 'Component A', 'Component C']),
-        );
-      });
-
-      test('suggestDescriptionFromReference updates userPrompt', () async {
-        final mockAiService = MockTestAiService();
-        final notifier = CanvasNotifier(mockAiService);
-
-        notifier.setReferenceImage(Uint8List.fromList([1, 2, 3]));
-        await notifier.suggestDescriptionFromReference();
-
-        expect(notifier.state.userPrompt, isNotEmpty);
-      });
-
-      test(
-        'invalidates future steps when user prompt or reference image changes',
-        () {
-          final mockAiService = MockTestAiService();
-          final notifier = CanvasNotifier(mockAiService);
-
-          notifier.state = notifier.state.copyWith(
-            userPrompt: 'sword',
-            decomposedComponents: [
-              PixelArtComponent(
-                name: 'blade',
-                description: 'steel blade',
-                relativeBoundingBox: Rect.zero,
-              ),
-            ],
-          );
-
-          expect(notifier.state.decomposedComponents, isNotEmpty);
-
-          notifier.updatePrompt('shield');
-          expect(notifier.state.decomposedComponents, isEmpty);
-        },
-      );
-
-      test(
-        'startAutoPlay during componentSculpting sculpts components and advances to colorAndOutline without getting stuck',
-        () async {
-          final mockAiService = MockTestAiService();
-          final container = ProviderContainer(
-            overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
-          );
-          addTearDown(container.dispose);
-          final notifier = container.read(canvasStateProvider.notifier);
-
-          mockAiService.mockResult = {
-            'thought': 'sketching rectangle',
-            'tool': 'rectangle_filled',
-            'params': [6, 2, 9, 10],
-            'isComplete': true,
-          };
-
-          container
-              .read(wizardStateProvider.notifier)
-              .setStep(WizardStep.componentSculpting);
-
-          notifier.state = notifier.state.copyWith(
-            autoRun: true,
-            userPrompt: 'sword',
-            referenceImage: Uint8List.fromList([1, 2, 3]),
-            decomposedComponents: [
-              PixelArtComponent(
-                name: 'blade',
-                description: 'steel blade',
-                relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
-              ),
-              PixelArtComponent(
-                name: 'handle',
-                description: 'leather handle',
-                relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
-              ),
-            ],
-          );
-
-          await notifier.sketchComponents();
-
-          final comps = notifier.state.decomposedComponents;
-          expect(comps[0].grid, isNotNull);
-          expect(comps[1].grid, isNotNull);
-        },
-      );
-    });
   });
 }

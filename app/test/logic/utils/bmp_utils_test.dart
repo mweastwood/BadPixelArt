@@ -1,7 +1,46 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bad_pixel_art/logic/utils/bmp_utils.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
+import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class MockBmpAiService extends AiService {
+  @override
+  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
+
+  @override
+  Future<void> triggerDownload() async {}
+
+  @override
+  Future<void> setModelConfig({
+    required String releaseStage,
+    required String preference,
+  }) async {}
+
+  @override
+  Future<String?> generateContent({
+    required String prompt,
+    Uint8List? imageBytes,
+    double temperature = 1.0,
+    int? maxOutputTokens,
+  }) async {
+    if (prompt.contains('pixel art describer') ||
+        prompt.contains('reference image depicts')) {
+      return 'Mock description of reference image';
+    }
+    return null;
+  }
+
+  @override
+  Future<int> countTokens({
+    required String prompt,
+    Uint8List? imageBytes,
+  }) async {
+    return 100;
+  }
+}
 
 void main() {
   group('BMP Utils Tests', () {
@@ -110,17 +149,115 @@ void main() {
       expect(textGrid, contains('Z')); // index 35 maps to 'Z'
     });
 
-    test('combineBmps behaves correctly for different list sizes', () {
-      final combinedEmpty = combineBmps([]);
-      expect(
-        combinedEmpty.length,
-        equals(58),
-      ); // 54 + 1 * 1 * 3 + 1 padding = 58
+    group('combineBmps tests', () {
+      test('combineBmps with empty list returns 1x1 dummy BMP', () {
+        final combined = combineBmps([]);
+        expect(
+          combined.length,
+          equals(58),
+        ); // 54 header + 1 * 1 * 3 bytes + 1 padding byte = 58
+        final ByteData bd = ByteData.sublistView(combined);
+        expect(bd.getUint32(18, Endian.little), equals(1)); // width
+        expect(bd.getUint32(22, Endian.little), equals(1)); // height
+      });
 
-      final grid = List.generate(16, (_) => List.filled(16, 0));
-      final bmp = generateBmp(grid, testPalette);
-      final combinedSingle = combineBmps([bmp]);
-      expect(combinedSingle.length, equals(822));
+      test('combineBmps with single BMP returns 16x16 BMP', () {
+        final grid = List.generate(
+          CanvasNotifier.gridSize,
+          (_) => List.filled(CanvasNotifier.gridSize, 0),
+        );
+        final bmp = generateBmp(grid, CanvasNotifier.primaryPalette);
+        final combined = combineBmps([bmp]);
+        expect(combined.length, equals(822)); // 54 header + 16 * 16 * 3 = 822
+        final ByteData bd = ByteData.sublistView(combined);
+        expect(bd.getUint32(18, Endian.little), equals(16)); // width
+        expect(bd.getUint32(22, Endian.little), equals(16)); // height
+      });
+
+      test('combineBmps with two BMPs concatenates side-by-side correctly', () {
+        final grid1 = List.generate(
+          CanvasNotifier.gridSize,
+          (_) => List.filled(CanvasNotifier.gridSize, 3),
+        ); // Filled with red (index 3, maps to palette[2])
+        final grid2 = List.generate(
+          CanvasNotifier.gridSize,
+          (_) => List.filled(CanvasNotifier.gridSize, 5),
+        ); // Filled with blue (index 5, maps to palette[4])
+
+        final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
+        final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
+
+        final combined = combineBmps([bmp1, bmp2]);
+
+        // File size should be 3126 (54 header + 32 * 32 * 3)
+        expect(combined.length, equals(3126));
+
+        final ByteData bd = ByteData.sublistView(combined);
+        expect(bd.getUint32(18, Endian.little), equals(32)); // width
+        expect(bd.getUint32(22, Endian.little), equals(32)); // height
+
+        // Stride is 32 * 3 = 96. Pixel (10, 10) in left panel (grid1) starts at y_bmp=26, x_bmp=10.
+        final offsetLeft = 54 + 26 * 96 + 10 * 3;
+        expect(combined[offsetLeft], equals(0)); // blue
+        expect(combined[offsetLeft + 1], equals(0)); // green
+        expect(combined[offsetLeft + 2], equals(255)); // red
+
+        // Pixel (10, 10) in right panel (grid2) starts at y_bmp=26, x_bmp=16+10=26
+        final offsetRight = 54 + 26 * 96 + 26 * 3;
+        expect(combined[offsetRight], equals(255)); // blue
+        expect(combined[offsetRight + 1], equals(0)); // green
+        expect(combined[offsetRight + 2], equals(0)); // red
+      });
+
+      test(
+        'combineBmps with three BMPs concatenates side-by-side correctly',
+        () {
+          final grid1 = List.generate(
+            CanvasNotifier.gridSize,
+            (_) => List.filled(CanvasNotifier.gridSize, 3),
+          ); // Red (index 3, maps to palette[2])
+          final grid2 = List.generate(
+            CanvasNotifier.gridSize,
+            (_) => List.filled(CanvasNotifier.gridSize, 4),
+          ); // Green (index 4, maps to palette[3])
+          final grid3 = List.generate(
+            CanvasNotifier.gridSize,
+            (_) => List.filled(CanvasNotifier.gridSize, 5),
+          ); // Blue (index 5, maps to palette[4])
+
+          final bmp1 = generateBmp(grid1, CanvasNotifier.primaryPalette);
+          final bmp2 = generateBmp(grid2, CanvasNotifier.primaryPalette);
+          final bmp3 = generateBmp(grid3, CanvasNotifier.primaryPalette);
+
+          final combined = combineBmps([bmp1, bmp2, bmp3]);
+
+          // File size should be 3126 (54 header + 32 * 32 * 3)
+          expect(combined.length, equals(3126));
+
+          final ByteData bd = ByteData.sublistView(combined);
+          expect(bd.getUint32(18, Endian.little), equals(32)); // width
+          expect(bd.getUint32(22, Endian.little), equals(32)); // height
+
+          // Stride is 32 * 3 = 96.
+          // Left panel (grid1): pixel (10, 10) -> padded y_bmp=26, x_bmp=10
+          final offsetLeft = 54 + 26 * 96 + 10 * 3;
+          expect(combined[offsetLeft], equals(0)); // blue
+          expect(combined[offsetLeft + 1], equals(0)); // green
+          expect(combined[offsetLeft + 2], equals(255)); // red
+
+          // Middle panel (grid2): pixel (10, 10) -> padded y_bmp=26, x_bmp=26
+          final offsetMiddle = 54 + 26 * 96 + 26 * 3;
+          expect(combined[offsetMiddle], equals(0)); // blue
+          expect(combined[offsetMiddle + 1], equals(255)); // green
+          expect(combined[offsetMiddle + 2], equals(0)); // red
+
+          // Right panel (grid3): pixel (10, 10) -> padded y_bmp=10, x_bmp=10
+          final offsetRight = 54 + 10 * 96 + 10 * 3;
+          expect(combined[offsetRight], equals(255)); // blue
+          expect(combined[offsetRight + 1], equals(0)); // green
+          expect(combined[offsetRight + 2], equals(0)); // red
+        },
+      );
     });
 
     test('convertToPngBytes converts BMP image bytes to PNG format', () async {
@@ -158,5 +295,62 @@ void main() {
         expect(resultPng, equals(mockPng));
       },
     );
+
+    test(
+      'setReferenceImage with originalBytes sets both referenceImage and originalReferenceImage',
+      () {
+        SharedPreferences.setMockInitialValues({});
+        final container = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(MockBmpAiService())],
+        );
+        addTearDown(container.dispose);
+
+        final notifier = container.read(canvasStateProvider.notifier);
+        final rawPngBytes = Uint8List.fromList([0, 1, 2, 3]);
+        final modelBmpBytes = Uint8List.fromList([4, 5, 6, 7]);
+
+        notifier.setReferenceImage(modelBmpBytes, originalBytes: rawPngBytes);
+
+        final state = container.read(canvasStateProvider);
+        expect(state.originalReferenceImage, equals(rawPngBytes));
+        expect(state.referenceImage, equals(modelBmpBytes));
+      },
+    );
+
+    test('setting reference image to null clears both images', () {
+      SharedPreferences.setMockInitialValues({});
+      final container = ProviderContainer(
+        overrides: [aiServiceProvider.overrideWithValue(MockBmpAiService())],
+      );
+      addTearDown(container.dispose);
+
+      final notifier = container.read(canvasStateProvider.notifier);
+      final rawPngBytes = Uint8List.fromList([0, 1, 2, 3]);
+      final modelBmpBytes = Uint8List.fromList([4, 5, 6, 7]);
+
+      notifier.setReferenceImage(modelBmpBytes, originalBytes: rawPngBytes);
+      expect(container.read(canvasStateProvider).referenceImage, isNotNull);
+      expect(
+        container.read(canvasStateProvider).originalReferenceImage,
+        isNotNull,
+      );
+
+      notifier.setReferenceImage(null);
+      expect(container.read(canvasStateProvider).referenceImage, isNull);
+      expect(
+        container.read(canvasStateProvider).originalReferenceImage,
+        isNull,
+      );
+    });
+
+    test('suggestDescriptionFromReference updates userPrompt', () async {
+      final mockAiService = MockBmpAiService();
+      final notifier = CanvasNotifier(mockAiService);
+
+      notifier.setReferenceImage(Uint8List.fromList([1, 2, 3]));
+      await notifier.suggestDescriptionFromReference();
+
+      expect(notifier.state.userPrompt, isNotEmpty);
+    });
   });
 }
