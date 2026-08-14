@@ -8,18 +8,16 @@ import 'prompts.dart';
 import 'drawing_commands.dart';
 import 'algorithms/k_means_quantizer.dart';
 import 'agents/base_agent.dart';
-import 'agents/decomposer_agent.dart';
-import 'agents/shape_sculpter_agent.dart';
 import 'orchestrators/sketch_orchestrator.dart';
 import 'orchestrators/refinement_orchestrator.dart';
+import 'orchestrators/decomposition_orchestrator.dart';
+import 'orchestrators/sculpting_orchestrator.dart';
+import 'controllers/auto_play_controller.dart';
+import 'repositories/canvas_repository.dart';
 import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
 import 'models/canvas_model.dart';
 import 'utils/logging_ai_service.dart';
-import '../widgets/wizard_controls.dart';
-import 'package:drift/drift.dart' as drift;
-import 'utils/database.dart';
-import 'utils/database_helpers.dart';
 
 export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
@@ -37,9 +35,15 @@ abstract class AgentCanvas {
 
 class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   AiService _aiService;
+  final CanvasRepository _repository;
+  final AutoPlayWizardController _autoPlayController;
+  late DecompositionOrchestrator _decompositionOrchestrator;
+  late SculptingOrchestrator _sculptingOrchestrator;
   Timer? _autoRunTimer;
 
   static const int gridSize = 16;
+
+  CanvasModel get model => state;
 
   @override
   List<List<int>> get grid => state.grid;
@@ -63,25 +67,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
-  List<List<Color>> _downscaleColorGrid(
-    List<List<Color>> original,
-    int targetSize,
-  ) {
-    final List<List<Color>> result = List.generate(
-      targetSize,
-      (_) => List.filled(targetSize, const Color(0xFF000000)),
-    );
-    final double scale = original.length / targetSize;
-    for (int y = 0; y < targetSize; y++) {
-      final int srcY = (y * scale).toInt().clamp(0, original.length - 1);
-      for (int x = 0; x < targetSize; x++) {
-        final int srcX = (x * scale).toInt().clamp(0, original[0].length - 1);
-        result[y][x] = original[srcY][srcX];
-      }
-    }
-    return result;
-  }
-
   @override
   Uint8List generateCombinedVisualInput(
     Uint8List? referenceBmp,
@@ -92,7 +77,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     if (referenceBmp != null) {
       var refGrid = bmpToColorGrid(referenceBmp);
       if (refGrid.length != state.gridSize) {
-        refGrid = _downscaleColorGrid(refGrid, state.gridSize);
+        refGrid = downscaleColorGrid(refGrid, state.gridSize);
       }
       final blurredGrid = applyGaussianBlur(refGrid);
       final quantizedGrid = applyColorQuantization(blurredGrid, state.palette);
@@ -138,95 +123,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Future<void> saveToDb() async {
     if (_isRestoring) return;
-    final db = AppDatabaseHelper.db;
-    final now = DateTime.now();
-
-    final creationsCompanion = CreationsCompanion(
-      title: drift.Value(state.title),
-      gridSize: drift.Value(state.gridSize),
-      gridData: drift.Value(serializeGrid(state.grid)),
-      paletteName: drift.Value(state.paletteName),
-      paletteColors: drift.Value(serializePalette(state.palette)),
-      decomposedComponents: drift.Value(
-        serializeComponents(state.decomposedComponents),
-      ),
-      aiHistoryLogs: drift.Value(serializeHistory(state.aiHistory)),
-      referenceImage: drift.Value(state.referenceImage),
-      originalReferenceImage: drift.Value(state.originalReferenceImage),
-      updatedAt: drift.Value(now),
-    );
-
-    if (state.creationId == null) {
-      _isRestoring = true;
-      try {
-        final newCompanion = creationsCompanion.copyWith(
-          createdAt: drift.Value(now),
-        );
-        final newId = await db.createCreation(newCompanion);
-        state = state.copyWith(creationId: newId);
-      } finally {
-        _isRestoring = false;
-      }
-    } else {
-      final updateCompanion = creationsCompanion.copyWith(
-        id: drift.Value(state.creationId!),
-      );
-      await db.updateCreation(updateCompanion);
+    _isRestoring = true;
+    try {
+      state = await _repository.saveCanvas(state);
+    } finally {
+      _isRestoring = false;
     }
-
-    final sessionCompanion = WorkspaceSessionsCompanion(
-      id: const drift.Value(1),
-      activeCreationId: drift.Value(state.creationId),
-      selectedColorIndex: drift.Value(state.selectedColorIndex),
-      selectedTool: drift.Value(state.selectedTool.name),
-      userPrompt: drift.Value(state.userPrompt),
-      lastSavedAt: drift.Value(now),
-    );
-    await db.saveSession(sessionCompanion);
   }
 
   Future<void> loadFromDb(int id) async {
     _isRestoring = true;
     try {
-      final db = AppDatabaseHelper.db;
-      final creation = await db.getCreationById(id);
-      if (creation == null) return;
-
-      final grid = deserializeGrid(creation.gridData);
-      final palette = deserializePalette(creation.paletteColors);
-      final components = deserializeComponents(creation.decomposedComponents);
-      final history = deserializeHistory(creation.aiHistoryLogs);
-
       if (state.autoRun) {
         _autoRunTimer?.cancel();
       }
-
-      state = state.copyWith(
-        creationId: creation.id,
-        title: creation.title,
-        gridSize: creation.gridSize,
-        grid: grid,
-        paletteName: creation.paletteName,
-        palette: palette,
-        decomposedComponents: components,
-        aiHistory: history,
-        referenceImage: creation.referenceImage,
-        originalReferenceImage: creation.originalReferenceImage,
-        undoStack: const [],
-        redoStack: const [],
-        autoRun: false,
-      );
-
-      final now = DateTime.now();
-      final sessionCompanion = WorkspaceSessionsCompanion(
-        id: const drift.Value(1),
-        activeCreationId: drift.Value(creation.id),
-        selectedColorIndex: drift.Value(state.selectedColorIndex),
-        selectedTool: drift.Value(state.selectedTool.name),
-        userPrompt: drift.Value(state.userPrompt),
-        lastSavedAt: drift.Value(now),
-      );
-      await db.saveSession(sessionCompanion);
+      final newState = await _repository.loadCanvas(id, state);
+      if (newState != null) {
+        state = newState;
+      }
     } finally {
       _isRestoring = false;
     }
@@ -235,41 +149,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   Future<void> loadLastSession() async {
     _isRestoring = true;
     try {
-      final db = AppDatabaseHelper.db;
-      final session = await db.getSession();
-      if (session != null && session.activeCreationId != null) {
-        final creation = await db.getCreationById(session.activeCreationId!);
-        if (creation != null) {
-          final grid = deserializeGrid(creation.gridData);
-          final palette = deserializePalette(creation.paletteColors);
-          final components = deserializeComponents(
-            creation.decomposedComponents,
-          );
-          final history = deserializeHistory(creation.aiHistoryLogs);
-
-          final tool = CanvasTool.values.firstWhere(
-            (t) => t.name == session.selectedTool,
-            orElse: () => CanvasTool.line,
-          );
-
-          state = state.copyWith(
-            creationId: creation.id,
-            title: creation.title,
-            gridSize: creation.gridSize,
-            grid: grid,
-            paletteName: creation.paletteName,
-            palette: palette,
-            decomposedComponents: components,
-            aiHistory: history,
-            referenceImage: creation.referenceImage,
-            originalReferenceImage: creation.originalReferenceImage,
-            selectedColorIndex: session.selectedColorIndex,
-            selectedTool: tool,
-            userPrompt: session.userPrompt,
-            undoStack: const [],
-            redoStack: const [],
-          );
-        }
+      final newState = await _repository.loadLastSession(state);
+      if (newState != null) {
+        state = newState;
       }
     } finally {
       _isRestoring = false;
@@ -305,44 +187,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         modelPreference: state.modelPreference,
       );
 
-      final db = AppDatabaseHelper.db;
-      final now = DateTime.now();
-      final sessionCompanion = WorkspaceSessionsCompanion(
-        id: const drift.Value(1),
-        activeCreationId: const drift.Value.absent(),
-        selectedColorIndex: drift.Value(state.selectedColorIndex),
-        selectedTool: drift.Value(state.selectedTool.name),
-        userPrompt: drift.Value(state.userPrompt),
-        lastSavedAt: drift.Value(now),
-      );
-      await db.saveSession(sessionCompanion);
+      await _repository.saveNewSession(state);
     } finally {
       _isRestoring = false;
     }
   }
 
   Future<void> duplicateCanvas(int id) async {
-    final db = AppDatabaseHelper.db;
-    final creation = await db.getCreationById(id);
-    if (creation == null) return;
-
-    final now = DateTime.now();
-    final duplicateCompanion = CreationsCompanion(
-      title: drift.Value('${creation.title} (Copy)'),
-      gridSize: drift.Value(creation.gridSize),
-      gridData: drift.Value(creation.gridData),
-      paletteName: drift.Value(creation.paletteName),
-      paletteColors: drift.Value(creation.paletteColors),
-      decomposedComponents: drift.Value(creation.decomposedComponents),
-      aiHistoryLogs: drift.Value(creation.aiHistoryLogs),
-      referenceImage: drift.Value(creation.referenceImage),
-      originalReferenceImage: drift.Value(creation.originalReferenceImage),
-      createdAt: drift.Value(now),
-      updatedAt: drift.Value(now),
-    );
-
-    final newId = await db.createCreation(duplicateCompanion);
-    await loadFromDb(newId);
+    final newId = await _repository.duplicateCanvas(id);
+    if (newId != null) {
+      await loadFromDb(newId);
+    }
   }
 
   Future<void> renameCanvas(String newTitle) async {
@@ -351,13 +206,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> deleteCanvas(int id) async {
-    final db = AppDatabaseHelper.db;
-    await db.deleteCreation(id);
-
+    final nextId = await _repository.deleteCanvas(id);
     if (state.creationId == id) {
-      final creationsList = await db.getAllCreations();
-      if (creationsList.isNotEmpty) {
-        await loadFromDb(creationsList.first.id);
+      if (nextId != null) {
+        await loadFromDb(nextId);
       } else {
         await startNewCanvas();
       }
@@ -385,33 +237,47 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   void updateAiService(AiService newAiService) {
     _aiService = newAiService;
+    _decompositionOrchestrator = DecompositionOrchestrator(_aiService);
+    _sculptingOrchestrator = SculptingOrchestrator(_aiService);
     _setupLoggingAiService();
   }
 
-  CanvasNotifier(this._aiService, {CanvasModel? initialModel})
-    : super(
-        initialModel ??
-            CanvasModel(
-              gridSize: 16,
-              grid: List.generate(16, (_) => List.filled(16, 0)),
-              selectedColorIndex: 1, // Start with white/light color
-              selectedTool: CanvasTool.line,
-              paletteName: 'primary',
-              palette: primaryPalette,
-              userPrompt: '',
-              aiStatus: AiCoreStatus.available,
-              isGenerating: false,
-              autoRun: false,
-              autoRunSpeed: 1.5,
-              undoStack: [],
-              redoStack: [],
-              aiHistory: const [],
-              referenceImage: null,
-              originalReferenceImage: null,
-              modelReleaseStage: 'stable',
-              modelPreference: 'full',
-            ),
-      ) {
+  CanvasNotifier(
+    this._aiService, {
+    CanvasModel? initialModel,
+    CanvasRepository? repository,
+    AutoPlayWizardController? autoPlayController,
+    DecompositionOrchestrator? decompositionOrchestrator,
+    SculptingOrchestrator? sculptingOrchestrator,
+  }) : _repository = repository ?? CanvasRepository(),
+       _autoPlayController = autoPlayController ?? AutoPlayWizardController(),
+       super(
+         initialModel ??
+             CanvasModel(
+               gridSize: 16,
+               grid: List.generate(16, (_) => List.filled(16, 0)),
+               selectedColorIndex: 1, // Start with white/light color
+               selectedTool: CanvasTool.line,
+               paletteName: 'primary',
+               palette: primaryPalette,
+               userPrompt: '',
+               aiStatus: AiCoreStatus.available,
+               isGenerating: false,
+               autoRun: false,
+               autoRunSpeed: 1.5,
+               undoStack: [],
+               redoStack: [],
+               aiHistory: const [],
+               referenceImage: null,
+               originalReferenceImage: null,
+               modelReleaseStage: 'stable',
+               modelPreference: 'full',
+             ),
+       ) {
+    _decompositionOrchestrator =
+        decompositionOrchestrator ?? DecompositionOrchestrator(_aiService);
+    _sculptingOrchestrator =
+        sculptingOrchestrator ?? SculptingOrchestrator(_aiService);
     _setupLoggingAiService();
     _initModelConfig();
   }
@@ -805,8 +671,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void applyHatch(int startX, int startY) =>
       _executeCommand(HatchCommand(startX, startY));
 
-  // Core algorithms
-
   // Triggering next stroke from AI service
   Future<void> triggerAiStroke() async {
     // Painter agent strokes suggestion is currently disabled until PainterAgent is implemented.
@@ -817,16 +681,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(isGenerating: true);
 
     try {
-      final agent = DecomposerAgent();
-      final context = AgentContext(
+      final res = await _decompositionOrchestrator.decompose(
         gridSize: state.gridSize,
         activePalette: state.palette,
         userPrompt: state.userPrompt,
         currentGrid: state.grid,
         referenceImage: state.referenceImage,
       );
-
-      final res = await agent.decompose(_aiService, context);
 
       final willStop = state.isPausing;
       state = state.copyWith(
@@ -890,45 +751,21 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     );
 
     try {
-      final List<PixelArtComponent> updatedComponents = List.from(
+      final updatedComponents = List<PixelArtComponent>.from(
         state.decomposedComponents,
       );
-      var comp = updatedComponents[index];
+      final comp = updatedComponents[index];
 
-      comp = comp.initializeDefaultGrid(state.gridSize);
-
-      // Build background grid of existing components for visual reference
-      final existingGrid = List.generate(
-        state.gridSize,
-        (_) => List.filled(state.gridSize, 0),
-      );
-      for (int j = 0; j < updatedComponents.length; j++) {
-        if (j == index) continue;
-        final other = updatedComponents[j];
-        if (other.grid != null) {
-          final colorIdx = (j % (state.palette.length - 1)) + 1;
-          for (int y = 0; y < state.gridSize; y++) {
-            for (int x = 0; x < state.gridSize; x++) {
-              if (other.grid![y][x] > 0) {
-                existingGrid[y][x] = colorIdx;
-              }
-            }
-          }
-        }
-      }
-
-      final agent = ShapeSculpterAgent();
-      final context = AgentContext(
+      final newGrid = await _sculptingOrchestrator.sculptSingleComponent(
+        component: comp,
+        index: index,
+        allComponents: updatedComponents,
         gridSize: state.gridSize,
         activePalette: state.palette,
         userPrompt: state.userPrompt,
-        targetComponent: comp,
-        currentGrid: existingGrid,
         referenceImage: state.referenceImage,
-        allComponents: updatedComponents,
       );
 
-      final newGrid = await agent.sculptComponent(_aiService, context);
       updatedComponents[index] = comp.copyWith(grid: newGrid, isSculpted: true);
 
       state = state.copyWith(
@@ -952,59 +789,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(isGenerating: true);
 
     try {
-      final List<PixelArtComponent> updatedComponents = List.from(
-        state.decomposedComponents,
-      );
-      final agent = ShapeSculpterAgent();
-
-      for (int i = 0; i < updatedComponents.length; i++) {
-        state = state.copyWith(
-          decomposingComponentIndex: i,
-          activeComponentIndex: i,
-          sculptingStatus: 'Sculpting shape...',
-        );
-        var comp = updatedComponents[i];
-
-        comp = comp.initializeDefaultGrid(state.gridSize);
-
-        // Build background grid of existing components for visual reference
-        final existingGrid = List.generate(
-          state.gridSize,
-          (_) => List.filled(state.gridSize, 0),
-        );
-        for (int j = 0; j < updatedComponents.length; j++) {
-          if (j == i) continue;
-          final other = updatedComponents[j];
-          if (other.grid != null) {
-            final colorIdx = (j % (state.palette.length - 1)) + 1;
-            for (int y = 0; y < state.gridSize; y++) {
-              for (int x = 0; x < state.gridSize; x++) {
-                if (other.grid![y][x] > 0) {
-                  existingGrid[y][x] = colorIdx;
-                }
-              }
-            }
-          }
-        }
-
-        final context = AgentContext(
-          gridSize: state.gridSize,
-          activePalette: state.palette,
-          userPrompt: state.userPrompt,
-          targetComponent: comp,
-          currentGrid: existingGrid,
-          allComponents: updatedComponents,
-        );
-
-        final newGrid = await agent.sculptComponent(_aiService, context);
-        updatedComponents[i] = comp.copyWith(grid: newGrid, isSculpted: true);
-
-        state = state.copyWith(
-          decomposedComponents: List.from(updatedComponents),
-        );
-      }
+      final updatedComponents = await _sculptingOrchestrator
+          .sculptAllComponents(
+            components: state.decomposedComponents,
+            gridSize: state.gridSize,
+            activePalette: state.palette,
+            userPrompt: state.userPrompt,
+            onStep: (activeIndex, updated, status) {
+              state = state.copyWith(
+                decomposingComponentIndex: activeIndex,
+                activeComponentIndex: activeIndex,
+                sculptingStatus: status,
+                decomposedComponents: List.from(updated),
+              );
+            },
+          );
 
       state = state.copyWith(
+        decomposedComponents: updatedComponents,
         isGenerating: false,
         clearDecomposingComponent: true,
         clearSculptingStatus: true,
@@ -1141,104 +943,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(grid: newGrid);
   }
 
+  void setAutoRunState({required bool autoRun, required bool isPausing}) {
+    state = state.copyWith(autoRun: autoRun, isPausing: isPausing);
+  }
+
   Future<void> startAutoPlay(WidgetRef ref) async {
-    if (state.referenceImage == null) return;
-    if (state.autoRun) return;
-
-    state = state.copyWith(autoRun: true, isPausing: false);
-
-    while (state.autoRun) {
-      if (state.isPausing) {
-        state = state.copyWith(autoRun: false, isPausing: false);
-        break;
-      }
-
-      final wizardNotifier = ref.read(wizardStateProvider.notifier);
-      final currentStep = ref.read(wizardStateProvider).currentStep;
-
-      switch (currentStep) {
-        case WizardStep.selectGridSize:
-          await Future.delayed(const Duration(seconds: 1));
-          if (!state.autoRun || state.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.setupPrompt);
-          break;
-
-        case WizardStep.setupPrompt:
-          if (state.userPrompt.trim().isEmpty && state.referenceImage != null) {
-            await suggestDescriptionFromReference();
-          }
-          await Future.delayed(const Duration(seconds: 1));
-          if (!state.autoRun || state.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.selectPalette);
-          break;
-
-        case WizardStep.selectPalette:
-          if (state.suggestedPalette == null && state.referenceImage != null) {
-            await suggestPaletteFromReference();
-            if (state.suggestedPalette != null) {
-              acceptSuggestedPalette();
-            }
-          } else if (state.suggestedPalette != null &&
-              state.showPaletteSuggestion) {
-            acceptSuggestedPalette();
-          }
-          await Future.delayed(const Duration(seconds: 1));
-          if (!state.autoRun || state.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.sketchingPlan);
-          break;
-
-        case WizardStep.sketchingPlan:
-          if (state.decomposedComponents.isEmpty && !state.isGenerating) {
-            await triggerDecomposition();
-            if (state.pendingDecompositionOptions.isNotEmpty) {
-              applyDecompositionOption(0);
-            }
-          }
-          await Future.delayed(const Duration(seconds: 1));
-          if (!state.autoRun || state.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.componentSculpting);
-          break;
-
-        case WizardStep.componentSculpting:
-          if (state.decomposedComponents.isNotEmpty) {
-            bool allComplete = state.decomposedComponents.every(
-              (c) => c.grid != null,
-            );
-            if (!allComplete && !state.isGenerating) {
-              await sketchComponents();
-            }
-            await Future.delayed(const Duration(seconds: 1));
-            if (!state.autoRun || state.isPausing) break;
-            wizardNotifier.autoAdvance(WizardStep.colorAndOutline);
-          } else {
-            await Future.delayed(const Duration(seconds: 1));
-            if (!state.autoRun || state.isPausing) break;
-            wizardNotifier.autoAdvance(WizardStep.colorAndOutline);
-          }
-          break;
-
-        case WizardStep.colorAndOutline:
-          await Future.delayed(const Duration(seconds: 1));
-          if (!state.autoRun || state.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.layerOrderingAndMerge);
-          break;
-
-        case WizardStep.layerOrderingAndMerge:
-          await Future.delayed(const Duration(seconds: 1));
-          if (!state.autoRun || state.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.refinement);
-          break;
-
-        case WizardStep.refinement:
-          state = state.copyWith(autoRun: false, isPausing: false);
-          return;
-      }
-
-      if (state.isPausing) {
-        state = state.copyWith(autoRun: false, isPausing: false);
-        break;
-      }
-    }
+    await _autoPlayController.startAutoPlay(this, ref);
   }
 
   void stopAutoPlay() {
