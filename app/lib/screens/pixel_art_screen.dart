@@ -8,6 +8,7 @@ import '../widgets/model_options_dialog.dart';
 import '../widgets/decomposed_components_list.dart';
 import '../widgets/wizard_controls.dart';
 import '../widgets/ai_history_dock.dart';
+import '../widgets/custom_palette_confirmation_dialog.dart';
 import 'creations_screen.dart';
 import 'canvas_screen.dart';
 import 'logs_screen.dart';
@@ -218,87 +219,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
         ),
         if (canvasState.showPaletteSuggestion &&
             canvasState.suggestedPalette != null)
-          Container(
-            color: Colors.black54,
-            child: Center(
-              child: Card(
-                color: theme.colorScheme.surface,
-                margin: const EdgeInsets.all(24),
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        'Confirm Custom Palette',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'The AI analyzed your reference image and suggested this 16-color palette:',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 8,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                            ),
-                        itemCount: canvasState.suggestedPalette!.length,
-                        itemBuilder: (context, index) {
-                          final color = canvasState.suggestedPalette![index];
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: color,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: theme.colorScheme.outlineVariant,
-                                width: 1.5,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () =>
-                                notifier.suggestPaletteFromReference(),
-                            child: const Text('Retry'),
-                          ),
-                          const SizedBox(width: 8),
-                          TextButton(
-                            onPressed: () => notifier.rejectSuggestedPalette(),
-                            child: const Text('Reject'),
-                          ),
-                          const SizedBox(width: 12),
-                          ElevatedButton(
-                            onPressed: () => notifier.acceptSuggestedPalette(),
-                            child: const Text('Accept'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+          const CustomPaletteConfirmationDialog(),
       ],
     );
   }
