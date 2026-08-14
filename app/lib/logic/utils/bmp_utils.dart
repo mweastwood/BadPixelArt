@@ -462,3 +462,23 @@ Future<Uint8List> convertToPngBytes(Uint8List bytes) async {
   }
   return bytes;
 }
+
+/// Downscales a 2D color grid to a target size using nearest neighbor interpolation.
+List<List<Color>> downscaleColorGrid(
+  List<List<Color>> original,
+  int targetSize,
+) {
+  final List<List<Color>> result = List.generate(
+    targetSize,
+    (_) => List.filled(targetSize, const Color(0xFF000000)),
+  );
+  final double scale = original.length / targetSize;
+  for (int y = 0; y < targetSize; y++) {
+    final int srcY = (y * scale).toInt().clamp(0, original.length - 1);
+    for (int x = 0; x < targetSize; x++) {
+      final int srcX = (x * scale).toInt().clamp(0, original[0].length - 1);
+      result[y][x] = original[srcY][srcX];
+    }
+  }
+  return result;
+}
