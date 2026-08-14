@@ -38,6 +38,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
         );
+        addTearDown(container.dispose);
         final notifier = container.read(canvasStateProvider.notifier);
 
         final mockBmp = generateBmp(
@@ -84,6 +85,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
         );
+        addTearDown(container.dispose);
         final notifier = container.read(canvasStateProvider.notifier);
 
         final mockBmp = generateBmp(
@@ -137,10 +139,7 @@ void main() {
     testGoldens(
       'ColorPaletteGenerator renders K-Means Quantized active state',
       (tester) async {
-        final container = ProviderContainer(
-          overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
-        );
-        final notifier = container.read(canvasStateProvider.notifier);
+        final notifier = CanvasNotifier(TestMockAiService());
         final mockBmp = generateBmp(
           List.generate(16, (_) => List.filled(16, 0)),
           CanvasNotifier.primaryPalette,
@@ -167,23 +166,18 @@ void main() {
     testGoldens('ColorPaletteGenerator renders AI Suggested active state', (
       tester,
     ) async {
-      final container = ProviderContainer(
-        overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
-      );
-      final notifier = container.read(canvasStateProvider.notifier);
+      final notifier = CanvasNotifier(TestMockAiService());
       final mockBmp = generateBmp(
         List.generate(16, (_) => List.filled(16, 0)),
         CanvasNotifier.primaryPalette,
       );
       notifier.setReferenceImage(mockBmp);
 
-      container.read(canvasStateProvider.notifier).state = container
-          .read(canvasStateProvider)
-          .copyWith(
-            suggestedPalette: const [Colors.red, Colors.green, Colors.blue],
-            paletteName: 'suggested',
-            palette: const [Colors.red, Colors.green, Colors.blue],
-          );
+      notifier.state = notifier.state.copyWith(
+        suggestedPalette: const [Colors.red, Colors.green, Colors.blue],
+        paletteName: 'suggested',
+        palette: const [Colors.red, Colors.green, Colors.blue],
+      );
 
       final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
         ..addScenario('AI Suggested Selected', const ColorPaletteGenerator());
@@ -200,19 +194,17 @@ void main() {
     testGoldens(
       'ColorPaletteGenerator renders loading state when AI suggesting',
       (tester) async {
-        final container = ProviderContainer(
-          overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
-        );
-        final notifier = container.read(canvasStateProvider.notifier);
+        final notifier = CanvasNotifier(TestMockAiService());
         final mockBmp = generateBmp(
           List.generate(16, (_) => List.filled(16, 0)),
           CanvasNotifier.primaryPalette,
         );
         notifier.setReferenceImage(mockBmp);
 
-        container.read(canvasStateProvider.notifier).state = container
-            .read(canvasStateProvider)
-            .copyWith(isSuggestingPalette: true, paletteName: 'suggested');
+        notifier.state = notifier.state.copyWith(
+          isSuggestingPalette: true,
+          paletteName: 'suggested',
+        );
 
         final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
           ..addScenario(

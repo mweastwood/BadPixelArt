@@ -31,6 +31,7 @@ void main() {
       tester,
     ) async {
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       final components = [
         PixelArtComponent(
           name: 'blade',
@@ -121,6 +122,7 @@ void main() {
       'displays pixel coordinates and removes component when delete button is pressed',
       (tester) async {
         final container = ProviderContainer();
+        addTearDown(container.dispose);
         final components = [
           PixelArtComponent(
             name: 'blade',

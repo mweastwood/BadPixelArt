@@ -183,6 +183,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
+        addTearDown(container.dispose);
 
         final notifier = container.read(canvasStateProvider.notifier);
 
@@ -238,6 +239,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
+        addTearDown(container.dispose);
 
         final notifier = container.read(canvasStateProvider.notifier);
 
@@ -282,6 +284,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
+        addTearDown(container.dispose);
 
         final notifier = container.read(canvasStateProvider.notifier);
 
@@ -327,6 +330,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
+        addTearDown(container.dispose);
 
         final notifier = container.read(canvasStateProvider.notifier);
 
@@ -368,6 +372,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
+        addTearDown(container.dispose);
 
         final notifier = container.read(canvasStateProvider.notifier);
 

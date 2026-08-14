@@ -73,6 +73,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
         );
+        addTearDown(container.dispose);
 
         final service = container.read(appAiServiceProvider);
         expect(service, isA<CloudAiService>());

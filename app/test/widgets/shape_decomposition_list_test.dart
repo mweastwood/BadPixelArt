@@ -64,6 +64,7 @@ void main() {
       tester,
     ) async {
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       final components = [
         PixelArtComponent(
           name: 'blade',
@@ -114,6 +115,7 @@ void main() {
       tester,
     ) async {
       final container = ProviderContainer();
+      addTearDown(container.dispose);
       final grid = List.generate(16, (y) => List.generate(16, (x) => 1));
       final components = [
         PixelArtComponent(
@@ -186,6 +188,7 @@ void main() {
       'renders CircularProgressIndicator only on the sculpting component',
       (tester) async {
         final container = ProviderContainer();
+        addTearDown(container.dispose);
         final components = [
           PixelArtComponent(
             name: 'blade',
@@ -248,6 +251,7 @@ void main() {
       'renders sculptingStatus text and single spinner when component is being sculpted',
       (tester) async {
         final container = ProviderContainer();
+        addTearDown(container.dispose);
         final components = [
           PixelArtComponent(
             name: 'blade',

@@ -181,6 +181,7 @@ void main() {
             aiServiceProvider.overrideWithValue(MockTestAiService()),
           ],
         );
+        addTearDown(testContainer.dispose);
 
         final notifier = testContainer.read(canvasStateProvider.notifier);
         notifier.selectColor(2);
@@ -793,6 +794,7 @@ void main() {
           final container = ProviderContainer(
             overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
           );
+          addTearDown(container.dispose);
           final notifier = container.read(canvasStateProvider.notifier);
 
           mockAiService.mockResult = {
