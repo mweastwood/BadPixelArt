@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 enum WizardStep {
@@ -39,12 +40,13 @@ class WizardNotifier extends StateNotifier<WizardState> {
   WizardNotifier([Object initialStep = WizardStep.selectGridSize])
     : super(
         WizardState(
-          currentStep: _parseStep(initialStep),
-          prevStep: _parseStep(initialStep),
+          currentStep: parseStep(initialStep),
+          prevStep: parseStep(initialStep),
         ),
       );
 
-  static WizardStep _parseStep(Object step) {
+  @visibleForTesting
+  static WizardStep parseStep(Object? step) {
     if (step is WizardStep) return step;
     if (step is int) {
       return WizardStep.values[step.clamp(0, WizardStep.values.length - 1)];
@@ -52,20 +54,18 @@ class WizardNotifier extends StateNotifier<WizardState> {
     return WizardStep.selectGridSize;
   }
 
-  void setStep(Object step) {
-    final parsed = _parseStep(step);
+  void setStep(WizardStep step) {
     state = state.copyWith(
       prevStep: state.currentStep,
-      currentStep: parsed,
-      autoAdvanced: true,
+      currentStep: step,
+      autoAdvanced: false,
     );
   }
 
-  void autoAdvance(Object step) {
-    final parsed = _parseStep(step);
+  void autoAdvance(WizardStep step) {
     state = state.copyWith(
       prevStep: state.currentStep,
-      currentStep: parsed,
+      currentStep: step,
       autoAdvanced: true,
     );
   }

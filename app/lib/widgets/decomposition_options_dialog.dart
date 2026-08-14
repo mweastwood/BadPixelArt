@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../logic/canvas_state.dart';
 
@@ -196,6 +197,6 @@ class MiniBoundingBoxPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant MiniBoundingBoxPainter oldDelegate) {
-    return oldDelegate.components != components;
+    return !listEquals(oldDelegate.components, components);
   }
 }
