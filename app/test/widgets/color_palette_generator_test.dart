@@ -186,7 +186,10 @@ void main() {
         );
 
         final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
-          ..addScenario('AI Suggested Selected', const ColorPaletteGenerator());
+          ..addScenario(
+            'AI Suggested Selected',
+            const ColorPaletteGenerator(),
+          );
 
         await tester.pumpWidgetBuilder(
           builder.build(),
