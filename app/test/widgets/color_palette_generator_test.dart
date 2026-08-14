@@ -139,13 +139,13 @@ void main() {
     testGoldens(
       'ColorPaletteGenerator renders K-Means Quantized active state',
       (tester) async {
-        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final notifier = CanvasNotifier(TestMockAiService());
         final mockBmp = generateBmp(
           List.generate(16, (_) => List.filled(16, 0)),
           CanvasNotifier.primaryPalette,
         );
-        mockNotifier.setReferenceImage(mockBmp);
-        mockNotifier.extractPaletteAlgorithmic(8);
+        notifier.setReferenceImage(mockBmp);
+        notifier.extractPaletteAlgorithmic(8);
 
         final builder = GoldenBuilder.grid(columns: 1, widthToHeightRatio: 2.2)
           ..addScenario(
@@ -156,9 +156,7 @@ void main() {
         await tester.pumpWidgetBuilder(
           builder.build(),
           wrapper: testMaterialAppWrapper(
-            overrides: [
-              canvasStateProvider.overrideWith((ref) => mockNotifier),
-            ],
+            overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
           ),
         );
         await screenMatchesGolden(tester, 'color_palette_generator_kmeans');
@@ -168,14 +166,14 @@ void main() {
     testGoldens('ColorPaletteGenerator renders AI Suggested active state', (
       tester,
     ) async {
-      final mockNotifier = CanvasNotifier(TestMockAiService());
+      final notifier = CanvasNotifier(TestMockAiService());
       final mockBmp = generateBmp(
         List.generate(16, (_) => List.filled(16, 0)),
         CanvasNotifier.primaryPalette,
       );
-      mockNotifier.setReferenceImage(mockBmp);
+      notifier.setReferenceImage(mockBmp);
 
-      mockNotifier.state = mockNotifier.state.copyWith(
+      notifier.state = notifier.state.copyWith(
         suggestedPalette: const [Colors.red, Colors.green, Colors.blue],
         paletteName: 'suggested',
         palette: const [Colors.red, Colors.green, Colors.blue],
@@ -187,9 +185,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: testMaterialAppWrapper(
-          overrides: [
-            canvasStateProvider.overrideWith((ref) => mockNotifier),
-          ],
+          overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
         ),
       );
       await screenMatchesGolden(tester, 'color_palette_generator_suggested');
@@ -198,14 +194,14 @@ void main() {
     testGoldens(
       'ColorPaletteGenerator renders loading state when AI suggesting',
       (tester) async {
-        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final notifier = CanvasNotifier(TestMockAiService());
         final mockBmp = generateBmp(
           List.generate(16, (_) => List.filled(16, 0)),
           CanvasNotifier.primaryPalette,
         );
-        mockNotifier.setReferenceImage(mockBmp);
+        notifier.setReferenceImage(mockBmp);
 
-        mockNotifier.state = mockNotifier.state.copyWith(
+        notifier.state = notifier.state.copyWith(
           isSuggestingPalette: true,
           paletteName: 'suggested',
         );
@@ -219,9 +215,7 @@ void main() {
         await tester.pumpWidgetBuilder(
           builder.build(),
           wrapper: testMaterialAppWrapper(
-            overrides: [
-              canvasStateProvider.overrideWith((ref) => mockNotifier),
-            ],
+            overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
           ),
         );
         await screenMatchesGolden(
