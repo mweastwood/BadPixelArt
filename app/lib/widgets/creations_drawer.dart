@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/utils/database.dart';
 import '../logic/utils/database_helpers.dart';
-import 'wizard_controls.dart';
+import '../logic/wizard_state.dart';
 import 'package:drift/drift.dart' as drift;
 
 class CreationsDrawer extends ConsumerStatefulWidget {

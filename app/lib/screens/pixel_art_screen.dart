@@ -5,10 +5,10 @@ import '../logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 import '../widgets/model_options_dialog.dart';
-import '../widgets/decomposed_components_list.dart';
-import '../widgets/wizard_controls.dart';
+import '../widgets/decomposition_options_dialog.dart';
 import '../widgets/ai_history_dock.dart';
 import '../widgets/custom_palette_confirmation_dialog.dart';
+import '../logic/wizard_state.dart';
 import 'creations_screen.dart';
 import 'canvas_screen.dart';
 import 'logs_screen.dart';

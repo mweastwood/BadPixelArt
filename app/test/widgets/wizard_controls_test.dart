@@ -9,12 +9,12 @@ import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
-import 'package:bad_pixel_art/widgets/decomposed_components_list.dart';
+import 'package:bad_pixel_art/widgets/semantic_components_list.dart';
 import 'package:bad_pixel_art/widgets/shape_decomposition_list.dart';
 import 'package:bad_pixel_art/widgets/component_color_selection_list.dart';
 import 'package:bad_pixel_art/widgets/layer_ordering_list.dart';
 import 'package:bad_pixel_art/widgets/refinement_panel.dart';
-
+import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
 

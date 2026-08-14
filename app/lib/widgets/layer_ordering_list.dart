@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
-import 'wizard_controls.dart';
+import '../logic/wizard_state.dart';
 
 class LayerOrderingList extends ConsumerWidget {
   const LayerOrderingList({super.key});
