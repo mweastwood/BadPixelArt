@@ -38,6 +38,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
         );
+        addTearDown(container.dispose);
         final notifier = container.read(canvasStateProvider.notifier);
 
         final mockBmp = generateBmp(
@@ -84,6 +85,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
         );
+        addTearDown(container.dispose);
         final notifier = container.read(canvasStateProvider.notifier);
 
         final mockBmp = generateBmp(
@@ -140,6 +142,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
         );
+        addTearDown(container.dispose);
         final notifier = container.read(canvasStateProvider.notifier);
         final mockBmp = generateBmp(
           List.generate(16, (_) => List.filled(16, 0)),
@@ -170,6 +173,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
       );
+      addTearDown(container.dispose);
       final notifier = container.read(canvasStateProvider.notifier);
       final mockBmp = generateBmp(
         List.generate(16, (_) => List.filled(16, 0)),
@@ -203,6 +207,7 @@ void main() {
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
         );
+        addTearDown(container.dispose);
         final notifier = container.read(canvasStateProvider.notifier);
         final mockBmp = generateBmp(
           List.generate(16, (_) => List.filled(16, 0)),
