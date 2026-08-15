@@ -4,6 +4,7 @@ import 'package:bad_pixel_art/screens/canvas_screen.dart';
 import 'package:bad_pixel_art/widgets/canvas_grid.dart';
 import 'package:bad_pixel_art/widgets/wizard_controls.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
+
 import '../test_helper.dart';
 
 void main() {
@@ -24,7 +25,10 @@ void main() {
     testWidgets('CanvasScreen portrait golden render', (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
       await tester.pumpWidget(
         buildTestableWidget(child: const Scaffold(body: CanvasScreen())),
@@ -40,7 +44,10 @@ void main() {
     testWidgets('CanvasScreen landscape golden render', (tester) async {
       tester.view.physicalSize = const Size(1024, 768);
       tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
 
       await tester.pumpWidget(
         buildTestableWidget(child: const Scaffold(body: CanvasScreen())),
