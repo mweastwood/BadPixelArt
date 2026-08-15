@@ -4,41 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/widgets/shape_decomposition_list.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../test_helper.dart';
-
-class LocalMockAiService extends AiService {
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async {
-    return '{"remove": [], "add": [{"x": 8, "y": 8}]}';
-  }
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
 
 void main() {
   group('ShapeDecompositionList Widget & Golden Tests', () {
@@ -145,7 +113,9 @@ void main() {
     testWidgets('triggers sculpting for individual component on tap', (
       tester,
     ) async {
-      final mockService = LocalMockAiService();
+      final mockService = TestMockAiService(
+        response: '{"remove": [], "add": [{"x": 8, "y": 8}]}',
+      );
       final notifier = CanvasNotifier(mockService);
       final components = [
         PixelArtComponent(

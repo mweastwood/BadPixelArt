@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
@@ -6,34 +5,6 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/widgets/ai_history_dock.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
-
-class LocalMockAiService extends AiService {
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async => 'Mock AI response';
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async => 10;
-}
 
 void main() {
   group('AiHistoryDock Widget & Golden Tests', () {
@@ -69,7 +40,10 @@ void main() {
         ]),
       );
 
-      final mockService = LocalMockAiService();
+      final mockService = TestMockAiService(
+        response: 'Mock AI response',
+        tokenCount: 10,
+      );
       final notifier = CanvasNotifier(mockService);
       notifier.state = notifier.state.copyWith(aiHistory: [entry]);
 
@@ -123,7 +97,10 @@ void main() {
         ]),
       );
 
-      final mockService = LocalMockAiService();
+      final mockService = TestMockAiService(
+        response: 'Mock AI response',
+        tokenCount: 10,
+      );
       final notifier = CanvasNotifier(mockService);
       notifier.state = notifier.state.copyWith(aiHistory: [entry]);
 
@@ -150,7 +127,10 @@ void main() {
           modelName: 'Gemini 2.0 Flash',
         );
 
-        final mockService = LocalMockAiService();
+        final mockService = TestMockAiService(
+          response: 'Mock AI response',
+          tokenCount: 10,
+        );
         final notifier = CanvasNotifier(mockService);
         notifier.state = notifier.state.copyWith(aiHistory: [pendingEntry]);
 

@@ -1,53 +1,24 @@
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/orchestrators/decomposition_orchestrator.dart';
 import 'package:bad_pixel_art/logic/models/color_palette.dart';
-
-class MockTestAiService extends AiService {
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async => 100;
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async {
-    return '''[
-      {
-        "name": "Head",
-        "description": "Robot head",
-        "boundingBox": [2, 2, 10, 10],
-        "shapes": []
-      }
-    ]''';
-  }
-}
+import '../../test_helper.dart';
 
 void main() {
   group('DecompositionOrchestrator Unit Tests', () {
     late DecompositionOrchestrator orchestrator;
-    late MockTestAiService mockAiService;
+    late TestMockAiService mockAiService;
 
     setUp(() {
-      mockAiService = MockTestAiService();
+      mockAiService = TestMockAiService(
+        response: '''[
+        {
+          "name": "Head",
+          "description": "Robot head",
+          "boundingBox": [2, 2, 10, 10],
+          "shapes": []
+        }
+      ]''',
+      );
       orchestrator = DecompositionOrchestrator(mockAiService);
     });
 

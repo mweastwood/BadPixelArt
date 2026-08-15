@@ -1,69 +1,19 @@
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-class MockTestAiService extends AiService {
-  AiCoreStatus status = AiCoreStatus.available;
-  bool triggerDownloadCalled = false;
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => status;
-
-  @override
-  Future<void> triggerDownload() async {
-    triggerDownloadCalled = true;
-    status = AiCoreStatus.available;
-  }
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async {
-    if (prompt.contains('decomposer') || prompt.contains('Decompose')) {
-      return '''
-      [
-        {
-          "name": "blade",
-          "description": "vertical blade",
-          "relativeBoundingBox": { "left": 0.4, "top": 0.1, "width": 0.2, "height": 0.6 },
-          "colorIndex": 1
-        }
-      ]
-      ''';
-    }
-    return null;
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
+import '../test_helper.dart';
 
 void main() {
   group('CanvasNotifier Unit Tests', () {
-    late MockTestAiService mockAiService;
+    late TestMockAiService mockAiService;
     late ProviderContainer container;
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
-      mockAiService = MockTestAiService();
+      mockAiService = TestMockAiService();
       container = ProviderContainer(
         overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
       );
@@ -113,7 +63,7 @@ void main() {
         final testContainer = ProviderContainer(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
-            aiServiceProvider.overrideWithValue(MockTestAiService()),
+            aiServiceProvider.overrideWithValue(TestMockAiService()),
           ],
         );
         addTearDown(testContainer.dispose);

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,27 +7,77 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
 
+const Object _sentinel = Object();
+
 class TestMockAiService extends AiService {
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
+  AiCoreStatus status;
+  bool triggerDownloadCalled;
+  FutureOr<void> Function()? onTriggerDownload;
+  int tokenCount;
+  FutureOr<int> Function({required String prompt, Uint8List? imageBytes})?
+  onCountTokens;
 
-  @override
-  Future<void> triggerDownload() async {}
+  String? response;
+  final bool _isResponseExplicit;
+  List<String>? responses;
+  int _responseIndex = 0;
 
-  @override
-  Future<String?> generateContent({
+  FutureOr<String?> Function({
     required String prompt,
     Uint8List? imageBytes,
-    double temperature = 1.0,
+    double? temperature,
     int? maxOutputTokens,
-  }) async {
-    if (prompt.contains('pixel art describer')) {
-      return 'Mock description of the canvas';
+  })?
+  onGenerateContent;
+
+  FutureOr<AiResponse?> Function({
+    required String prompt,
+    Uint8List? imageBytes,
+    double? temperature,
+    int? maxOutputTokens,
+  })?
+  onGenerateContentRaw;
+
+  Completer<AiResponse?>? completer;
+  bool shouldThrow;
+  String exceptionMessage;
+
+  int callCount = 0;
+  final List<String> capturedPrompts = [];
+  final List<Uint8List?> capturedImageBytes = [];
+
+  TestMockAiService({
+    Object? response = _sentinel,
+    Object? responseToReturn = _sentinel,
+    this.responses,
+    this.onGenerateContent,
+    this.onGenerateContentRaw,
+    this.completer,
+    this.shouldThrow = false,
+    this.exceptionMessage = 'API quota exceeded',
+    this.status = AiCoreStatus.available,
+    this.triggerDownloadCalled = false,
+    this.onTriggerDownload,
+    this.tokenCount = 100,
+    this.onCountTokens,
+  }) : _isResponseExplicit =
+           response != _sentinel || responseToReturn != _sentinel,
+       response = (response != _sentinel
+           ? response as String?
+           : (responseToReturn != _sentinel
+                 ? responseToReturn as String?
+                 : null));
+
+  @override
+  Future<AiCoreStatus> checkStatus() async => status;
+
+  @override
+  Future<void> triggerDownload() async {
+    triggerDownloadCalled = true;
+    status = AiCoreStatus.available;
+    if (onTriggerDownload != null) {
+      await onTriggerDownload!();
     }
-    if (prompt.contains('palette') || prompt.contains('colors')) {
-      return '["#000000", "#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"]';
-    }
-    return null;
   }
 
   @override
@@ -40,7 +91,118 @@ class TestMockAiService extends AiService {
     required String prompt,
     Uint8List? imageBytes,
   }) async {
-    return 100;
+    if (onCountTokens != null) {
+      return await onCountTokens!(prompt: prompt, imageBytes: imageBytes);
+    }
+    return tokenCount;
+  }
+
+  @override
+  Future<AiResponse?> generateContentRaw({
+    required String prompt,
+    Uint8List? imageBytes,
+    double temperature = 1.0,
+    int? maxOutputTokens,
+  }) async {
+    callCount++;
+    capturedPrompts.add(prompt);
+    capturedImageBytes.add(imageBytes);
+
+    if (shouldThrow) {
+      throw Exception(exceptionMessage);
+    }
+
+    if (onGenerateContentRaw != null) {
+      final res = await onGenerateContentRaw!(
+        prompt: prompt,
+        imageBytes: imageBytes,
+        temperature: temperature,
+        maxOutputTokens: maxOutputTokens,
+      );
+      if (res != null) return res;
+    }
+
+    if (completer != null) {
+      return await completer!.future;
+    }
+
+    if (onGenerateContent != null) {
+      final text = await onGenerateContent!(
+        prompt: prompt,
+        imageBytes: imageBytes,
+        temperature: temperature,
+        maxOutputTokens: maxOutputTokens,
+      );
+      if (text != null) return AiResponse(text: text);
+    }
+
+    if (responses != null) {
+      if (_responseIndex < responses!.length) {
+        final res = responses![_responseIndex++];
+        return AiResponse(text: res);
+      }
+      return null;
+    }
+
+    if (_isResponseExplicit) {
+      if (response != null) {
+        return AiResponse(text: response!);
+      }
+      return null;
+    }
+
+    // Default fallbacks
+    if (temperature <= 0.5 &&
+        (prompt.contains('16 colors') || prompt.contains('8 colors'))) {
+      final List<String> mockPalette = List.generate(8, (i) {
+        final val = (i * 0x22).toRadixString(16).padLeft(2, '0');
+        return '#$val$val$val';
+      });
+      return AiResponse(text: '["${mockPalette.join('", "')}"]');
+    }
+
+    if (prompt.contains('palette') || prompt.contains('colors')) {
+      return AiResponse(
+        text:
+            '["#000000", "#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"]',
+      );
+    }
+
+    if (prompt.contains('pixel art describer') ||
+        prompt.contains('reference image depicts')) {
+      return AiResponse(text: 'Mock description of the canvas');
+    }
+
+    if (prompt.contains('decomposer') || prompt.contains('Decompose')) {
+      return AiResponse(
+        text: '''[
+        {
+          "name": "blade",
+          "description": "vertical blade",
+          "relativeBoundingBox": { "left": 0.4, "top": 0.1, "width": 0.2, "height": 0.6 },
+          "colorIndex": 1
+        }
+      ]''',
+      );
+    }
+
+    return null;
+  }
+
+  @override
+  Future<String?> generateContent({
+    required String prompt,
+    Uint8List? imageBytes,
+    double temperature = 1.0,
+    int? maxOutputTokens,
+  }) async {
+    final raw = await generateContentRaw(
+      prompt: prompt,
+      imageBytes: imageBytes,
+      temperature: temperature,
+      maxOutputTokens: maxOutputTokens,
+    );
+    return raw?.text;
   }
 }
 

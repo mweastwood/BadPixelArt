@@ -7,66 +7,16 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-class MockDecompositionAiService extends AiService {
-  AiCoreStatus status = AiCoreStatus.available;
-  Map<String, dynamic>? mockResult;
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => status;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async {
-    if (prompt.contains('decomposer') || prompt.contains('Decompose')) {
-      return '''
-      [
-        {
-          "name": "blade",
-          "description": "vertical blade",
-          "relativeBoundingBox": { "left": 0.4, "top": 0.1, "width": 0.2, "height": 0.6 },
-          "colorIndex": 1
-        }
-      ]
-      ''';
-    }
-
-    if (mockResult != null) {
-      return jsonEncode(mockResult);
-    }
-    return null;
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
+import '../test_helper.dart';
 
 void main() {
   group('Canvas Decomposition Tests', () {
-    late MockDecompositionAiService mockAiService;
+    late TestMockAiService mockAiService;
     late ProviderContainer container;
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
-      mockAiService = MockDecompositionAiService();
+      mockAiService = TestMockAiService();
       container = ProviderContainer(
         overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
       );
@@ -181,7 +131,7 @@ void main() {
     test(
       'invalidates future steps when user prompt or reference image changes',
       () {
-        final mockAiService = MockDecompositionAiService();
+        final mockAiService = TestMockAiService();
         final notifier = CanvasNotifier(mockAiService);
 
         notifier.state = notifier.state.copyWith(
@@ -205,19 +155,19 @@ void main() {
     test(
       'startAutoPlay during componentSculpting sculpts components and advances to colorAndOutline without getting stuck',
       () async {
-        final mockAiService = MockDecompositionAiService();
+        final mockAiService = TestMockAiService(
+          response: jsonEncode({
+            'thought': 'sketching rectangle',
+            'tool': 'rectangle_filled',
+            'params': [6, 2, 9, 10],
+            'isComplete': true,
+          }),
+        );
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
         );
         addTearDown(container.dispose);
         final notifier = container.read(canvasStateProvider.notifier);
-
-        mockAiService.mockResult = {
-          'thought': 'sketching rectangle',
-          'tool': 'rectangle_filled',
-          'params': [6, 2, 9, 10],
-          'isComplete': true,
-        };
 
         container
             .read(wizardStateProvider.notifier)

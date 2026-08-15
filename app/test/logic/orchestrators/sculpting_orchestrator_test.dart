@@ -1,49 +1,20 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/orchestrators/sculpting_orchestrator.dart';
 import 'package:bad_pixel_art/logic/models/pixel_art_component.dart';
-
-class MockTestAiService extends AiService {
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async => 100;
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async {
-    return '''[
-      {"tool": "apply_rectangle_filled", "params": [4, 4, 12, 12]}
-    ]''';
-  }
-}
+import '../../test_helper.dart';
 
 void main() {
   group('SculptingOrchestrator Unit Tests', () {
     late SculptingOrchestrator orchestrator;
-    late MockTestAiService mockAiService;
+    late TestMockAiService mockAiService;
 
     setUp(() {
-      mockAiService = MockTestAiService();
+      mockAiService = TestMockAiService(
+        response: '''[
+        {"tool": "apply_rectangle_filled", "params": [4, 4, 12, 12]}
+      ]''',
+      );
       orchestrator = SculptingOrchestrator(mockAiService);
     });
 

@@ -6,57 +6,16 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/prompts.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-class MockPaletteAiService extends AiService {
-  AiCoreStatus status = AiCoreStatus.available;
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => status;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async {
-    if (temperature <= 0.5 &&
-        (prompt.contains('16 colors') || prompt.contains('8 colors'))) {
-      final List<String> mockPalette = List.generate(8, (i) {
-        final val = (i * 0x22).toRadixString(16).padLeft(2, '0');
-        return '#$val$val$val';
-      });
-      return '["${mockPalette.join('", "')}"]';
-    }
-    return null;
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
+import '../test_helper.dart';
 
 void main() {
   group('Canvas Palette Tests', () {
-    late MockPaletteAiService mockAiService;
+    late TestMockAiService mockAiService;
     late ProviderContainer container;
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
-      mockAiService = MockPaletteAiService();
+      mockAiService = TestMockAiService();
       container = ProviderContainer(
         overrides: [aiServiceProvider.overrideWithValue(mockAiService)],
       );
