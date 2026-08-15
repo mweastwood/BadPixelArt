@@ -94,5 +94,36 @@ void main() {
         equals({c1.toARGB32(), c2.toARGB32(), c3.toARGB32()}),
       );
     });
+
+    test(
+      'returns empty list when k is 0 on non-empty grid without exception',
+      () {
+        const red = Color(0xFFFF0000);
+        const green = Color(0xFF00FF00);
+        final grid = [
+          [red, green],
+          [red, green],
+        ];
+
+        final palette = kMeansQuantize(grid, 0);
+        expect(palette, isEmpty);
+      },
+    );
+
+    test('returns empty list when k is negative', () {
+      const red = Color(0xFFFF0000);
+      final grid = [
+        [red, red],
+      ];
+
+      expect(kMeansQuantize(grid, -1), isEmpty);
+      expect(kMeansQuantize(grid, -4), isEmpty);
+    });
+
+    test('returns empty list when colorGrid is empty', () {
+      expect(kMeansQuantize([], 4), isEmpty);
+      expect(kMeansQuantize([], 0), isEmpty);
+      expect(kMeansQuantize([], -1), isEmpty);
+    });
   });
 }
