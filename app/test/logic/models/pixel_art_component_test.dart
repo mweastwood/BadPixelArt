@@ -132,5 +132,128 @@ void main() {
         expect(updatedGrid.outlineGrid![1][1], equals(0)); // interior cell
       },
     );
+
+    test('FundamentalShape equality and hashCode', () {
+      final shape1 = FundamentalShape(
+        type: 'circle',
+        relativeBoundingBox: const Rect.fromLTWH(0.1, 0.2, 0.3, 0.4),
+        description: 'circle',
+      );
+      final shape2 = FundamentalShape(
+        type: 'circle',
+        relativeBoundingBox: const Rect.fromLTWH(0.1, 0.2, 0.3, 0.4),
+        description: 'circle',
+      );
+      final shapeDiffType = FundamentalShape(
+        type: 'rect',
+        relativeBoundingBox: const Rect.fromLTWH(0.1, 0.2, 0.3, 0.4),
+        description: 'circle',
+      );
+      final shapeDiffBox = FundamentalShape(
+        type: 'circle',
+        relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 0.5, 0.5),
+        description: 'circle',
+      );
+      final shapeDiffDesc = FundamentalShape(
+        type: 'circle',
+        relativeBoundingBox: const Rect.fromLTWH(0.1, 0.2, 0.3, 0.4),
+        description: 'other circle',
+      );
+
+      expect(shape1, equals(shape2));
+      expect(shape1.hashCode, equals(shape2.hashCode));
+      expect(shape1, isNot(equals(shapeDiffType)));
+      expect(shape1, isNot(equals(shapeDiffBox)));
+      expect(shape1, isNot(equals(shapeDiffDesc)));
+    });
+
+    test('PixelArtComponent equality and hashCode', () {
+      final shape = FundamentalShape(
+        type: 'rectangle',
+        relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0),
+        description: 'shape',
+      );
+      final comp1 = PixelArtComponent(
+        name: 'Head',
+        description: 'character head',
+        relativeBoundingBox: const Rect.fromLTWH(0.2, 0.2, 0.6, 0.6),
+        grid: [
+          [0, 1],
+          [1, 0],
+        ],
+        shapes: [shape],
+        fillColor: Colors.blue,
+        fillColor2: Colors.red,
+        gradientAngle: 45.0,
+        outlineColor: Colors.black,
+        isSculpted: true,
+      );
+      final comp2 = PixelArtComponent(
+        name: 'Head',
+        description: 'character head',
+        relativeBoundingBox: const Rect.fromLTWH(0.2, 0.2, 0.6, 0.6),
+        grid: [
+          [0, 1],
+          [1, 0],
+        ],
+        shapes: [
+          FundamentalShape(
+            type: 'rectangle',
+            relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0),
+            description: 'shape',
+          ),
+        ],
+        fillColor: Colors.blue,
+        fillColor2: Colors.red,
+        gradientAngle: 45.0,
+        outlineColor: Colors.black,
+        isSculpted: true,
+      );
+
+      expect(comp1, equals(comp2));
+      expect(comp1.hashCode, equals(comp2.hashCode));
+
+      // Test different properties
+      expect(comp1, isNot(equals(comp1.copyWith(name: 'Body'))));
+      expect(comp1, isNot(equals(comp1.copyWith(description: 'diff'))));
+      expect(
+        comp1,
+        isNot(
+          equals(
+            comp1.copyWith(
+              relativeBoundingBox: const Rect.fromLTWH(0.1, 0.1, 0.5, 0.5),
+            ),
+          ),
+        ),
+      );
+      expect(
+        comp1,
+        isNot(
+          equals(
+            comp1.copyWith(
+              grid: [
+                [1, 1],
+                [1, 1],
+              ],
+            ),
+          ),
+        ),
+      );
+      expect(comp1, isNot(equals(comp1.copyWith(shapes: []))));
+      expect(
+        comp1,
+        isNot(equals(comp1.copyWith(fillColor: () => Colors.green))),
+      );
+      expect(
+        comp1,
+        isNot(equals(comp1.copyWith(fillColor2: () => Colors.yellow))),
+      );
+      expect(comp1, isNot(equals(comp1.copyWith(gradientAngle: 90.0))));
+      expect(
+        comp1,
+        isNot(equals(comp1.copyWith(outlineColor: () => Colors.white))),
+      );
+      expect(comp1, isNot(equals(comp1.copyWith(isSculpted: false))));
+    });
   });
 }

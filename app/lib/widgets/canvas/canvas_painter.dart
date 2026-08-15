@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../logic/models/pixel_art_component.dart';
 import '../../logic/agents/shape_sculpter_agent.dart';
@@ -386,12 +387,21 @@ class CanvasPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CanvasPainter oldDelegate) {
-    return oldDelegate.grid != grid ||
-        oldDelegate.palette != palette ||
-        oldDelegate.decomposedComponents != decomposedComponents ||
+    return !_gridEquals(oldDelegate.grid, grid) ||
+        !listEquals(oldDelegate.palette, palette) ||
+        !listEquals(oldDelegate.decomposedComponents, decomposedComponents) ||
         oldDelegate.activeComponentIndex != activeComponentIndex ||
-        oldDelegate.isSketchingPlanPhase != isSketchingPlanPhase ||
-        oldDelegate.isSculptingPhase != isSculptingPhase ||
+        oldDelegate.currentStep != currentStep ||
         oldDelegate.isGenerating != isGenerating;
   }
+}
+
+bool _gridEquals(List<List<int>>? a, List<List<int>>? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (!listEquals(a[i], b[i])) return false;
+  }
+  return true;
 }
