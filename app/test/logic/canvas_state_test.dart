@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
@@ -334,6 +335,144 @@ void main() {
           container.read(canvasStateProvider).selectedColorIndex,
           equals(0),
         );
+      });
+    });
+
+    group('batchUpdateComponentColors', () {
+      test(
+        'updates multiple component colors and gradient properties in a single state mutation',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final initialComponents = [
+            PixelArtComponent(
+              name: 'Blade',
+              description: 'Sword blade',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 10, 10),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+              shapes: [],
+              fillColor: Colors.black,
+              outlineColor: Colors.grey,
+            ),
+            PixelArtComponent(
+              name: 'Hilt',
+              description: 'Sword hilt',
+              relativeBoundingBox: const Rect.fromLTWH(0, 10, 10, 5),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+              shapes: [],
+              fillColor: Colors.brown,
+              outlineColor: Colors.black,
+            ),
+          ];
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: initialComponents,
+          );
+
+          final updatedComponents = [
+            PixelArtComponent(
+              name: 'Blade',
+              description: 'Sword blade',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 10, 10),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+              shapes: [],
+              fillColor: Colors.cyan,
+              fillColor2: Colors.blue,
+              gradientAngle: 45.0,
+              outlineColor: Colors.white,
+            ),
+            PixelArtComponent(
+              name: 'Hilt',
+              description: 'Sword hilt',
+              relativeBoundingBox: const Rect.fromLTWH(0, 10, 10, 5),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+              shapes: [],
+              fillColor: Colors.amber,
+              fillColor2: null,
+              gradientAngle: 0.0,
+              outlineColor: null,
+            ),
+          ];
+
+          notifier.batchUpdateComponentColors(updatedComponents);
+
+          final result = container
+              .read(canvasStateProvider)
+              .decomposedComponents;
+          expect(result.length, equals(2));
+          expect(result[0].fillColor, equals(Colors.cyan));
+          expect(result[0].fillColor2, equals(Colors.blue));
+          expect(result[0].gradientAngle, equals(45.0));
+          expect(result[0].outlineColor, equals(Colors.white));
+
+          expect(result[1].fillColor, equals(Colors.amber));
+          expect(result[1].fillColor2, isNull);
+          expect(result[1].gradientAngle, equals(0.0));
+          expect(result[1].outlineColor, isNull);
+        },
+      );
+
+      test('handles empty updated list or empty state gracefully', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        expect(notifier.state.decomposedComponents, isEmpty);
+
+        expect(() => notifier.batchUpdateComponentColors([]), returnsNormally);
+
+        final sample = [
+          PixelArtComponent(
+            name: 'Comp',
+            description: '',
+            relativeBoundingBox: Rect.zero,
+            grid: [],
+            shapes: [],
+            fillColor: Colors.red,
+          ),
+        ];
+        expect(
+          () => notifier.batchUpdateComponentColors(sample),
+          returnsNormally,
+        );
+        expect(notifier.state.decomposedComponents, isEmpty);
+      });
+
+      test('handles mismatched length between state and updatedComponents', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.state = notifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'Comp1',
+              description: '',
+              relativeBoundingBox: Rect.zero,
+              grid: [],
+              shapes: [],
+              fillColor: Colors.red,
+            ),
+            PixelArtComponent(
+              name: 'Comp2',
+              description: '',
+              relativeBoundingBox: Rect.zero,
+              grid: [],
+              shapes: [],
+              fillColor: Colors.green,
+            ),
+          ],
+        );
+
+        // Only update 1 component when 2 exist
+        notifier.batchUpdateComponentColors([
+          PixelArtComponent(
+            name: 'Comp1',
+            description: '',
+            relativeBoundingBox: Rect.zero,
+            grid: [],
+            shapes: [],
+            fillColor: Colors.blue,
+          ),
+        ]);
+
+        final result = container.read(canvasStateProvider).decomposedComponents;
+        expect(result.length, equals(2));
+        expect(result[0].fillColor, equals(Colors.blue));
+        expect(result[1].fillColor, equals(Colors.green));
       });
     });
   });
