@@ -131,22 +131,26 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   // --- DATABASE / PERSISTENCE OPERATIONS ---
 
   Future<void> saveToDb() async {
-    if (_isRestoring) return;
+    if (!mounted || _isRestoring) return;
     _isRestoring = true;
     try {
-      state = await _repository.saveCanvas(state);
+      final savedState = await _repository.saveCanvas(state);
+      if (!mounted) return;
+      state = savedState;
     } finally {
       _isRestoring = false;
     }
   }
 
   Future<void> loadFromDb(int id) async {
+    if (!mounted) return;
     _isRestoring = true;
     try {
       if (state.autoRun) {
         _autoRunTimer?.cancel();
       }
       final newState = await _repository.loadCanvas(id, state);
+      if (!mounted) return;
       if (newState != null) {
         state = newState;
       }
@@ -156,9 +160,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> loadLastSession() async {
+    if (!mounted) return;
     _isRestoring = true;
     try {
       final newState = await _repository.loadLastSession(state);
+      if (!mounted) return;
       if (newState != null) {
         state = newState;
       }
@@ -168,6 +174,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> startNewCanvas() async {
+    if (!mounted) return;
     _isRestoring = true;
     try {
       _saveTimer?.cancel();
@@ -203,19 +210,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> duplicateCanvas(int id) async {
+    if (!mounted) return;
     final newId = await _repository.duplicateCanvas(id);
+    if (!mounted) return;
     if (newId != null) {
       await loadFromDb(newId);
     }
   }
 
   Future<void> renameCanvas(String newTitle) async {
+    if (!mounted) return;
     state = state.copyWith(title: newTitle);
     await saveToDb();
   }
 
   Future<void> deleteCanvas(int id) async {
+    if (!mounted) return;
     final nextId = await _repository.deleteCanvas(id);
+    if (!mounted) return;
     if (state.creationId == id) {
       if (nextId != null) {
         await loadFromDb(nextId);
@@ -229,9 +241,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     if (_aiService is LoggingAiService) {
       final logging = _aiService as LoggingAiService;
       logging.onLog = (entry) {
+        if (!mounted) return;
         state = state.copyWith(aiHistory: [...state.aiHistory, entry]);
       };
       logging.onLogUpdate = (oldEntry, newEntry) {
+        if (!mounted) return;
         final history = List<AgentHistoryEntry>.from(state.aiHistory);
         final index = history.indexOf(oldEntry);
         if (index != -1) {
@@ -410,14 +424,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> _initModelConfig() async {
+    if (!mounted) return;
     await _aiService.setModelConfig(
       releaseStage: state.modelReleaseStage,
       preference: state.modelPreference,
     );
+    if (!mounted) return;
     await checkAiStatus();
   }
 
   Future<void> setModelConfig(String stage, String preference) async {
+    if (!mounted) return;
     state = state.copyWith(
       modelReleaseStage: stage,
       modelPreference: preference,
@@ -426,6 +443,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       releaseStage: state.modelReleaseStage,
       preference: state.modelPreference,
     );
+    if (!mounted) return;
     await checkAiStatus();
   }
 
@@ -437,13 +455,17 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> checkAiStatus() async {
+    if (!mounted) return;
     final status = await _aiService.checkStatus();
+    if (!mounted) return;
     state = state.copyWith(aiStatus: status);
   }
 
   Future<void> triggerDownload() async {
+    if (!mounted) return;
     state = state.copyWith(aiStatus: AiCoreStatus.downloading);
     await _aiService.triggerDownload();
+    if (!mounted) return;
     await checkAiStatus();
   }
 
@@ -512,6 +534,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Future<void> setUploadedReferenceImage(Uint8List rawBytes) async {
     final bmp = await resizeAndConvertToBmp(rawBytes, 512);
+    if (!mounted) return;
     if (bmp != null) {
       state = state.copyWith(
         referenceImage: bmp,
@@ -523,6 +546,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> suggestPaletteFromReference() async {
+    if (!mounted) return;
     final refImg = state.referenceImage;
     if (refImg == null) return;
 
@@ -533,6 +557,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
     try {
       final colors = await _aiService.suggestPalette(refImg);
+      if (!mounted) return;
       if (colors != null) {
         state = state.copyWith(
           suggestedPalette: colors,
@@ -542,16 +567,19 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     } catch (e) {
       debugPrint('Error suggesting palette: $e');
     } finally {
-      final willStop = state.isPausing;
-      state = state.copyWith(
-        isSuggestingPalette: false,
-        autoRun: willStop ? false : state.autoRun,
-        isPausing: false,
-      );
+      if (mounted) {
+        final willStop = state.isPausing;
+        state = state.copyWith(
+          isSuggestingPalette: false,
+          autoRun: willStop ? false : state.autoRun,
+          isPausing: false,
+        );
+      }
     }
   }
 
   Future<void> suggestDescriptionFromReference() async {
+    if (!mounted) return;
     final refImg = state.referenceImage;
     if (refImg == null || state.isGenerating || state.isSuggestingDescription) {
       return;
@@ -565,18 +593,21 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             'Describe what subject or item this reference image depicts in a concise 1-2 sentence description for a pixel art drawing prompt.',
         imageBytes: refImg,
       );
+      if (!mounted) return;
       if (response != null && response.trim().isNotEmpty) {
         updatePrompt(response.trim());
       }
     } catch (e) {
       debugPrint('Error suggesting description from reference image: $e');
     } finally {
-      final willStop = state.isPausing;
-      state = state.copyWith(
-        isSuggestingDescription: false,
-        autoRun: willStop ? false : state.autoRun,
-        isPausing: false,
-      );
+      if (mounted) {
+        final willStop = state.isPausing;
+        state = state.copyWith(
+          isSuggestingDescription: false,
+          autoRun: willStop ? false : state.autoRun,
+          isPausing: false,
+        );
+      }
     }
   }
 
@@ -719,7 +750,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> triggerDecomposition() async {
-    if (state.isGenerating) return;
+    if (!mounted || state.isGenerating) return;
     state = state.copyWith(isGenerating: true);
 
     try {
@@ -731,6 +762,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         referenceImage: state.referenceImage,
       );
 
+      if (!mounted) return;
       final willStop = state.isPausing;
       state = state.copyWith(
         decomposedComponents: res.components,
@@ -742,6 +774,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       _scheduleSave();
     } catch (e) {
       debugPrint('Error triggering decomposer: $e');
+      if (!mounted) return;
       final willStop = state.isPausing;
       state = state.copyWith(
         isGenerating: false,
@@ -780,7 +813,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> sculptComponent(int index) async {
-    if (state.isGenerating ||
+    if (!mounted ||
+        state.isGenerating ||
         index < 0 ||
         index >= state.decomposedComponents.length) {
       return;
@@ -808,6 +842,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         referenceImage: state.referenceImage,
       );
 
+      if (!mounted) return;
       updatedComponents[index] = comp.copyWith(grid: newGrid, isSculpted: true);
 
       state = state.copyWith(
@@ -818,6 +853,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
     } catch (e) {
       debugPrint('Error sculpting component: $e');
+      if (!mounted) return;
       state = state.copyWith(
         isGenerating: false,
         clearDecomposingComponent: true,
@@ -827,7 +863,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> sculptComponents() async {
-    if (state.isGenerating || state.decomposedComponents.isEmpty) return;
+    if (!mounted || state.isGenerating || state.decomposedComponents.isEmpty) {
+      return;
+    }
     state = state.copyWith(isGenerating: true);
 
     try {
@@ -838,6 +876,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             activePalette: state.palette,
             userPrompt: state.userPrompt,
             onStep: (activeIndex, updated, status) {
+              if (!mounted) return;
               state = state.copyWith(
                 decomposingComponentIndex: activeIndex,
                 activeComponentIndex: activeIndex,
@@ -847,6 +886,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             },
           );
 
+      if (!mounted) return;
       state = state.copyWith(
         decomposedComponents: updatedComponents,
         isGenerating: false,
@@ -855,6 +895,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
     } catch (e) {
       debugPrint('Error sculpting components: $e');
+      if (!mounted) return;
       state = state.copyWith(
         isGenerating: false,
         clearDecomposingComponent: true,
@@ -864,7 +905,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> sketchComponents() async {
-    if (state.isGenerating || state.decomposedComponents.isEmpty) return;
+    if (!mounted || state.isGenerating || state.decomposedComponents.isEmpty) {
+      return;
+    }
     state = state.copyWith(
       isGenerating: true,
       sculptingStatus: 'Sculpting shape...',
@@ -879,6 +922,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         userPrompt: state.userPrompt,
         autoRunSpeed: state.autoRunSpeed,
         onStep: (activeIndex, updated, status) {
+          if (!mounted) return;
           state = state.copyWith(
             activeComponentIndex: activeIndex,
             decomposedComponents: updated,
@@ -886,13 +930,15 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           );
         },
         onLogHistory: (log) {
+          if (!mounted) return;
           final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
           newHistory.add(log);
           state = state.copyWith(aiHistory: newHistory);
         },
-        isShouldStop: () => state.isPausing,
+        isShouldStop: () => !mounted || state.isPausing,
       );
 
+      if (!mounted) return;
       final willStop = state.isPausing;
       state = state.copyWith(
         decomposedComponents: result,
@@ -903,6 +949,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
     } catch (e) {
       debugPrint('Error in sketching components: $e');
+      if (!mounted) return;
       final willStop = state.isPausing;
       state = state.copyWith(
         isGenerating: false,
@@ -1025,7 +1072,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   Future<void> refineCanvas(String refinementPrompt) async {
-    if (state.isGenerating) return;
+    if (!mounted || state.isGenerating) return;
     state = state.copyWith(isGenerating: true);
 
     try {
@@ -1040,16 +1087,19 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         userPrompt: promptToUse,
         autoRunSpeed: state.autoRunSpeed,
         onStep: (updatedGrid) {
+          if (!mounted) return;
           state = state.copyWith(grid: updatedGrid);
         },
         onLogHistory: (log) {
+          if (!mounted) return;
           final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
           newHistory.add(log);
           state = state.copyWith(aiHistory: newHistory);
         },
-        isShouldStop: () => state.isPausing,
+        isShouldStop: () => !mounted || state.isPausing,
       );
 
+      if (!mounted) return;
       _pushToUndo(state.grid);
       final willStop = state.isPausing;
       state = state.copyWith(
@@ -1061,6 +1111,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       _scheduleSave();
     } catch (e) {
       debugPrint('Error refining canvas: $e');
+      if (!mounted) return;
       final willStop = state.isPausing;
       state = state.copyWith(
         isGenerating: false,

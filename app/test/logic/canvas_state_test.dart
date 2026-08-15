@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
+import 'package:bad_pixel_art/logic/utils/logging_ai_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../test_helper.dart';
 
@@ -474,6 +477,225 @@ void main() {
         expect(result[0].fillColor, equals(Colors.blue));
         expect(result[1].fillColor, equals(Colors.green));
       });
+    });
+
+    group('Async Mounted & Disposal Safety Tests', () {
+      test(
+        'triggerDecomposition does not mutate state or throw if disposed mid-operation',
+        () async {
+          final completer = Completer<AiResponse?>();
+          mockAiService.completer = completer;
+
+          final notifier = container.read(canvasStateProvider.notifier);
+          final future = notifier.triggerDecomposition();
+
+          // Dispose container while async operation is pending
+          container.dispose();
+
+          completer.complete(
+            AiResponse(text: TestJsonFixtures.decomposerFlatResponse),
+          );
+          await expectLater(future, completes);
+        },
+      );
+
+      test(
+        'triggerDecomposition handles exceptions safely when disposed',
+        () async {
+          final completer = Completer<AiResponse?>();
+          mockAiService.completer = completer;
+
+          final notifier = container.read(canvasStateProvider.notifier);
+          final future = notifier.triggerDecomposition();
+
+          container.dispose();
+
+          completer.completeError(Exception('AI error'));
+          await expectLater(future, completes);
+        },
+      );
+
+      test(
+        'sculptComponent does not throw if disposed mid-operation',
+        () async {
+          final completer = Completer<AiResponse?>();
+          mockAiService.completer = completer;
+
+          final notifier = container.read(canvasStateProvider.notifier);
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [
+              PixelArtComponent(
+                name: 'blade',
+                description: 'sharp blue blade',
+                relativeBoundingBox: const Rect.fromLTWH(0.45, 0.1, 0.1, 0.6),
+              ),
+            ],
+          );
+
+          final future = notifier.sculptComponent(0);
+          container.dispose();
+
+          completer.complete(AiResponse(text: '[[0,1],[1,0]]'));
+          await expectLater(future, completes);
+        },
+      );
+
+      test(
+        'sculptComponents does not throw if disposed mid-operation',
+        () async {
+          final completer = Completer<AiResponse?>();
+          mockAiService.completer = completer;
+
+          final notifier = container.read(canvasStateProvider.notifier);
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [
+              PixelArtComponent(
+                name: 'blade',
+                description: 'sharp blue blade',
+                relativeBoundingBox: const Rect.fromLTWH(0.45, 0.1, 0.1, 0.6),
+              ),
+            ],
+          );
+
+          final future = notifier.sculptComponents();
+          container.dispose();
+
+          completer.complete(AiResponse(text: '[[0,1],[1,0]]'));
+          await expectLater(future, completes);
+        },
+      );
+
+      test(
+        'sketchComponents does not throw if disposed mid-operation',
+        () async {
+          final completer = Completer<AiResponse?>();
+          mockAiService.completer = completer;
+
+          final notifier = container.read(canvasStateProvider.notifier);
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [
+              PixelArtComponent(
+                name: 'blade',
+                description: 'sharp blue blade',
+                relativeBoundingBox: const Rect.fromLTWH(0.45, 0.1, 0.1, 0.6),
+              ),
+            ],
+          );
+
+          final future = notifier.sketchComponents();
+          container.dispose();
+
+          completer.complete(AiResponse(text: '[[0,1],[1,0]]'));
+          await expectLater(future, completes);
+        },
+      );
+
+      test('refineCanvas does not throw if disposed mid-operation', () async {
+        final completer = Completer<AiResponse?>();
+        mockAiService.completer = completer;
+
+        final notifier = container.read(canvasStateProvider.notifier);
+        final future = notifier.refineCanvas('refine this');
+        container.dispose();
+
+        completer.complete(AiResponse(text: '[]'));
+        await expectLater(future, completes);
+      });
+
+      test(
+        'suggestPaletteFromReference does not throw if disposed mid-operation',
+        () async {
+          final completer = Completer<AiResponse?>();
+          mockAiService.completer = completer;
+
+          final notifier = container.read(canvasStateProvider.notifier);
+          notifier.setReferenceImage(Uint8List.fromList([1, 2, 3]));
+
+          final future = notifier.suggestPaletteFromReference();
+          container.dispose();
+
+          completer.complete(AiResponse(text: '["#FFFFFF", "#000000"]'));
+          await expectLater(future, completes);
+        },
+      );
+
+      test(
+        'suggestDescriptionFromReference does not throw if disposed mid-operation',
+        () async {
+          final completer = Completer<AiResponse?>();
+          mockAiService.completer = completer;
+
+          final notifier = container.read(canvasStateProvider.notifier);
+          notifier.setReferenceImage(Uint8List.fromList([1, 2, 3]));
+
+          final future = notifier.suggestDescriptionFromReference();
+          container.dispose();
+
+          completer.complete(AiResponse(text: 'a small sword'));
+          await expectLater(future, completes);
+        },
+      );
+
+      test(
+        'checkAiStatus and triggerDownload do not throw if disposed mid-operation',
+        () async {
+          final notifier = container.read(canvasStateProvider.notifier);
+          container.dispose();
+
+          await expectLater(notifier.checkAiStatus(), completes);
+          await expectLater(notifier.triggerDownload(), completes);
+        },
+      );
+
+      test('setModelConfig does not throw if disposed mid-operation', () async {
+        final notifier = container.read(canvasStateProvider.notifier);
+        container.dispose();
+
+        await expectLater(notifier.setModelConfig('stable', 'full'), completes);
+      });
+
+      test(
+        'LoggingAiService callbacks do not mutate state or throw after disposal',
+        () async {
+          final loggingAiService = LoggingAiService(mockAiService);
+          final customNotifier = CanvasNotifier(loggingAiService);
+
+          expect(customNotifier.mounted, isTrue);
+          customNotifier.dispose();
+          expect(customNotifier.mounted, isFalse);
+
+          final testEntry = AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: 'Testing prompt',
+            response: 'Testing response',
+            isError: false,
+          );
+
+          expect(
+            () => loggingAiService.onLog?.call(testEntry),
+            returnsNormally,
+          );
+          expect(
+            () => loggingAiService.onLogUpdate?.call(testEntry, testEntry),
+            returnsNormally,
+          );
+        },
+      );
+
+      test(
+        'persistence methods (saveToDb, loadFromDb, loadLastSession, startNewCanvas, duplicateCanvas, deleteCanvas) do not throw if disposed',
+        () async {
+          final notifier = container.read(canvasStateProvider.notifier);
+          container.dispose();
+
+          await expectLater(notifier.saveToDb(), completes);
+          await expectLater(notifier.loadFromDb(1), completes);
+          await expectLater(notifier.loadLastSession(), completes);
+          await expectLater(notifier.startNewCanvas(), completes);
+          await expectLater(notifier.duplicateCanvas(1), completes);
+          await expectLater(notifier.deleteCanvas(1), completes);
+        },
+      );
     });
   });
 }
