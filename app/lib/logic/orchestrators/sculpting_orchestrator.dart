@@ -11,7 +11,7 @@ class SculptingOrchestrator {
   SculptingOrchestrator(this._aiService);
 
   /// Builds a background grid of existing components for visual reference.
-  List<List<int>> buildBackgroundGrid({
+  static List<List<int>> buildBackgroundGrid({
     required List<PixelArtComponent> components,
     required int excludeIndex,
     required int gridSize,

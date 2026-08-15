@@ -7,6 +7,7 @@ import '../models/bounded_canvas.dart';
 import '../utils/json_utils.dart';
 import '../agents/shape_sculpter_agent.dart';
 import '../drawing_commands.dart';
+import 'sculpting_orchestrator.dart';
 
 class SketchOrchestrator {
   final AiService _aiService;
@@ -100,24 +101,12 @@ class SketchOrchestrator {
           comp.grid ?? List.generate(gridSize, (_) => List.filled(gridSize, 0));
 
       // Build background grid of existing components for visual reference
-      final existingGrid = List.generate(
-        gridSize,
-        (_) => List.filled(gridSize, 0),
+      final existingGrid = SculptingOrchestrator.buildBackgroundGrid(
+        components: updatedComponents,
+        excludeIndex: i,
+        gridSize: gridSize,
+        paletteLength: palette.length,
       );
-      for (int j = 0; j < updatedComponents.length; j++) {
-        if (j == i) continue;
-        final other = updatedComponents[j];
-        if (other.grid != null) {
-          final colorIdx = (j % (palette.length - 1)) + 1;
-          for (int y = 0; y < gridSize; y++) {
-            for (int x = 0; x < gridSize; x++) {
-              if (other.grid![y][x] > 0) {
-                existingGrid[y][x] = colorIdx;
-              }
-            }
-          }
-        }
-      }
 
       final List<PixelArtStepResult> history = [];
       int step = 0;
