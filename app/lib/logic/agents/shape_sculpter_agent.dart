@@ -87,8 +87,10 @@ Uint8List generateCanvasWithSculptingBmp(
           currentGrid.length == size &&
           currentGrid[y].length == size) {
         final canvasVal = currentGrid[y][x];
-        if (canvasVal > 0 && palette != null && canvasVal < palette.length) {
-          return palette[canvasVal];
+        if (canvasVal > 0 &&
+            palette != null &&
+            canvasVal - 1 < palette.length) {
+          return palette[canvasVal - 1];
         }
       }
 
