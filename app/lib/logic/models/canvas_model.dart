@@ -165,7 +165,10 @@ class CanvasModel {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! CanvasModel) return false;
-    return gridSize == other.gridSize &&
+    return creationId == other.creationId &&
+        title == other.title &&
+        gridSize == other.gridSize &&
+        _gridEquals(grid, other.grid) &&
         selectedColorIndex == other.selectedColorIndex &&
         selectedTool == other.selectedTool &&
         paletteName == other.paletteName &&
@@ -174,17 +177,25 @@ class CanvasModel {
         isGenerating == other.isGenerating &&
         autoRun == other.autoRun &&
         autoRunSpeed == other.autoRunSpeed &&
+        _stackEquals(undoStack, other.undoStack) &&
+        _stackEquals(redoStack, other.redoStack) &&
         isSuggestingPalette == other.isSuggestingPalette &&
+        isSuggestingDescription == other.isSuggestingDescription &&
+        isPausing == other.isPausing &&
         showPaletteSuggestion == other.showPaletteSuggestion &&
+        nextFocus == other.nextFocus &&
+        modelReleaseStage == other.modelReleaseStage &&
+        modelPreference == other.modelPreference &&
         activeComponentIndex == other.activeComponentIndex &&
         decomposingComponentIndex == other.decomposingComponentIndex &&
+        sculptingStatus == other.sculptingStatus &&
         listEquals(palette, other.palette) &&
         listEquals(suggestedPalette, other.suggestedPalette) &&
         listEquals(referenceImage, other.referenceImage) &&
         listEquals(originalReferenceImage, other.originalReferenceImage) &&
         listEquals(aiHistory, other.aiHistory) &&
         listEquals(decomposedComponents, other.decomposedComponents) &&
-        listEquals(
+        _nestedComponentListEquals(
           pendingDecompositionOptions,
           other.pendingDecompositionOptions,
         );
@@ -192,27 +203,83 @@ class CanvasModel {
 
   @override
   int get hashCode => Object.hash(
-    gridSize,
-    selectedColorIndex,
-    selectedTool,
-    paletteName,
-    userPrompt,
-    aiStatus,
-    isGenerating,
-    autoRun,
-    autoRunSpeed,
-    isSuggestingPalette,
-    showPaletteSuggestion,
-    activeComponentIndex,
-    decomposingComponentIndex,
-    Object.hashAll(palette),
-    suggestedPalette != null ? Object.hashAll(suggestedPalette!) : null,
-    referenceImage != null ? Object.hashAll(referenceImage!) : null,
-    originalReferenceImage != null
-        ? Object.hashAll(originalReferenceImage!)
-        : null,
-    Object.hashAll(aiHistory),
-    Object.hashAll(decomposedComponents),
-    Object.hashAll(pendingDecompositionOptions),
+    Object.hash(
+      creationId,
+      title,
+      gridSize,
+      _hashGrid(grid),
+      selectedColorIndex,
+      selectedTool,
+      paletteName,
+      Object.hashAll(palette),
+      referenceImage != null ? Object.hashAll(referenceImage!) : null,
+      originalReferenceImage != null
+          ? Object.hashAll(originalReferenceImage!)
+          : null,
+      userPrompt,
+      aiStatus,
+      isGenerating,
+      autoRun,
+      autoRunSpeed,
+      _hashStack(undoStack),
+      _hashStack(redoStack),
+      Object.hashAll(aiHistory),
+      suggestedPalette != null ? Object.hashAll(suggestedPalette!) : null,
+      isSuggestingPalette,
+    ),
+    Object.hash(
+      isSuggestingDescription,
+      isPausing,
+      showPaletteSuggestion,
+      nextFocus,
+      modelReleaseStage,
+      modelPreference,
+      _hashNestedComponents(pendingDecompositionOptions),
+      Object.hashAll(decomposedComponents),
+      activeComponentIndex,
+      decomposingComponentIndex,
+      sculptingStatus,
+    ),
   );
 }
+
+bool _gridEquals(List<List<int>>? a, List<List<int>>? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (!listEquals(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+bool _stackEquals(List<List<List<int>>>? a, List<List<List<int>>>? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (!_gridEquals(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+bool _nestedComponentListEquals(
+  List<List<PixelArtComponent>>? a,
+  List<List<PixelArtComponent>>? b,
+) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (!listEquals(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+int _hashGrid(List<List<int>> grid) => Object.hashAll(grid.map(Object.hashAll));
+
+int _hashStack(List<List<List<int>>> stack) =>
+    Object.hashAll(stack.map(_hashGrid));
+
+int _hashNestedComponents(List<List<PixelArtComponent>> list) =>
+    Object.hashAll(list.map(Object.hashAll));
