@@ -14,6 +14,8 @@ import 'orchestrators/refinement_orchestrator.dart';
 import 'orchestrators/decomposition_orchestrator.dart';
 import 'orchestrators/sculpting_orchestrator.dart';
 import 'controllers/auto_play_controller.dart';
+import 'controllers/canvas_history_controller.dart';
+import 'controllers/canvas_drawing_handler.dart';
 import 'repositories/canvas_repository.dart';
 import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
@@ -23,6 +25,8 @@ import 'utils/logging_ai_service.dart';
 export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
 export 'models/pixel_art_component.dart';
+export 'controllers/canvas_history_controller.dart';
+export 'controllers/canvas_drawing_handler.dart';
 
 abstract class AgentCanvas {
   List<List<int>> get grid;
@@ -38,6 +42,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   AiService _aiService;
   final CanvasRepository _repository;
   final AutoPlayWizardController _autoPlayController;
+  final CanvasHistoryController _historyController;
+  final CanvasDrawingHandler _drawingHandler;
   late DecompositionOrchestrator _decompositionOrchestrator;
   late SculptingOrchestrator _sculptingOrchestrator;
   Timer? _autoRunTimer;
@@ -252,8 +258,18 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     AutoPlayWizardController? autoPlayController,
     DecompositionOrchestrator? decompositionOrchestrator,
     SculptingOrchestrator? sculptingOrchestrator,
+    CanvasHistoryController? historyController,
+    CanvasDrawingHandler? drawingHandler,
   }) : _repository = repository ?? CanvasRepository(),
        _autoPlayController = autoPlayController ?? AutoPlayWizardController(),
+       _historyController =
+           historyController ?? const CanvasHistoryController(),
+       _drawingHandler =
+           drawingHandler ??
+           CanvasDrawingHandler(
+             historyController:
+                 historyController ?? const CanvasHistoryController(),
+           ),
        super(
          initialModel ??
              CanvasModel(
@@ -612,47 +628,41 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void _pushToUndo(List<List<int>> currentGrid) {
-    final clonedGrid = currentGrid.map((row) => List<int>.from(row)).toList();
-    final newUndo = List<List<List<int>>>.from(state.undoStack)
-      ..add(clonedGrid);
+    final pushResult = _historyController.push(currentGrid, state.undoStack);
     state = state.copyWith(
-      undoStack: newUndo,
-      redoStack: [], // Clear redo stack on new operation
+      undoStack: pushResult.undoStack,
+      redoStack: pushResult.redoStack,
     );
   }
 
   void undo() {
-    if (state.undoStack.isEmpty) return;
-
-    final newUndo = List<List<List<int>>>.from(state.undoStack);
-    final previousGrid = newUndo.removeLast();
-
-    final currentCloned = state.grid.map((row) => List<int>.from(row)).toList();
-    final newRedo = List<List<List<int>>>.from(state.redoStack)
-      ..add(currentCloned);
-
-    state = state.copyWith(
-      grid: previousGrid,
-      undoStack: newUndo,
-      redoStack: newRedo,
+    final result = _historyController.undo(
+      undoStack: state.undoStack,
+      redoStack: state.redoStack,
+      currentGrid: state.grid,
     );
+    if (result != null) {
+      state = state.copyWith(
+        grid: result.grid,
+        undoStack: result.undoStack,
+        redoStack: result.redoStack,
+      );
+    }
   }
 
   void redo() {
-    if (state.redoStack.isEmpty) return;
-
-    final newRedo = List<List<List<int>>>.from(state.redoStack);
-    final nextGrid = newRedo.removeLast();
-
-    final currentCloned = state.grid.map((row) => List<int>.from(row)).toList();
-    final newUndo = List<List<List<int>>>.from(state.undoStack)
-      ..add(currentCloned);
-
-    state = state.copyWith(
-      grid: nextGrid,
-      undoStack: newUndo,
-      redoStack: newRedo,
+    final result = _historyController.redo(
+      undoStack: state.undoStack,
+      redoStack: state.redoStack,
+      currentGrid: state.grid,
     );
+    if (result != null) {
+      state = state.copyWith(
+        grid: result.grid,
+        undoStack: result.undoStack,
+        redoStack: result.redoStack,
+      );
+    }
   }
 
   // Drawing implementations
@@ -661,15 +671,26 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     if (!preview) {
       _pushToUndo(state.grid);
     }
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    newGrid[y][x] = state.selectedColorIndex;
-    state = state.copyWith(grid: newGrid);
+    final newGrid = _drawingHandler.drawPixel(
+      state.grid,
+      x,
+      y,
+      state.selectedColorIndex,
+      state.gridSize,
+    );
+    if (newGrid != null) {
+      state = state.copyWith(grid: newGrid);
+    }
   }
 
   void _executeCommand(DrawingCommand command) {
     _pushToUndo(state.grid);
-    final newGrid = state.grid.map((row) => List<int>.from(row)).toList();
-    command.execute(newGrid, state.selectedColorIndex, state.gridSize);
+    final newGrid = _drawingHandler.executeCommand(
+      state.grid,
+      command,
+      state.selectedColorIndex,
+      state.gridSize,
+    );
     state = state.copyWith(grid: newGrid);
   }
 
