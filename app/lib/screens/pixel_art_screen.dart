@@ -6,7 +6,7 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 import '../widgets/model_options_dialog.dart';
 import '../widgets/decomposition_options_dialog.dart';
-import '../widgets/ai_history_dock.dart';
+import '../logic/utils/ai_history_export_utils.dart';
 import '../widgets/custom_palette_confirmation_dialog.dart';
 import '../widgets/wizard_floating_action_buttons.dart';
 import '../logic/wizard_state.dart';
