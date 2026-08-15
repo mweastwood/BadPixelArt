@@ -95,6 +95,70 @@ void main() {
       expect(mergeCalled, isTrue);
     });
 
+    testWidgets(
+      'renders and reorders components with duplicate names without crash',
+      (tester) async {
+        final duplicateComponents = [
+          PixelArtComponent(
+            name: 'Eye',
+            description: 'Left eye',
+            relativeBoundingBox: const Rect.fromLTWH(0.2, 0.3, 0.1, 0.1),
+            shapes: [],
+          ),
+          PixelArtComponent(
+            name: 'Eye',
+            description: 'Right eye',
+            relativeBoundingBox: const Rect.fromLTWH(0.6, 0.3, 0.1, 0.1),
+            shapes: [],
+          ),
+          PixelArtComponent(
+            name: 'Eye',
+            description: 'Third eye',
+            relativeBoundingBox: const Rect.fromLTWH(0.4, 0.2, 0.1, 0.1),
+            shapes: [],
+          ),
+        ];
+
+        int? reorderedOldIndex;
+        int? reorderedNewIndex;
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) {
+                final aiService = ref.watch(loggingAiServiceProvider);
+                final notifier = _MockLayerCanvasNotifier(
+                  aiService,
+                  onReorder: (oldIdx, newIdx) {
+                    reorderedOldIndex = oldIdx;
+                    reorderedNewIndex = newIdx;
+                  },
+                );
+                notifier.state = notifier.state.copyWith(
+                  decomposedComponents: duplicateComponents,
+                );
+                return notifier;
+              }),
+            ],
+            child: const Scaffold(body: LayerOrderingList()),
+          ),
+        );
+
+        // Verify all 3 duplicate named layers are rendered without errors
+        expect(find.text('Eye'), findsNWidgets(3));
+        expect(tester.takeException(), isNull);
+
+        // Tap on down arrow of first item to trigger reorder
+        final downArrow = find.byIcon(Icons.keyboard_arrow_down).first;
+        await tester.tap(downArrow);
+        await tester.pumpAndSettle();
+
+        expect(reorderedOldIndex, equals(0));
+        expect(reorderedNewIndex, equals(2));
+        expect(tester.takeException(), isNull);
+      },
+    );
+
     testGoldens('LayerOrderingList renders correctly in multiple states', (
       tester,
     ) async {

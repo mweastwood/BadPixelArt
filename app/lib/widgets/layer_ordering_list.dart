@@ -68,7 +68,7 @@ class LayerOrderingList extends ConsumerWidget {
               final isActive = index == canvasState.activeComponentIndex;
 
               return Theme(
-                key: ValueKey(comp.name),
+                key: ObjectKey(comp),
                 data: theme.copyWith(canvasColor: Colors.transparent),
                 child: MouseRegion(
                   cursor: SystemMouseCursors.grab,
