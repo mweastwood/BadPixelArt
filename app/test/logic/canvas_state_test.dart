@@ -282,5 +282,59 @@ void main() {
         expect(container.read(canvasStateProvider).gridSize, equals(8));
       },
     );
+
+    group('applyCommand palette bounds clamping', () {
+      test('clamps colorIndex >= palette.length to palette.length - 1', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        final paletteLength = notifier.state.palette.length;
+        expect(paletteLength, greaterThan(0));
+
+        notifier.applyCommand('line', [0, 0, 1, 1], paletteLength + 10);
+        expect(
+          container.read(canvasStateProvider).selectedColorIndex,
+          equals(paletteLength - 1),
+        );
+
+        // Also test exact boundary palette.length
+        notifier.applyCommand('line', [0, 0, 1, 1], paletteLength);
+        expect(
+          container.read(canvasStateProvider).selectedColorIndex,
+          equals(paletteLength - 1),
+        );
+      });
+
+      test('clamps negative colorIndex to 0', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.applyCommand('line', [0, 0, 1, 1], -5);
+        expect(
+          container.read(canvasStateProvider).selectedColorIndex,
+          equals(0),
+        );
+      });
+
+      test('sets valid colorIndex in bounds directly', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.applyCommand('line', [0, 0, 1, 1], 2);
+        expect(
+          container.read(canvasStateProvider).selectedColorIndex,
+          equals(2),
+        );
+      });
+
+      test('does not throw when palette is empty', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.state = notifier.state.copyWith(palette: const []);
+        expect(notifier.state.palette, isEmpty);
+
+        expect(
+          () => notifier.applyCommand('line', [0, 0, 1, 1], 3),
+          returnsNormally,
+        );
+        expect(
+          container.read(canvasStateProvider).selectedColorIndex,
+          equals(0),
+        );
+      });
+    });
   });
 }

@@ -53,7 +53,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   @override
   void applyCommand(String toolName, List<int> params, int colorIndex) {
-    final boundedColorIndex = colorIndex.clamp(0, state.palette.length);
+    final boundedColorIndex = state.palette.isEmpty
+        ? 0
+        : colorIndex.clamp(0, state.palette.length - 1);
     state = state.copyWith(selectedColorIndex: boundedColorIndex);
 
     if (toolName == 'undo') {
