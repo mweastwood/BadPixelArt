@@ -85,5 +85,52 @@ void main() {
       expect(decoded.shapes, hasLength(1));
       expect(decoded.shapes.first.type, equals('rectangle'));
     });
+
+    test(
+      'pre-computes outlineGrid, cosA, and sinA on construction and preserves in copyWith',
+      () {
+        final grid = [
+          [0, 0, 0],
+          [0, 1, 0],
+          [0, 0, 0],
+        ];
+        final comp = PixelArtComponent(
+          name: 'dot',
+          description: 'dot',
+          relativeBoundingBox: Rect.zero,
+          grid: grid,
+          gradientAngle: 0.0,
+        );
+
+        expect(comp.outlineGrid, isNotNull);
+        expect(comp.outlineGrid![1][1], equals(1));
+        expect(identical(comp.getOutlineGrid(), comp.outlineGrid), isTrue);
+        expect(comp.cosA, closeTo(1.0, 1e-6));
+        expect(comp.sinA, closeTo(0.0, 1e-6));
+
+        // copyWith without modifying grid or angle preserves cached instances
+        final copied = comp.copyWith(name: 'new_dot');
+        expect(identical(copied.outlineGrid, comp.outlineGrid), isTrue);
+        expect(copied.cosA, equals(comp.cosA));
+        expect(copied.sinA, equals(comp.sinA));
+
+        // copyWith with new angle recomputes cosA and sinA
+        final rotated = comp.copyWith(gradientAngle: 90.0);
+        expect(rotated.cosA, closeTo(0.0, 1e-6));
+        expect(rotated.sinA, closeTo(1.0, 1e-6));
+        expect(identical(rotated.outlineGrid, comp.outlineGrid), isTrue);
+
+        // copyWith with new grid recomputes outlineGrid
+        final newGrid = [
+          [1, 1, 1],
+          [1, 1, 1],
+          [1, 1, 1],
+        ];
+        final updatedGrid = comp.copyWith(grid: newGrid);
+        expect(identical(updatedGrid.outlineGrid, comp.outlineGrid), isFalse);
+        expect(updatedGrid.outlineGrid![0][0], equals(1));
+        expect(updatedGrid.outlineGrid![1][1], equals(0)); // interior cell
+      },
+    );
   });
 }

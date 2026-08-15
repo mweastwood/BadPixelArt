@@ -60,13 +60,14 @@ class CanvasPainter extends CustomPainter {
         }
       }
 
+      final fillPaint = Paint()..isAntiAlias = false;
+
       // Draw component fills
       for (int i = 0; i < decomposedComponents.length; i++) {
         final comp = decomposedComponents[i];
         if (comp.grid != null) {
           final isSelected = (i == activeComponentIndex);
           if (comp.fillColor != null) {
-            final fillPaint = Paint()..isAntiAlias = false;
             for (int y = 0; y < gridSize; y++) {
               for (int x = 0; x < gridSize; x++) {
                 if (comp.grid![y][x] > 0) {
@@ -85,11 +86,9 @@ class CanvasPainter extends CustomPainter {
               }
             }
           } else {
-            final fallbackPaint = Paint()
-              ..color = PixelArtComponent.getColor(
-                i,
-              ).withValues(alpha: isSelected ? 0.25 : 0.1)
-              ..isAntiAlias = false;
+            fillPaint.color = PixelArtComponent.getColor(
+              i,
+            ).withValues(alpha: isSelected ? 0.25 : 0.1);
             for (int y = 0; y < gridSize; y++) {
               for (int x = 0; x < gridSize; x++) {
                 if (comp.grid![y][x] > 0) {
@@ -99,7 +98,7 @@ class CanvasPainter extends CustomPainter {
                     cellWidth,
                     cellHeight,
                   );
-                  canvas.drawRect(rect, fallbackPaint);
+                  canvas.drawRect(rect, fillPaint);
                 }
               }
             }
@@ -107,10 +106,12 @@ class CanvasPainter extends CustomPainter {
         }
       }
 
+      final outlinePaint = Paint()..isAntiAlias = false;
+
       // Draw component outlines
       for (int i = 0; i < decomposedComponents.length; i++) {
         final comp = decomposedComponents[i];
-        final outline = comp.getOutlineGrid();
+        final outline = comp.outlineGrid;
         if (outline != null) {
           final isSelected = (i == activeComponentIndex);
           final Color outlineCol =
@@ -118,9 +119,7 @@ class CanvasPainter extends CustomPainter {
               PixelArtComponent.getColor(
                 i,
               ).withValues(alpha: isSelected ? 0.7 : 0.35);
-          final outlinePaint = Paint()
-            ..color = outlineCol
-            ..isAntiAlias = false;
+          outlinePaint.color = outlineCol;
           for (int y = 0; y < gridSize; y++) {
             for (int x = 0; x < gridSize; x++) {
               if (outline[y][x] > 0) {
@@ -137,6 +136,7 @@ class CanvasPainter extends CustomPainter {
         }
       }
     } else {
+      final cellPaint = Paint()..isAntiAlias = false;
       for (int y = 0; y < gridSize; y++) {
         for (int x = 0; x < gridSize; x++) {
           final rect = Rect.fromLTWH(
@@ -151,25 +151,22 @@ class CanvasPainter extends CustomPainter {
             final paint = (x + y) % 2 == 0 ? bgPaint1 : bgPaint2;
             canvas.drawRect(rect, paint);
           } else {
-            final paint = Paint()
-              ..color = palette[colorIndex - 1]
-              ..isAntiAlias = false;
-            canvas.drawRect(rect, paint);
+            cellPaint.color = palette[colorIndex - 1];
+            canvas.drawRect(rect, cellPaint);
           }
         }
       }
 
       // Draw the individual component grids (outlines) as semi-transparent overlays
+      final overlayPaint = Paint()..isAntiAlias = false;
       for (int i = 0; i < decomposedComponents.length; i++) {
         final comp = decomposedComponents[i];
-        final compOutline = comp.getOutlineGrid();
+        final compOutline = comp.outlineGrid;
         if (compOutline != null) {
           final compColor = PixelArtComponent.getColor(
             i,
           ).withValues(alpha: 0.4);
-          final overlayPaint = Paint()
-            ..color = compColor
-            ..isAntiAlias = false;
+          overlayPaint.color = compColor;
 
           for (int y = 0; y < gridSize; y++) {
             for (int x = 0; x < gridSize; x++) {
@@ -274,6 +271,17 @@ class CanvasPainter extends CustomPainter {
     if (decomposedComponents.isNotEmpty &&
         currentStep != WizardStep.refinement) {
       final borderPaint = Paint()..style = PaintingStyle.stroke;
+      final labelBgPaint = Paint();
+      final shapePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0
+        ..color = Colors.amberAccent;
+      final handlePaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill;
+      final handleBorderPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
 
       for (int i = 0; i < decomposedComponents.length; i++) {
         final comp = decomposedComponents[i];
@@ -306,7 +314,7 @@ class CanvasPainter extends CustomPainter {
             textDirection: TextDirection.ltr,
           )..layout();
 
-          final labelBgPaint = Paint()..color = activeColor;
+          labelBgPaint.color = activeColor;
           final labelRect = Rect.fromLTWH(
             rect.left.clamp(0.0, size.width - textPainter.width),
             (rect.top - 14.0).clamp(0.0, size.height - textPainter.height),
@@ -319,11 +327,6 @@ class CanvasPainter extends CustomPainter {
 
           // Draw the shapes inside this active component
           if (comp.shapes.isNotEmpty) {
-            final shapePaint = Paint()
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2.0
-              ..color = Colors.amberAccent;
-
             for (final shape in comp.shapes) {
               final shapeRect = Rect.fromLTWH(
                 rect.left + shape.relativeBoundingBox.left * rect.width,
@@ -351,13 +354,7 @@ class CanvasPainter extends CustomPainter {
 
           // Draw resize handles if in sketching plan phase
           if (isSketchingPlanPhase) {
-            final handlePaint = Paint()
-              ..color = Colors.white
-              ..style = PaintingStyle.fill;
-            final handleBorderPaint = Paint()
-              ..color = activeColor
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2.0;
+            handleBorderPaint.color = activeColor;
 
             const handleRadius = 6.0;
 
