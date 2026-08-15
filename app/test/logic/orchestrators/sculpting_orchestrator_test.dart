@@ -11,9 +11,12 @@ void main() {
 
     setUp(() {
       mockAiService = TestMockAiService(
-        response: '''[
-        {"tool": "apply_rectangle_filled", "params": [4, 4, 12, 12]}
-      ]''',
+        response: '''{
+        "thought": "sculpting component",
+        "tool": "apply_rectangle_filled",
+        "params": [4, 4, 12, 12],
+        "isComplete": true
+      }''',
       );
       orchestrator = SculptingOrchestrator(mockAiService);
     });
@@ -31,19 +34,19 @@ void main() {
       final comp1 = PixelArtComponent(
         name: 'Head',
         description: 'Head',
-        relativeBoundingBox: const Rect.fromLTWH(0, 0, 16, 8),
+        relativeBoundingBox: const Rect.fromLTWH(0, 0, 1.0, 0.5),
         shapes: const [],
         grid: comp1Grid,
       );
       final comp2 = PixelArtComponent(
         name: 'Body',
         description: 'Body',
-        relativeBoundingBox: const Rect.fromLTWH(0, 8, 16, 8),
+        relativeBoundingBox: const Rect.fromLTWH(0, 0.5, 1.0, 0.5),
         shapes: const [],
         grid: comp2Grid,
       );
 
-      final bgGrid = orchestrator.buildBackgroundGrid(
+      final bgGrid = SculptingOrchestrator.buildBackgroundGrid(
         components: [comp1, comp2],
         excludeIndex: 0,
         gridSize: 16,
@@ -53,5 +56,61 @@ void main() {
       expect(bgGrid[0][0], equals(0)); // comp1 is excluded
       expect(bgGrid[10][10], greaterThan(0)); // comp2 is included
     });
+
+    test('sculptSingleComponent sculpts targeted component', () async {
+      final comp = PixelArtComponent(
+        name: 'Head',
+        description: 'Head',
+        relativeBoundingBox: const Rect.fromLTWH(0, 0, 1.0, 1.0),
+        shapes: const [],
+      );
+
+      final result = await orchestrator.sculptSingleComponent(
+        component: comp,
+        index: 0,
+        allComponents: [comp],
+        gridSize: 16,
+        activePalette: [Colors.black, Colors.white, Colors.red],
+        userPrompt: 'a simple character',
+        referenceImage: null,
+      );
+
+      expect(result, isNotEmpty);
+      expect(result.length, equals(16));
+    });
+
+    test(
+      'sculptAllComponents iterates through components and updates them',
+      () async {
+        final comp1 = PixelArtComponent(
+          name: 'Head',
+          description: 'Head',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+          shapes: const [],
+        );
+        final comp2 = PixelArtComponent(
+          name: 'Body',
+          description: 'Body',
+          relativeBoundingBox: const Rect.fromLTWH(0.5, 0.5, 0.5, 0.5),
+          shapes: const [],
+        );
+
+        final stepUpdates = <List<PixelArtComponent>>[];
+        final results = await orchestrator.sculptAllComponents(
+          components: [comp1, comp2],
+          gridSize: 16,
+          activePalette: [Colors.black, Colors.white, Colors.red],
+          userPrompt: 'a simple character',
+          onStep: (activeIndex, updated, status) {
+            stepUpdates.add(List.from(updated));
+          },
+        );
+
+        expect(results.length, equals(2));
+        expect(results[0].isSculpted, isTrue);
+        expect(results[1].isSculpted, isTrue);
+        expect(stepUpdates, isNotEmpty);
+      },
+    );
   });
 }
