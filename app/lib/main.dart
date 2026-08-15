@@ -10,6 +10,7 @@ import 'logic/canvas_state.dart';
 import 'logic/utils/database.dart';
 import 'logic/utils/database_helpers.dart';
 import 'logic/utils/logging_ai_service.dart';
+import 'logic/wizard_state.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -89,9 +90,11 @@ Future<void> mainCommon() async {
         ),
         canvasStateProvider.overrideWith((ref) {
           final aiService = ref.read(loggingAiServiceProvider);
+          final wizardNotifier = ref.read(wizardStateProvider.notifier);
           final notifier = CanvasNotifier(
             aiService,
             initialModel: initialModel,
+            wizardNotifier: wizardNotifier,
           );
           ref.listen<AiService>(loggingAiServiceProvider, (_, newService) {
             notifier.updateAiService(newService);

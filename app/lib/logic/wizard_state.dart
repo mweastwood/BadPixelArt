@@ -45,6 +45,9 @@ class WizardNotifier extends StateNotifier<WizardState> {
         ),
       );
 
+  WizardState get wizardState => state;
+  WizardStep get currentStep => state.currentStep;
+
   @visibleForTesting
   static WizardStep parseStep(Object? step) {
     if (step is WizardStep) return step;

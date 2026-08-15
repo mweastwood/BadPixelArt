@@ -1,11 +1,13 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../wizard_state.dart';
 import '../canvas_state.dart';
 
 /// Controller for executing the automated AutoPlay wizard step-by-step loop.
 class AutoPlayWizardController {
-  /// Starts the AutoPlay loop with the provided [notifier] and [ref].
-  Future<void> startAutoPlay(CanvasNotifier notifier, WidgetRef ref) async {
+  /// Starts the AutoPlay loop with the provided [notifier] and [wizardNotifier].
+  Future<void> startAutoPlay(
+    CanvasNotifier notifier,
+    WizardNotifier wizardNotifier,
+  ) async {
     if (notifier.model.referenceImage == null) return;
     if (notifier.model.autoRun) return;
 
@@ -17,8 +19,7 @@ class AutoPlayWizardController {
         break;
       }
 
-      final wizardNotifier = ref.read(wizardStateProvider.notifier);
-      final currentStep = ref.read(wizardStateProvider).currentStep;
+      final currentStep = wizardNotifier.currentStep;
 
       switch (currentStep) {
         case WizardStep.selectGridSize:
