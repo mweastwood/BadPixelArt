@@ -16,6 +16,10 @@ class _RgbPoint {
 
 /// Extracted weighted K-Means color quantization algorithm.
 List<Color> kMeansQuantize(List<List<Color>> colorGrid, int k) {
+  if (k <= 0 || colorGrid.isEmpty) {
+    return const [];
+  }
+
   // 1. Gather all pixel colors and count their frequency
   final Map<int, int> colorCounts = {};
   for (final row in colorGrid) {
