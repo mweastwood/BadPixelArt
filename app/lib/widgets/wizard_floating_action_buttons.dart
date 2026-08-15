@@ -41,7 +41,7 @@ class WizardFloatingActionButtons extends ConsumerWidget {
           onStopAutoPlay: () =>
               ref.read(canvasStateProvider.notifier).stopAutoPlay(),
           onStartAutoPlay: hasRefImage
-              ? () => ref.read(canvasStateProvider.notifier).startAutoPlay(ref)
+              ? () => ref.read(canvasStateProvider.notifier).startAutoPlay()
               : null,
         ),
         if (hasNext) ...[

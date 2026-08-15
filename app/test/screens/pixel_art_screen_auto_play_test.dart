@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../test_helper.dart';
 
@@ -26,15 +27,23 @@ void main() {
       'Auto-Play FAB is enabled with reference image, toggles auto-play and displays Pause FAB',
       (tester) async {
         final mockAi = MockAiService();
-        final notifier = CanvasNotifier(mockAi);
-        notifier.state = notifier.state.copyWith(
-          referenceImage: Uint8List.fromList([1, 2, 3]),
-        );
+        late CanvasNotifier notifier;
 
         await tester.pumpWidget(
           buildTestableWidget(
             child: const PixelArtScreen(),
-            overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
+            overrides: [
+              canvasStateProvider.overrideWith((ref) {
+                notifier = CanvasNotifier(
+                  mockAi,
+                  wizardNotifier: ref.read(wizardStateProvider.notifier),
+                );
+                notifier.state = notifier.state.copyWith(
+                  referenceImage: Uint8List.fromList([1, 2, 3]),
+                );
+                return notifier;
+              }),
+            ],
           ),
         );
         await tester.pumpAndSettle();
@@ -67,16 +76,24 @@ void main() {
       tester,
     ) async {
       final mockAi = MockAiService();
-      final notifier = CanvasNotifier(mockAi);
-      notifier.state = notifier.state.copyWith(
-        referenceImage: Uint8List.fromList([1, 2, 3]),
-        autoRun: true,
-      );
+      late CanvasNotifier notifier;
 
       await tester.pumpWidget(
         buildTestableWidget(
           child: const PixelArtScreen(),
-          overrides: [canvasStateProvider.overrideWith((ref) => notifier)],
+          overrides: [
+            canvasStateProvider.overrideWith((ref) {
+              notifier = CanvasNotifier(
+                mockAi,
+                wizardNotifier: ref.read(wizardStateProvider.notifier),
+              );
+              notifier.state = notifier.state.copyWith(
+                referenceImage: Uint8List.fromList([1, 2, 3]),
+                autoRun: true,
+              );
+              return notifier;
+            }),
+          ],
         ),
       );
       await tester.pumpAndSettle();

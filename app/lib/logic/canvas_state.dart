@@ -21,6 +21,7 @@ import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
 import 'models/canvas_model.dart';
 import 'utils/logging_ai_service.dart';
+import 'wizard_state.dart';
 
 export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
@@ -42,6 +43,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   AiService _aiService;
   final CanvasRepository _repository;
   final AutoPlayWizardController _autoPlayController;
+  final WizardNotifier? wizardNotifier;
   final CanvasHistoryController _historyController;
   final CanvasDrawingHandler _drawingHandler;
   late DecompositionOrchestrator _decompositionOrchestrator;
@@ -256,6 +258,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     CanvasModel? initialModel,
     CanvasRepository? repository,
     AutoPlayWizardController? autoPlayController,
+    this.wizardNotifier,
     DecompositionOrchestrator? decompositionOrchestrator,
     SculptingOrchestrator? sculptingOrchestrator,
     CanvasHistoryController? historyController,
@@ -989,8 +992,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     state = state.copyWith(autoRun: autoRun, isPausing: isPausing);
   }
 
-  Future<void> startAutoPlay(WidgetRef ref) async {
-    await _autoPlayController.startAutoPlay(this, ref);
+  Future<void> startAutoPlay([WizardNotifier? targetWizardNotifier]) async {
+    final activeWizardNotifier = targetWizardNotifier ?? wizardNotifier;
+    if (activeWizardNotifier == null) return;
+    await _autoPlayController.startAutoPlay(this, activeWizardNotifier);
   }
 
   void stopAutoPlay() {
@@ -1075,7 +1080,8 @@ final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
   ref,
 ) {
   final aiService = ref.read(loggingAiServiceProvider);
-  final notifier = CanvasNotifier(aiService);
+  final wizardNotifier = ref.read(wizardStateProvider.notifier);
+  final notifier = CanvasNotifier(aiService, wizardNotifier: wizardNotifier);
   ref.listen<AiService>(loggingAiServiceProvider, (_, newService) {
     notifier.updateAiService(newService);
   });
