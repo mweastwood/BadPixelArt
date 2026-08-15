@@ -21,11 +21,12 @@ class SculptingOrchestrator {
       gridSize,
       (_) => List.filled(gridSize, 0),
     );
+    final divisor = paletteLength > 1 ? paletteLength - 1 : 1;
     for (int j = 0; j < components.length; j++) {
       if (j == excludeIndex) continue;
       final other = components[j];
       if (other.grid != null) {
-        final colorIdx = (j % (paletteLength - 1)) + 1;
+        final colorIdx = (j % divisor) + 1;
         for (int y = 0; y < gridSize; y++) {
           for (int x = 0; x < gridSize; x++) {
             if (other.grid![y][x] > 0) {

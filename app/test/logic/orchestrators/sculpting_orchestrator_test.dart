@@ -54,7 +54,58 @@ void main() {
       );
 
       expect(bgGrid[0][0], equals(0)); // comp1 is excluded
-      expect(bgGrid[10][10], greaterThan(0)); // comp2 is included
+      expect(bgGrid[10][10], equals(2)); // comp2 is included: (1 % 3) + 1 = 2
+    });
+
+    test('buildBackgroundGrid handles paletteLength <= 1 without throwing', () {
+      final comp1Grid = List.generate(
+        16,
+        (y) => List.generate(16, (x) => y < 8 ? 1 : 0),
+      );
+      final comp2Grid = List.generate(
+        16,
+        (y) => List.generate(16, (x) => y >= 8 ? 1 : 0),
+      );
+      final comp1 = PixelArtComponent(
+        name: 'Head',
+        description: 'Head',
+        relativeBoundingBox: const Rect.fromLTWH(0, 0, 1.0, 0.5),
+        shapes: const [],
+        grid: comp1Grid,
+      );
+      final comp2 = PixelArtComponent(
+        name: 'Body',
+        description: 'Body',
+        relativeBoundingBox: const Rect.fromLTWH(0, 0.5, 1.0, 0.5),
+        shapes: const [],
+        grid: comp2Grid,
+      );
+
+      // paletteLength == 0 should not throw IntegerDivisionByZeroException
+      final bgGridZero = SculptingOrchestrator.buildBackgroundGrid(
+        components: [comp1, comp2],
+        excludeIndex: 0,
+        gridSize: 16,
+        paletteLength: 0,
+      );
+      expect(bgGridZero[0][0], equals(0)); // comp1 is excluded
+      expect(
+        bgGridZero[10][10],
+        equals(1),
+      ); // comp2 is included, divisor defaults to 1 -> (1 % 1) + 1 = 1
+
+      // paletteLength == 1 should not throw IntegerDivisionByZeroException
+      final bgGridOne = SculptingOrchestrator.buildBackgroundGrid(
+        components: [comp1, comp2],
+        excludeIndex: 0,
+        gridSize: 16,
+        paletteLength: 1,
+      );
+      expect(bgGridOne[0][0], equals(0)); // comp1 is excluded
+      expect(
+        bgGridOne[10][10],
+        equals(1),
+      ); // comp2 is included, divisor defaults to 1 -> (1 % 1) + 1 = 1
     });
 
     test('sculptSingleComponent sculpts targeted component', () async {
