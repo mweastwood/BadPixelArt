@@ -157,3 +157,95 @@ gt.WidgetWrapper testMaterialAppWrapper({
     );
   };
 }
+
+/// Reusable JSON fixtures for testing AI agents and mock responses.
+abstract final class TestJsonFixtures {
+  /// Mock ColorSelectionAgent JSON response with blade gradient and hilt line.
+  static const String colorSelectionResponse = '''
+{
+  "reasoning": "Selected blue to red gradient for solid blade, and single dark color for thin line hilt.",
+  "componentColors": [
+    {
+      "name": "blade",
+      "fillColorHex": "#0000FF",
+      "fillColor2Hex": "#FF0000",
+      "gradientAngle": 45.0,
+      "outlineColorHex": "#000000"
+    },
+    {
+      "name": "hilt_line",
+      "fillColorHex": "#FF0000",
+      "fillColor2Hex": "#0000FF",
+      "gradientAngle": 90.0,
+      "outlineColorHex": "#000000"
+    }
+  ]
+}
+''';
+
+  /// Mock flat DecomposerAgent JSON response with blade and hilt bounding boxes.
+  static const String decomposerFlatResponse = '''
+[
+  {
+    "name": "blade",
+    "description": "sharp blue blade",
+    "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 }
+  },
+  {
+    "name": "hilt",
+    "description": "wooden hilt",
+    "relativeBoundingBox": { "left": 0.4375, "top": 0.7, "width": 0.125, "height": 0.2 }
+  }
+]
+''';
+
+  /// Mock DecomposerAgent JSON response with nested shape primitives.
+  static const String decomposerShapesResponse = '''
+[
+  {
+    "name": "blade",
+    "description": "sharp blue blade",
+    "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 },
+    "shapes": [
+      {
+        "type": "rectangle",
+        "description": "blue blade body",
+        "relativeBoundingBox": { "left": 0.0, "top": 0.0, "width": 1.0, "height": 0.8 }
+      },
+      {
+        "type": "triangle",
+        "description": "sharp tip",
+        "relativeBoundingBox": { "left": 0.0, "top": 0.8, "width": 1.0, "height": 0.2 }
+      }
+    ]
+  }
+]
+''';
+
+  /// Mock DecomposerAgent JSON response with a single off-center bounding box.
+  static const String decomposerOffCenterResponse = '''
+[
+  {
+    "name": "offCenterBox",
+    "description": "off-center box",
+    "relativeBoundingBox": { "left": 0.1, "top": 0.1, "width": 0.1, "height": 0.1 }
+  }
+]
+''';
+
+  /// Mock DecomposerAgent JSON response with multiple bounding boxes.
+  static const String decomposerMultiBoxResponse = '''
+[
+  {
+    "name": "large",
+    "description": "large box",
+    "relativeBoundingBox": { "left": 0.1, "top": 0.1, "width": 0.2, "height": 0.2 }
+  },
+  {
+    "name": "small",
+    "description": "small box",
+    "relativeBoundingBox": { "left": 0.5, "top": 0.5, "width": 0.1, "height": 0.1 }
+  }
+]
+''';
+}

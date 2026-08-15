@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/agents/color_selection_agent.dart';
 import 'package:bad_pixel_art/logic/models/pixel_art_component.dart';
+import '../../test_helper.dart';
 
 class _FakeAiServiceForColor implements AiService {
   final String mockResponse;
@@ -54,29 +55,9 @@ void main() {
     test(
       'suggestColors parses JSON response and enforces 1-color rule for non-interior components',
       () async {
-        final jsonResponse = '''
-{
-  "reasoning": "Selected blue to red gradient for solid blade, and single dark color for thin line hilt.",
-  "componentColors": [
-    {
-      "name": "blade",
-      "fillColorHex": "#0000FF",
-      "fillColor2Hex": "#FF0000",
-      "gradientAngle": 45.0,
-      "outlineColorHex": "#000000"
-    },
-    {
-      "name": "hilt_line",
-      "fillColorHex": "#FF0000",
-      "fillColor2Hex": "#0000FF",
-      "gradientAngle": 90.0,
-      "outlineColorHex": "#000000"
-    }
-  ]
-}
-''';
-
-        final mockAi = _FakeAiServiceForColor(jsonResponse);
+        final mockAi = _FakeAiServiceForColor(
+          TestJsonFixtures.colorSelectionResponse,
+        );
         final agent = ColorSelectionAgent(mockAi);
 
         final solidGrid = List.generate(

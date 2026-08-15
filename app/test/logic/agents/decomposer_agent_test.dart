@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import 'package:bad_pixel_art/logic/agents/decomposer_agent.dart';
+import '../../test_helper.dart';
 
 class TestMockAiService extends AiService {
   final String? responseToReturn;
@@ -58,27 +59,17 @@ void main() {
     );
 
     test('decomposes prompt correctly on valid flat JSON response', () async {
-      final mockJson = '''
-      [
-        {
-          "name": "blade",
-          "description": "sharp blue blade",
-          "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 }
-        },
-        {
-          "name": "hilt",
-          "description": "wooden hilt",
-          "relativeBoundingBox": { "left": 0.4375, "top": 0.7, "width": 0.125, "height": 0.2 }
-        }
-      ]
-      ''';
-
       final agent = DecomposerAgent();
-      final mockAi = TestMockAiService(responseToReturn: mockJson);
+      final mockAi = TestMockAiService(
+        responseToReturn: TestJsonFixtures.decomposerFlatResponse,
+      );
       final result = await agent.decompose(mockAi, context);
 
       expect(result.components, hasLength(2));
-      expect(result.rawResponse, equals(mockJson));
+      expect(
+        result.rawResponse,
+        equals(TestJsonFixtures.decomposerFlatResponse),
+      );
       expect(result.rawPrompt, contains('sword with red guard'));
 
       expect(result.components[0].name, equals('blade'));
@@ -98,30 +89,10 @@ void main() {
     });
 
     test('decomposes prompt correctly with shapes JSON response', () async {
-      final mockJson = '''
-      [
-        {
-          "name": "blade",
-          "description": "sharp blue blade",
-          "relativeBoundingBox": { "left": 0.45, "top": 0.1, "width": 0.1, "height": 0.6 },
-          "shapes": [
-            {
-              "type": "rectangle",
-              "description": "blue blade body",
-              "relativeBoundingBox": { "left": 0.0, "top": 0.0, "width": 1.0, "height": 0.8 }
-            },
-            {
-              "type": "triangle",
-              "description": "sharp tip",
-              "relativeBoundingBox": { "left": 0.0, "top": 0.8, "width": 1.0, "height": 0.2 }
-            }
-          ]
-        }
-      ]
-      ''';
-
       final agent = DecomposerAgent();
-      final mockAi = TestMockAiService(responseToReturn: mockJson);
+      final mockAi = TestMockAiService(
+        responseToReturn: TestJsonFixtures.decomposerShapesResponse,
+      );
       final result = await agent.decompose(mockAi, context);
 
       expect(result.components, hasLength(1));
@@ -146,18 +117,10 @@ void main() {
     test(
       'automatically scales and centers off-center bounding boxes',
       () async {
-        final mockJson = '''
-      [
-        {
-          "name": "offCenterBox",
-          "description": "off-center box",
-          "relativeBoundingBox": { "left": 0.1, "top": 0.1, "width": 0.1, "height": 0.1 }
-        }
-      ]
-      ''';
-
         final agent = DecomposerAgent();
-        final mockAi = TestMockAiService(responseToReturn: mockJson);
+        final mockAi = TestMockAiService(
+          responseToReturn: TestJsonFixtures.decomposerOffCenterResponse,
+        );
         final result = await agent.decompose(mockAi, context);
 
         expect(result.components, hasLength(1));
@@ -173,23 +136,10 @@ void main() {
     test(
       'scales and centers multiple boxes based on area-weighted center of mass',
       () async {
-        final mockJson = '''
-      [
-        {
-          "name": "large",
-          "description": "large box",
-          "relativeBoundingBox": { "left": 0.1, "top": 0.1, "width": 0.2, "height": 0.2 }
-        },
-        {
-          "name": "small",
-          "description": "small box",
-          "relativeBoundingBox": { "left": 0.5, "top": 0.5, "width": 0.1, "height": 0.1 }
-        }
-      ]
-      ''';
-
         final agent = DecomposerAgent();
-        final mockAi = TestMockAiService(responseToReturn: mockJson);
+        final mockAi = TestMockAiService(
+          responseToReturn: TestJsonFixtures.decomposerMultiBoxResponse,
+        );
         final result = await agent.decompose(mockAi, context);
 
         expect(result.components, hasLength(2));
