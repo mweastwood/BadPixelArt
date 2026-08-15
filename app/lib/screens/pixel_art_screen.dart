@@ -29,6 +29,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late final AppRouteManager _routeManager;
+  ProviderSubscription<CanvasModel>? _decompositionSubscription;
 
   @override
   void initState() {
@@ -36,6 +37,37 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     _routeManager = AppRouteManager(mockUri: widget.mockUri);
     _tabController = TabController(length: 3, initialIndex: 1, vsync: this);
     _tabController.addListener(_handleTabChange);
+
+    _decompositionSubscription = ref.listenManual<CanvasModel>(
+      canvasStateProvider,
+      (previous, next) {
+        if (next.pendingDecompositionOptions.isNotEmpty &&
+            (previous == null ||
+                previous.pendingDecompositionOptions.isEmpty)) {
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => DecompositionOptionsDialog(
+              options: next.pendingDecompositionOptions,
+              onSelected: (optIdx) {
+                ref
+                    .read(canvasStateProvider.notifier)
+                    .applyDecompositionOption(optIdx);
+                Navigator.of(dialogContext).pop();
+              },
+              onCancel: () {
+                ref
+                    .read(canvasStateProvider.notifier)
+                    .clearPendingDecompositionOptions();
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          );
+        }
+      },
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _routeManager.handleUrlParameters(tabController: _tabController);
@@ -52,36 +84,10 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
 
   @override
   void dispose() {
+    _decompositionSubscription?.close();
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
-  }
-
-  void _setupDecompositionDialogListener(BuildContext context, WidgetRef ref) {
-    ref.listen<CanvasModel>(canvasStateProvider, (previous, next) {
-      if (next.pendingDecompositionOptions.isNotEmpty &&
-          (previous == null || previous.pendingDecompositionOptions.isEmpty)) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => DecompositionOptionsDialog(
-            options: next.pendingDecompositionOptions,
-            onSelected: (optIdx) {
-              ref
-                  .read(canvasStateProvider.notifier)
-                  .applyDecompositionOption(optIdx);
-              Navigator.of(context).pop();
-            },
-            onCancel: () {
-              ref
-                  .read(canvasStateProvider.notifier)
-                  .clearPendingDecompositionOptions();
-              Navigator.of(context).pop();
-            },
-          ),
-        );
-      }
-    });
   }
 
   @override
@@ -91,8 +97,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     final theme = Theme.of(context);
     final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
     final history = canvasState.aiHistory;
-
-    _setupDecompositionDialogListener(context, ref);
 
     final double totalCost = history.fold(
       0.0,
