@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -332,6 +333,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
       state = state.copyWith(decomposedComponents: updated);
     }
+  }
+
+  void batchUpdateComponentColors(List<PixelArtComponent> updatedComponents) {
+    if (updatedComponents.isEmpty || state.decomposedComponents.isEmpty) return;
+    final updated = List<PixelArtComponent>.from(state.decomposedComponents);
+    final count = math.min(updated.length, updatedComponents.length);
+    for (int i = 0; i < count; i++) {
+      final c = updatedComponents[i];
+      updated[i] = updated[i].copyWith(
+        fillColor: c.fillColor == null ? () => null : () => c.fillColor,
+        fillColor2: c.fillColor2 == null ? () => null : () => c.fillColor2,
+        gradientAngle: c.gradientAngle,
+        outlineColor: c.outlineColor == null
+            ? () => null
+            : () => c.outlineColor,
+      );
+    }
+    state = state.copyWith(decomposedComponents: updated);
   }
 
   void deleteComponent(int index) {

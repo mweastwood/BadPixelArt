@@ -171,16 +171,7 @@ class _ComponentColorSelectionListState
               onPressed: () {
                 Navigator.pop(dialogContext);
                 final notifier = ref.read(canvasStateProvider.notifier);
-                for (int i = 0; i < result.updatedComponents.length; i++) {
-                  final c = result.updatedComponents[i];
-                  notifier.updateComponentColors(
-                    i,
-                    c.fillColor,
-                    c.outlineColor,
-                    fillColor2: c.fillColor2,
-                    gradientAngle: c.gradientAngle,
-                  );
-                }
+                notifier.batchUpdateComponentColors(result.updatedComponents);
               },
               child: const Text('Confirm Colors'),
             ),
