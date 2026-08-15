@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
@@ -10,38 +9,6 @@ import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/widgets/refinement_panel.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
-
-class RefinementMockAiService extends AiService {
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double? temperature,
-    int? maxOutputTokens,
-  }) async {
-    return '{"thought": "refine details", "tool": "pixel", "params": [2, 2], "colorIndex": 1}';
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 10;
-  }
-}
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -64,7 +31,13 @@ void main() {
       await tester.pumpWidget(
         buildTestableWidget(
           overrides: [
-            aiServiceProvider.overrideWithValue(RefinementMockAiService()),
+            aiServiceProvider.overrideWithValue(
+              TestMockAiService(
+                response:
+                    '{"thought": "refine details", "tool": "pixel", "params": [2, 2], "colorIndex": 1}',
+                tokenCount: 10,
+              ),
+            ),
             canvasStateProvider.overrideWith((ref) {
               final aiService = ref.watch(aiServiceProvider);
               final notifier = _MockRefinementCanvasNotifier(

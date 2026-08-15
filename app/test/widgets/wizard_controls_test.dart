@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
@@ -18,53 +17,13 @@ import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
 
-class WizardMockAiService extends AiService {
-  final String? responseToReturn;
-
-  WizardMockAiService({this.responseToReturn});
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double? temperature,
-    int? maxOutputTokens,
-  }) async {
-    if (responseToReturn != null) return responseToReturn;
-    if (prompt.contains('palette') || prompt.contains('colors')) {
-      return '["#000000", "#ffffff", "#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff"]';
-    }
-    return null;
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
-
 void main() {
   group('WizardControls Widget & Golden Tests', () {
     testWidgets(
       'shows GridSizeSelectionCard in Step 0 and navigates correctly across steps using FABs',
       (tester) async {
-        final mockAiService = WizardMockAiService(
-          responseToReturn:
+        final mockAiService = TestMockAiService(
+          response:
               '[{"type": "rectangle", "description": "steel body", "relativeBoundingBox": {"left":0.0, "top":0.0, "width":1.0, "height":0.8}}]',
         );
         final notifier = CanvasNotifier(mockAiService);
@@ -242,9 +201,7 @@ void main() {
 
       Widget customWrapper(Widget child) {
         return ProviderScope(
-          overrides: [
-            aiServiceProvider.overrideWithValue(WizardMockAiService()),
-          ],
+          overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
             theme: ThemeData.dark(),

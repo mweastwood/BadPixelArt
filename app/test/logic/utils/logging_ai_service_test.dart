@@ -1,69 +1,18 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/utils/logging_ai_service.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
-
-class _FakeAiService implements AiService {
-  Completer<AiResponse?> completer = Completer<AiResponse?>();
-  bool shouldThrow = false;
-  String exceptionMessage = 'API quota exceeded';
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async => 0;
-
-  @override
-  Future<AiResponse?> generateContentRaw({
-    required String prompt,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-    dynamic imageBytes,
-  }) async {
-    if (shouldThrow) {
-      throw Exception(exceptionMessage);
-    }
-    return completer.future;
-  }
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-    dynamic imageBytes,
-  }) async {
-    final res = await generateContentRaw(
-      prompt: prompt,
-      temperature: temperature,
-      maxOutputTokens: maxOutputTokens,
-      imageBytes: imageBytes,
-    );
-    return res?.text;
-  }
-}
+import '../../test_helper.dart';
 
 void main() {
   group('LoggingAiService Real-Time Pending & Update Tests', () {
     test(
       'emits pending entry immediately and updates when AI completes',
       () async {
-        final fakeService = _FakeAiService();
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
         final loggingService = LoggingAiService(
           fakeService,
           modelName: 'test-model',
@@ -87,7 +36,7 @@ void main() {
         expect(updatedEntries, isEmpty);
 
         // Complete AI call
-        fakeService.completer.complete(
+        fakeService.completer!.complete(
           AiResponse(
             text: 'AI Result',
             inputTokens: 10,
@@ -111,7 +60,7 @@ void main() {
     test(
       'updates entry with isError: true when AI call throws exception',
       () async {
-        final fakeService = _FakeAiService()..shouldThrow = true;
+        final fakeService = TestMockAiService(shouldThrow: true);
         final loggingService = LoggingAiService(
           fakeService,
           modelName: 'test-model',
@@ -135,7 +84,9 @@ void main() {
     );
 
     test('falls back to onLog when onLogUpdate is null', () async {
-      final fakeService = _FakeAiService();
+      final fakeService = TestMockAiService(
+        completer: Completer<AiResponse?>(),
+      );
       final loggingService = LoggingAiService(fakeService);
 
       final loggedEntries = <AgentHistoryEntry>[];
@@ -145,7 +96,7 @@ void main() {
       expect(loggedEntries.length, equals(1));
       expect(loggedEntries.first.response, equals('Generating response...'));
 
-      fakeService.completer.complete(AiResponse(text: 'Done fallback'));
+      fakeService.completer!.complete(AiResponse(text: 'Done fallback'));
       await future;
 
       expect(loggedEntries.length, equals(2));
@@ -153,7 +104,9 @@ void main() {
     });
 
     test('CanvasNotifier updates aiHistory state in real time', () async {
-      final fakeService = _FakeAiService();
+      final fakeService = TestMockAiService(
+        completer: Completer<AiResponse?>(),
+      );
       final loggingService = LoggingAiService(
         fakeService,
         modelName: 'test-model',
@@ -171,7 +124,7 @@ void main() {
       );
 
       // Complete AI response
-      fakeService.completer.complete(
+      fakeService.completer!.complete(
         AiResponse(
           text: 'Cat painted',
           inputTokens: 20,
@@ -188,11 +141,15 @@ void main() {
     });
 
     test('updateAiService re-wires onLog and onLogUpdate callbacks', () async {
-      final fakeService1 = _FakeAiService();
+      final fakeService1 = TestMockAiService(
+        completer: Completer<AiResponse?>(),
+      );
       final logging1 = LoggingAiService(fakeService1);
       final notifier = CanvasNotifier(logging1);
 
-      final fakeService2 = _FakeAiService();
+      final fakeService2 = TestMockAiService(
+        completer: Completer<AiResponse?>(),
+      );
       final logging2 = LoggingAiService(fakeService2);
 
       notifier.updateAiService(logging2);
@@ -201,7 +158,7 @@ void main() {
       expect(notifier.state.aiHistory.length, equals(1));
       expect(notifier.state.aiHistory.first.prompt, equals('New service call'));
 
-      fakeService2.completer.complete(AiResponse(text: 'New response'));
+      fakeService2.completer!.complete(AiResponse(text: 'New response'));
       await future;
 
       expect(notifier.state.aiHistory.length, equals(1));

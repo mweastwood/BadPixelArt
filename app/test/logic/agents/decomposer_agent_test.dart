@@ -1,46 +1,8 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import 'package:bad_pixel_art/logic/agents/decomposer_agent.dart';
 import '../../test_helper.dart';
-
-class TestMockAiService extends AiService {
-  final String? responseToReturn;
-
-  TestMockAiService({this.responseToReturn});
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double? temperature,
-    int? maxOutputTokens,
-  }) async {
-    return responseToReturn;
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
 
 void main() {
   group('DecomposerAgent Unit Tests', () {

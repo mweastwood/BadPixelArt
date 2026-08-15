@@ -5,42 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-class MockBmpAiService extends AiService {
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-  }) async {
-    if (prompt.contains('pixel art describer') ||
-        prompt.contains('reference image depicts')) {
-      return 'Mock description of reference image';
-    }
-    return null;
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
+import '../../test_helper.dart';
 
 void main() {
   group('BMP Utils Tests', () {
@@ -301,7 +266,7 @@ void main() {
       () {
         SharedPreferences.setMockInitialValues({});
         final container = ProviderContainer(
-          overrides: [aiServiceProvider.overrideWithValue(MockBmpAiService())],
+          overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
         );
         addTearDown(container.dispose);
 
@@ -320,7 +285,7 @@ void main() {
     test('setting reference image to null clears both images', () {
       SharedPreferences.setMockInitialValues({});
       final container = ProviderContainer(
-        overrides: [aiServiceProvider.overrideWithValue(MockBmpAiService())],
+        overrides: [aiServiceProvider.overrideWithValue(TestMockAiService())],
       );
       addTearDown(container.dispose);
 
@@ -344,7 +309,7 @@ void main() {
     });
 
     test('suggestDescriptionFromReference updates userPrompt', () async {
-      final mockAiService = MockBmpAiService();
+      final mockAiService = TestMockAiService();
       final notifier = CanvasNotifier(mockAiService);
 
       notifier.setReferenceImage(Uint8List.fromList([1, 2, 3]));

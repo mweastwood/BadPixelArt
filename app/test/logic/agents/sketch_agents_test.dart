@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,48 +8,7 @@ import 'package:bad_pixel_art/logic/agents/sketch_eraser_agent.dart';
 import 'package:bad_pixel_art/logic/agents/sketch_evaluator_agent.dart';
 import 'package:bad_pixel_art/logic/orchestrators/sketch_orchestrator.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
-
-class SequentialMockAiService extends AiService {
-  final List<String> responses;
-  int _callCount = 0;
-
-  SequentialMockAiService(this.responses);
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double? temperature,
-    int? maxOutputTokens,
-  }) async {
-    if (_callCount < responses.length) {
-      final res = responses[_callCount];
-      _callCount++;
-      return res;
-    }
-    return null;
-  }
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async {
-    return 100;
-  }
-}
+import '../../test_helper.dart';
 
 void main() {
   group('Sketch Agents Unit Tests', () {
@@ -107,7 +65,7 @@ void main() {
     test(
       'isComponentDone checks evaluator approval and boundary utilization correctly',
       () {
-        final mockAi = SequentialMockAiService([]);
+        final mockAi = TestMockAiService(responses: []);
         final orchestrator = SketchOrchestrator(mockAi);
 
         final comp = PixelArtComponent(
@@ -179,7 +137,7 @@ void main() {
           '{"thought": "done", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
-        final mockAi = SequentialMockAiService(mockResponses);
+        final mockAi = TestMockAiService(responses: mockResponses);
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
@@ -235,7 +193,7 @@ void main() {
           '{"thought": "done", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
-        final mockAi = SequentialMockAiService(mockResponses);
+        final mockAi = TestMockAiService(responses: mockResponses);
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
@@ -280,7 +238,7 @@ void main() {
           '{"thought": "done", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
-        final mockAi = SequentialMockAiService(mockResponses);
+        final mockAi = TestMockAiService(responses: mockResponses);
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
@@ -326,7 +284,7 @@ void main() {
           '{"thought": "handle done", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
-        final mockAi = SequentialMockAiService(mockResponses);
+        final mockAi = TestMockAiService(responses: mockResponses);
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
@@ -368,7 +326,7 @@ void main() {
           '{"thought": "shape is already perfect", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
-        final mockAi = SequentialMockAiService(mockResponses);
+        final mockAi = TestMockAiService(responses: mockResponses);
         final container = ProviderContainer(
           overrides: [aiServiceProvider.overrideWithValue(mockAi)],
         );
@@ -407,7 +365,7 @@ void main() {
           '{"thought": "handle complete", "tool": "", "params": [], "add": [], "erase": []}',
         ];
 
-        final mockAi = ImageCaptureMockAiService(mockResponses);
+        final mockAi = TestMockAiService(responses: mockResponses);
         final orchestrator = SketchOrchestrator(mockAi);
 
         final components = [
@@ -456,28 +414,4 @@ void main() {
       },
     );
   });
-}
-
-class ImageCaptureMockAiService extends SequentialMockAiService {
-  final List<Uint8List?> capturedImageBytes = [];
-  final List<String> capturedPrompts = [];
-
-  ImageCaptureMockAiService(super.responses);
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    Uint8List? imageBytes,
-    double? temperature,
-    int? maxOutputTokens,
-  }) async {
-    capturedPrompts.add(prompt);
-    capturedImageBytes.add(imageBytes);
-    return super.generateContent(
-      prompt: prompt,
-      imageBytes: imageBytes,
-      temperature: temperature,
-      maxOutputTokens: maxOutputTokens,
-    );
-  }
 }

@@ -1,62 +1,16 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/agents/color_selection_agent.dart';
 import 'package:bad_pixel_art/logic/models/pixel_art_component.dart';
 import '../../test_helper.dart';
-
-class _FakeAiServiceForColor implements AiService {
-  final String mockResponse;
-
-  _FakeAiServiceForColor(this.mockResponse);
-
-  @override
-  Future<AiCoreStatus> checkStatus() async => AiCoreStatus.available;
-
-  @override
-  Future<void> triggerDownload() async {}
-
-  @override
-  Future<void> setModelConfig({
-    required String releaseStage,
-    required String preference,
-  }) async {}
-
-  @override
-  Future<int> countTokens({
-    required String prompt,
-    Uint8List? imageBytes,
-  }) async => 0;
-
-  @override
-  Future<AiResponse?> generateContentRaw({
-    required String prompt,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-    dynamic imageBytes,
-  }) async {
-    return AiResponse(text: mockResponse);
-  }
-
-  @override
-  Future<String?> generateContent({
-    required String prompt,
-    double temperature = 1.0,
-    int? maxOutputTokens,
-    dynamic imageBytes,
-  }) async {
-    return mockResponse;
-  }
-}
 
 void main() {
   group('ColorSelectionAgent Tests', () {
     test(
       'suggestColors parses JSON response and enforces 1-color rule for non-interior components',
       () async {
-        final mockAi = _FakeAiServiceForColor(
-          TestJsonFixtures.colorSelectionResponse,
+        final mockAi = TestMockAiService(
+          response: TestJsonFixtures.colorSelectionResponse,
         );
         final agent = ColorSelectionAgent(mockAi);
 
