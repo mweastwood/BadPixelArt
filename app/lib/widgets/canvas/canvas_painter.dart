@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../logic/models/pixel_art_component.dart';
-import '../../logic/agents/shape_sculpter_agent.dart';
 import '../../logic/wizard_state.dart';
 
 class CanvasPainter extends CustomPainter {
@@ -12,6 +11,7 @@ class CanvasPainter extends CustomPainter {
   final int activeComponentIndex;
   final WizardStep currentStep;
   final bool isGenerating;
+  final Map<String, List<Map<String, int>>>? sculptingCandidates;
 
   CanvasPainter({
     required this.grid,
@@ -20,6 +20,7 @@ class CanvasPainter extends CustomPainter {
     required this.activeComponentIndex,
     required this.currentStep,
     required this.isGenerating,
+    this.sculptingCandidates,
   });
 
   bool get isSketchingPlanPhase => currentStep == WizardStep.sketchingPlan;
@@ -219,52 +220,43 @@ class CanvasPainter extends CustomPainter {
     }
 
     // Highlight eligible sculpting pixels if in sculpting phase and AI is not running
-    if (isSculptingPhase && decomposedComponents.isNotEmpty && !isGenerating) {
-      if (activeComponentIndex >= 0 &&
-          activeComponentIndex < decomposedComponents.length) {
-        final comp = decomposedComponents[activeComponentIndex];
-        if (comp.grid != null) {
-          final candidates = calculateSculptingCandidates(
-            comp.grid!,
-            gridSize,
-            comp.relativeBoundingBox,
-          );
+    if (isSculptingPhase &&
+        decomposedComponents.isNotEmpty &&
+        !isGenerating &&
+        sculptingCandidates != null) {
+      final removeList = sculptingCandidates!['remove'] ?? [];
+      final addList = sculptingCandidates!['add'] ?? [];
 
-          final removeList = candidates['remove'] ?? [];
-          final addList = candidates['add'] ?? [];
+      final removePaint = Paint()
+        ..color = Colors.redAccent.withValues(alpha: 0.3)
+        ..isAntiAlias = false;
 
-          final removePaint = Paint()
-            ..color = Colors.redAccent.withValues(alpha: 0.3)
-            ..isAntiAlias = false;
+      final addPaint = Paint()
+        ..color = Colors.greenAccent.withValues(alpha: 0.3)
+        ..isAntiAlias = false;
 
-          final addPaint = Paint()
-            ..color = Colors.greenAccent.withValues(alpha: 0.3)
-            ..isAntiAlias = false;
+      for (final p in removeList) {
+        final x = p['x']!;
+        final y = p['y']!;
+        final rect = Rect.fromLTWH(
+          x * cellWidth,
+          y * cellHeight,
+          cellWidth,
+          cellHeight,
+        );
+        canvas.drawRect(rect, removePaint);
+      }
 
-          for (final p in removeList) {
-            final x = p['x']!;
-            final y = p['y']!;
-            final rect = Rect.fromLTWH(
-              x * cellWidth,
-              y * cellHeight,
-              cellWidth,
-              cellHeight,
-            );
-            canvas.drawRect(rect, removePaint);
-          }
-
-          for (final p in addList) {
-            final x = p['x']!;
-            final y = p['y']!;
-            final rect = Rect.fromLTWH(
-              x * cellWidth,
-              y * cellHeight,
-              cellWidth,
-              cellHeight,
-            );
-            canvas.drawRect(rect, addPaint);
-          }
-        }
+      for (final p in addList) {
+        final x = p['x']!;
+        final y = p['y']!;
+        final rect = Rect.fromLTWH(
+          x * cellWidth,
+          y * cellHeight,
+          cellWidth,
+          cellHeight,
+        );
+        canvas.drawRect(rect, addPaint);
       }
     }
 
@@ -392,7 +384,8 @@ class CanvasPainter extends CustomPainter {
         !listEquals(oldDelegate.decomposedComponents, decomposedComponents) ||
         oldDelegate.activeComponentIndex != activeComponentIndex ||
         oldDelegate.currentStep != currentStep ||
-        oldDelegate.isGenerating != isGenerating;
+        oldDelegate.isGenerating != isGenerating ||
+        oldDelegate.sculptingCandidates != sculptingCandidates;
   }
 }
 

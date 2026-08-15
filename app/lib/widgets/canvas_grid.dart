@@ -50,6 +50,24 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             : constraints.maxWidth;
         final size = max(0.0, min(constraints.maxWidth, availableHeight));
 
+        Map<String, List<Map<String, int>>>? sculptingCandidates;
+        if (isSculptingPhase &&
+            canvasModel.decomposedComponents.isNotEmpty &&
+            !canvasModel.isGenerating &&
+            canvasModel.activeComponentIndex >= 0 &&
+            canvasModel.activeComponentIndex <
+                canvasModel.decomposedComponents.length) {
+          final comp = canvasModel
+              .decomposedComponents[canvasModel.activeComponentIndex];
+          if (comp.grid != null) {
+            sculptingCandidates = calculateSculptingCandidates(
+              comp.grid!,
+              canvasModel.gridSize,
+              comp.relativeBoundingBox,
+            );
+          }
+        }
+
         Widget gridContent = CustomPaint(
           painter: CanvasPainter(
             grid: canvasModel.grid,
@@ -58,6 +76,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             activeComponentIndex: canvasModel.activeComponentIndex,
             currentStep: wizardState.currentStep,
             isGenerating: canvasModel.isGenerating,
+            sculptingCandidates: sculptingCandidates,
           ),
           child: GridPaper(
             color: Colors.grey[800]!.withValues(alpha: 0.2),
@@ -345,11 +364,13 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                   );
 
                   // Calculate eligible candidates
-                  final candidates = calculateSculptingCandidates(
-                    activeComp.grid!,
-                    canvasModel.gridSize,
-                    activeComp.relativeBoundingBox,
-                  );
+                  final candidates =
+                      sculptingCandidates ??
+                      calculateSculptingCandidates(
+                        activeComp.grid!,
+                        canvasModel.gridSize,
+                        activeComp.relativeBoundingBox,
+                      );
 
                   final removeList = candidates['remove'] ?? [];
                   final addList = candidates['add'] ?? [];
