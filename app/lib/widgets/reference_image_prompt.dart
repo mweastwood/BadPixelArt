@@ -28,7 +28,15 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
 
   @override
   Widget build(BuildContext context) {
-    final canvasModel = ref.watch(canvasStateProvider);
+    final referenceImage = ref.watch(
+      canvasStateProvider.select((s) => s.referenceImage),
+    );
+    final originalReferenceImage = ref.watch(
+      canvasStateProvider.select((s) => s.originalReferenceImage),
+    );
+    final isSuggestingDescription = ref.watch(
+      canvasStateProvider.select((s) => s.isSuggestingDescription),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
@@ -42,7 +50,7 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
       },
     );
 
-    final hasRefImage = canvasModel.referenceImage != null;
+    final hasRefImage = referenceImage != null;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -161,13 +169,10 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                               ),
                               clipBehavior: Clip.antiAlias,
                               child:
-                                  canvasModel.originalReferenceImage != null &&
-                                      canvasModel
-                                              .originalReferenceImage!
-                                              .length >=
-                                          10
+                                  originalReferenceImage != null &&
+                                      originalReferenceImage.length >= 10
                                   ? Image.memory(
-                                      canvasModel.originalReferenceImage!,
+                                      originalReferenceImage,
                                       fit: BoxFit.contain,
                                     )
                                   : const Center(
@@ -209,7 +214,7 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: Image.memory(
-                                canvasModel.referenceImage!,
+                                referenceImage,
                                 fit: BoxFit.contain,
                                 filterQuality:
                                     FilterQuality.none, // Keep pixelated style
@@ -284,10 +289,10 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
                   key: const ValueKey('auto_suggest_description_button'),
-                  onPressed: canvasModel.isSuggestingDescription
+                  onPressed: isSuggestingDescription
                       ? null
                       : () => notifier.suggestDescriptionFromReference(),
-                  icon: canvasModel.isSuggestingDescription
+                  icon: isSuggestingDescription
                       ? const SizedBox(
                           width: 14,
                           height: 14,
@@ -295,7 +300,7 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                         )
                       : const Icon(Icons.auto_awesome, size: 16),
                   label: Text(
-                    canvasModel.isSuggestingDescription
+                    isSuggestingDescription
                         ? 'Suggesting...'
                         : 'Auto-suggest Description',
                   ),

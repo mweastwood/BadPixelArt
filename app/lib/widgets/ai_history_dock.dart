@@ -10,9 +10,8 @@ class AiHistoryDock extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canvasModel = ref.watch(canvasStateProvider);
+    final history = ref.watch(canvasStateProvider.select((s) => s.aiHistory));
     final theme = Theme.of(context);
-    final history = canvasModel.aiHistory;
 
     if (history.isEmpty) {
       return Center(

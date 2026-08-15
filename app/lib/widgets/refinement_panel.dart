@@ -27,7 +27,9 @@ class _RefinementPanelState extends ConsumerState<RefinementPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final canvasState = ref.watch(canvasStateProvider);
+    final isGenerating = ref.watch(
+      canvasStateProvider.select((s) => s.isGenerating),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
@@ -75,7 +77,7 @@ class _RefinementPanelState extends ConsumerState<RefinementPanel> {
             ),
             elevation: 4,
           ),
-          icon: canvasState.isGenerating
+          icon: isGenerating
               ? const SizedBox(
                   width: 20,
                   height: 20,
@@ -86,12 +88,10 @@ class _RefinementPanelState extends ConsumerState<RefinementPanel> {
                 )
               : const Icon(Icons.auto_awesome),
           label: Text(
-            canvasState.isGenerating
-                ? 'Refining Canvas...'
-                : 'Apply Refinements',
+            isGenerating ? 'Refining Canvas...' : 'Apply Refinements',
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
-          onPressed: canvasState.isGenerating
+          onPressed: isGenerating
               ? null
               : () async {
                   await notifier.refineCanvas(_promptController.text);

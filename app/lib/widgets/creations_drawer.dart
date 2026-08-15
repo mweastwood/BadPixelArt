@@ -37,7 +37,9 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
 
   @override
   Widget build(BuildContext context) {
-    final canvasState = ref.watch(canvasStateProvider);
+    final currentCreationId = ref.watch(
+      canvasStateProvider.select((s) => s.creationId),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
@@ -115,7 +117,7 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                   itemCount: filteredList.length,
                   itemBuilder: (context, index) {
                     final creation = filteredList[index];
-                    final isCurrent = creation.id == canvasState.creationId;
+                    final isCurrent = creation.id == currentCreationId;
 
                     return ListTile(
                       key: ValueKey('creation_item_${creation.id}'),
