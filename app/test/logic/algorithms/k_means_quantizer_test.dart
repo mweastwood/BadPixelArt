@@ -54,5 +54,45 @@ void main() {
       );
       expect(hasBlue, isTrue, reason: 'Palette should contain a blue cluster');
     });
+
+    test(
+      'weights high frequency colors more heavily during centroid computation',
+      () {
+        const darkRed = Color(0xFF800000);
+        const brightRed = Color(0xFFFF0000);
+
+        // Grid with 9 dark reds and 1 bright red
+        final grid = [
+          [darkRed, darkRed, darkRed],
+          [darkRed, darkRed, darkRed],
+          [darkRed, darkRed, brightRed],
+        ];
+
+        final palette = kMeansQuantize(grid, 1);
+        expect(palette.length, equals(1));
+
+        // Weighted average: (8 * 128 + 1 * 255) / 9 = (1024 + 255) / 9 = 1279 / 9 = 142
+        // Channel R should be close to 142
+        final redChannel = (palette.first.r * 255.0).round();
+        expect(redChannel, inInclusiveRange(140, 145));
+      },
+    );
+
+    test('returns exact colors when uniqueColors count matches k', () {
+      const c1 = Color(0xFF112233);
+      const c2 = Color(0xFF445566);
+      const c3 = Color(0xFF778899);
+
+      final grid = [
+        [c1, c2, c3],
+      ];
+
+      final palette = kMeansQuantize(grid, 3);
+      expect(palette.length, equals(3));
+      expect(
+        palette.map((c) => c.toARGB32()).toSet(),
+        equals({c1.toARGB32(), c2.toARGB32(), c3.toARGB32()}),
+      );
+    });
   });
 }

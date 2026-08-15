@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 
-/// Extension to extract R, G, B channels as integers from a Color.
-extension _ColorRgbInt on Color {
-  int get rInt => (r * 255.0).round().clamp(0, 255);
-  int get gInt => (g * 255.0).round().clamp(0, 255);
-  int get bInt => (b * 255.0).round().clamp(0, 255);
+class _RgbPoint {
+  final int r;
+  final int g;
+  final int b;
+  final int weight;
+
+  const _RgbPoint({
+    required this.r,
+    required this.g,
+    required this.b,
+    required this.weight,
+  });
 }
 
 /// Extracted weighted K-Means color quantization algorithm.
@@ -27,37 +34,55 @@ List<Color> kMeansQuantize(List<List<Color>> colorGrid, int k) {
     return list;
   }
 
-  // 2. Select initial centroids spread across the unique colors
-  final List<Color> centroids = [];
-  final step = uniqueColors.length ~/ k;
-  for (int i = 0; i < k; i++) {
-    centroids.add(
-      Color(uniqueColors[(i * step).clamp(0, uniqueColors.length - 1)]),
+  // Pre-extract integer RGB channels and weights using bitwise operations
+  final List<_RgbPoint> points = [];
+  for (final argb in uniqueColors) {
+    points.add(
+      _RgbPoint(
+        r: (argb >> 16) & 0xFF,
+        g: (argb >> 8) & 0xFF,
+        b: argb & 0xFF,
+        weight: colorCounts[argb]!,
+      ),
     );
+  }
+
+  // 2. Select initial centroids spread across the unique colors
+  final List<int> centroidR = List<int>.filled(k, 0);
+  final List<int> centroidG = List<int>.filled(k, 0);
+  final List<int> centroidB = List<int>.filled(k, 0);
+
+  final step = points.length ~/ k;
+  for (int i = 0; i < k; i++) {
+    final pt = points[(i * step).clamp(0, points.length - 1)];
+    centroidR[i] = pt.r;
+    centroidG[i] = pt.g;
+    centroidB[i] = pt.b;
   }
 
   // 3. Iteratively refine centroids
   for (int iteration = 0; iteration < 5; iteration++) {
-    final List<List<int>> clusters = List.generate(k, (_) => []);
+    final List<List<_RgbPoint>> clusters = List.generate(k, (_) => []);
 
     // Assign each unique color to the closest centroid
-    for (final argb in uniqueColors) {
-      final color = Color(argb);
-      double minDistance = double.infinity;
+    for (final pt in points) {
+      int minDistance = 0x7FFFFFFF;
       int bestCentroidIndex = 0;
+      final pr = pt.r;
+      final pg = pt.g;
+      final pb = pt.b;
 
       for (int c = 0; c < k; c++) {
-        final cent = centroids[c];
-        final dr = color.rInt - cent.rInt;
-        final dg = color.gInt - cent.gInt;
-        final db = color.bInt - cent.bInt;
+        final dr = pr - centroidR[c];
+        final dg = pg - centroidG[c];
+        final db = pb - centroidB[c];
         final dist = dr * dr + dg * dg + db * db;
         if (dist < minDistance) {
-          minDistance = dist.toDouble();
+          minDistance = dist;
           bestCentroidIndex = c;
         }
       }
-      clusters[bestCentroidIndex].add(argb);
+      clusters[bestCentroidIndex].add(pt);
     }
 
     // Recompute centroids as weighted averages
@@ -65,30 +90,29 @@ List<Color> kMeansQuantize(List<List<Color>> colorGrid, int k) {
       final cluster = clusters[c];
       if (cluster.isEmpty) continue;
 
-      double totalWeight = 0;
-      double sumR = 0;
-      double sumG = 0;
-      double sumB = 0;
+      int totalWeight = 0;
+      int sumR = 0;
+      int sumG = 0;
+      int sumB = 0;
 
-      for (final argb in cluster) {
-        final weight = colorCounts[argb]!.toDouble();
-        final color = Color(argb);
-        sumR += color.rInt * weight;
-        sumG += color.gInt * weight;
-        sumB += color.bInt * weight;
+      for (final pt in cluster) {
+        final weight = pt.weight;
+        sumR += pt.r * weight;
+        sumG += pt.g * weight;
+        sumB += pt.b * weight;
         totalWeight += weight;
       }
 
       if (totalWeight > 0) {
-        centroids[c] = Color.fromARGB(
-          255,
-          (sumR / totalWeight).round().clamp(0, 255),
-          (sumG / totalWeight).round().clamp(0, 255),
-          (sumB / totalWeight).round().clamp(0, 255),
-        );
+        centroidR[c] = (sumR / totalWeight).round().clamp(0, 255);
+        centroidG[c] = (sumG / totalWeight).round().clamp(0, 255);
+        centroidB[c] = (sumB / totalWeight).round().clamp(0, 255);
       }
     }
   }
 
-  return centroids;
+  return List<Color>.generate(
+    k,
+    (c) => Color.fromARGB(255, centroidR[c], centroidG[c], centroidB[c]),
+  );
 }
