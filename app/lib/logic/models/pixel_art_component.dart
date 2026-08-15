@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../utils/coordinate_converter.dart';
 
@@ -53,6 +54,18 @@ class FundamentalShape {
       ensureNonEmpty: ensureNonEmpty,
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! FundamentalShape) return false;
+    return type == other.type &&
+        relativeBoundingBox == other.relativeBoundingBox &&
+        description == other.description;
+  }
+
+  @override
+  int get hashCode => Object.hash(type, relativeBoundingBox, description);
 }
 
 class PixelArtComponent {
@@ -358,4 +371,62 @@ class PixelArtComponent {
       isSculpted: isSculptedRaw ?? (parsedGrid != null),
     );
   }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! PixelArtComponent) return false;
+    return name == other.name &&
+        description == other.description &&
+        relativeBoundingBox == other.relativeBoundingBox &&
+        _gridEquals(grid, other.grid) &&
+        listEquals(shapes, other.shapes) &&
+        fillColor == other.fillColor &&
+        fillColor2 == other.fillColor2 &&
+        gradientAngle == other.gradientAngle &&
+        outlineColor == other.outlineColor &&
+        isSculpted == other.isSculpted &&
+        hasInterior == other.hasInterior &&
+        minP == other.minP &&
+        maxP == other.maxP &&
+        _gridEquals(outlineGrid, other.outlineGrid) &&
+        cosA == other.cosA &&
+        sinA == other.sinA;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    Object.hash(
+      name,
+      description,
+      relativeBoundingBox,
+      grid != null ? Object.hashAll(grid!.map(Object.hashAll)) : null,
+      Object.hashAll(shapes),
+      fillColor,
+      fillColor2,
+      gradientAngle,
+      outlineColor,
+      isSculpted,
+    ),
+    Object.hash(
+      hasInterior,
+      minP,
+      maxP,
+      outlineGrid != null
+          ? Object.hashAll(outlineGrid!.map(Object.hashAll))
+          : null,
+      cosA,
+      sinA,
+    ),
+  );
+}
+
+bool _gridEquals(List<List<int>>? a, List<List<int>>? b) {
+  if (identical(a, b)) return true;
+  if (a == null || b == null) return false;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (!listEquals(a[i], b[i])) return false;
+  }
+  return true;
 }
