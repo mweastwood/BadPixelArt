@@ -212,63 +212,41 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
     Creation creation,
     CanvasNotifier notifier,
   ) {
-    final controller = TextEditingController(text: creation.title);
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename Creation'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(hintText: 'Enter new title'),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            key: const ValueKey('rename_dialog_confirm_button'),
-            onPressed: () async {
-              final newTitle = controller.text.trim();
-              if (newTitle.isNotEmpty) {
-                if (creation.id == ref.read(canvasStateProvider).creationId) {
-                  await notifier.renameCanvas(newTitle);
-                } else {
-                  final db = AppDatabaseHelper.db;
-                  final creationData = await db.getCreationById(creation.id);
-                  if (creationData != null) {
-                    await db.updateCreation(
-                      CreationsCompanion(
-                        id: drift.Value(creation.id),
-                        title: drift.Value(newTitle),
-                        gridSize: drift.Value(creationData.gridSize),
-                        gridData: drift.Value(creationData.gridData),
-                        paletteName: drift.Value(creationData.paletteName),
-                        paletteColors: drift.Value(creationData.paletteColors),
-                        decomposedComponents: drift.Value(
-                          creationData.decomposedComponents,
-                        ),
-                        aiHistoryLogs: drift.Value(creationData.aiHistoryLogs),
-                        referenceImage: drift.Value(
-                          creationData.referenceImage,
-                        ),
-                        originalReferenceImage: drift.Value(
-                          creationData.originalReferenceImage,
-                        ),
-                        createdAt: drift.Value(creationData.createdAt),
-                        updatedAt: drift.Value(DateTime.now()),
-                      ),
-                    );
-                  }
-                }
-                _refreshList();
-              }
-              if (context.mounted) Navigator.of(context).pop();
-            },
-            child: const Text('Rename'),
-          ),
-        ],
+      builder: (context) => _RenameDialog(
+        initialTitle: creation.title,
+        onConfirm: (newTitle) async {
+          if (creation.id == ref.read(canvasStateProvider).creationId) {
+            await notifier.renameCanvas(newTitle);
+          } else {
+            final db = AppDatabaseHelper.db;
+            final creationData = await db.getCreationById(creation.id);
+            if (creationData != null) {
+              await db.updateCreation(
+                CreationsCompanion(
+                  id: drift.Value(creation.id),
+                  title: drift.Value(newTitle),
+                  gridSize: drift.Value(creationData.gridSize),
+                  gridData: drift.Value(creationData.gridData),
+                  paletteName: drift.Value(creationData.paletteName),
+                  paletteColors: drift.Value(creationData.paletteColors),
+                  decomposedComponents: drift.Value(
+                    creationData.decomposedComponents,
+                  ),
+                  aiHistoryLogs: drift.Value(creationData.aiHistoryLogs),
+                  referenceImage: drift.Value(creationData.referenceImage),
+                  originalReferenceImage: drift.Value(
+                    creationData.originalReferenceImage,
+                  ),
+                  createdAt: drift.Value(creationData.createdAt),
+                  updatedAt: drift.Value(DateTime.now()),
+                ),
+              );
+            }
+          }
+          _refreshList();
+        },
       ),
     );
   }
@@ -379,4 +357,59 @@ class _GridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RenameDialog extends StatefulWidget {
+  final String initialTitle;
+  final Future<void> Function(String newTitle) onConfirm;
+
+  const _RenameDialog({required this.initialTitle, required this.onConfirm});
+
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialTitle);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Rename Creation'),
+      content: TextField(
+        controller: _controller,
+        decoration: const InputDecoration(hintText: 'Enter new title'),
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          key: const ValueKey('rename_dialog_confirm_button'),
+          onPressed: () async {
+            final newTitle = _controller.text.trim();
+            if (newTitle.isNotEmpty) {
+              await widget.onConfirm(newTitle);
+            }
+            if (context.mounted) Navigator.of(context).pop();
+          },
+          child: const Text('Rename'),
+        ),
+      ],
+    );
+  }
 }

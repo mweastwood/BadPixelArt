@@ -139,6 +139,38 @@ void main() {
       expect(creations.first.title, equals('New Title'));
     });
 
+    testWidgets(
+      'Rename dialog cancel dismisses dialog without updating title',
+      (tester) async {
+        await insertMockCreation('Unchanged Title');
+
+        await tester.pumpWidget(
+          buildTestableWidget(child: const Scaffold(body: CreationsDrawer())),
+        );
+
+        await tester.pump();
+
+        // Open popup menu
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+
+        // Tap Rename
+        await tester.tap(find.text('Rename'));
+        await tester.pumpAndSettle();
+
+        // Tap Cancel
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+
+        // Dialog should be dismissed
+        expect(find.text('Rename Creation'), findsNothing);
+
+        // Check database is unchanged
+        final creations = await db.getAllCreations();
+        expect(creations.first.title, equals('Unchanged Title'));
+      },
+    );
+
     testWidgets('Delete option triggers creation removal', (tester) async {
       await insertMockCreation('To Delete');
 
