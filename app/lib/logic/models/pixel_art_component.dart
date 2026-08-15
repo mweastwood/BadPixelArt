@@ -71,6 +71,9 @@ class PixelArtComponent {
   final bool hasInterior;
   final double minP;
   final double maxP;
+  final List<List<int>>? outlineGrid;
+  final double cosA;
+  final double sinA;
 
   PixelArtComponent({
     required this.name,
@@ -86,9 +89,27 @@ class PixelArtComponent {
     bool? hasInterior,
     double? minP,
     double? maxP,
+    List<List<int>>? outlineGrid,
+    double? cosA,
+    double? sinA,
   }) : hasInterior = hasInterior ?? _calculateHasInterior(grid),
-       minP = minP ?? _calculateMinP(grid, gradientAngle),
-       maxP = maxP ?? _calculateMaxP(grid, gradientAngle);
+       cosA = cosA ?? math.cos(gradientAngle * (math.pi / 180.0)),
+       sinA = sinA ?? math.sin(gradientAngle * (math.pi / 180.0)),
+       minP =
+           minP ??
+           _calculateMinP(
+             grid,
+             cosA ?? math.cos(gradientAngle * (math.pi / 180.0)),
+             sinA ?? math.sin(gradientAngle * (math.pi / 180.0)),
+           ),
+       maxP =
+           maxP ??
+           _calculateMaxP(
+             grid,
+             cosA ?? math.cos(gradientAngle * (math.pi / 180.0)),
+             sinA ?? math.sin(gradientAngle * (math.pi / 180.0)),
+           ),
+       outlineGrid = outlineGrid ?? _calculateOutlineGrid(grid);
 
   /// Returns integer pixel grid bounds for this component for a given [gridSize].
   ///
@@ -133,12 +154,13 @@ class PixelArtComponent {
     return false;
   }
 
-  static double _calculateMinP(List<List<int>>? grid, double gradientAngle) {
+  static double _calculateMinP(
+    List<List<int>>? grid,
+    double cosA,
+    double sinA,
+  ) {
     if (grid == null) return double.infinity;
     final size = grid.length;
-    final rad = gradientAngle * (math.pi / 180.0);
-    final cosA = math.cos(rad);
-    final sinA = math.sin(rad);
 
     double minP = double.infinity;
     for (int py = 0; py < size; py++) {
@@ -152,12 +174,13 @@ class PixelArtComponent {
     return minP;
   }
 
-  static double _calculateMaxP(List<List<int>>? grid, double gradientAngle) {
+  static double _calculateMaxP(
+    List<List<int>>? grid,
+    double cosA,
+    double sinA,
+  ) {
     if (grid == null) return -double.infinity;
     final size = grid.length;
-    final rad = gradientAngle * (math.pi / 180.0);
-    final cosA = math.cos(rad);
-    final sinA = math.sin(rad);
 
     double maxP = -double.infinity;
     for (int py = 0; py < size; py++) {
@@ -184,10 +207,6 @@ class PixelArtComponent {
     if (fillColor2 == null || !hasInterior) return fillColor;
     if (maxP <= minP) return fillColor;
 
-    final rad = gradientAngle * (math.pi / 180.0);
-    final cosA = math.cos(rad);
-    final sinA = math.sin(rad);
-
     final currentP = x * cosA + y * sinA;
     final t = ((currentP - minP) / (maxP - minP)).clamp(0.0, 1.0);
     final ditherThreshold = bayerMatrix4x4[y % 4][x % 4];
@@ -211,21 +230,21 @@ class PixelArtComponent {
     return copyWith(grid: newGrid);
   }
 
-  List<List<int>>? getOutlineGrid() {
+  static List<List<int>>? _calculateOutlineGrid(List<List<int>>? grid) {
     if (grid == null) return null;
-    final size = grid!.length;
+    final size = grid.length;
     final outline = List.generate(size, (_) => List.filled(size, 0));
     for (int y = 0; y < size; y++) {
       for (int x = 0; x < size; x++) {
-        if (grid![y][x] > 0) {
+        if (grid[y][x] > 0) {
           bool hasBackgroundNeighbor = false;
           if (y == 0 || y == size - 1 || x == 0 || x == size - 1) {
             hasBackgroundNeighbor = true;
           } else {
-            if (grid![y - 1][x] == 0 ||
-                grid![y + 1][x] == 0 ||
-                grid![y][x - 1] == 0 ||
-                grid![y][x + 1] == 0) {
+            if (grid[y - 1][x] == 0 ||
+                grid[y + 1][x] == 0 ||
+                grid[y][x - 1] == 0 ||
+                grid[y][x + 1] == 0) {
               hasBackgroundNeighbor = true;
             }
           }
@@ -237,6 +256,8 @@ class PixelArtComponent {
     }
     return outline;
   }
+
+  List<List<int>>? getOutlineGrid() => outlineGrid;
 
   PixelArtComponent copyWith({
     String? name,
@@ -252,6 +273,9 @@ class PixelArtComponent {
     bool? hasInterior,
     double? minP,
     double? maxP,
+    List<List<int>>? outlineGrid,
+    double? cosA,
+    double? sinA,
   }) {
     final newGrid = grid ?? this.grid;
     final newGradientAngle = gradientAngle ?? this.gradientAngle;
@@ -273,6 +297,9 @@ class PixelArtComponent {
       hasInterior: hasInterior ?? (gridChanged ? null : this.hasInterior),
       minP: minP ?? ((gridChanged || angleChanged) ? null : this.minP),
       maxP: maxP ?? ((gridChanged || angleChanged) ? null : this.maxP),
+      outlineGrid: outlineGrid ?? (gridChanged ? null : this.outlineGrid),
+      cosA: cosA ?? (angleChanged ? null : this.cosA),
+      sinA: sinA ?? (angleChanged ? null : this.sinA),
     );
   }
 
