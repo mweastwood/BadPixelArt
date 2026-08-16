@@ -21,20 +21,19 @@ class RefinementOrchestrator {
     final userPrompt = agent.getFormattedUserPrompt(context, history);
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
 
-    try {
-      final response = await _aiService.generateContentWithContinuation(
-        prompt: fullPrompt,
-        temperature: 0.2,
-        autoContinueLimit: 1,
-      );
-      if (response == null) return null;
+    final response = await _aiService.generateContentWithContinuation(
+      prompt: fullPrompt,
+      temperature: 0.2,
+      autoContinueLimit: 1,
+    );
+    if (response == null) return null;
 
-      final cleaned = cleanJsonString(response);
-      return jsonDecode(cleaned) as Map<String, dynamic>;
-    } catch (e) {
-      debugPrint('Error running agent ${agent.name}: $e');
-      return null;
+    final cleaned = cleanJsonString(response);
+    final parsed = jsonDecode(cleaned);
+    if (parsed is Map<String, dynamic>) {
+      return parsed;
     }
+    throw FormatException('Invalid JSON map response from agent ${agent.name}');
   }
 
   Future<List<List<int>>> refine({
@@ -68,12 +67,24 @@ class RefinementOrchestrator {
       );
 
       final refinementAgent = RefinementAgent();
-      final agentJson = await _runAgent(
-        refinementAgent,
-        context,
-        history,
-        onLogHistory,
-      );
+      Map<String, dynamic>? agentJson;
+      try {
+        agentJson = await _runAgent(
+          refinementAgent,
+          context,
+          history,
+          onLogHistory,
+        );
+      } catch (e) {
+        final entry = AgentHistoryEntry(
+          timestamp: DateTime.now(),
+          prompt: 'Refine canvas with prompt: $userPrompt',
+          response: 'Error during refinement: $e',
+          isError: true,
+        );
+        onLogHistory(entry);
+        rethrow;
+      }
 
       if (agentJson != null) {
         final String thought = agentJson['thought'] as String? ?? '';

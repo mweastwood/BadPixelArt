@@ -80,110 +80,96 @@ class DecomposerAgent implements PixelArtAgent {
     final systemPrompt = getSystemInstruction(context);
     final userPrompt = getFormattedUserPrompt(context, []);
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
-    String? response;
+    final response = await aiService.generateContentWithContinuation(
+      prompt: fullPrompt,
+      imageBytes: context.referenceImage,
+      temperature: 0.7,
+      autoContinueLimit: 1,
+    );
 
-    try {
-      response = await aiService.generateContentWithContinuation(
-        prompt: fullPrompt,
-        imageBytes: context.referenceImage,
-        temperature: 0.7,
-        autoContinueLimit: 1,
-      );
-
-      if (response == null) {
-        return DecomposerResult(
-          components: _getDefaultComponents(context),
-          rawPrompt: fullPrompt,
-          rawResponse: 'Null response from AI Service',
-        );
-      }
-
-      final cleaned = cleanJsonString(response);
-      final parsed = jsonDecode(cleaned);
-      if (parsed is List) {
-        final List<_RawParsedComponent> parsedItems = [];
-        for (final item in parsed) {
-          if (item is Map<String, dynamic>) {
-            final name = item['name'] as String? ?? 'component';
-            final description = item['description'] as String? ?? '';
-            final bbox =
-                item['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
-
-            final left = (bbox['left'] as num? ?? 0.0).toDouble();
-            final top = (bbox['top'] as num? ?? 0.0).toDouble();
-            final width = (bbox['width'] as num? ?? 1.0).toDouble().clamp(
-              0.01,
-              1.0,
-            );
-            final height = (bbox['height'] as num? ?? 1.0).toDouble().clamp(
-              0.01,
-              1.0,
-            );
-
-            // Parse shapes
-            final List<FundamentalShape> parsedShapes = [];
-            final shapesRaw = item['shapes'] as List? ?? [];
-            for (final s in shapesRaw) {
-              if (s is Map<String, dynamic>) {
-                final type = s['type'] as String? ?? 'rectangle';
-                final desc = s['description'] as String? ?? '';
-                final sBbox =
-                    s['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
-                final sLeft = (sBbox['left'] as num? ?? 0.0).toDouble();
-                final sTop = (sBbox['top'] as num? ?? 0.0).toDouble();
-                final sWidth = (sBbox['width'] as num? ?? 1.0).toDouble().clamp(
-                  0.0,
-                  1.0,
-                );
-                final sHeight = (sBbox['height'] as num? ?? 1.0)
-                    .toDouble()
-                    .clamp(0.0, 1.0);
-                parsedShapes.add(
-                  FundamentalShape(
-                    type: type,
-                    description: desc,
-                    relativeBoundingBox: Rect.fromLTWH(
-                      sLeft,
-                      sTop,
-                      sWidth,
-                      sHeight,
-                    ),
-                  ),
-                );
-              }
-            }
-
-            parsedItems.add(
-              _RawParsedComponent(
-                name: name,
-                description: description,
-                rect: Rect.fromLTWH(left, top, width, height),
-                shapes: parsedShapes,
-              ),
-            );
-          }
-        }
-
-        if (parsedItems.isNotEmpty) {
-          final scaledComponents = _scaleAndCenter(
-            parsedItems,
-            context.gridSize,
-          );
-          return DecomposerResult(
-            components: scaledComponents,
-            rawPrompt: fullPrompt,
-            rawResponse: response,
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error decomposing prompt: $e');
+    if (response == null) {
+      throw const FormatException('Null response from AI Service');
     }
 
-    return DecomposerResult(
-      components: _getDefaultComponents(context),
-      rawPrompt: fullPrompt,
-      rawResponse: response ?? 'Error occurred during decomposition',
+    final cleaned = cleanJsonString(response);
+    final parsed = jsonDecode(cleaned);
+    if (parsed is List) {
+      final List<_RawParsedComponent> parsedItems = [];
+      for (final item in parsed) {
+        if (item is Map<String, dynamic>) {
+          final name = item['name'] as String? ?? 'component';
+          final description = item['description'] as String? ?? '';
+          final bbox =
+              item['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
+
+          final left = (bbox['left'] as num? ?? 0.0).toDouble();
+          final top = (bbox['top'] as num? ?? 0.0).toDouble();
+          final width = (bbox['width'] as num? ?? 1.0).toDouble().clamp(
+            0.01,
+            1.0,
+          );
+          final height = (bbox['height'] as num? ?? 1.0).toDouble().clamp(
+            0.01,
+            1.0,
+          );
+
+          // Parse shapes
+          final List<FundamentalShape> parsedShapes = [];
+          final shapesRaw = item['shapes'] as List? ?? [];
+          for (final s in shapesRaw) {
+            if (s is Map<String, dynamic>) {
+              final type = s['type'] as String? ?? 'rectangle';
+              final desc = s['description'] as String? ?? '';
+              final sBbox =
+                  s['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
+              final sLeft = (sBbox['left'] as num? ?? 0.0).toDouble();
+              final sTop = (sBbox['top'] as num? ?? 0.0).toDouble();
+              final sWidth = (sBbox['width'] as num? ?? 1.0).toDouble().clamp(
+                0.0,
+                1.0,
+              );
+              final sHeight = (sBbox['height'] as num? ?? 1.0).toDouble().clamp(
+                0.0,
+                1.0,
+              );
+              parsedShapes.add(
+                FundamentalShape(
+                  type: type,
+                  description: desc,
+                  relativeBoundingBox: Rect.fromLTWH(
+                    sLeft,
+                    sTop,
+                    sWidth,
+                    sHeight,
+                  ),
+                ),
+              );
+            }
+          }
+
+          parsedItems.add(
+            _RawParsedComponent(
+              name: name,
+              description: description,
+              rect: Rect.fromLTWH(left, top, width, height),
+              shapes: parsedShapes,
+            ),
+          );
+        }
+      }
+
+      if (parsedItems.isNotEmpty) {
+        final scaledComponents = _scaleAndCenter(parsedItems, context.gridSize);
+        return DecomposerResult(
+          components: scaledComponents,
+          rawPrompt: fullPrompt,
+          rawResponse: response,
+        );
+      }
+    }
+
+    throw const FormatException(
+      'Failed to parse decomposition components from response',
     );
   }
 
@@ -250,7 +236,7 @@ class DecomposerAgent implements PixelArtAgent {
     return CoordinateConverter.alignRectToGrid(rect, gridSize);
   }
 
-  List<PixelArtComponent> _getDefaultComponents(AgentContext context) {
+  List<PixelArtComponent> getDefaultComponents(AgentContext context) {
     return [
       PixelArtComponent(
         name: 'main',

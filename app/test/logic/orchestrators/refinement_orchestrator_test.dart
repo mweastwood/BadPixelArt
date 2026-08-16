@@ -34,5 +34,65 @@ void main() {
       expect(history, hasLength(1));
       expect(history.first.response, contains('add gold highlight'));
     });
+
+    test(
+      'refine logs error AgentHistoryEntry with isError: true and propagates exception on AI error',
+      () async {
+        final aiService = TestMockAiService(
+          shouldThrow: true,
+          exceptionMessage: 'Network error',
+        );
+        final orchestrator = RefinementOrchestrator(aiService);
+
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        final palette = [Colors.red, Colors.green, Colors.blue];
+        final history = <AgentHistoryEntry>[];
+
+        await expectLater(
+          () => orchestrator.refine(
+            initialGrid: grid,
+            gridSize: 8,
+            palette: palette,
+            userPrompt: 'add highlights',
+            autoRunSpeed: 0.01,
+            onStep: (updated) {},
+            onLogHistory: (entry) => history.add(entry),
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(history, hasLength(1));
+        expect(history.first.isError, isTrue);
+        expect(history.first.response, contains('Network error'));
+      },
+    );
+
+    test(
+      'refine logs error AgentHistoryEntry with isError: true and throws FormatException on invalid JSON',
+      () async {
+        final aiService = TestMockAiService(response: 'not valid json');
+        final orchestrator = RefinementOrchestrator(aiService);
+
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        final palette = [Colors.red, Colors.green, Colors.blue];
+        final history = <AgentHistoryEntry>[];
+
+        await expectLater(
+          () => orchestrator.refine(
+            initialGrid: grid,
+            gridSize: 8,
+            palette: palette,
+            userPrompt: 'add highlights',
+            autoRunSpeed: 0.01,
+            onStep: (updated) {},
+            onLogHistory: (entry) => history.add(entry),
+          ),
+          throwsA(isA<FormatException>()),
+        );
+
+        expect(history, hasLength(1));
+        expect(history.first.isError, isTrue);
+      },
+    );
   });
 }

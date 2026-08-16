@@ -25,21 +25,20 @@ class SketchOrchestrator {
     final userPrompt = agent.getFormattedUserPrompt(context, history);
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
 
-    try {
-      final response = await _aiService.generateContentWithContinuation(
-        prompt: fullPrompt,
-        imageBytes: imageBytes,
-        temperature: 0.2,
-        autoContinueLimit: 1,
-      );
-      if (response == null) return null;
+    final response = await _aiService.generateContentWithContinuation(
+      prompt: fullPrompt,
+      imageBytes: imageBytes,
+      temperature: 0.2,
+      autoContinueLimit: 1,
+    );
+    if (response == null) return null;
 
-      final cleaned = cleanJsonString(response);
-      return jsonDecode(cleaned) as Map<String, dynamic>;
-    } catch (e) {
-      debugPrint('Error running agent ${agent.name}: $e');
-      return null;
+    final cleaned = cleanJsonString(response);
+    final parsed = jsonDecode(cleaned);
+    if (parsed is Map<String, dynamic>) {
+      return parsed;
     }
+    throw FormatException('Invalid JSON map response from agent ${agent.name}');
   }
 
   bool isComponentDone(
@@ -133,13 +132,28 @@ class SketchOrchestrator {
           compGrid,
         );
 
-        final json = await _runAgent(
-          agent,
-          context,
-          history,
-          onLogHistory,
-          imageBytes: imageBytes,
-        );
+        Map<String, dynamic>? json;
+        try {
+          json = await _runAgent(
+            agent,
+            context,
+            history,
+            onLogHistory,
+            imageBytes: imageBytes,
+          );
+        } catch (e) {
+          final systemPrompt = agent.getSystemInstruction(context);
+          final userPrompt = agent.getFormattedUserPrompt(context, history);
+          final fullPrompt = '$systemPrompt\n\n$userPrompt';
+          final entry = AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: fullPrompt,
+            response: 'Error running agent ${agent.name}: $e',
+            isError: true,
+          );
+          onLogHistory(entry);
+          rethrow;
+        }
 
         if (json == null) break;
 

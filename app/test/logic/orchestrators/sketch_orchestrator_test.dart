@@ -83,5 +83,81 @@ void main() {
         expect(stepRecords, isNotEmpty);
       },
     );
+
+    test(
+      'sketch logs error AgentHistoryEntry with isError: true and propagates exception when AI throws',
+      () async {
+        final aiService = TestMockAiService(
+          shouldThrow: true,
+          exceptionMessage: 'Quota exceeded',
+        );
+        final orchestrator = SketchOrchestrator(aiService);
+
+        final comp = PixelArtComponent(
+          name: 'Head',
+          description: 'Head component',
+          relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 0.5, 0.5),
+          shapes: const [],
+          grid: List.generate(8, (_) => List.filled(8, 0)),
+        );
+
+        final history = <AgentHistoryEntry>[];
+
+        await expectLater(
+          () => orchestrator.sketch(
+            components: [comp],
+            gridSize: 8,
+            palette: [Colors.black, Colors.red],
+            userPrompt: 'a robot character',
+            autoRunSpeed: 0.001,
+            onStep: (idx, updated, status) {},
+            onLogHistory: (log) {
+              history.add(log);
+            },
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(history, hasLength(1));
+        expect(history.first.isError, isTrue);
+        expect(history.first.response, contains('Quota exceeded'));
+      },
+    );
+
+    test(
+      'sketch logs error AgentHistoryEntry with isError: true and throws FormatException on malformed JSON',
+      () async {
+        final aiService = TestMockAiService(response: 'invalid non-json text');
+        final orchestrator = SketchOrchestrator(aiService);
+
+        final comp = PixelArtComponent(
+          name: 'Head',
+          description: 'Head component',
+          relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 0.5, 0.5),
+          shapes: const [],
+          grid: List.generate(8, (_) => List.filled(8, 0)),
+        );
+
+        final history = <AgentHistoryEntry>[];
+
+        await expectLater(
+          () => orchestrator.sketch(
+            components: [comp],
+            gridSize: 8,
+            palette: [Colors.black, Colors.red],
+            userPrompt: 'a robot character',
+            autoRunSpeed: 0.001,
+            onStep: (idx, updated, status) {},
+            onLogHistory: (log) {
+              history.add(log);
+            },
+          ),
+          throwsA(isA<FormatException>()),
+        );
+
+        expect(history, hasLength(1));
+        expect(history.first.isError, isTrue);
+      },
+    );
   });
 }

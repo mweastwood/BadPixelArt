@@ -198,5 +198,83 @@ void main() {
         expect(comps[1].grid, isNotNull);
       },
     );
+
+    test(
+      'triggerDecomposition resets isGenerating and autoRun to false on error and preserves state',
+      () async {
+        final throwingAi = TestMockAiService(
+          shouldThrow: true,
+          exceptionMessage: 'Network down',
+        );
+        final errContainer = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(throwingAi)],
+        );
+        addTearDown(errContainer.dispose);
+
+        final notifier = errContainer.read(canvasStateProvider.notifier);
+        notifier.setAutoRunState(autoRun: true, isPausing: false);
+
+        await notifier.triggerDecomposition();
+
+        final state = errContainer.read(canvasStateProvider);
+        expect(state.isGenerating, isFalse);
+        expect(state.autoRun, isFalse);
+      },
+    );
+
+    test(
+      'sketchComponents resets isGenerating and autoRun to false on error',
+      () async {
+        final throwingAi = TestMockAiService(
+          shouldThrow: true,
+          exceptionMessage: 'AI execution failed',
+        );
+        final errContainer = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(throwingAi)],
+        );
+        addTearDown(errContainer.dispose);
+
+        final notifier = errContainer.read(canvasStateProvider.notifier);
+        notifier.state = notifier.state.copyWith(
+          autoRun: true,
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'comp1',
+              description: 'desc',
+              relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0),
+            ),
+          ],
+        );
+
+        await notifier.sketchComponents();
+
+        final state = errContainer.read(canvasStateProvider);
+        expect(state.isGenerating, isFalse);
+        expect(state.autoRun, isFalse);
+      },
+    );
+
+    test(
+      'refineCanvas resets isGenerating and autoRun to false on error',
+      () async {
+        final throwingAi = TestMockAiService(
+          shouldThrow: true,
+          exceptionMessage: 'AI execution failed',
+        );
+        final errContainer = ProviderContainer(
+          overrides: [aiServiceProvider.overrideWithValue(throwingAi)],
+        );
+        addTearDown(errContainer.dispose);
+
+        final notifier = errContainer.read(canvasStateProvider.notifier);
+        notifier.setAutoRunState(autoRun: true, isPausing: false);
+
+        await notifier.refineCanvas('refine prompt');
+
+        final state = errContainer.read(canvasStateProvider);
+        expect(state.isGenerating, isFalse);
+        expect(state.autoRun, isFalse);
+      },
+    );
   });
 }
