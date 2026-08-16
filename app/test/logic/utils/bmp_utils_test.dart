@@ -52,6 +52,108 @@ void main() {
       expect(bmp[1], equals(0x4D));
     });
 
+    test('bmpToColorGrid handles empty and truncated headers gracefully', () {
+      expect(bmpToColorGrid(Uint8List(0)), isEmpty);
+      expect(bmpToColorGrid(Uint8List(10)), isEmpty);
+      expect(bmpToColorGrid(Uint8List(53)), isEmpty);
+
+      // Invalid magic bytes
+      final invalidMagic = Uint8List(54);
+      invalidMagic[0] = 0x00;
+      invalidMagic[1] = 0x00;
+      expect(bmpToColorGrid(invalidMagic), isEmpty);
+
+      // Valid header magic, but zero width/height
+      final zeroDims = Uint8List(54);
+      zeroDims[0] = 0x42;
+      zeroDims[1] = 0x4D;
+      final bd = ByteData.sublistView(zeroDims);
+      bd.setUint32(18, 0, Endian.little);
+      bd.setUint32(22, 0, Endian.little);
+      expect(bmpToColorGrid(zeroDims), isEmpty);
+
+      // Truncated pixel data
+      final truncatedData = Uint8List(54 + 4);
+      truncatedData[0] = 0x42;
+      truncatedData[1] = 0x4D;
+      final bdTrunc = ByteData.sublistView(truncatedData);
+      bdTrunc.setUint32(18, 4, Endian.little);
+      bdTrunc.setUint32(22, 4, Endian.little);
+      expect(bmpToColorGrid(truncatedData), isEmpty);
+    });
+
+    test(
+      'getQuantizedIndexGrid handles empty and malformed inputs gracefully',
+      () {
+        expect(getQuantizedIndexGrid(Uint8List(0), testPalette), isEmpty);
+        expect(getQuantizedIndexGrid(Uint8List(20), testPalette), isEmpty);
+        expect(getQuantizedIndexGrid(Uint8List(54), []), isEmpty);
+      },
+    );
+
+    test(
+      'bmpToColorGrid and bmpFromColorGrid are symmetrical across all row padding sizes',
+      () {
+        final testDimensions = [
+          (1, 1), // width 1 (3 bytes + 1 pad = 4 bytes)
+          (2, 2), // width 2 (6 bytes + 2 pad = 8 bytes)
+          (3, 3), // width 3 (9 bytes + 3 pad = 12 bytes)
+          (4, 4), // width 4 (12 bytes + 0 pad = 12 bytes)
+          (5, 5), // width 5 (15 bytes + 1 pad = 16 bytes)
+          (6, 6), // width 6 (18 bytes + 2 pad = 20 bytes)
+          (7, 7), // width 7 (21 bytes + 3 pad = 24 bytes)
+          (8, 8), // width 8 (24 bytes + 0 pad = 24 bytes)
+          (3, 5), // width 3, height 5
+          (5, 2), // width 5, height 2
+        ];
+
+        final sampleColors = [
+          const Color(0xFFFF0000),
+          const Color(0xFF00FF00),
+          const Color(0xFF0000FF),
+          const Color(0xFFFFFF00),
+          const Color(0xFF00FFFF),
+          const Color(0xFFFF00FF),
+          const Color(0xFFFFFFFF),
+          const Color(0xFF000000),
+        ];
+
+        for (final (w, h) in testDimensions) {
+          final grid = List.generate(
+            h,
+            (y) => List.generate(
+              w,
+              (x) => sampleColors[(y * w + x) % sampleColors.length],
+            ),
+          );
+
+          final bmp = bmpFromColorGrid(grid);
+          final parsedGrid = bmpToColorGrid(bmp);
+
+          expect(
+            parsedGrid.length,
+            equals(h),
+            reason: 'Height mismatch for ${w}x$h',
+          );
+          expect(
+            parsedGrid[0].length,
+            equals(w),
+            reason: 'Width mismatch for ${w}x$h',
+          );
+
+          for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+              expect(
+                parsedGrid[y][x].toARGB32(),
+                equals(grid[y][x].toARGB32()),
+                reason: 'Color mismatch at ($x, $y) for ${w}x$h',
+              );
+            }
+          }
+        }
+      },
+    );
+
     test('bmpToColorGrid and bmpFromColorGrid are symmetrical', () {
       final grid = List.generate(
         4,
@@ -221,6 +323,63 @@ void main() {
           expect(combined[offsetRight], equals(255)); // blue
           expect(combined[offsetRight + 1], equals(0)); // green
           expect(combined[offsetRight + 2], equals(0)); // red
+        },
+      );
+
+      test(
+        'combineBmps ignores malformed BMP elements and handles non-multiple-of-4 panel sizes',
+        () {
+          // Create 3x3 panels (width 3: row padding 3 bytes per row)
+          final redGrid = List.generate(
+            3,
+            (_) => List.filled(3, const Color(0xFFFF0000)),
+          );
+          final greenGrid = List.generate(
+            3,
+            (_) => List.filled(3, const Color(0xFF00FF00)),
+          );
+
+          final bmpRed = bmpFromColorGrid(redGrid);
+          final bmpGreen = bmpFromColorGrid(greenGrid);
+
+          final malformedBmp = Uint8List.fromList([1, 2, 3, 4]); // Ignored
+          final combined = combineBmps([bmpRed, malformedBmp, bmpGreen]);
+
+          // Combined should have cols=2, rows=2, combinedWidth=6, combinedHeight=6
+          // Stride: 6 * 3 = 18 bytes + 2 pad = 20 bytes
+          final parsedCombined = bmpToColorGrid(combined);
+          expect(parsedCombined.length, equals(6));
+          expect(parsedCombined[0].length, equals(6));
+
+          // Top-left panel: Red
+          expect(
+            parsedCombined[0][0].toARGB32(),
+            equals(const Color(0xFFFF0000).toARGB32()),
+          );
+          expect(
+            parsedCombined[2][2].toARGB32(),
+            equals(const Color(0xFFFF0000).toARGB32()),
+          );
+
+          // Top-right panel: Green
+          expect(
+            parsedCombined[0][3].toARGB32(),
+            equals(const Color(0xFF00FF00).toARGB32()),
+          );
+          expect(
+            parsedCombined[2][5].toARGB32(),
+            equals(const Color(0xFF00FF00).toARGB32()),
+          );
+
+          // Bottom panels: Black fillers
+          expect(
+            parsedCombined[3][0].toARGB32(),
+            equals(const Color(0xFF000000).toARGB32()),
+          );
+          expect(
+            parsedCombined[5][5].toARGB32(),
+            equals(const Color(0xFF000000).toARGB32()),
+          );
         },
       );
     });
