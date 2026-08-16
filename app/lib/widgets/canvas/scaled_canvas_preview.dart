@@ -119,9 +119,9 @@ class MiniPixelPainter extends CustomPainter {
         canvas.drawRect(rect, bg);
 
         final colorIdx = grid[r][c];
-        if (colorIdx > 0 && colorIdx < palette.length) {
+        if (colorIdx > 0 && colorIdx <= palette.length) {
           final p = Paint()
-            ..color = palette[colorIdx]
+            ..color = palette[colorIdx - 1]
             ..isAntiAlias = false;
           canvas.drawRect(rect, p);
         }

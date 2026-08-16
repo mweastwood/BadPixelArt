@@ -256,6 +256,30 @@ void main() {
       },
     );
 
+    testWidgets(
+      'CreationThumbnail paints transparent cells and full palette indices without error',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: const CreationThumbnail(
+              gridData: '[[0, 1], [2, 3]]',
+              paletteColors: '["#ffff0000", "#ff00ff00", "#ff0000ff"]',
+              gridSize: 2,
+            ),
+          ),
+        );
+
+        expect(find.byType(CreationThumbnail), findsOneWidget);
+        final customPaint = tester.widget<CustomPaint>(
+          find.descendant(
+            of: find.byType(CreationThumbnail),
+            matching: find.byType(CustomPaint),
+          ),
+        );
+        expect(customPaint.painter, isNotNull);
+      },
+    );
+
     testGoldens('CreationsDrawer renders correctly', (tester) async {
       // Clear database to test empty state
       db = AppDatabase(NativeDatabase.memory());
