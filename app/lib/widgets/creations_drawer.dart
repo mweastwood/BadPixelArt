@@ -289,7 +289,7 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
   }
 }
 
-class CreationThumbnail extends StatelessWidget {
+class CreationThumbnail extends StatefulWidget {
   final String gridData;
   final String paletteColors;
   final int gridSize;
@@ -302,10 +302,35 @@ class CreationThumbnail extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final grid = deserializeGrid(gridData);
-    final palette = deserializePalette(paletteColors);
+  State<CreationThumbnail> createState() => _CreationThumbnailState();
+}
 
+class _CreationThumbnailState extends State<CreationThumbnail> {
+  late List<List<int>> _grid;
+  late List<Color> _palette;
+
+  @override
+  void initState() {
+    super.initState();
+    _parseData();
+  }
+
+  void _parseData() {
+    _grid = deserializeGrid(widget.gridData);
+    _palette = deserializePalette(widget.paletteColors);
+  }
+
+  @override
+  void didUpdateWidget(covariant CreationThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.gridData != widget.gridData ||
+        oldWidget.paletteColors != widget.paletteColors) {
+      _parseData();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(6.0),
       child: Container(
@@ -316,7 +341,7 @@ class CreationThumbnail extends StatelessWidget {
           border: Border.all(color: Colors.grey[300]!, width: 0.5),
         ),
         child: CustomPaint(
-          painter: _GridPainter(grid: grid, palette: palette),
+          painter: _GridPainter(grid: _grid, palette: _palette),
         ),
       ),
     );
@@ -356,7 +381,8 @@ class _GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _GridPainter oldDelegate) =>
+      oldDelegate.grid != grid || oldDelegate.palette != palette;
 }
 
 class _RenameDialog extends StatefulWidget {
