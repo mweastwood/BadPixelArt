@@ -8,10 +8,17 @@ class LayerOrderingList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canvasState = ref.watch(canvasStateProvider);
+    final components = ref.watch(
+      canvasStateProvider.select((s) => s.decomposedComponents),
+    );
+    final activeComponentIndex = ref.watch(
+      canvasStateProvider.select((s) => s.activeComponentIndex),
+    );
+    final isGenerating = ref.watch(
+      canvasStateProvider.select((s) => s.isGenerating),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
-    final components = canvasState.decomposedComponents;
 
     if (components.isEmpty) {
       return Card(
@@ -65,7 +72,7 @@ class LayerOrderingList extends ConsumerWidget {
             onReorder: notifier.reorderComponents,
             itemBuilder: (context, index) {
               final comp = components[index];
-              final isActive = index == canvasState.activeComponentIndex;
+              final isActive = index == activeComponentIndex;
 
               return Theme(
                 key: ObjectKey(comp),
@@ -233,7 +240,7 @@ class LayerOrderingList extends ConsumerWidget {
             'Merge Layers to Canvas',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
-          onPressed: canvasState.isGenerating
+          onPressed: isGenerating
               ? null
               : () {
                   notifier.mergeComponentsToCanvas();

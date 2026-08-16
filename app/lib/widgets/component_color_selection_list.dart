@@ -183,11 +183,17 @@ class _ComponentColorSelectionListState
 
   @override
   Widget build(BuildContext context) {
-    final canvasState = ref.watch(canvasStateProvider);
+    final decomposedComponents = ref.watch(
+      canvasStateProvider.select((s) => s.decomposedComponents),
+    );
+    final activeComponentIndex = ref.watch(
+      canvasStateProvider.select((s) => s.activeComponentIndex),
+    );
+    final palette = ref.watch(canvasStateProvider.select((s) => s.palette));
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
-    if (canvasState.decomposedComponents.isEmpty) {
+    if (decomposedComponents.isEmpty) {
       return Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Padding(
@@ -242,11 +248,11 @@ class _ComponentColorSelectionListState
         ListView.separated(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: canvasState.decomposedComponents.length,
+          itemCount: decomposedComponents.length,
           separatorBuilder: (context, index) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
-            final comp = canvasState.decomposedComponents[index];
-            final isActive = index == canvasState.activeComponentIndex;
+            final comp = decomposedComponents[index];
+            final isActive = index == activeComponentIndex;
             final hasInterior = comp.hasInterior;
             final isGradientEnabled = hasInterior && comp.fillColor2 != null;
 
@@ -345,7 +351,7 @@ class _ComponentColorSelectionListState
                           context: context,
                           title: 'Line Color',
                           selectedColor: comp.fillColor ?? comp.outlineColor,
-                          palette: canvasState.palette,
+                          palette: palette,
                           onColorSelected: (color) {
                             notifier.updateComponentColors(
                               index,
@@ -371,7 +377,7 @@ class _ComponentColorSelectionListState
                                 if (selected) {
                                   notifier.updateComponentColors(
                                     index,
-                                    comp.fillColor ?? canvasState.palette.first,
+                                    comp.fillColor ?? palette.first,
                                     comp.outlineColor,
                                     fillColor2: null,
                                   );
@@ -386,10 +392,9 @@ class _ComponentColorSelectionListState
                               onSelected: (selected) {
                                 if (selected) {
                                   final colorA =
-                                      comp.fillColor ??
-                                      canvasState.palette.first;
-                                  final colorB = canvasState.palette.length > 1
-                                      ? canvasState.palette[1]
+                                      comp.fillColor ?? palette.first;
+                                  final colorB = palette.length > 1
+                                      ? palette[1]
                                       : colorA;
                                   notifier.updateComponentColors(
                                     index,
@@ -412,7 +417,7 @@ class _ComponentColorSelectionListState
                               ? 'Fill Color A'
                               : 'Fill Color',
                           selectedColor: comp.fillColor,
-                          palette: canvasState.palette,
+                          palette: palette,
                           onColorSelected: (color) {
                             notifier.updateComponentColors(
                               index,
@@ -431,7 +436,7 @@ class _ComponentColorSelectionListState
                             context: context,
                             title: 'Fill Color B',
                             selectedColor: comp.fillColor2,
-                            palette: canvasState.palette,
+                            palette: palette,
                             onColorSelected: (color) {
                               notifier.updateComponentColors(
                                 index,
@@ -466,7 +471,7 @@ class _ComponentColorSelectionListState
                           context: context,
                           title: 'Outline Color',
                           selectedColor: comp.outlineColor,
-                          palette: canvasState.palette,
+                          palette: palette,
                           onColorSelected: (color) {
                             notifier.updateComponentColors(
                               index,

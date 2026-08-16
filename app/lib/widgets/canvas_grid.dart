@@ -36,7 +36,18 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
 
   @override
   Widget build(BuildContext context) {
-    final canvasModel = ref.watch(canvasStateProvider);
+    final grid = ref.watch(canvasStateProvider.select((s) => s.grid));
+    final gridSize = ref.watch(canvasStateProvider.select((s) => s.gridSize));
+    final palette = ref.watch(canvasStateProvider.select((s) => s.palette));
+    final decomposedComponents = ref.watch(
+      canvasStateProvider.select((s) => s.decomposedComponents),
+    );
+    final activeComponentIndex = ref.watch(
+      canvasStateProvider.select((s) => s.activeComponentIndex),
+    );
+    final isGenerating = ref.watch(
+      canvasStateProvider.select((s) => s.isGenerating),
+    );
     final wizardState = ref.watch(wizardStateProvider);
     final isSketchingPlanPhase =
         wizardState.currentStep == WizardStep.sketchingPlan;
@@ -52,17 +63,15 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
 
         Map<String, List<Map<String, int>>>? sculptingCandidates;
         if (isSculptingPhase &&
-            canvasModel.decomposedComponents.isNotEmpty &&
-            !canvasModel.isGenerating &&
-            canvasModel.activeComponentIndex >= 0 &&
-            canvasModel.activeComponentIndex <
-                canvasModel.decomposedComponents.length) {
-          final comp = canvasModel
-              .decomposedComponents[canvasModel.activeComponentIndex];
+            decomposedComponents.isNotEmpty &&
+            !isGenerating &&
+            activeComponentIndex >= 0 &&
+            activeComponentIndex < decomposedComponents.length) {
+          final comp = decomposedComponents[activeComponentIndex];
           if (comp.grid != null) {
             sculptingCandidates = calculateSculptingCandidates(
               comp.grid!,
-              canvasModel.gridSize,
+              gridSize,
               comp.relativeBoundingBox,
             );
           }
@@ -70,29 +79,27 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
 
         Widget gridContent = CustomPaint(
           painter: CanvasPainter(
-            grid: canvasModel.grid,
-            palette: canvasModel.palette,
-            decomposedComponents: canvasModel.decomposedComponents,
-            activeComponentIndex: canvasModel.activeComponentIndex,
+            grid: grid,
+            palette: palette,
+            decomposedComponents: decomposedComponents,
+            activeComponentIndex: activeComponentIndex,
             currentStep: wizardState.currentStep,
-            isGenerating: canvasModel.isGenerating,
+            isGenerating: isGenerating,
             sculptingCandidates: sculptingCandidates,
           ),
           child: GridPaper(
             color: Colors.grey[800]!.withValues(alpha: 0.2),
             divisions: 1,
             subdivisions: 1,
-            interval: size / canvasModel.gridSize,
+            interval: size / gridSize,
             child: Container(),
           ),
         );
 
-        if (isSketchingPlanPhase &&
-            canvasModel.decomposedComponents.isNotEmpty) {
-          final activeIndex = canvasModel.activeComponentIndex;
-          if (activeIndex >= 0 &&
-              activeIndex < canvasModel.decomposedComponents.length) {
-            final activeComp = canvasModel.decomposedComponents[activeIndex];
+        if (isSketchingPlanPhase && decomposedComponents.isNotEmpty) {
+          final activeIndex = activeComponentIndex;
+          if (activeIndex >= 0 && activeIndex < decomposedComponents.length) {
+            final activeComp = decomposedComponents[activeIndex];
             final relativeRect = activeComp.relativeBoundingBox;
             final rect = Rect.fromLTWH(
               relativeRect.left * size,
@@ -163,8 +170,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                   return;
                 }
 
-                final minSize = 1.0 / canvasModel.gridSize;
-                final gridSize = canvasModel.gridSize;
+                final minSize = 1.0 / gridSize;
 
                 double snapToGrid(double value) {
                   return ((value * gridSize).round() / gridSize).clamp(
@@ -339,28 +345,27 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
           }
         }
 
-        if (isSculptingPhase && canvasModel.decomposedComponents.isNotEmpty) {
-          final activeIndex = canvasModel.activeComponentIndex;
-          if (activeIndex >= 0 &&
-              activeIndex < canvasModel.decomposedComponents.length) {
-            final activeComp = canvasModel.decomposedComponents[activeIndex];
+        if (isSculptingPhase && decomposedComponents.isNotEmpty) {
+          final activeIndex = activeComponentIndex;
+          if (activeIndex >= 0 && activeIndex < decomposedComponents.length) {
+            final activeComp = decomposedComponents[activeIndex];
             if (activeComp.grid != null) {
               gridContent = GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (details) {
                   // Only allow if AI is not running
-                  if (canvasModel.isGenerating) return;
+                  if (isGenerating) return;
 
                   final localPos = details.localPosition;
-                  final cellWidth = size / canvasModel.gridSize;
-                  final cellHeight = size / canvasModel.gridSize;
+                  final cellWidth = size / gridSize;
+                  final cellHeight = size / gridSize;
                   final col = (localPos.dx / cellWidth).floor().clamp(
                     0,
-                    canvasModel.gridSize - 1,
+                    gridSize - 1,
                   );
                   final row = (localPos.dy / cellHeight).floor().clamp(
                     0,
-                    canvasModel.gridSize - 1,
+                    gridSize - 1,
                   );
 
                   // Calculate eligible candidates
@@ -368,7 +373,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                       sculptingCandidates ??
                       calculateSculptingCandidates(
                         activeComp.grid!,
-                        canvasModel.gridSize,
+                        gridSize,
                         activeComp.relativeBoundingBox,
                       );
 
@@ -426,16 +431,16 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             break;
           case CanvasScaleMode.scaled1x:
             cardBody = ScaledCanvasPreview(
-              grid: canvasModel.grid,
-              palette: canvasModel.palette,
+              grid: grid,
+              palette: palette,
               scaleFactor: 1.0,
               label: '1x True Scale',
             );
             break;
           case CanvasScaleMode.scaled4x:
             cardBody = ScaledCanvasPreview(
-              grid: canvasModel.grid,
-              palette: canvasModel.palette,
+              grid: grid,
+              palette: palette,
               scaleFactor: 4.0,
               label: '4x Upscaled',
             );

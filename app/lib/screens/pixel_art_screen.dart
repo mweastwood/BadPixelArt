@@ -92,11 +92,22 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
 
   @override
   Widget build(BuildContext context) {
-    final canvasState = ref.watch(canvasStateProvider);
+    final history = ref.watch(canvasStateProvider.select((s) => s.aiHistory));
+    final aiStatus = ref.watch(canvasStateProvider.select((s) => s.aiStatus));
+    final modelReleaseStage = ref.watch(
+      canvasStateProvider.select((s) => s.modelReleaseStage),
+    );
+    final modelPreference = ref.watch(
+      canvasStateProvider.select((s) => s.modelPreference),
+    );
+    final hasPaletteSuggestion = ref.watch(
+      canvasStateProvider.select(
+        (s) => s.showPaletteSuggestion && s.suggestedPalette != null,
+      ),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
     final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
-    final history = canvasState.aiHistory;
 
     final double totalCost = history.fold(
       0.0,
@@ -106,7 +117,13 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     return Stack(
       children: [
         Scaffold(
-          drawer: _buildDrawer(context, canvasState, notifier, theme),
+          drawer: _buildDrawer(
+            context,
+            modelReleaseStage,
+            modelPreference,
+            notifier,
+            theme,
+          ),
           appBar: AppBar(
             title: Row(
               children: [
@@ -135,7 +152,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                   vertical: 8.0,
                   horizontal: 8.0,
                 ),
-                child: _buildStatusChip(canvasState.aiStatus, notifier, theme),
+                child: _buildStatusChip(aiStatus, notifier, theme),
               ),
               IconButton(
                 key: const ValueKey('model_options_button'),
@@ -145,8 +162,8 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                   showDialog(
                     context: context,
                     builder: (context) => ModelOptionsDialog(
-                      currentReleaseStage: canvasState.modelReleaseStage,
-                      currentPreference: canvasState.modelPreference,
+                      currentReleaseStage: modelReleaseStage,
+                      currentPreference: modelPreference,
                       onChanged: (stage, preference) {
                         notifier.setModelConfig(stage, preference);
                       },
@@ -222,9 +239,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                     ? const WizardFloatingActionButtons()
                     : _buildLogsFloatingActionButtons(context, history, theme)),
         ),
-        if (canvasState.showPaletteSuggestion &&
-            canvasState.suggestedPalette != null)
-          const CustomPaletteConfirmationDialog(),
+        if (hasPaletteSuggestion) const CustomPaletteConfirmationDialog(),
       ],
     );
   }
@@ -294,7 +309,8 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
 
   Widget _buildDrawer(
     BuildContext context,
-    CanvasModel canvasState,
+    String modelReleaseStage,
+    String modelPreference,
     CanvasNotifier notifier,
     ThemeData theme,
   ) {
@@ -350,8 +366,8 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
               showDialog(
                 context: context,
                 builder: (context) => ModelOptionsDialog(
-                  currentReleaseStage: canvasState.modelReleaseStage,
-                  currentPreference: canvasState.modelPreference,
+                  currentReleaseStage: modelReleaseStage,
+                  currentPreference: modelPreference,
                   onChanged: (stage, preference) {
                     notifier.setModelConfig(stage, preference);
                   },

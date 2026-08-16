@@ -19,10 +19,11 @@ class CustomPaletteConfirmationDialog extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final canvasState = ref.watch(canvasStateProvider);
+    final suggestedPalette = ref.watch(
+      canvasStateProvider.select((s) => s.suggestedPalette),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
-    final effectivePalette =
-        palette ?? canvasState.suggestedPalette ?? const [];
+    final effectivePalette = palette ?? suggestedPalette ?? const [];
 
     return Container(
       color: Colors.black54,

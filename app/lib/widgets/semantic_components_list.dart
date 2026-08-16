@@ -8,15 +8,24 @@ class SemanticComponentsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canvasModel = ref.watch(canvasStateProvider);
+    final components = ref.watch(
+      canvasStateProvider.select((s) => s.decomposedComponents),
+    );
+    final activeIndex = ref.watch(
+      canvasStateProvider.select((s) => s.activeComponentIndex),
+    );
+    final hasPromptAndRef = ref.watch(
+      canvasStateProvider.select(
+        (s) => s.referenceImage != null && s.userPrompt.trim().isNotEmpty,
+      ),
+    );
+    final isGenerating = ref.watch(
+      canvasStateProvider.select((s) => s.isGenerating),
+    );
+    final aiStatus = ref.watch(canvasStateProvider.select((s) => s.aiStatus));
+    final gridSize = ref.watch(canvasStateProvider.select((s) => s.gridSize));
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
-    final components = canvasModel.decomposedComponents;
-    final activeIndex = canvasModel.activeComponentIndex;
-
-    final hasPromptAndRef =
-        canvasModel.referenceImage != null &&
-        canvasModel.userPrompt.trim().isNotEmpty;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -52,8 +61,8 @@ class SemanticComponentsList extends ConsumerWidget {
                       tooltip: 'Re-generate Drawing Plan',
                       onPressed:
                           !hasPromptAndRef ||
-                              canvasModel.isGenerating ||
-                              canvasModel.aiStatus != AiCoreStatus.available
+                              isGenerating ||
+                              aiStatus != AiCoreStatus.available
                           ? null
                           : notifier.triggerDecomposition,
                     ),
@@ -75,7 +84,7 @@ class SemanticComponentsList extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
-                      icon: canvasModel.isGenerating
+                      icon: isGenerating
                           ? const SizedBox(
                               width: 16,
                               height: 16,
@@ -86,14 +95,14 @@ class SemanticComponentsList extends ConsumerWidget {
                             )
                           : const Icon(Icons.psychology),
                       label: Text(
-                        canvasModel.isGenerating
+                        isGenerating
                             ? 'Generating Plan...'
                             : 'Generate Drawing Plan',
                       ),
                       onPressed:
                           !hasPromptAndRef ||
-                              canvasModel.isGenerating ||
-                              canvasModel.aiStatus != AiCoreStatus.available
+                              isGenerating ||
+                              aiStatus != AiCoreStatus.available
                           ? null
                           : notifier.triggerDecomposition,
                     ),
@@ -110,7 +119,7 @@ class SemanticComponentsList extends ConsumerWidget {
                   final comp = components[index];
                   final isActive = index == activeIndex;
 
-                  final bounds = comp.gridBounds(canvasModel.gridSize);
+                  final bounds = comp.gridBounds(gridSize);
                   final minX = bounds.minX;
                   final minY = bounds.minY;
                   final maxX = bounds.maxX;

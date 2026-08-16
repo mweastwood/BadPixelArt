@@ -7,7 +7,7 @@ class GridSizeSelectionCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canvasState = ref.watch(canvasStateProvider);
+    final gridSize = ref.watch(canvasStateProvider.select((s) => s.gridSize));
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
@@ -49,7 +49,7 @@ class GridSizeSelectionCard extends ConsumerWidget {
                     notifier,
                     8,
                     '8 x 8',
-                    canvasState.gridSize == 8,
+                    gridSize == 8,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -59,7 +59,7 @@ class GridSizeSelectionCard extends ConsumerWidget {
                     notifier,
                     16,
                     '16 x 16',
-                    canvasState.gridSize == 16,
+                    gridSize == 16,
                   ),
                 ),
               ],

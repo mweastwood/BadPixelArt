@@ -7,11 +7,23 @@ class ShapeDecompositionList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canvasModel = ref.watch(canvasStateProvider);
+    final components = ref.watch(
+      canvasStateProvider.select((s) => s.decomposedComponents),
+    );
+    final activeIndex = ref.watch(
+      canvasStateProvider.select((s) => s.activeComponentIndex),
+    );
+    final isGenerating = ref.watch(
+      canvasStateProvider.select((s) => s.isGenerating),
+    );
+    final decomposingComponentIndex = ref.watch(
+      canvasStateProvider.select((s) => s.decomposingComponentIndex),
+    );
+    final sculptingStatus = ref.watch(
+      canvasStateProvider.select((s) => s.sculptingStatus),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
-    final components = canvasModel.decomposedComponents;
-    final activeIndex = canvasModel.activeComponentIndex;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -66,10 +78,10 @@ class ShapeDecompositionList extends ConsumerWidget {
                   final comp = components[index];
                   final isActive = index == activeIndex;
                   final isThisDecomposing =
-                      canvasModel.isGenerating &&
-                      (canvasModel.decomposingComponentIndex != null
-                          ? canvasModel.decomposingComponentIndex == index
-                          : canvasModel.activeComponentIndex == index);
+                      isGenerating &&
+                      (decomposingComponentIndex != null
+                          ? decomposingComponentIndex == index
+                          : activeIndex == index);
 
                   return InkWell(
                     onTap: () => notifier.selectComponent(index),
@@ -181,7 +193,7 @@ class ShapeDecompositionList extends ConsumerWidget {
                                       const SizedBox(width: 6),
                                       Expanded(
                                         child: Text(
-                                          canvasModel.sculptingStatus ??
+                                          sculptingStatus ??
                                               'Sculpting shape...',
                                           style: theme.textTheme.labelSmall
                                               ?.copyWith(
@@ -203,7 +215,7 @@ class ShapeDecompositionList extends ConsumerWidget {
                             IconButton(
                               icon: const Icon(Icons.restart_alt, size: 20),
                               tooltip: 'Reset Sculpting',
-                              onPressed: canvasModel.isGenerating
+                              onPressed: isGenerating
                                   ? null
                                   : () => notifier.resetComponentGrid(index),
                             ),
@@ -218,7 +230,7 @@ class ShapeDecompositionList extends ConsumerWidget {
                             tooltip: comp.grid == null
                                 ? 'Initialize & Sculpt'
                                 : 'Refine Border (Sculpt)',
-                            onPressed: canvasModel.isGenerating
+                            onPressed: isGenerating
                                 ? null
                                 : () => notifier.sculptComponent(index),
                           ),

@@ -16,17 +16,19 @@ class WizardControls extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final canvasState = ref.watch(canvasStateProvider);
+    final decomposedComponents = ref.watch(
+      canvasStateProvider.select((s) => s.decomposedComponents),
+    );
+    final isPausing = ref.watch(canvasStateProvider.select((s) => s.isPausing));
+    final autoRun = ref.watch(canvasStateProvider.select((s) => s.autoRun));
     final wizardState = ref.watch(wizardStateProvider);
 
     // Auto-advancing logic
     if (!wizardState.autoAdvanced &&
         wizardState.currentStep.index < WizardStep.sketchingPlan.index &&
-        canvasState.decomposedComponents.isNotEmpty) {
+        decomposedComponents.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        final hasShapes = canvasState.decomposedComponents.any(
-          (c) => c.shapes.isNotEmpty,
-        );
+        final hasShapes = decomposedComponents.any((c) => c.shapes.isNotEmpty);
         ref
             .read(wizardStateProvider.notifier)
             .autoAdvance(
@@ -94,7 +96,7 @@ class WizardControls extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (canvasState.isPausing) ...[
+        if (isPausing) ...[
           Container(
             key: const ValueKey('auto_play_pausing_banner'),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -127,7 +129,7 @@ class WizardControls extends ConsumerWidget {
               ],
             ),
           ),
-        ] else if (canvasState.autoRun) ...[
+        ] else if (autoRun) ...[
           Container(
             key: const ValueKey('auto_play_active_banner'),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

@@ -15,11 +15,21 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
 
   @override
   Widget build(BuildContext context) {
-    final canvasModel = ref.watch(canvasStateProvider);
+    final paletteName = ref.watch(
+      canvasStateProvider.select((s) => s.paletteName),
+    );
+    final palette = ref.watch(canvasStateProvider.select((s) => s.palette));
+    final isSuggestingPalette = ref.watch(
+      canvasStateProvider.select((s) => s.isSuggestingPalette),
+    );
+    final hasRefImage = ref.watch(
+      canvasStateProvider.select((s) => s.referenceImage != null),
+    );
+    final hasSuggestedPalette = ref.watch(
+      canvasStateProvider.select((s) => s.suggestedPalette != null),
+    );
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
-
-    final hasRefImage = canvasModel.referenceImage != null;
 
     final List<DropdownMenuItem<String>> dropdownItems = [
       const DropdownMenuItem(
@@ -55,8 +65,7 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
     }
 
     final isCustomMode =
-        canvasModel.paletteName == 'suggested' ||
-        canvasModel.paletteName == 'algorithmic';
+        paletteName == 'suggested' || paletteName == 'algorithmic';
 
     final showRefreshIcon = hasRefImage && isCustomMode;
 
@@ -96,7 +105,7 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    key: ValueKey(canvasModel.paletteName),
+                    key: ValueKey(paletteName),
                     decoration: InputDecoration(
                       labelText: 'Color Palette Mode',
                       prefixIcon: const Icon(Icons.tune),
@@ -109,16 +118,14 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
                       ),
                     ),
                     initialValue:
-                        dropdownItems.any(
-                          (item) => item.value == canvasModel.paletteName,
-                        )
-                        ? canvasModel.paletteName
+                        dropdownItems.any((item) => item.value == paletteName)
+                        ? paletteName
                         : null,
                     items: dropdownItems,
                     onChanged: (val) {
                       if (val != null) {
                         if (val == 'suggested') {
-                          if (canvasModel.suggestedPalette == null) {
+                          if (!hasSuggestedPalette) {
                             notifier.suggestPaletteFromReference().then((_) {
                               notifier.acceptSuggestedPalette();
                             });
@@ -134,7 +141,7 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
                     },
                   ),
                 ),
-                if (canvasModel.isSuggestingPalette) ...[
+                if (isSuggestingPalette) ...[
                   const SizedBox(width: 12),
                   const SizedBox(
                     width: 24,
@@ -145,11 +152,11 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
                   const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.refresh, size: 20),
-                    tooltip: canvasModel.paletteName == 'suggested'
+                    tooltip: paletteName == 'suggested'
                         ? 'Re-suggest AI Palette'
                         : 'Re-extract K-Means Palette',
                     onPressed: () {
-                      if (canvasModel.paletteName == 'suggested') {
+                      if (paletteName == 'suggested') {
                         notifier.suggestPaletteFromReference().then((_) {
                           notifier.acceptSuggestedPalette();
                         });
@@ -162,7 +169,7 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
               ],
             ),
 
-            if (canvasModel.paletteName == 'algorithmic') ...[
+            if (paletteName == 'algorithmic') ...[
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -212,10 +219,10 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
               height: 48,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: canvasModel.palette.length,
+                itemCount: palette.length,
                 separatorBuilder: (_, index) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
-                  final color = canvasModel.palette[index];
+                  final color = palette[index];
                   return AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     width: 44,

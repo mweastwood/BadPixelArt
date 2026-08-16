@@ -10,10 +10,22 @@ class WizardFloatingActionButtons extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wizardState = ref.watch(wizardStateProvider);
-    final canvasState = ref.watch(canvasStateProvider);
+    final autoRun = ref.watch(canvasStateProvider.select((s) => s.autoRun));
+    final isPausing = ref.watch(canvasStateProvider.select((s) => s.isPausing));
+    final hasRefImage = ref.watch(
+      canvasStateProvider.select((s) => s.referenceImage != null),
+    );
+    final isUserPromptNotEmpty = ref.watch(
+      canvasStateProvider.select((s) => s.userPrompt.trim().isNotEmpty),
+    );
+    final isGenerating = ref.watch(
+      canvasStateProvider.select((s) => s.isGenerating),
+    );
+    final hasDecomposedComponents = ref.watch(
+      canvasStateProvider.select((s) => s.decomposedComponents.isNotEmpty),
+    );
 
-    final isAutoPlaying = canvasState.autoRun || canvasState.isPausing;
-    final hasRefImage = canvasState.referenceImage != null;
+    final isAutoPlaying = autoRun || isPausing;
     final step = wizardState.currentStep;
 
     final hasBack = step.index > 0;
@@ -22,8 +34,10 @@ class WizardFloatingActionButtons extends ConsumerWidget {
     final onNext = resolveNextStepHandler(
       ref,
       step,
-      canvasState,
-      isAutoPlaying,
+      isAutoPlaying: isAutoPlaying,
+      isUserPromptNotEmpty: isUserPromptNotEmpty,
+      isGenerating: isGenerating,
+      hasDecomposedComponents: hasDecomposedComponents,
     );
     final onBack = resolveBackStepHandler(ref, step, isAutoPlaying);
 
@@ -36,7 +50,7 @@ class WizardFloatingActionButtons extends ConsumerWidget {
         ],
         WizardAutoPlayFab(
           isAutoPlaying: isAutoPlaying,
-          isPausing: canvasState.isPausing,
+          isPausing: isPausing,
           hasRefImage: hasRefImage,
           onStopAutoPlay: () =>
               ref.read(canvasStateProvider.notifier).stopAutoPlay(),
@@ -55,10 +69,12 @@ class WizardFloatingActionButtons extends ConsumerWidget {
   /// Resolves the forward navigation handler for the current [WizardStep].
   static VoidCallback? resolveNextStepHandler(
     WidgetRef ref,
-    WizardStep step,
-    CanvasModel canvasState,
-    bool isAutoPlaying,
-  ) {
+    WizardStep step, {
+    required bool isAutoPlaying,
+    required bool isUserPromptNotEmpty,
+    required bool isGenerating,
+    required bool hasDecomposedComponents,
+  }) {
     if (isAutoPlaying) return null;
 
     switch (step) {
@@ -67,8 +83,7 @@ class WizardFloatingActionButtons extends ConsumerWidget {
             .read(wizardStateProvider.notifier)
             .setStep(WizardStep.setupPrompt);
       case WizardStep.setupPrompt:
-        final canGoToPalette = canvasState.userPrompt.trim().isNotEmpty;
-        return canGoToPalette
+        return isUserPromptNotEmpty
             ? () => ref
                   .read(wizardStateProvider.notifier)
                   .setStep(WizardStep.selectPalette)
@@ -78,20 +93,19 @@ class WizardFloatingActionButtons extends ConsumerWidget {
             .read(wizardStateProvider.notifier)
             .setStep(WizardStep.sketchingPlan);
       case WizardStep.sketchingPlan:
-        return (canvasState.isGenerating ||
-                canvasState.decomposedComponents.isEmpty)
+        return (isGenerating || !hasDecomposedComponents)
             ? null
             : () => ref
                   .read(wizardStateProvider.notifier)
                   .setStep(WizardStep.componentSculpting);
       case WizardStep.componentSculpting:
-        return canvasState.decomposedComponents.isEmpty
+        return !hasDecomposedComponents
             ? null
             : () => ref
                   .read(wizardStateProvider.notifier)
                   .setStep(WizardStep.colorAndOutline);
       case WizardStep.colorAndOutline:
-        return canvasState.decomposedComponents.isEmpty
+        return !hasDecomposedComponents
             ? null
             : () => ref
                   .read(wizardStateProvider.notifier)
