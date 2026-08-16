@@ -110,6 +110,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Timer? _saveTimer;
   bool _isRestoring = false;
+  bool _isSaving = false;
+  bool _hasPendingSave = false;
 
   @override
   set state(CanvasModel value) {
@@ -134,13 +136,24 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Future<void> saveToDb() async {
     if (!mounted || _isRestoring) return;
-    _isRestoring = true;
+    if (_isSaving) {
+      _hasPendingSave = true;
+      return;
+    }
+    _isSaving = true;
     try {
-      final savedState = await _repository.saveCanvas(state);
-      if (!mounted) return;
-      state = savedState;
+      do {
+        _hasPendingSave = false;
+        final currentState = state;
+        final savedState = await _repository.saveCanvas(currentState);
+        if (!mounted) return;
+        // Preserve any concurrent user state mutations while updating creationId
+        if (state.creationId != savedState.creationId) {
+          state = state.copyWith(creationId: savedState.creationId);
+        }
+      } while (_hasPendingSave && mounted && !_isRestoring);
     } finally {
-      _isRestoring = false;
+      _isSaving = false;
     }
   }
 
@@ -180,6 +193,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     _isRestoring = true;
     try {
       _saveTimer?.cancel();
+      _hasPendingSave = false;
       if (state.autoRun) {
         _autoRunTimer?.cancel();
       }
@@ -454,6 +468,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void dispose() {
     _autoRunTimer?.cancel();
     _saveTimer?.cancel();
+    _hasPendingSave = false;
     super.dispose();
   }
 

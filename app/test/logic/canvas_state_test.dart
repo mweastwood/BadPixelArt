@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/repositories/canvas_repository.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
 import 'package:bad_pixel_art/logic/utils/logging_ai_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -697,5 +698,124 @@ void main() {
         },
       );
     });
+
+    group('Concurrency & Database Save Mutex Tests', () {
+      test(
+        'concurrent saveToDb calls execute sequentially and process pending saves',
+        () async {
+          final mockRepo = _TestMockCanvasRepository();
+          final customNotifier = CanvasNotifier(
+            mockAiService,
+            repository: mockRepo,
+          );
+          addTearDown(customNotifier.dispose);
+
+          final firstSaveCompleter = Completer<void>();
+          mockRepo.saveCompleters.add(firstSaveCompleter);
+
+          // Initiate first save (in flight)
+          final firstSaveFuture = customNotifier.saveToDb();
+          expect(mockRepo.saveCallCount, equals(1));
+
+          // Initiate concurrent second save while first is in flight
+          final secondSaveFuture = customNotifier.saveToDb();
+          // Second save should mark pending save without initiating an overlapping call immediately
+          expect(mockRepo.saveCallCount, equals(1));
+
+          // Complete the first save
+          firstSaveCompleter.complete();
+          await firstSaveFuture;
+          await secondSaveFuture;
+
+          // Pending save should have triggered sequential second execution
+          expect(mockRepo.saveCallCount, equals(2));
+          expect(mockRepo.savedStates.length, equals(2));
+        },
+      );
+
+      test(
+        'state mutations during in-flight save are preserved and saved in follow-up pass',
+        () async {
+          final mockRepo = _TestMockCanvasRepository();
+          final customNotifier = CanvasNotifier(
+            mockAiService,
+            repository: mockRepo,
+          );
+          addTearDown(customNotifier.dispose);
+
+          final firstSaveCompleter = Completer<void>();
+          mockRepo.saveCompleters.add(firstSaveCompleter);
+
+          // Initiate initial save
+          final saveFuture = customNotifier.saveToDb();
+          expect(mockRepo.saveCallCount, equals(1));
+
+          // Mutate state while save is in flight
+          customNotifier.selectColor(3);
+          customNotifier.drawPixel(5, 5);
+          expect(customNotifier.state.grid[5][5], equals(3));
+
+          // Request save while in flight
+          final pendingSaveFuture = customNotifier.saveToDb();
+
+          // Complete first save
+          firstSaveCompleter.complete();
+          await saveFuture;
+          await pendingSaveFuture;
+
+          // State mutations must not be clobbered by the first save's return value
+          expect(customNotifier.state.grid[5][5], equals(3));
+          expect(customNotifier.state.creationId, equals(100));
+
+          // The second save pass must contain the mutated pixel grid
+          expect(mockRepo.savedStates.length, equals(2));
+          expect(mockRepo.savedStates[0].grid[5][5], equals(0));
+          expect(mockRepo.savedStates[1].grid[5][5], equals(3));
+          expect(mockRepo.savedStates[1].creationId, equals(100));
+        },
+      );
+
+      test(
+        'startNewCanvas and dispose cancel timers and reset pending save flags cleanly',
+        () async {
+          final mockRepo = _TestMockCanvasRepository();
+          final customNotifier = CanvasNotifier(
+            mockAiService,
+            repository: mockRepo,
+          );
+
+          final firstSaveCompleter = Completer<void>();
+          mockRepo.saveCompleters.add(firstSaveCompleter);
+
+          final saveFuture = customNotifier.saveToDb();
+          final pendingFuture = customNotifier.saveToDb();
+
+          customNotifier.dispose();
+          firstSaveCompleter.complete();
+          await saveFuture;
+          await pendingFuture;
+
+          expect(customNotifier.mounted, isFalse);
+        },
+      );
+    });
   });
+}
+
+class _TestMockCanvasRepository extends CanvasRepository {
+  final List<CanvasModel> savedStates = [];
+  final List<Completer<void>> saveCompleters = [];
+  int saveCallCount = 0;
+  int nextCreationId = 100;
+
+  @override
+  Future<CanvasModel> saveCanvas(CanvasModel state) async {
+    saveCallCount++;
+    if (saveCompleters.isNotEmpty) {
+      final completer = saveCompleters.removeAt(0);
+      await completer.future;
+    }
+    savedStates.add(state);
+    return state.copyWith(creationId: state.creationId ?? nextCreationId++);
+  }
 }
