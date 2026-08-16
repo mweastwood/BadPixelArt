@@ -371,8 +371,8 @@ class _GridPainter extends CustomPainter {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         final colorIdx = grid[y][x];
-        if (colorIdx >= 0 && colorIdx < palette.length) {
-          paint.color = palette[colorIdx];
+        if (colorIdx > 0 && colorIdx <= palette.length) {
+          paint.color = palette[colorIdx - 1];
           canvas.drawRect(
             Rect.fromLTWH(x * cellW, y * cellH, cellW + 0.1, cellH + 0.1),
             paint,
