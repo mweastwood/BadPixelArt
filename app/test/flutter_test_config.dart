@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
+import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
 
@@ -29,6 +30,7 @@ class TolerantLocalFileComparator extends LocalFileComparator {
 
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   await loadAppFonts();
+  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   if (goldenFileComparator is LocalFileComparator) {
     final basedir = (goldenFileComparator as LocalFileComparator).basedir;
     goldenFileComparator = TolerantLocalFileComparator(
@@ -36,7 +38,12 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
       tolerance: 0.01,
     );
   }
-  AppDatabaseHelper.db = AppDatabase(NativeDatabase.memory());
+  setUp(() {
+    AppDatabaseHelper.db = AppDatabase(NativeDatabase.memory());
+  });
+  tearDown(() async {
+    await AppDatabaseHelper.reset();
+  });
   return GoldenToolkit.runWithConfiguration(() async {
     await testMain();
   }, config: GoldenToolkitConfiguration());

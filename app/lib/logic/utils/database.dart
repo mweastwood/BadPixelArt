@@ -98,4 +98,12 @@ class AppDatabaseHelper {
   static set db(AppDatabase database) {
     _db = database;
   }
+
+  @visibleForTesting
+  static Future<void> reset() async {
+    if (_db != null) {
+      await _db!.close();
+      _db = null;
+    }
+  }
 }

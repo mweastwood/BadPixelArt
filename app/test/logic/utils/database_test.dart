@@ -126,4 +126,41 @@ void main() {
       expect(loaded.userPrompt, equals('draw a dragon'));
     });
   });
+
+  group('AppDatabaseHelper Isolation & Reset Tests', () {
+    test('first test inserts data into AppDatabaseHelper.db', () async {
+      final now = DateTime.now();
+      final companion = CreationsCompanion(
+        title: const drift.Value('Isolated Sword'),
+        gridSize: const drift.Value(16),
+        gridData: const drift.Value('[[1]]'),
+        paletteName: const drift.Value('primary'),
+        paletteColors: const drift.Value('["#ffffffff"]'),
+        decomposedComponents: const drift.Value('[]'),
+        aiHistoryLogs: const drift.Value('[]'),
+        createdAt: drift.Value(now),
+        updatedAt: drift.Value(now),
+      );
+      await AppDatabaseHelper.db.createCreation(companion);
+      final creations = await AppDatabaseHelper.db.getAllCreations();
+      expect(creations.length, equals(1));
+      expect(creations.first.title, equals('Isolated Sword'));
+    });
+
+    test(
+      'second test confirms clean database isolation with no leaked state',
+      () async {
+        final creations = await AppDatabaseHelper.db.getAllCreations();
+        expect(creations, isEmpty);
+      },
+    );
+
+    test('reset closes database and clears instance without error', () async {
+      final currentDb = AppDatabaseHelper.db;
+      expect(currentDb, isNotNull);
+      await AppDatabaseHelper.reset();
+      final newDb = AppDatabaseHelper.db;
+      expect(newDb, isNot(same(currentDb)));
+    });
+  });
 }
