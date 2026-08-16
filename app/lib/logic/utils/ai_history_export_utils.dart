@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'web_download.dart';
 
 String osPathBasename(String path) {
@@ -85,8 +87,10 @@ Future<void> exportAiHistory(
           dialogTitle: 'Select Directory to Save AI History Log',
         );
         if (selectedDir != null) {
-          outputFile =
-              '$selectedDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
+          outputFile = p.join(
+            selectedDir,
+            'ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json',
+          );
         }
       } catch (_) {
         outputFile = null;
@@ -94,23 +98,18 @@ Future<void> exportAiHistory(
     }
 
     if (outputFile == null) {
-      final exportsDir = Directory(
-        '/home/mweastwood/projects/BadPixelArt/exports',
-      );
       String targetDir;
-      if (await exportsDir.exists()) {
-        targetDir = exportsDir.path;
-      } else {
-        final currentPath = Directory.current.path;
-        if (currentPath != '/' && currentPath.isNotEmpty) {
-          targetDir = currentPath;
-        } else {
-          targetDir = Directory.systemTemp.path;
-        }
+      try {
+        final appDocsDir = await getApplicationDocumentsDirectory();
+        targetDir = appDocsDir.path;
+      } catch (_) {
+        targetDir = Directory.systemTemp.path;
       }
 
-      outputFile =
-          '$targetDir/ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json';
+      outputFile = p.join(
+        targetDir,
+        'ai_drawing_history_${DateTime.now().millisecondsSinceEpoch}.json',
+      );
     }
 
     final file = File(outputFile);
