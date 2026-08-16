@@ -71,7 +71,9 @@ void main() {
               return notifier;
             }),
           ],
-          child: const Scaffold(body: ComponentColorSelectionList()),
+          child: const Scaffold(
+            body: SingleChildScrollView(child: ComponentColorSelectionList()),
+          ),
         ),
       );
 
@@ -247,7 +249,9 @@ void main() {
                 return notifier;
               }),
             ],
-            child: const Scaffold(body: ComponentColorSelectionList()),
+            child: const Scaffold(
+              body: SingleChildScrollView(child: ComponentColorSelectionList()),
+            ),
           ),
         );
 
