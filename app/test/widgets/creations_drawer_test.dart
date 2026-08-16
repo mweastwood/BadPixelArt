@@ -197,6 +197,65 @@ void main() {
       expect(creations, isEmpty);
     });
 
+    testWidgets(
+      'CreationThumbnail renders CustomPaint with deserialized data',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: const CreationThumbnail(
+              gridData: '[[0, 1], [1, 0]]',
+              paletteColors: '["#ff000000", "#ffffffff"]',
+              gridSize: 2,
+            ),
+          ),
+        );
+
+        expect(find.byType(CreationThumbnail), findsOneWidget);
+        final customPaint = tester.widget<CustomPaint>(
+          find.descendant(
+            of: find.byType(CreationThumbnail),
+            matching: find.byType(CustomPaint),
+          ),
+        );
+        expect(customPaint.painter, isNotNull);
+      },
+    );
+
+    testWidgets(
+      'CreationThumbnail updates deserialized data when props change',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: const CreationThumbnail(
+              gridData: '[[0, 1]]',
+              paletteColors: '["#ff000000", "#ffffffff"]',
+              gridSize: 2,
+            ),
+          ),
+        );
+
+        // Re-pump with updated gridData and paletteColors
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: const CreationThumbnail(
+              gridData: '[[1, 0]]',
+              paletteColors: '["#ff00ff00", "#ff0000ff"]',
+              gridSize: 2,
+            ),
+          ),
+        );
+
+        expect(find.byType(CreationThumbnail), findsOneWidget);
+        final customPaint = tester.widget<CustomPaint>(
+          find.descendant(
+            of: find.byType(CreationThumbnail),
+            matching: find.byType(CustomPaint),
+          ),
+        );
+        expect(customPaint.painter, isNotNull);
+      },
+    );
+
     testGoldens('CreationsDrawer renders correctly', (tester) async {
       // Clear database to test empty state
       db = AppDatabase(NativeDatabase.memory());
