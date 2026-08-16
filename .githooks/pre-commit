@@ -26,7 +26,7 @@ if ! command -v flutter >/dev/null 2>&1; then
 fi
 
 echo "Running flutter analyze..."
-(cd app && flutter analyze --fatal-infos)
+(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE && cd app && flutter analyze --fatal-infos)
 ANALYZE_RESULT=$?
 
 if [ $ANALYZE_RESULT -ne 0 ]; then

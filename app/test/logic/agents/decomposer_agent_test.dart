@@ -114,40 +114,33 @@ void main() {
       },
     );
 
-    test(
-      'falls back to default main component when response is null',
-      () async {
-        final agent = DecomposerAgent();
-        final mockAi = TestMockAiService(responseToReturn: null);
-        final result = await agent.decompose(mockAi, context);
+    test('throws FormatException when response is null', () async {
+      final agent = DecomposerAgent();
+      final mockAi = TestMockAiService(responseToReturn: null);
+      expect(
+        () => agent.decompose(mockAi, context),
+        throwsA(isA<FormatException>()),
+      );
+    });
 
-        expect(result.components, hasLength(1));
-        expect(result.components[0].name, equals('main'));
-        expect(result.components[0].description, equals(context.userPrompt));
-        expect(
-          result.components[0].relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0)),
-        );
-      },
-    );
+    test('throws FormatException on malformed JSON response', () async {
+      final agent = DecomposerAgent();
+      final mockAi = TestMockAiService(
+        responseToReturn: 'not a json array { ]',
+      );
+      expect(
+        () => agent.decompose(mockAi, context),
+        throwsA(isA<FormatException>()),
+      );
+    });
 
-    test(
-      'falls back to default main component on malformed JSON response',
-      () async {
-        final agent = DecomposerAgent();
-        final mockAi = TestMockAiService(
-          responseToReturn: 'not a json array { ]',
-        );
-        final result = await agent.decompose(mockAi, context);
-
-        expect(result.components, hasLength(1));
-        expect(result.components[0].name, equals('main'));
-        expect(result.components[0].description, equals(context.userPrompt));
-        expect(
-          result.components[0].relativeBoundingBox,
-          equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0)),
-        );
-      },
-    );
+    test('propagates exception when aiService throws', () async {
+      final agent = DecomposerAgent();
+      final mockAi = TestMockAiService(
+        shouldThrow: true,
+        exceptionMessage: 'Network timeout',
+      );
+      expect(() => agent.decompose(mockAi, context), throwsA(isA<Exception>()));
+    });
   });
 }

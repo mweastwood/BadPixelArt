@@ -793,10 +793,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     } catch (e) {
       debugPrint('Error triggering decomposer: $e');
       if (!mounted) return;
-      final willStop = state.isPausing;
       state = state.copyWith(
         isGenerating: false,
-        autoRun: willStop ? false : state.autoRun,
+        autoRun: false,
         isPausing: false,
       );
     }
@@ -874,6 +873,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       if (!mounted) return;
       state = state.copyWith(
         isGenerating: false,
+        autoRun: false,
+        isPausing: false,
         clearDecomposingComponent: true,
         clearSculptingStatus: true,
       );
@@ -916,6 +917,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       if (!mounted) return;
       state = state.copyWith(
         isGenerating: false,
+        autoRun: false,
+        isPausing: false,
         clearDecomposingComponent: true,
         clearSculptingStatus: true,
       );
@@ -968,10 +971,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     } catch (e) {
       debugPrint('Error in sketching components: $e');
       if (!mounted) return;
-      final willStop = state.isPausing;
       state = state.copyWith(
         isGenerating: false,
-        autoRun: willStop ? false : state.autoRun,
+        autoRun: false,
         isPausing: false,
         clearSculptingStatus: true,
       );
@@ -1132,10 +1134,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     } catch (e) {
       debugPrint('Error refining canvas: $e');
       if (!mounted) return;
-      final willStop = state.isPausing;
       state = state.copyWith(
         isGenerating: false,
-        autoRun: willStop ? false : state.autoRun,
+        autoRun: false,
         isPausing: false,
       );
     }

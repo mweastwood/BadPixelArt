@@ -316,9 +316,10 @@ class ShapeSculpterAgent implements PixelArtAgent {
 
         return newGrid;
       }
+      throw const FormatException('Invalid JSON map from ShapeSculpterAgent');
     } catch (e) {
       debugPrint('Error in shape sculpter: $e');
+      rethrow;
     }
-    return grid;
   }
 }
