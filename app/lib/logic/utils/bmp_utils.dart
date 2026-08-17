@@ -164,10 +164,14 @@ Future<Uint8List?> resizeAndConvertToBmp(
   Uint8List imageBytes,
   int gridSize,
 ) async {
+  ui.Codec? codec;
+  ui.Image? originalImage;
+  ui.Picture? picture;
+  ui.Image? resizedImage;
   try {
-    final codec = await ui.instantiateImageCodec(imageBytes);
+    codec = await ui.instantiateImageCodec(imageBytes);
     final frameInfo = await codec.getNextFrame();
-    final originalImage = frameInfo.image;
+    originalImage = frameInfo.image;
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
@@ -179,8 +183,8 @@ Future<Uint8List?> resizeAndConvertToBmp(
       fit: BoxFit.cover,
     );
 
-    final picture = recorder.endRecording();
-    final resizedImage = await picture.toImage(gridSize, gridSize);
+    picture = recorder.endRecording();
+    resizedImage = await picture.toImage(gridSize, gridSize);
 
     final byteData = await resizedImage.toByteData(
       format: ui.ImageByteFormat.rawRgba,
@@ -192,6 +196,11 @@ Future<Uint8List?> resizeAndConvertToBmp(
   } catch (e) {
     debugPrint('Error resizing image: $e');
     return null;
+  } finally {
+    originalImage?.dispose();
+    picture?.dispose();
+    resizedImage?.dispose();
+    codec?.dispose();
   }
 }
 
@@ -483,17 +492,21 @@ Future<Uint8List> convertToPngBytes(Uint8List bytes) async {
       bytes[3] == 0x47) {
     return bytes;
   }
+  ui.Codec? codec;
+  ui.Image? image;
   try {
-    final codec = await ui.instantiateImageCodec(bytes);
+    codec = await ui.instantiateImageCodec(bytes);
     final frame = await codec.getNextFrame();
-    final byteData = await frame.image.toByteData(
-      format: ui.ImageByteFormat.png,
-    );
+    image = frame.image;
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     if (byteData != null) {
       return byteData.buffer.asUint8List();
     }
   } catch (e) {
     debugPrint('Error converting image to PNG: $e');
+  } finally {
+    image?.dispose();
+    codec?.dispose();
   }
   return bytes;
 }
