@@ -86,14 +86,22 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     final List<Uint8List> bmpsToCombine = [];
 
     if (referenceBmp != null) {
-      var refGrid = bmpToColorGrid(referenceBmp);
-      if (refGrid.length != state.gridSize) {
-        refGrid = downscaleColorGrid(refGrid, state.gridSize);
+      var refGrid = bmpToDownscaledColorGrid(referenceBmp, state.gridSize);
+      if (refGrid.isEmpty) {
+        refGrid = bmpToColorGrid(referenceBmp);
+        if (refGrid.isNotEmpty && refGrid.length != state.gridSize) {
+          refGrid = downscaleColorGrid(refGrid, state.gridSize);
+        }
       }
-      final blurredGrid = applyGaussianBlur(refGrid);
-      final quantizedGrid = applyColorQuantization(blurredGrid, state.palette);
-      final quantizedBmp = bmpFromColorGrid(quantizedGrid);
-      bmpsToCombine.add(quantizedBmp);
+      if (refGrid.isNotEmpty) {
+        final blurredGrid = applyGaussianBlur(refGrid);
+        final quantizedGrid = applyColorQuantization(
+          blurredGrid,
+          state.palette,
+        );
+        final quantizedBmp = bmpFromColorGrid(quantizedGrid);
+        bmpsToCombine.add(quantizedBmp);
+      }
     }
 
     final currentBmp = previousBmp ?? generateBmp(state.grid, state.palette);

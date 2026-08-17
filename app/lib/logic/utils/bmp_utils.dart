@@ -288,6 +288,50 @@ List<List<Color>> bmpToColorGrid(Uint8List bmpBytes) {
   return grid;
 }
 
+/// Directly decodes a BMP into a downscaled 2D Color grid of [targetSize] x [targetSize].
+/// Avoids intermediate allocations of large 2D grids and full-resolution Color instances.
+List<List<Color>> bmpToDownscaledColorGrid(Uint8List bmpBytes, int targetSize) {
+  if (targetSize <= 0 ||
+      bmpBytes.length < 54 ||
+      bmpBytes[0] != 0x42 ||
+      bmpBytes[1] != 0x4D) {
+    return [];
+  }
+  final ByteData bd = ByteData.sublistView(bmpBytes);
+  final int width = bd.getUint32(18, Endian.little);
+  final int height = bd.getUint32(22, Endian.little);
+  if (width <= 0 || height <= 0) return [];
+
+  const int bytesPerPixel = 3;
+  final int rowPadding = (4 - (width * bytesPerPixel) % 4) % 4;
+  final int rowStride = width * bytesPerPixel + rowPadding;
+  final int expectedDataLength = 54 + rowStride * height;
+  if (bmpBytes.length < expectedDataLength) return [];
+
+  final double scaleY = height / targetSize;
+  final double scaleX = width / targetSize;
+
+  final List<List<Color>> grid = List.generate(
+    targetSize,
+    (_) => List.filled(targetSize, const Color(0xFF000000)),
+  );
+
+  for (int y = 0; y < targetSize; y++) {
+    final int srcY = (y * scaleY).toInt().clamp(0, height - 1);
+    final int rowOffset = 54 + (height - 1 - srcY) * rowStride;
+    for (int x = 0; x < targetSize; x++) {
+      final int srcX = (x * scaleX).toInt().clamp(0, width - 1);
+      final int pixelOffset = rowOffset + srcX * 3;
+      final int b = bmpBytes[pixelOffset];
+      final int g = bmpBytes[pixelOffset + 1];
+      final int r = bmpBytes[pixelOffset + 2];
+      grid[y][x] = Color(0xFF000000 | (r << 16) | (g << 8) | b);
+    }
+  }
+
+  return grid;
+}
+
 Uint8List bmpFromColorGrid(List<List<Color>> grid) {
   final int height = grid.length;
   final int width = grid.isNotEmpty ? grid[0].length : 0;
@@ -385,19 +429,26 @@ List<List<Color>> applyColorQuantization(
     height,
     (_) => List.filled(width, const Color(0xFF000000)),
   );
+  final paletteRgb = palette
+      .map((c) => (r: c.rInt, g: c.gInt, b: c.bInt, color: c))
+      .toList();
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       final color = src[y][x];
-      Color closestColor = palette.first;
-      double minDistance = double.infinity;
-      for (final pColor in palette) {
-        final dr = color.rInt - pColor.rInt;
-        final dg = color.gInt - pColor.gInt;
-        final db = color.bInt - pColor.bInt;
+      final cr = color.rInt;
+      final cg = color.gInt;
+      final cb = color.bInt;
+      Color closestColor = paletteRgb.first.color;
+      int minDistance = 0x7FFFFFFF;
+      for (final p in paletteRgb) {
+        final dr = cr - p.r;
+        final dg = cg - p.g;
+        final db = cb - p.b;
         final dist = dr * dr + dg * dg + db * db;
         if (dist < minDistance) {
-          minDistance = dist.toDouble();
-          closestColor = pColor;
+          minDistance = dist;
+          closestColor = p.color;
         }
       }
       dest[y][x] = closestColor;
@@ -418,20 +469,27 @@ List<List<int>> getQuantizedIndexGrid(Uint8List bmpBytes, List<Color> palette) {
     (_) => List.filled(width, 0),
   );
   final blurredGrid = applyGaussianBlur(refGrid);
+  final paletteRgb = [
+    for (int i = 0; i < palette.length; i++)
+      (r: palette[i].rInt, g: palette[i].gInt, b: palette[i].bInt, index: i),
+  ];
+
   for (int y = 0; y < height; y++) {
     for (int x = 0; x < width; x++) {
       final color = blurredGrid[y][x];
+      final cr = color.rInt;
+      final cg = color.gInt;
+      final cb = color.bInt;
       int closestIndex = 0;
-      double minDistance = double.infinity;
-      for (int i = 0; i < palette.length; i++) {
-        final pColor = palette[i];
-        final dr = color.rInt - pColor.rInt;
-        final dg = color.gInt - pColor.gInt;
-        final db = color.bInt - pColor.bInt;
+      int minDistance = 0x7FFFFFFF;
+      for (final p in paletteRgb) {
+        final dr = cr - p.r;
+        final dg = cg - p.g;
+        final db = cb - p.b;
         final dist = dr * dr + dg * dg + db * db;
         if (dist < minDistance) {
-          minDistance = dist.toDouble();
-          closestIndex = i;
+          minDistance = dist;
+          closestIndex = p.index;
         }
       }
       grid[y][x] = closestIndex + 1;
@@ -516,15 +574,17 @@ List<List<Color>> downscaleColorGrid(
   List<List<Color>> original,
   int targetSize,
 ) {
+  if (original.isEmpty || original[0].isEmpty || targetSize <= 0) return [];
   final List<List<Color>> result = List.generate(
     targetSize,
     (_) => List.filled(targetSize, const Color(0xFF000000)),
   );
-  final double scale = original.length / targetSize;
+  final double scaleY = original.length / targetSize;
+  final double scaleX = original[0].length / targetSize;
   for (int y = 0; y < targetSize; y++) {
-    final int srcY = (y * scale).toInt().clamp(0, original.length - 1);
+    final int srcY = (y * scaleY).toInt().clamp(0, original.length - 1);
     for (int x = 0; x < targetSize; x++) {
-      final int srcX = (x * scale).toInt().clamp(0, original[0].length - 1);
+      final int srcX = (x * scaleX).toInt().clamp(0, original[0].length - 1);
       result[y][x] = original[srcY][srcX];
     }
   }

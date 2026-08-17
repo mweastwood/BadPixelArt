@@ -500,5 +500,135 @@ void main() {
 
       expect(notifier.state.userPrompt, isNotEmpty);
     });
+
+    group('bmpToDownscaledColorGrid and downscaleColorGrid tests', () {
+      test('bmpToDownscaledColorGrid handles invalid and truncated inputs', () {
+        expect(bmpToDownscaledColorGrid(Uint8List(0), 16), isEmpty);
+        expect(bmpToDownscaledColorGrid(Uint8List(10), 16), isEmpty);
+        expect(bmpToDownscaledColorGrid(Uint8List(53), 16), isEmpty);
+        expect(bmpToDownscaledColorGrid(Uint8List(100), 0), isEmpty);
+        expect(bmpToDownscaledColorGrid(Uint8List(100), -5), isEmpty);
+
+        // Invalid magic bytes
+        final invalidMagic = Uint8List(54);
+        invalidMagic[0] = 0x00;
+        invalidMagic[1] = 0x00;
+        expect(bmpToDownscaledColorGrid(invalidMagic, 16), isEmpty);
+
+        // Zero dimensions
+        final zeroDims = Uint8List(54);
+        zeroDims[0] = 0x42;
+        zeroDims[1] = 0x4D;
+        final bd = ByteData.sublistView(zeroDims);
+        bd.setUint32(18, 0, Endian.little);
+        bd.setUint32(22, 0, Endian.little);
+        expect(bmpToDownscaledColorGrid(zeroDims, 16), isEmpty);
+
+        // Truncated data
+        final truncData = Uint8List(54 + 4);
+        truncData[0] = 0x42;
+        truncData[1] = 0x4D;
+        final bdTrunc = ByteData.sublistView(truncData);
+        bdTrunc.setUint32(18, 16, Endian.little);
+        bdTrunc.setUint32(22, 16, Endian.little);
+        expect(bmpToDownscaledColorGrid(truncData, 16), isEmpty);
+      });
+
+      test('downscaleColorGrid handles empty inputs gracefully', () {
+        expect(downscaleColorGrid([], 16), isEmpty);
+        expect(downscaleColorGrid([[]], 16), isEmpty);
+        expect(
+          downscaleColorGrid([
+            [Colors.red],
+          ], 0),
+          isEmpty,
+        );
+      });
+
+      test(
+        'bmpToDownscaledColorGrid produces identical output to downscaleColorGrid(bmpToColorGrid) across dimensions',
+        () {
+          final testSizes = [
+            (8, 8, 4), // 8x8 -> 4x4
+            (16, 16, 8), // 16x16 -> 8x8
+            (32, 32, 16), // 32x32 -> 16x16
+            (64, 64, 16), // 64x64 -> 16x16
+            (64, 64, 24), // 64x64 -> 24x24
+            (64, 64, 32), // 64x64 -> 32x32
+            (15, 7, 8), // Odd widths with padding: 15x7 -> 8x8
+            (7, 19, 16), // Odd dimensions: 7x19 -> 16x16
+            (5, 5, 3), // 5x5 -> 3x3
+            (128, 128, 16), // 128x128 -> 16x16
+          ];
+
+          for (final (w, h, targetSize) in testSizes) {
+            final grid = List.generate(
+              h,
+              (y) => List.generate(
+                w,
+                (x) => Color.fromARGB(
+                  255,
+                  (x * 37 + y * 53) % 256,
+                  (x * 97 + y * 13) % 256,
+                  (x * 19 + y * 79) % 256,
+                ),
+              ),
+            );
+
+            final bmp = bmpFromColorGrid(grid);
+
+            final directDownscaled = bmpToDownscaledColorGrid(bmp, targetSize);
+            final intermediateDownscaled = downscaleColorGrid(
+              bmpToColorGrid(bmp),
+              targetSize,
+            );
+
+            expect(
+              directDownscaled.length,
+              equals(targetSize),
+              reason: 'Height mismatch for ${w}x$h -> $targetSize',
+            );
+            expect(
+              directDownscaled[0].length,
+              equals(targetSize),
+              reason: 'Width mismatch for ${w}x$h -> $targetSize',
+            );
+
+            for (int y = 0; y < targetSize; y++) {
+              for (int x = 0; x < targetSize; x++) {
+                expect(
+                  directDownscaled[y][x].toARGB32(),
+                  equals(intermediateDownscaled[y][x].toARGB32()),
+                  reason:
+                      'Pixel mismatch at ($x, $y) for ${w}x$h -> $targetSize',
+                );
+              }
+            }
+          }
+        },
+      );
+
+      test('generateCombinedVisualInput downscales reference BMP directly', () {
+        final mockAiService = TestMockAiService();
+        final notifier = CanvasNotifier(mockAiService);
+
+        final refGrid = List.generate(
+          64,
+          (y) => List.generate(
+            64,
+            (x) => (x + y) % 2 == 0 ? Colors.red : Colors.blue,
+          ),
+        );
+        final refBmp = bmpFromColorGrid(refGrid);
+
+        final combined = notifier.generateCombinedVisualInput(refBmp, null);
+        expect(combined.isNotEmpty, isTrue);
+
+        final parsed = bmpToColorGrid(combined);
+        // Canvas size is 16x16, combined with ref image -> 32x32
+        expect(parsed.length, equals(32));
+        expect(parsed[0].length, equals(32));
+      });
+    });
   });
 }
