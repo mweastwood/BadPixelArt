@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/agents/color_selection_agent.dart';
 import '../logic/utils/logging_ai_service.dart';
+import 'ai_color_confirmation_dialog.dart';
+import 'gradient_angle_selector.dart';
+import 'palette_color_selector_row.dart';
 
 class ComponentColorSelectionList extends ConsumerStatefulWidget {
   const ComponentColorSelectionList({super.key});
@@ -56,126 +59,13 @@ class _ComponentColorSelectionListState
     showDialog(
       context: context,
       builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.auto_awesome, color: theme.colorScheme.primary),
-              const SizedBox(width: 8),
-              const Text('AI Color Suggestions'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  result.reasoning,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontStyle: FontStyle.italic,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Suggested Component Colors:',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                ...result.updatedComponents.map((comp) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            comp.name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        if (comp.fillColor != null) ...[
-                          Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: comp.fillColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.black26),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        if (comp.fillColor2 != null) ...[
-                          Icon(
-                            Icons.arrow_forward,
-                            size: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: comp.fillColor2,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.black26),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '(${comp.gradientAngle.round()}°)',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                        ],
-                        if (comp.outlineColor != null) ...[
-                          const SizedBox(width: 6),
-                          Container(
-                            width: 18,
-                            height: 18,
-                            decoration: BoxDecoration(
-                              color: comp.outlineColor,
-                              shape: BoxShape.rectangle,
-                              borderRadius: BorderRadius.circular(3),
-                              border: Border.all(color: Colors.black26),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                _triggerAiColorSuggestion();
-              },
-              child: const Text('Re-suggest'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                final notifier = ref.read(canvasStateProvider.notifier);
-                notifier.batchUpdateComponentColors(result.updatedComponents);
-              },
-              child: const Text('Confirm Colors'),
-            ),
-          ],
+        return AiColorConfirmationDialog(
+          result: result,
+          onRetry: _triggerAiColorSuggestion,
+          onConfirm: (updatedComponents) {
+            final notifier = ref.read(canvasStateProvider.notifier);
+            notifier.batchUpdateComponentColors(updatedComponents);
+          },
         );
       },
     );
@@ -347,8 +237,7 @@ class _ComponentColorSelectionListState
 
                       if (!hasInterior) ...[
                         // Single Color mode for non-interior components
-                        _buildColorSelectorRow(
-                          context: context,
+                        PaletteColorSelectorRow(
                           title: 'Line Color',
                           selectedColor: comp.fillColor ?? comp.outlineColor,
                           palette: palette,
@@ -411,8 +300,7 @@ class _ComponentColorSelectionListState
                         const SizedBox(height: 12),
 
                         // Primary Fill Color (Color A)
-                        _buildColorSelectorRow(
-                          context: context,
+                        PaletteColorSelectorRow(
                           title: isGradientEnabled
                               ? 'Fill Color A'
                               : 'Fill Color',
@@ -432,8 +320,7 @@ class _ComponentColorSelectionListState
 
                         // Secondary Fill Color (Color B) & Angle Selector (If Gradient Enabled)
                         if (isGradientEnabled) ...[
-                          _buildColorSelectorRow(
-                            context: context,
+                          PaletteColorSelectorRow(
                             title: 'Fill Color B',
                             selectedColor: comp.fillColor2,
                             palette: palette,
@@ -450,8 +337,7 @@ class _ComponentColorSelectionListState
                           const SizedBox(height: 12),
 
                           // Gradient Angle Selector
-                          _buildAngleSelectorRow(
-                            context: context,
+                          GradientAngleSelector(
                             angle: comp.gradientAngle,
                             onAngleChanged: (newAngle) {
                               notifier.updateComponentColors(
@@ -467,8 +353,7 @@ class _ComponentColorSelectionListState
                         ],
 
                         // Outline Color Row
-                        _buildColorSelectorRow(
-                          context: context,
+                        PaletteColorSelectorRow(
                           title: 'Outline Color',
                           selectedColor: comp.outlineColor,
                           palette: palette,
@@ -489,165 +374,6 @@ class _ComponentColorSelectionListState
               ),
             );
           },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAngleSelectorRow({
-    required BuildContext context,
-    required double angle,
-    required ValueChanged<double> onAngleChanged,
-  }) {
-    final theme = Theme.of(context);
-    final presets = [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            SizedBox(
-              width: 90,
-              child: Text(
-                'Angle',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: presets.map((preset) {
-                    final isSelected =
-                        (angle.round() % 360) == (preset.round() % 360);
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2.0),
-                      child: ChoiceChip(
-                        label: Text('${preset.round()}°'),
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          if (selected) onAngleChanged(preset);
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ],
-        ),
-        Row(
-          children: [
-            const SizedBox(width: 90),
-            Expanded(
-              child: Slider(
-                value: angle,
-                min: 0.0,
-                max: 360.0,
-                divisions: 24,
-                label: '${angle.round()}°',
-                onChanged: onAngleChanged,
-              ),
-            ),
-            Text(
-              '${angle.round()}°',
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildColorSelectorRow({
-    required BuildContext context,
-    required String title,
-    required Color? selectedColor,
-    required List<Color> palette,
-    required ValueChanged<Color?> onColorSelected,
-  }) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 90,
-          child: Text(
-            title,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                // "None" (Transparent / Clear) Selector
-                GestureDetector(
-                  onTap: () => onColorSelected(null),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: selectedColor == null
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.outlineVariant,
-                        width: selectedColor == null ? 2.0 : 1.0,
-                      ),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.block,
-                        size: 16,
-                        color: Colors.redAccent,
-                      ),
-                    ),
-                  ),
-                ),
-                // Palette Colors Selectors
-                ...palette.map((color) {
-                  final isSelected =
-                      selectedColor?.toARGB32() == color.toARGB32();
-                  return GestureDetector(
-                    onTap: () => onColorSelected(color),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
-                      margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? Colors.white : Colors.transparent,
-                          width: 2.0,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.4),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
-          ),
         ),
       ],
     );
