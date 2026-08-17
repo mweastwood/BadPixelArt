@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -157,6 +158,71 @@ void main() {
 
         expect(history, hasLength(1));
         expect(history.first.isError, isTrue);
+      },
+    );
+
+    test(
+      'sketch gracefully handles null and malformed coordinates in add and erase without throwing TypeError',
+      () async {
+        final aiService = TestMockAiService(
+          response: jsonEncode({
+            'thought': 'sculpt with invalid and valid coords',
+            'tool': '',
+            'params': [1, null, 'invalid'],
+            'add': [
+              [null, 2],
+              [2, null],
+              ['invalid', 3],
+              {'x': null, 'y': 2},
+              {'x': 1, 'y': null},
+              [2, 2],
+              {'x': 1, 'y': 1},
+              ['3', '3'],
+            ],
+            'erase': [
+              [null, 1],
+              ['bad', 'coords'],
+              {'x': 1, 'y': null},
+              {'x': null, 'y': 1},
+              [1, 1],
+            ],
+            'isComplete': true,
+          }),
+        );
+        final orchestrator = SketchOrchestrator(aiService);
+
+        final comp = PixelArtComponent(
+          name: 'Shape',
+          description: 'Shape component',
+          relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0),
+          shapes: const [],
+          grid: List.generate(8, (_) => List.filled(8, 0)),
+        );
+
+        final history = <AgentHistoryEntry>[];
+        final results = await orchestrator.sketch(
+          components: [comp],
+          gridSize: 8,
+          palette: [Colors.black, Colors.red],
+          userPrompt: 'test prompt',
+          autoRunSpeed: 0.001,
+          onStep: (idx, updated, status) {},
+          onLogHistory: (log) {
+            history.add(log);
+          },
+        );
+
+        expect(results, hasLength(1));
+        expect(results.first.isSculpted, isTrue);
+        final updatedGrid = results.first.grid!;
+        // Valid additions (2, 2) and (3, 3) should be set to 1
+        expect(updatedGrid[2][2], equals(1));
+        expect(updatedGrid[3][3], equals(1));
+        // (1, 1) was added and then erased back to 0
+        expect(updatedGrid[1][1], equals(0));
+        // Out-of-bounds or null coords should be ignored
+        expect(updatedGrid[0][0], equals(0));
+        expect(history.isEmpty || history.every((h) => !h.isError), isTrue);
       },
     );
   });
