@@ -994,8 +994,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       (_) => List.filled(state.gridSize, 0),
     );
 
+    final paletteMap = <int, int>{};
+    for (int i = 0; i < state.palette.length; i++) {
+      paletteMap[state.palette[i].toARGB32()] = i + 1;
+    }
+
     for (final comp in state.decomposedComponents) {
       bool drewAnything = false;
+      final outline = comp.getOutlineGrid();
 
       // 1. Draw fill if set
       if (comp.fillColor != null && comp.grid != null) {
@@ -1004,11 +1010,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
             if (comp.grid![y][x] > 0) {
               final col = comp.getPixelFillColor(x, y);
               if (col != null) {
-                final colorIndex = state.palette.indexWhere(
-                  (c) => c.toARGB32() == col.toARGB32(),
-                );
-                if (colorIndex != -1) {
-                  newGrid[y][x] = colorIndex + 1;
+                final colorIndex = paletteMap[col.toARGB32()];
+                if (colorIndex != null) {
+                  newGrid[y][x] = colorIndex;
                   drewAnything = true;
                 }
               }
@@ -1018,20 +1022,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       }
 
       // 2. Draw outline if set
-      if (comp.outlineColor != null) {
-        final outline = comp.getOutlineGrid();
-        if (outline != null) {
-          final colorIndex = state.palette.indexWhere(
-            (c) => c.toARGB32() == comp.outlineColor!.toARGB32(),
-          );
-          if (colorIndex != -1) {
-            final dbIndex = colorIndex + 1;
-            for (int y = 0; y < state.gridSize; y++) {
-              for (int x = 0; x < state.gridSize; x++) {
-                if (outline[y][x] > 0) {
-                  newGrid[y][x] = dbIndex;
-                  drewAnything = true;
-                }
+      if (comp.outlineColor != null && outline != null) {
+        final colorIndex = paletteMap[comp.outlineColor!.toARGB32()];
+        if (colorIndex != null) {
+          for (int y = 0; y < state.gridSize; y++) {
+            for (int x = 0; x < state.gridSize; x++) {
+              if (outline[y][x] > 0) {
+                newGrid[y][x] = colorIndex;
+                drewAnything = true;
               }
             }
           }
@@ -1039,17 +1037,14 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       }
 
       // 3. Fallback: if no custom colors were set, draw the outline using the selected/default color index
-      if (!drewAnything) {
-        final outline = comp.getOutlineGrid();
-        if (outline != null) {
-          final targetColorIndex = state.selectedColorIndex > 0
-              ? state.selectedColorIndex
-              : 1;
-          for (int y = 0; y < state.gridSize; y++) {
-            for (int x = 0; x < state.gridSize; x++) {
-              if (outline[y][x] > 0) {
-                newGrid[y][x] = targetColorIndex;
-              }
+      if (!drewAnything && outline != null) {
+        final targetColorIndex = state.selectedColorIndex > 0
+            ? state.selectedColorIndex
+            : 1;
+        for (int y = 0; y < state.gridSize; y++) {
+          for (int x = 0; x < state.gridSize; x++) {
+            if (outline[y][x] > 0) {
+              newGrid[y][x] = targetColorIndex;
             }
           }
         }

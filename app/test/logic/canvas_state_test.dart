@@ -799,6 +799,134 @@ void main() {
         },
       );
     });
+
+    group('mergeComponentsToCanvas', () {
+      test(
+        'merges fill and outline pixels with matching palette colors and pushes to undo stack',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final palette = [Colors.red, Colors.green, Colors.blue];
+          notifier.state = notifier.state.copyWith(
+            palette: palette,
+            grid: List.generate(16, (_) => List.filled(16, 0)),
+          );
+
+          final grid = List.generate(16, (_) => List.filled(16, 0));
+          grid[2][2] = 1; // Interior fill pixel
+          grid[2][3] = 1;
+
+          final comp = PixelArtComponent(
+            name: 'TestComp',
+            description: 'Component with fill and outline',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            grid: grid,
+            fillColor: Colors.red, // Index 1
+            outlineColor: Colors.blue, // Index 3
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [comp],
+          );
+
+          notifier.mergeComponentsToCanvas();
+
+          final updatedGrid = container.read(canvasStateProvider).grid;
+          // Verify fill and outline are mapped to correct 1-based palette indices
+          // Colors.red is index 1, Colors.blue is index 3
+          expect(updatedGrid[2][2], anyOf(1, 3));
+          expect(updatedGrid[2][3], anyOf(1, 3));
+          expect(
+            container.read(canvasStateProvider).undoStack.length,
+            equals(1),
+          );
+        },
+      );
+
+      test(
+        'falls back to selectedColorIndex when no custom colors are set',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final grid = List.generate(16, (_) => List.filled(16, 0));
+          grid[4][4] = 1;
+
+          final comp = PixelArtComponent(
+            name: 'FallbackComp',
+            description: 'No custom fill or outline',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            grid: grid,
+            fillColor: null,
+            outlineColor: null,
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [comp],
+            selectedColorIndex: 2,
+          );
+
+          notifier.mergeComponentsToCanvas();
+
+          final updatedGrid = container.read(canvasStateProvider).grid;
+          expect(updatedGrid[4][4], equals(2));
+        },
+      );
+
+      test(
+        'falls back to index 1 when selectedColorIndex is 0 and no custom colors are set',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final grid = List.generate(16, (_) => List.filled(16, 0));
+          grid[5][5] = 1;
+
+          final comp = PixelArtComponent(
+            name: 'ZeroIndexFallback',
+            description: 'Fallback with selectedColorIndex 0',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            grid: grid,
+            fillColor: null,
+            outlineColor: null,
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [comp],
+            selectedColorIndex: 0,
+          );
+
+          notifier.mergeComponentsToCanvas();
+
+          final updatedGrid = container.read(canvasStateProvider).grid;
+          expect(updatedGrid[5][5], equals(1));
+        },
+      );
+
+      test(
+        'gracefully handles unindexed / out-of-palette colors without throwing',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final grid = List.generate(16, (_) => List.filled(16, 0));
+          grid[1][1] = 1;
+
+          final comp = PixelArtComponent(
+            name: 'OutOfPaletteComp',
+            description: 'Colors not present in palette',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            grid: grid,
+            fillColor: const Color(0xFF112233),
+            outlineColor: const Color(0xFF445566),
+          );
+
+          notifier.state = notifier.state.copyWith(
+            palette: [Colors.black, Colors.white],
+            decomposedComponents: [comp],
+            selectedColorIndex: 1,
+          );
+
+          expect(() => notifier.mergeComponentsToCanvas(), returnsNormally);
+          final updatedGrid = container.read(canvasStateProvider).grid;
+          // Since out-of-palette colors didn't draw, fallback draws outline with selectedColorIndex
+          expect(updatedGrid[1][1], equals(1));
+        },
+      );
+    });
   });
 }
 
