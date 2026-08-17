@@ -36,6 +36,38 @@ void main() {
     });
 
     test(
+      'refine handles colorIndex decoded as double without type error',
+      () async {
+        final aiService = TestMockAiService(
+          responses: [
+            '{"thought": "add blue pixel", "tool": "pixel", "params": [2, 3], "colorIndex": 2.0}',
+          ],
+          tokenCount: 10,
+        );
+        final orchestrator = RefinementOrchestrator(aiService);
+
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        final palette = [Colors.red, Colors.green, Colors.blue];
+        final history = <AgentHistoryEntry>[];
+
+        final result = await orchestrator.refine(
+          initialGrid: grid,
+          gridSize: 8,
+          palette: palette,
+          userPrompt: 'add blue detail',
+          autoRunSpeed: 0.01,
+          onStep: (updated) {},
+          onLogHistory: (entry) => history.add(entry),
+        );
+
+        // Verify command drawn: pixel at (x=2, y=3) with colorIndex 2
+        expect(result[3][2], equals(2));
+        expect(history, hasLength(1));
+        expect(history.first.response, contains('add blue pixel'));
+      },
+    );
+
+    test(
       'refine logs error AgentHistoryEntry with isError: true and propagates exception on AI error',
       () async {
         final aiService = TestMockAiService(
