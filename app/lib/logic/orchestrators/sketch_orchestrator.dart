@@ -41,6 +41,15 @@ class SketchOrchestrator {
     throw FormatException('Invalid JSON map response from agent ${agent.name}');
   }
 
+  int? _parseCoordinateValue(dynamic value) {
+    if (value is num) {
+      return value.toInt();
+    } else if (value is String) {
+      return int.tryParse(value);
+    }
+    return null;
+  }
+
   bool isComponentDone(
     List<List<int>> compGrid,
     PixelArtComponent comp,
@@ -159,9 +168,10 @@ class SketchOrchestrator {
 
         final String thought = json['thought'] as String? ?? '';
         final String tool = json['tool'] as String? ?? '';
-        final List<int> params = List<int>.from(
-          (json['params'] as List? ?? []).map((v) => (v as num).toInt()),
-        );
+        final List<int> params = (json['params'] as List? ?? [])
+            .map(_parseCoordinateValue)
+            .whereType<int>()
+            .toList();
         final List<dynamic> rawAdd = json['add'] as List? ?? [];
         final List<dynamic> rawErase =
             (json['erase'] ?? json['remove']) as List? ?? [];
@@ -187,11 +197,11 @@ class SketchOrchestrator {
         for (final coord in rawAdd) {
           int? x, y;
           if (coord is List && coord.length >= 2) {
-            x = (coord[0] as num).toInt();
-            y = (coord[1] as num).toInt();
+            x = _parseCoordinateValue(coord[0]);
+            y = _parseCoordinateValue(coord[1]);
           } else if (coord is Map) {
-            x = (coord['x'] as num?)?.toInt();
-            y = (coord['y'] as num?)?.toInt();
+            x = _parseCoordinateValue(coord['x']);
+            y = _parseCoordinateValue(coord['y']);
           }
           if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
             boundedCanvas.setPixel(x, y, 1);
@@ -202,11 +212,11 @@ class SketchOrchestrator {
         for (final coord in rawErase) {
           int? x, y;
           if (coord is List && coord.length >= 2) {
-            x = (coord[0] as num).toInt();
-            y = (coord[1] as num).toInt();
+            x = _parseCoordinateValue(coord[0]);
+            y = _parseCoordinateValue(coord[1]);
           } else if (coord is Map) {
-            x = (coord['x'] as num?)?.toInt();
-            y = (coord['y'] as num?)?.toInt();
+            x = _parseCoordinateValue(coord['x']);
+            y = _parseCoordinateValue(coord['y']);
           }
           if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
             boundedCanvas.setPixel(x, y, 0);
