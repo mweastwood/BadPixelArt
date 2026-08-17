@@ -420,6 +420,30 @@ void main() {
       },
     );
 
+    test('resizeAndConvertToBmp handles invalid bytes gracefully', () async {
+      final invalidBytes = Uint8List.fromList([1, 2, 3, 4]);
+      final result = await resizeAndConvertToBmp(invalidBytes, 16);
+      expect(result, isNull);
+    });
+
+    test(
+      'resizeAndConvertToBmp resizes valid image bytes to specified grid size BMP',
+      () async {
+        final grid = List.generate(4, (_) => List.filled(4, 1));
+        final bmpBytes = generateBmp(grid, testPalette);
+        final pngBytes = await convertToPngBytes(bmpBytes);
+
+        final resizedBmp = await resizeAndConvertToBmp(pngBytes, 8);
+        expect(resizedBmp, isNotNull);
+        expect(resizedBmp![0], equals(0x42)); // 'B'
+        expect(resizedBmp[1], equals(0x4D)); // 'M'
+
+        final bd = ByteData.sublistView(resizedBmp);
+        expect(bd.getUint32(18, Endian.little), equals(8)); // width
+        expect(bd.getUint32(22, Endian.little), equals(8)); // height
+      },
+    );
+
     test(
       'setReferenceImage with originalBytes sets both referenceImage and originalReferenceImage',
       () {
