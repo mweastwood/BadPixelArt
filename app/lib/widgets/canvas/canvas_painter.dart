@@ -149,12 +149,12 @@ class CanvasPainter extends CustomPainter {
           );
           final colorIndex = grid[y][x];
 
-          if (colorIndex == 0) {
-            final paint = (x + y) % 2 == 0 ? bgPaint1 : bgPaint2;
-            canvas.drawRect(rect, paint);
-          } else {
+          if (colorIndex > 0 && colorIndex <= palette.length) {
             cellPaint.color = palette[colorIndex - 1];
             canvas.drawRect(rect, cellPaint);
+          } else {
+            final paint = (x + y) % 2 == 0 ? bgPaint1 : bgPaint2;
+            canvas.drawRect(rect, paint);
           }
         }
       }

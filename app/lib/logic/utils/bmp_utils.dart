@@ -48,11 +48,11 @@ Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
   for (int y = height - 1; y >= 0; y--) {
     for (int x = 0; x < width; x++) {
       final colorIndex = grid[y][x];
-      final color = colorIndex == 0
-          ? ((x + y) % 2 == 0
+      final color = (colorIndex > 0 && colorIndex <= palette.length)
+          ? palette[colorIndex - 1]
+          : ((x + y) % 2 == 0
                 ? const Color(0xFF262626)
-                : const Color(0xFF1E1E1E))
-          : palette[colorIndex - 1];
+                : const Color(0xFF1E1E1E));
 
       bmp[offset] = color.bInt;
       bmp[offset + 1] = color.gInt;

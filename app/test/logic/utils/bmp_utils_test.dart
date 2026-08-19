@@ -34,6 +34,24 @@ void main() {
       expect(bd.getUint16(28, Endian.little), equals(24)); // bits per pixel
     });
 
+    test(
+      'generateBmp handles out-of-bounds palette color indices gracefully without throwing RangeError',
+      () {
+        final grid = List.generate(16, (_) => List.filled(16, 0));
+        // testPalette has 5 colors (valid indices: 1..5)
+        grid[0][0] = 6; // out-of-bounds (> palette.length)
+        grid[0][1] = 99; // well beyond palette.length
+        grid[1][0] = -1; // negative index
+        grid[1][1] = 3; // valid index -> testPalette[2] = Red
+
+        expect(() => generateBmp(grid, testPalette), returnsNormally);
+        final bmp = generateBmp(grid, testPalette);
+        expect(bmp.length, equals(822));
+        expect(bmp[0], equals(0x42));
+        expect(bmp[1], equals(0x4D));
+      },
+    );
+
     test('generateBmpFromRgba builds correct BMP bytes', () {
       final rgba = Uint8List.fromList([
         255, 0, 0, 255, // Red

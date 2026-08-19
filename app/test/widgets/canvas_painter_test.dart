@@ -95,5 +95,34 @@ void main() {
         returnsNormally,
       );
     });
+
+    test(
+      'CanvasPainter paints safely when grid contains out-of-bounds palette color indices',
+      () {
+        final grid = List.generate(16, (_) => List.filled(16, 0));
+        // Palette only has 2 colors (valid: 1, 2)
+        grid[0][0] = 5; // out-of-bounds (> palette.length)
+        grid[0][1] = 99; // well beyond bounds
+        grid[1][0] = -1; // negative index
+        grid[1][1] = 1; // valid index -> palette[0]
+        final palette = [Colors.black, Colors.white];
+
+        final painter = CanvasPainter(
+          grid: grid,
+          palette: palette,
+          decomposedComponents: const [],
+          activeComponentIndex: 0,
+          currentStep: WizardStep.selectGridSize,
+          isGenerating: false,
+        );
+
+        final recorder = PictureRecorder();
+        final canvas = Canvas(recorder);
+        expect(
+          () => painter.paint(canvas, const Size(320, 320)),
+          returnsNormally,
+        );
+      },
+    );
   });
 }
