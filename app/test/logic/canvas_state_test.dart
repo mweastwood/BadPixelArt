@@ -926,6 +926,77 @@ void main() {
           expect(updatedGrid[1][1], equals(1));
         },
       );
+
+      test(
+        'renameCanvas updates active state title and saves to repository',
+        () async {
+          final mockRepo = _TestMockCanvasRepository();
+          final testContainer = ProviderContainer(
+            overrides: [
+              aiServiceProvider.overrideWithValue(TestMockAiService()),
+              canvasRepositoryProvider.overrideWithValue(mockRepo),
+            ],
+          );
+          addTearDown(testContainer.dispose);
+
+          final notifier = testContainer.read(canvasStateProvider.notifier);
+          await notifier.renameCanvas('New Canvas Name');
+
+          expect(
+            testContainer.read(canvasStateProvider).title,
+            equals('New Canvas Name'),
+          );
+          expect(mockRepo.saveCallCount, equals(1));
+        },
+      );
+
+      test(
+        'renameCanvasById renames active canvas when creationId matches',
+        () async {
+          final mockRepo = _TestMockCanvasRepository();
+          final testContainer = ProviderContainer(
+            overrides: [
+              aiServiceProvider.overrideWithValue(TestMockAiService()),
+              canvasRepositoryProvider.overrideWithValue(mockRepo),
+            ],
+          );
+          addTearDown(testContainer.dispose);
+
+          final notifier = testContainer.read(canvasStateProvider.notifier);
+          await notifier.saveToDb();
+          final activeId = testContainer.read(canvasStateProvider).creationId!;
+
+          await notifier.renameCanvasById(activeId, 'Active Renamed');
+
+          expect(
+            testContainer.read(canvasStateProvider).title,
+            equals('Active Renamed'),
+          );
+        },
+      );
+
+      test(
+        'renameCanvasById delegates to repository when creationId does not match active canvas',
+        () async {
+          final mockRepo = _TestMockCanvasRepository();
+          final testContainer = ProviderContainer(
+            overrides: [
+              aiServiceProvider.overrideWithValue(TestMockAiService()),
+              canvasRepositoryProvider.overrideWithValue(mockRepo),
+            ],
+          );
+          addTearDown(testContainer.dispose);
+
+          final notifier = testContainer.read(canvasStateProvider.notifier);
+          await notifier.renameCanvasById(42, 'Non-Active Canvas');
+
+          expect(mockRepo.renamedCanvases[42], equals('Non-Active Canvas'));
+          expect(
+            testContainer.read(canvasStateProvider).title,
+            isNot(equals('Non-Active Canvas')),
+          );
+        },
+      );
     });
   });
 }
@@ -933,6 +1004,7 @@ void main() {
 class _TestMockCanvasRepository extends CanvasRepository {
   final List<CanvasModel> savedStates = [];
   final List<Completer<void>> saveCompleters = [];
+  final Map<int, String> renamedCanvases = {};
   int saveCallCount = 0;
   int nextCreationId = 100;
 
@@ -945,5 +1017,10 @@ class _TestMockCanvasRepository extends CanvasRepository {
     }
     savedStates.add(state);
     return state.copyWith(creationId: state.creationId ?? nextCreationId++);
+  }
+
+  @override
+  Future<void> renameCanvasById(int id, String newTitle) async {
+    renamedCanvases[id] = newTitle;
   }
 }

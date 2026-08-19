@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
+import '../logic/repositories/canvas_repository.dart';
 import '../logic/utils/database.dart';
 import '../logic/utils/database_helpers.dart';
 import '../logic/wizard_state.dart';
-import 'package:drift/drift.dart' as drift;
 
 class CreationsDrawer extends ConsumerStatefulWidget {
   final VoidCallback? onCreationSelected;
@@ -27,7 +27,7 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
 
   void _refreshList() {
     setState(() {
-      _creationsFuture = AppDatabaseHelper.db.getAllCreations();
+      _creationsFuture = ref.read(canvasRepositoryProvider).getAllCreations();
     });
   }
 
@@ -219,34 +219,7 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
       builder: (context) => _RenameDialog(
         initialTitle: creation.title,
         onConfirm: (newTitle) async {
-          if (creation.id == ref.read(canvasStateProvider).creationId) {
-            await notifier.renameCanvas(newTitle);
-          } else {
-            final db = AppDatabaseHelper.db;
-            final creationData = await db.getCreationById(creation.id);
-            if (creationData != null) {
-              await db.updateCreation(
-                CreationsCompanion(
-                  id: drift.Value(creation.id),
-                  title: drift.Value(newTitle),
-                  gridSize: drift.Value(creationData.gridSize),
-                  gridData: drift.Value(creationData.gridData),
-                  paletteName: drift.Value(creationData.paletteName),
-                  paletteColors: drift.Value(creationData.paletteColors),
-                  decomposedComponents: drift.Value(
-                    creationData.decomposedComponents,
-                  ),
-                  aiHistoryLogs: drift.Value(creationData.aiHistoryLogs),
-                  referenceImage: drift.Value(creationData.referenceImage),
-                  originalReferenceImage: drift.Value(
-                    creationData.originalReferenceImage,
-                  ),
-                  createdAt: drift.Value(creationData.createdAt),
-                  updatedAt: drift.Value(DateTime.now()),
-                ),
-              );
-            }
-          }
+          await notifier.renameCanvasById(creation.id, newTitle);
           _refreshList();
         },
       ),
