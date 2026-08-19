@@ -248,6 +248,15 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     await saveToDb();
   }
 
+  Future<void> renameCanvasById(int id, String newTitle) async {
+    if (!mounted) return;
+    if (state.creationId == id) {
+      await renameCanvas(newTitle);
+    } else {
+      await _repository.renameCanvasById(id, newTitle);
+    }
+  }
+
   Future<void> deleteCanvas(int id) async {
     if (!mounted) return;
     final nextId = await _repository.deleteCanvas(id);
@@ -1151,7 +1160,12 @@ final canvasStateProvider = StateNotifierProvider<CanvasNotifier, CanvasModel>((
 ) {
   final aiService = ref.read(loggingAiServiceProvider);
   final wizardNotifier = ref.read(wizardStateProvider.notifier);
-  final notifier = CanvasNotifier(aiService, wizardNotifier: wizardNotifier);
+  final repository = ref.read(canvasRepositoryProvider);
+  final notifier = CanvasNotifier(
+    aiService,
+    wizardNotifier: wizardNotifier,
+    repository: repository,
+  );
   ref.listen<AiService>(loggingAiServiceProvider, (_, newService) {
     notifier.updateAiService(newService);
   });

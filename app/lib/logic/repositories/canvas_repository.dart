@@ -1,7 +1,12 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 import '../models/canvas_model.dart';
 import '../utils/database.dart';
 import '../utils/database_helpers.dart';
+
+final canvasRepositoryProvider = Provider<CanvasRepository>((ref) {
+  return CanvasRepository();
+});
 
 /// Repository handling database operations and persistence for [CanvasModel].
 class CanvasRepository {
@@ -185,5 +190,36 @@ class CanvasRepository {
       return creationsList.first.id;
     }
     return null;
+  }
+
+  /// Returns a list of all saved creations.
+  Future<List<Creation>> getAllCreations() async {
+    return await _db.getAllCreations();
+  }
+
+  /// Renames a creation by ID without modifying other fields.
+  Future<void> renameCanvasById(int id, String newTitle) async {
+    final creationData = await _db.getCreationById(id);
+    if (creationData != null) {
+      final now = DateTime.now();
+      await _db.updateCreation(
+        CreationsCompanion(
+          id: drift.Value(id),
+          title: drift.Value(newTitle),
+          gridSize: drift.Value(creationData.gridSize),
+          gridData: drift.Value(creationData.gridData),
+          paletteName: drift.Value(creationData.paletteName),
+          paletteColors: drift.Value(creationData.paletteColors),
+          decomposedComponents: drift.Value(creationData.decomposedComponents),
+          aiHistoryLogs: drift.Value(creationData.aiHistoryLogs),
+          referenceImage: drift.Value(creationData.referenceImage),
+          originalReferenceImage: drift.Value(
+            creationData.originalReferenceImage,
+          ),
+          createdAt: drift.Value(creationData.createdAt),
+          updatedAt: drift.Value(now),
+        ),
+      );
+    }
   }
 }

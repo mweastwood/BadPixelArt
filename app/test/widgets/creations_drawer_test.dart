@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/widgets/creations_drawer.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/repositories/canvas_repository.dart';
 import 'package:bad_pixel_art/logic/utils/logging_ai_service.dart';
 import '../test_helper.dart';
 
@@ -277,6 +278,55 @@ void main() {
           ),
         );
         expect(customPaint.painter, isNotNull);
+      },
+    );
+
+    testWidgets(
+      'CreationsDrawer fetches list and renames via canvasRepositoryProvider override',
+      (tester) async {
+        final mockRepoDb = AppDatabase(NativeDatabase.memory());
+        addTearDown(mockRepoDb.close);
+        final mockRepo = CanvasRepository(dbGetter: () => mockRepoDb);
+
+        final now = DateTime.now();
+        await mockRepoDb.createCreation(
+          CreationsCompanion(
+            title: const Value('Repo Title'),
+            gridSize: const Value(16),
+            gridData: const Value('[[0, 0], [0, 0]]'),
+            paletteName: const Value('primary'),
+            paletteColors: const Value('["#00000000", "#ffffffff"]'),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            overrides: [canvasRepositoryProvider.overrideWithValue(mockRepo)],
+            child: const Scaffold(body: CreationsDrawer()),
+          ),
+        );
+
+        await tester.pump();
+        expect(find.text('Repo Title'), findsOneWidget);
+
+        // Open popup menu & Rename
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Rename'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField).last, 'Renamed Via Repo');
+        await tester.tap(
+          find.byKey(const ValueKey('rename_dialog_confirm_button')),
+        );
+        await tester.pumpAndSettle();
+
+        final creations = await mockRepoDb.getAllCreations();
+        expect(creations.first.title, equals('Renamed Via Repo'));
       },
     );
 
