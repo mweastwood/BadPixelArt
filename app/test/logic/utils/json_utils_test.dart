@@ -72,4 +72,33 @@ Let me know if you need anything else!
       );
     });
   });
+
+  group('json_utils - parseCoordinateValue tests', () {
+    test('parses int and num values', () {
+      expect(parseCoordinateValue(0), equals(0));
+      expect(parseCoordinateValue(12), equals(12));
+      expect(parseCoordinateValue(-5), equals(-5));
+      expect(parseCoordinateValue(8.0), equals(8));
+      expect(parseCoordinateValue(4.7), equals(4));
+    });
+
+    test('parses integer strings correctly', () {
+      expect(parseCoordinateValue('0'), equals(0));
+      expect(parseCoordinateValue('12'), equals(12));
+      expect(parseCoordinateValue('-5'), equals(-5));
+    });
+
+    test(
+      'returns null for null, non-numeric strings, or incompatible types',
+      () {
+        expect(parseCoordinateValue(null), isNull);
+        expect(parseCoordinateValue('abc'), isNull);
+        expect(parseCoordinateValue(''), isNull);
+        expect(parseCoordinateValue('12.5'), isNull);
+        expect(parseCoordinateValue(true), isNull);
+        expect(parseCoordinateValue([1, 2]), isNull);
+        expect(parseCoordinateValue({'x': 1}), isNull);
+      },
+    );
+  });
 }

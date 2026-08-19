@@ -89,10 +89,12 @@ class RefinementOrchestrator {
       if (agentJson != null) {
         final String thought = agentJson['thought'] as String? ?? '';
         final String tool = agentJson['tool'] as String? ?? '';
-        final List<int> params = List<int>.from(
-          (agentJson['params'] as List? ?? []).map((v) => (v as num).toInt()),
-        );
-        final int colorIndex = (agentJson['colorIndex'] as num?)?.toInt() ?? 1;
+        final List<int> params = (agentJson['params'] as List? ?? [])
+            .map(parseCoordinateValue)
+            .whereType<int>()
+            .toList();
+        final int colorIndex =
+            parseCoordinateValue(agentJson['colorIndex']) ?? 1;
 
         final command = DrawingCommandFactory.create(tool, params);
         if (command != null) {

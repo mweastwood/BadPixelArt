@@ -68,6 +68,38 @@ void main() {
     );
 
     test(
+      'refine handles params and colorIndex decoded as strings or with nulls without type error',
+      () async {
+        final aiService = TestMockAiService(
+          responses: [
+            '{"thought": "add green dot", "tool": "pixel", "params": ["4", "5", null, "invalid"], "colorIndex": "3"}',
+          ],
+          tokenCount: 10,
+        );
+        final orchestrator = RefinementOrchestrator(aiService);
+
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        final palette = [Colors.red, Colors.green, Colors.blue];
+        final history = <AgentHistoryEntry>[];
+
+        final result = await orchestrator.refine(
+          initialGrid: grid,
+          gridSize: 8,
+          palette: palette,
+          userPrompt: 'add green detail',
+          autoRunSpeed: 0.01,
+          onStep: (updated) {},
+          onLogHistory: (entry) => history.add(entry),
+        );
+
+        // Pixel at (x=4, y=5) drawn with colorIndex 3
+        expect(result[5][4], equals(3));
+        expect(history, hasLength(1));
+        expect(history.first.response, contains('add green dot'));
+      },
+    );
+
+    test(
       'refine logs error AgentHistoryEntry with isError: true and propagates exception on AI error',
       () async {
         final aiService = TestMockAiService(
