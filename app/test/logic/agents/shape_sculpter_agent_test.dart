@@ -210,5 +210,58 @@ void main() {
         expect(resultGrid, equals(initialGrid));
       },
     );
+
+    test(
+      'sculptComponent handles string coordinates, string params, and nulls gracefully without TypeError',
+      () async {
+        const jsonResponse = '''
+      {
+        "thought": "draw circle and sculpt",
+        "tool": "circle_filled",
+        "params": ["8", "8", "3"],
+        "add": [
+          {"x": "8", "y": "9"},
+          ["8", "10"],
+          {"x": null, "y": "8"},
+          [null, 4],
+          ["invalid", "coord"]
+        ],
+        "remove": [
+          ["8", "8"],
+          {"x": "9", "y": "9"},
+          [null, null]
+        ]
+      }
+      ''';
+
+        final mockAi = TestMockAiService(response: jsonResponse);
+        final agent = ShapeSculpterAgent();
+
+        final comp = PixelArtComponent(
+          name: 'gem',
+          description: 'glowing gem',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+        );
+
+        final context = AgentContext(
+          gridSize: 16,
+          activePalette: const [Colors.black, Colors.white],
+          userPrompt: 'gem',
+          targetComponent: comp,
+          currentGrid: List.generate(16, (_) => List.filled(16, 0)),
+        );
+
+        final resultGrid = await agent.sculptComponent(mockAi, context);
+        // Circle filled at (8, 8, radius 3)
+        // (8, 8) removed
+        expect(resultGrid[8][8], equals(0));
+        // (9, 9) removed
+        expect(resultGrid[9][9], equals(0));
+        // (8, 9) added / inside
+        expect(resultGrid[9][8], equals(1));
+        // (8, 10) added
+        expect(resultGrid[10][8], equals(1));
+      },
+    );
   });
 }

@@ -81,3 +81,14 @@ String repairTruncatedJson(String jsonStr) {
 
   return buffer.toString().trim();
 }
+
+/// Safely parses coordinate and integer values from JSON, supporting both [num] and [String].
+/// Returns `null` if the value is null, non-numeric, or unparseable.
+int? parseCoordinateValue(dynamic value) {
+  if (value is num) {
+    return value.toInt();
+  } else if (value is String) {
+    return int.tryParse(value);
+  }
+  return null;
+}

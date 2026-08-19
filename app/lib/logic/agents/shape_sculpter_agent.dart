@@ -253,9 +253,10 @@ class ShapeSculpterAgent implements PixelArtAgent {
       final parsed = jsonDecode(cleaned);
       if (parsed is Map<String, dynamic>) {
         final tool = parsed['tool'] as String? ?? '';
-        final params = List<int>.from(
-          (parsed['params'] as List? ?? []).map((v) => (v as num).toInt()),
-        );
+        final params = (parsed['params'] as List? ?? [])
+            .map(parseCoordinateValue)
+            .whereType<int>()
+            .toList();
         final removeList = (parsed['remove'] ?? parsed['erase']) as List? ?? [];
         final addList = parsed['add'] as List? ?? [];
 
@@ -287,12 +288,12 @@ class ShapeSculpterAgent implements PixelArtAgent {
         // 2. Execute additions
         for (final item in addList) {
           int? x, y;
-          if (item is Map<String, dynamic>) {
-            x = (item['x'] as num?)?.toInt();
-            y = (item['y'] as num?)?.toInt();
+          if (item is Map) {
+            x = parseCoordinateValue(item['x']);
+            y = parseCoordinateValue(item['y']);
           } else if (item is List && item.length >= 2) {
-            x = (item[0] as num?)?.toInt();
-            y = (item[1] as num?)?.toInt();
+            x = parseCoordinateValue(item[0]);
+            y = parseCoordinateValue(item[1]);
           }
           if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
             boundedCanvas.setPixel(x, y, 1);
@@ -302,12 +303,12 @@ class ShapeSculpterAgent implements PixelArtAgent {
         // 3. Execute removals
         for (final item in removeList) {
           int? x, y;
-          if (item is Map<String, dynamic>) {
-            x = (item['x'] as num?)?.toInt();
-            y = (item['y'] as num?)?.toInt();
+          if (item is Map) {
+            x = parseCoordinateValue(item['x']);
+            y = parseCoordinateValue(item['y']);
           } else if (item is List && item.length >= 2) {
-            x = (item[0] as num?)?.toInt();
-            y = (item[1] as num?)?.toInt();
+            x = parseCoordinateValue(item[0]);
+            y = parseCoordinateValue(item[1]);
           }
           if (x != null && y != null && boundedCanvas.isWithinBounds(x, y)) {
             boundedCanvas.setPixel(x, y, 0);
