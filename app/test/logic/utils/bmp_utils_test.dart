@@ -171,16 +171,65 @@ void main() {
       expect(parsedGrid[0][1].toARGB32(), equals(Colors.blue.toARGB32()));
     });
 
-    test('applyGaussianBlur blurs grid colors', () {
-      final grid = List.generate(3, (_) => List.filled(3, Colors.black));
-      grid[1][1] = Colors.white; // Single white pixel in center
+    test(
+      'ColorRgbInt extracts channels using bitwise operations accurately',
+      () {
+        const color = Color(0xAABBCCDD);
+        expect(color.aInt, equals(0xAA));
+        expect(color.rInt, equals(0xBB));
+        expect(color.gInt, equals(0xCC));
+        expect(color.bInt, equals(0xDD));
+      },
+    );
 
+    test('applyGaussianBlur handles empty grid', () {
+      expect(applyGaussianBlur([]), isEmpty);
+      expect(applyGaussianBlur([[]]), isEmpty);
+    });
+
+    test('applyGaussianBlur handles 1x1 grid', () {
+      final grid = [
+        [const Color(0xFF112233)],
+      ];
       final blurred = applyGaussianBlur(grid);
-      expect(blurred[1][1].toARGB32(), isNot(Colors.white.toARGB32()));
+      expect(blurred.length, equals(1));
+      expect(blurred[0].length, equals(1));
       expect(
         blurred[0][0].toARGB32(),
-        isNot(Colors.black.toARGB32()),
-      ); // corner got some blur weight
+        equals(const Color(0xFF112233).toARGB32()),
+      );
+    });
+
+    test('applyGaussianBlur preserves uniform color grid', () {
+      const color = Color(0xFF4080C0);
+      final grid = List.generate(4, (_) => List.filled(4, color));
+      final blurred = applyGaussianBlur(grid);
+      for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+          expect(blurred[y][x].toARGB32(), equals(color.toARGB32()));
+        }
+      }
+    });
+
+    test('applyGaussianBlur blurs grid colors with exact kernel weights', () {
+      final grid = List.generate(3, (_) => List.filled(3, Colors.black));
+      grid[1][1] = const Color(0xFFFFFFFF); // Single white pixel in center
+
+      final blurred = applyGaussianBlur(grid);
+      // Kernel weights: center = 4/16 (63), ortho edges = 2/16 (31), diagonal corners = 1/16 (15)
+      expect(blurred[1][1].rInt, equals(63));
+      expect(blurred[1][1].gInt, equals(63));
+      expect(blurred[1][1].bInt, equals(63));
+
+      expect(blurred[0][1].rInt, equals(31)); // top center
+      expect(blurred[2][1].rInt, equals(31)); // bottom center
+      expect(blurred[1][0].rInt, equals(31)); // left center
+      expect(blurred[1][2].rInt, equals(31)); // right center
+
+      expect(blurred[0][0].rInt, equals(15)); // top left
+      expect(blurred[0][2].rInt, equals(15)); // top right
+      expect(blurred[2][0].rInt, equals(15)); // bottom left
+      expect(blurred[2][2].rInt, equals(15)); // bottom right
     });
 
     test('applyColorQuantization maps colors to closest palette color', () {

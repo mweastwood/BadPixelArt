@@ -4,9 +4,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 extension ColorRgbInt on Color {
-  int get rInt => (r * 255.0).round().clamp(0, 255);
-  int get gInt => (g * 255.0).round().clamp(0, 255);
-  int get bInt => (b * 255.0).round().clamp(0, 255);
+  int get rInt => (toARGB32() >> 16) & 0xFF;
+  int get gInt => (toARGB32() >> 8) & 0xFF;
+  int get bInt => toARGB32() & 0xFF;
+  int get aInt => (toARGB32() >> 24) & 0xFF;
 }
 
 Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
@@ -382,39 +383,82 @@ List<List<Color>> applyGaussianBlur(List<List<Color>> src) {
   final int height = src.length;
   final int width = src.isNotEmpty ? src[0].length : 0;
   if (height == 0 || width == 0) return [];
-  final List<List<Color>> dest = List.generate(
-    height,
-    (_) => List.filled(width, const Color(0xFF000000)),
-  );
-  final List<int> kernel = [1, 2, 1, 2, 4, 2, 1, 2, 1];
-  const int kernelWeight = 16;
 
+  // Pre-extract ARGB integer values for fast bitwise channel extraction.
+  final Uint32List srcArgb = Uint32List(height * width);
   for (int y = 0; y < height; y++) {
+    final row = src[y];
+    final int rowOffset = y * width;
     for (int x = 0; x < width; x++) {
-      int sumR = 0;
-      int sumG = 0;
-      int sumB = 0;
-
-      for (int ky = -1; ky <= 1; ky++) {
-        for (int kx = -1; kx <= 1; kx++) {
-          final px = (x + kx).clamp(0, width - 1);
-          final py = (y + ky).clamp(0, height - 1);
-          final color = src[py][px];
-          final weight = kernel[(ky + 1) * 3 + (kx + 1)];
-          sumR += color.rInt * weight;
-          sumG += color.gInt * weight;
-          sumB += color.bInt * weight;
-        }
-      }
-
-      dest[y][x] = Color.fromARGB(
-        255,
-        (sumR ~/ kernelWeight).clamp(0, 255),
-        (sumG ~/ kernelWeight).clamp(0, 255),
-        (sumB ~/ kernelWeight).clamp(0, 255),
-      );
+      srcArgb[rowOffset + x] = row[x].toARGB32();
     }
   }
+
+  // 1D Horizontal Convolution Pass with kernel [1, 2, 1]
+  final Int32List tempR = Int32List(height * width);
+  final Int32List tempG = Int32List(height * width);
+  final Int32List tempB = Int32List(height * width);
+
+  for (int y = 0; y < height; y++) {
+    final int rowOffset = y * width;
+    for (int x = 0; x < width; x++) {
+      final int xLeft = x > 0 ? x - 1 : 0;
+      final int xRight = x < width - 1 ? x + 1 : width - 1;
+
+      final int cLeft = srcArgb[rowOffset + xLeft];
+      final int cMid = srcArgb[rowOffset + x];
+      final int cRight = srcArgb[rowOffset + xRight];
+
+      final int rL = (cLeft >> 16) & 0xFF;
+      final int gL = (cLeft >> 8) & 0xFF;
+      final int bL = cLeft & 0xFF;
+
+      final int rM = (cMid >> 16) & 0xFF;
+      final int gM = (cMid >> 8) & 0xFF;
+      final int bM = cMid & 0xFF;
+
+      final int rR = (cRight >> 16) & 0xFF;
+      final int gR = (cRight >> 8) & 0xFF;
+      final int bR = cRight & 0xFF;
+
+      final int idx = rowOffset + x;
+      tempR[idx] = rL + (rM << 1) + rR;
+      tempG[idx] = gL + (gM << 1) + gR;
+      tempB[idx] = bL + (bM << 1) + bR;
+    }
+  }
+
+  // 1D Vertical Convolution Pass with kernel [1, 2, 1] and normalizer (divide by 16)
+  final List<List<Color>> dest = List.generate(height, (y) {
+    final int yTop = y > 0 ? y - 1 : 0;
+    final int yBottom = y < height - 1 ? y + 1 : height - 1;
+    final int topOffset = yTop * width;
+    final int midOffset = y * width;
+    final int bottomOffset = yBottom * width;
+
+    return List.generate(width, (x) {
+      final int sumR =
+          tempR[topOffset + x] +
+          (tempR[midOffset + x] << 1) +
+          tempR[bottomOffset + x];
+      final int sumG =
+          tempG[topOffset + x] +
+          (tempG[midOffset + x] << 1) +
+          tempG[bottomOffset + x];
+      final int sumB =
+          tempB[topOffset + x] +
+          (tempB[midOffset + x] << 1) +
+          tempB[bottomOffset + x];
+
+      return Color.fromARGB(
+        255,
+        (sumR >> 4).clamp(0, 255),
+        (sumG >> 4).clamp(0, 255),
+        (sumB >> 4).clamp(0, 255),
+      );
+    });
+  });
+
   return dest;
 }
 
