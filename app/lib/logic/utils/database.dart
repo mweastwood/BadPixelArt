@@ -39,7 +39,19 @@ class WorkspaceSessions extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [Creations, WorkspaceSessions])
+class ReferenceImages extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title =>
+      text().withDefault(const Constant('Untitled Reference'))();
+  BlobColumn get imageData => blob()();
+  BlobColumn get bmpData => blob().nullable()();
+  TextColumn get prompt => text().nullable()();
+  TextColumn get source => text().withDefault(const Constant('upload'))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+}
+
+@DriftDatabase(tables: [Creations, WorkspaceSessions, ReferenceImages])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
@@ -70,6 +82,43 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteCreation(int id) {
     return (delete(creations)..where((t) => t.id.equals(id))).go();
+  }
+
+  // ReferenceImages query methods
+  Future<List<ReferenceImage>> getAllReferenceImages() {
+    return (select(referenceImages)..orderBy([
+          (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
+        ]))
+        .get();
+  }
+
+  Stream<List<ReferenceImage>> watchAllReferenceImages() {
+    return (select(referenceImages)..orderBy([
+          (t) => OrderingTerm(expression: t.updatedAt, mode: OrderingMode.desc),
+          (t) => OrderingTerm(expression: t.id, mode: OrderingMode.desc),
+        ]))
+        .watch();
+  }
+
+  Future<ReferenceImage?> getReferenceImageById(int id) {
+    return (select(
+      referenceImages,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<int> createReferenceImage(ReferenceImagesCompanion companion) {
+    return into(referenceImages).insert(companion);
+  }
+
+  Future<void> updateReferenceImage(ReferenceImagesCompanion companion) {
+    return (update(
+      referenceImages,
+    )..where((t) => t.id.equals(companion.id.value))).write(companion);
+  }
+
+  Future<void> deleteReferenceImage(int id) {
+    return (delete(referenceImages)..where((t) => t.id.equals(id))).go();
   }
 
   // Sessions query methods

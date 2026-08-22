@@ -15,7 +15,9 @@ import 'canvas_screen.dart';
 import 'logs_screen.dart';
 
 import '../logic/app_route_manager.dart';
+import '../logic/services/share_receiver_service.dart';
 import '../logic/utils/app_version.dart';
+import 'reference_library_screen.dart';
 
 class PixelArtScreen extends ConsumerStatefulWidget {
   final Uri? mockUri;
@@ -71,6 +73,34 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _routeManager.handleUrlParameters(tabController: _tabController);
+        ref
+            .read(shareReceiverServiceProvider)
+            .initialize(
+              onImported: (importedImage) {
+                if (mounted) {
+                  _tabController.animateTo(1);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Imported "${importedImage.title}" from Gemini & set as reference',
+                      ),
+                      action: SnackBarAction(
+                        label: 'View Library',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ReferenceLibraryScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
+              },
+            );
       }
     });
   }
@@ -354,6 +384,20 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
             onTap: () {
               Navigator.pop(context);
               _tabController.animateTo(2);
+            },
+          ),
+          ListTile(
+            key: const ValueKey('drawer_reference_library_tile'),
+            leading: const Icon(Icons.photo_library_outlined),
+            title: const Text('Reference Library'),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ReferenceLibraryScreen(),
+                ),
+              );
             },
           ),
           const Divider(),

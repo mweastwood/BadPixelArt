@@ -1178,12 +1178,509 @@ class WorkspaceSessionsCompanion extends UpdateCompanion<WorkspaceSession> {
   }
 }
 
+class $ReferenceImagesTable extends ReferenceImages
+    with TableInfo<$ReferenceImagesTable, ReferenceImage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReferenceImagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Untitled Reference'),
+  );
+  static const VerificationMeta _imageDataMeta = const VerificationMeta(
+    'imageData',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> imageData = GeneratedColumn<Uint8List>(
+    'image_data',
+    aliasedName,
+    false,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bmpDataMeta = const VerificationMeta(
+    'bmpData',
+  );
+  @override
+  late final GeneratedColumn<Uint8List> bmpData = GeneratedColumn<Uint8List>(
+    'bmp_data',
+    aliasedName,
+    true,
+    type: DriftSqlType.blob,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _promptMeta = const VerificationMeta('prompt');
+  @override
+  late final GeneratedColumn<String> prompt = GeneratedColumn<String>(
+    'prompt',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('upload'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    imageData,
+    bmpData,
+    prompt,
+    source,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reference_images';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReferenceImage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    }
+    if (data.containsKey('image_data')) {
+      context.handle(
+        _imageDataMeta,
+        imageData.isAcceptableOrUnknown(data['image_data']!, _imageDataMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_imageDataMeta);
+    }
+    if (data.containsKey('bmp_data')) {
+      context.handle(
+        _bmpDataMeta,
+        bmpData.isAcceptableOrUnknown(data['bmp_data']!, _bmpDataMeta),
+      );
+    }
+    if (data.containsKey('prompt')) {
+      context.handle(
+        _promptMeta,
+        prompt.isAcceptableOrUnknown(data['prompt']!, _promptMeta),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReferenceImage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReferenceImage(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      imageData: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}image_data'],
+      )!,
+      bmpData: attachedDatabase.typeMapping.read(
+        DriftSqlType.blob,
+        data['${effectivePrefix}bmp_data'],
+      ),
+      prompt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt'],
+      ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReferenceImagesTable createAlias(String alias) {
+    return $ReferenceImagesTable(attachedDatabase, alias);
+  }
+}
+
+class ReferenceImage extends DataClass implements Insertable<ReferenceImage> {
+  final int id;
+  final String title;
+  final Uint8List imageData;
+  final Uint8List? bmpData;
+  final String? prompt;
+  final String source;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ReferenceImage({
+    required this.id,
+    required this.title,
+    required this.imageData,
+    this.bmpData,
+    this.prompt,
+    required this.source,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    map['image_data'] = Variable<Uint8List>(imageData);
+    if (!nullToAbsent || bmpData != null) {
+      map['bmp_data'] = Variable<Uint8List>(bmpData);
+    }
+    if (!nullToAbsent || prompt != null) {
+      map['prompt'] = Variable<String>(prompt);
+    }
+    map['source'] = Variable<String>(source);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ReferenceImagesCompanion toCompanion(bool nullToAbsent) {
+    return ReferenceImagesCompanion(
+      id: Value(id),
+      title: Value(title),
+      imageData: Value(imageData),
+      bmpData: bmpData == null && nullToAbsent
+          ? const Value.absent()
+          : Value(bmpData),
+      prompt: prompt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(prompt),
+      source: Value(source),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ReferenceImage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReferenceImage(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      imageData: serializer.fromJson<Uint8List>(json['imageData']),
+      bmpData: serializer.fromJson<Uint8List?>(json['bmpData']),
+      prompt: serializer.fromJson<String?>(json['prompt']),
+      source: serializer.fromJson<String>(json['source']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'imageData': serializer.toJson<Uint8List>(imageData),
+      'bmpData': serializer.toJson<Uint8List?>(bmpData),
+      'prompt': serializer.toJson<String?>(prompt),
+      'source': serializer.toJson<String>(source),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ReferenceImage copyWith({
+    int? id,
+    String? title,
+    Uint8List? imageData,
+    Value<Uint8List?> bmpData = const Value.absent(),
+    Value<String?> prompt = const Value.absent(),
+    String? source,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ReferenceImage(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    imageData: imageData ?? this.imageData,
+    bmpData: bmpData.present ? bmpData.value : this.bmpData,
+    prompt: prompt.present ? prompt.value : this.prompt,
+    source: source ?? this.source,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ReferenceImage copyWithCompanion(ReferenceImagesCompanion data) {
+    return ReferenceImage(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      imageData: data.imageData.present ? data.imageData.value : this.imageData,
+      bmpData: data.bmpData.present ? data.bmpData.value : this.bmpData,
+      prompt: data.prompt.present ? data.prompt.value : this.prompt,
+      source: data.source.present ? data.source.value : this.source,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReferenceImage(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('imageData: $imageData, ')
+          ..write('bmpData: $bmpData, ')
+          ..write('prompt: $prompt, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    $driftBlobEquality.hash(imageData),
+    $driftBlobEquality.hash(bmpData),
+    prompt,
+    source,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReferenceImage &&
+          other.id == this.id &&
+          other.title == this.title &&
+          $driftBlobEquality.equals(other.imageData, this.imageData) &&
+          $driftBlobEquality.equals(other.bmpData, this.bmpData) &&
+          other.prompt == this.prompt &&
+          other.source == this.source &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ReferenceImagesCompanion extends UpdateCompanion<ReferenceImage> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<Uint8List> imageData;
+  final Value<Uint8List?> bmpData;
+  final Value<String?> prompt;
+  final Value<String> source;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const ReferenceImagesCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.imageData = const Value.absent(),
+    this.bmpData = const Value.absent(),
+    this.prompt = const Value.absent(),
+    this.source = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  ReferenceImagesCompanion.insert({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    required Uint8List imageData,
+    this.bmpData = const Value.absent(),
+    this.prompt = const Value.absent(),
+    this.source = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : imageData = Value(imageData),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ReferenceImage> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<Uint8List>? imageData,
+    Expression<Uint8List>? bmpData,
+    Expression<String>? prompt,
+    Expression<String>? source,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (imageData != null) 'image_data': imageData,
+      if (bmpData != null) 'bmp_data': bmpData,
+      if (prompt != null) 'prompt': prompt,
+      if (source != null) 'source': source,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  ReferenceImagesCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<Uint8List>? imageData,
+    Value<Uint8List?>? bmpData,
+    Value<String?>? prompt,
+    Value<String>? source,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return ReferenceImagesCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      imageData: imageData ?? this.imageData,
+      bmpData: bmpData ?? this.bmpData,
+      prompt: prompt ?? this.prompt,
+      source: source ?? this.source,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (imageData.present) {
+      map['image_data'] = Variable<Uint8List>(imageData.value);
+    }
+    if (bmpData.present) {
+      map['bmp_data'] = Variable<Uint8List>(bmpData.value);
+    }
+    if (prompt.present) {
+      map['prompt'] = Variable<String>(prompt.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReferenceImagesCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('imageData: $imageData, ')
+          ..write('bmpData: $bmpData, ')
+          ..write('prompt: $prompt, ')
+          ..write('source: $source, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $CreationsTable creations = $CreationsTable(this);
   late final $WorkspaceSessionsTable workspaceSessions =
       $WorkspaceSessionsTable(this);
+  late final $ReferenceImagesTable referenceImages = $ReferenceImagesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1191,6 +1688,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     creations,
     workspaceSessions,
+    referenceImages,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2007,6 +2505,263 @@ typedef $$WorkspaceSessionsTableProcessedTableManager =
       WorkspaceSession,
       PrefetchHooks Function({bool activeCreationId})
     >;
+typedef $$ReferenceImagesTableCreateCompanionBuilder =
+    ReferenceImagesCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      required Uint8List imageData,
+      Value<Uint8List?> bmpData,
+      Value<String?> prompt,
+      Value<String> source,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$ReferenceImagesTableUpdateCompanionBuilder =
+    ReferenceImagesCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<Uint8List> imageData,
+      Value<Uint8List?> bmpData,
+      Value<String?> prompt,
+      Value<String> source,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$ReferenceImagesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReferenceImagesTable> {
+  $$ReferenceImagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get imageData => $composableBuilder(
+    column: $table.imageData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<Uint8List> get bmpData => $composableBuilder(
+    column: $table.bmpData,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prompt => $composableBuilder(
+    column: $table.prompt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReferenceImagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReferenceImagesTable> {
+  $$ReferenceImagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get imageData => $composableBuilder(
+    column: $table.imageData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<Uint8List> get bmpData => $composableBuilder(
+    column: $table.bmpData,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prompt => $composableBuilder(
+    column: $table.prompt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReferenceImagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReferenceImagesTable> {
+  $$ReferenceImagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get imageData =>
+      $composableBuilder(column: $table.imageData, builder: (column) => column);
+
+  GeneratedColumn<Uint8List> get bmpData =>
+      $composableBuilder(column: $table.bmpData, builder: (column) => column);
+
+  GeneratedColumn<String> get prompt =>
+      $composableBuilder(column: $table.prompt, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ReferenceImagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReferenceImagesTable,
+          ReferenceImage,
+          $$ReferenceImagesTableFilterComposer,
+          $$ReferenceImagesTableOrderingComposer,
+          $$ReferenceImagesTableAnnotationComposer,
+          $$ReferenceImagesTableCreateCompanionBuilder,
+          $$ReferenceImagesTableUpdateCompanionBuilder,
+          (
+            ReferenceImage,
+            BaseReferences<
+              _$AppDatabase,
+              $ReferenceImagesTable,
+              ReferenceImage
+            >,
+          ),
+          ReferenceImage,
+          PrefetchHooks Function()
+        > {
+  $$ReferenceImagesTableTableManager(
+    _$AppDatabase db,
+    $ReferenceImagesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReferenceImagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReferenceImagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReferenceImagesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<Uint8List> imageData = const Value.absent(),
+                Value<Uint8List?> bmpData = const Value.absent(),
+                Value<String?> prompt = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => ReferenceImagesCompanion(
+                id: id,
+                title: title,
+                imageData: imageData,
+                bmpData: bmpData,
+                prompt: prompt,
+                source: source,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                required Uint8List imageData,
+                Value<Uint8List?> bmpData = const Value.absent(),
+                Value<String?> prompt = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => ReferenceImagesCompanion.insert(
+                id: id,
+                title: title,
+                imageData: imageData,
+                bmpData: bmpData,
+                prompt: prompt,
+                source: source,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReferenceImagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReferenceImagesTable,
+      ReferenceImage,
+      $$ReferenceImagesTableFilterComposer,
+      $$ReferenceImagesTableOrderingComposer,
+      $$ReferenceImagesTableAnnotationComposer,
+      $$ReferenceImagesTableCreateCompanionBuilder,
+      $$ReferenceImagesTableUpdateCompanionBuilder,
+      (
+        ReferenceImage,
+        BaseReferences<_$AppDatabase, $ReferenceImagesTable, ReferenceImage>,
+      ),
+      ReferenceImage,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2015,4 +2770,6 @@ class $AppDatabaseManager {
       $$CreationsTableTableManager(_db, _db.creations);
   $$WorkspaceSessionsTableTableManager get workspaceSessions =>
       $$WorkspaceSessionsTableTableManager(_db, _db.workspaceSessions);
+  $$ReferenceImagesTableTableManager get referenceImages =>
+      $$ReferenceImagesTableTableManager(_db, _db.referenceImages);
 }
