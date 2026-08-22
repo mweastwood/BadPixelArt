@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
-import '../widgets/model_options_dialog.dart';
+import 'model_options_screen.dart';
 import '../widgets/decomposition_options_dialog.dart';
 import '../logic/utils/ai_history_export_utils.dart';
 import '../widgets/custom_palette_confirmation_dialog.dart';
@@ -124,12 +124,6 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
   Widget build(BuildContext context) {
     final history = ref.watch(canvasStateProvider.select((s) => s.aiHistory));
     final aiStatus = ref.watch(canvasStateProvider.select((s) => s.aiStatus));
-    final modelReleaseStage = ref.watch(
-      canvasStateProvider.select((s) => s.modelReleaseStage),
-    );
-    final modelPreference = ref.watch(
-      canvasStateProvider.select((s) => s.modelPreference),
-    );
     final hasPaletteSuggestion = ref.watch(
       canvasStateProvider.select(
         (s) => s.showPaletteSuggestion && s.suggestedPalette != null,
@@ -147,13 +141,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     return Stack(
       children: [
         Scaffold(
-          drawer: _buildDrawer(
-            context,
-            modelReleaseStage,
-            modelPreference,
-            notifier,
-            theme,
-          ),
+          drawer: _buildDrawer(context, theme),
           appBar: AppBar(
             title: Row(
               children: [
@@ -189,14 +177,10 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                 icon: const Icon(Icons.settings),
                 tooltip: 'Model Options',
                 onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => ModelOptionsDialog(
-                      currentReleaseStage: modelReleaseStage,
-                      currentPreference: modelPreference,
-                      onChanged: (stage, preference) {
-                        notifier.setModelConfig(stage, preference);
-                      },
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ModelOptionsScreen(),
                     ),
                   );
                 },
@@ -337,13 +321,7 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     );
   }
 
-  Widget _buildDrawer(
-    BuildContext context,
-    String modelReleaseStage,
-    String modelPreference,
-    CanvasNotifier notifier,
-    ThemeData theme,
-  ) {
+  Widget _buildDrawer(BuildContext context, ThemeData theme) {
     return Drawer(
       key: const ValueKey('app_hamburger_drawer'),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
@@ -407,14 +385,10 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
             title: const Text('Model Options'),
             onTap: () {
               Navigator.pop(context);
-              showDialog(
-                context: context,
-                builder: (context) => ModelOptionsDialog(
-                  currentReleaseStage: modelReleaseStage,
-                  currentPreference: modelPreference,
-                  onChanged: (stage, preference) {
-                    notifier.setModelConfig(stage, preference);
-                  },
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ModelOptionsScreen(),
                 ),
               );
             },

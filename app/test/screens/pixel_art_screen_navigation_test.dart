@@ -4,6 +4,7 @@ import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
 import 'package:bad_pixel_art/screens/creations_screen.dart';
 import 'package:bad_pixel_art/screens/canvas_screen.dart';
 import 'package:bad_pixel_art/screens/logs_screen.dart';
+import 'package:bad_pixel_art/screens/model_options_screen.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 import '../test_helper.dart';
@@ -192,5 +193,54 @@ void main() {
       expect(find.text('Version'), findsOneWidget);
       expect(find.text('v0.0.0-dev'), findsOneWidget);
     });
+
+    testWidgets(
+      'tapping model_options_button in AppBar pushes ModelOptionsScreen',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(child: const PixelArtScreen()),
+        );
+        await tester.pump();
+
+        expect(
+          find.byKey(const ValueKey('model_options_button')),
+          findsOneWidget,
+        );
+        await tester.tap(find.byKey(const ValueKey('model_options_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ModelOptionsScreen), findsOneWidget);
+        expect(find.text('AI Engine'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping drawer_model_options_tile in drawer pushes ModelOptionsScreen',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(child: const PixelArtScreen()),
+        );
+        await tester.pump();
+
+        // Open drawer
+        final drawerButton = find.byTooltip('Open navigation menu');
+        await tester.tap(drawerButton);
+        await tester.pumpAndSettle();
+
+        // Tap drawer model options tile
+        expect(
+          find.byKey(const ValueKey('drawer_model_options_tile')),
+          findsOneWidget,
+        );
+        await tester.tap(
+          find.byKey(const ValueKey('drawer_model_options_tile')),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify ModelOptionsScreen is pushed
+        expect(find.byType(ModelOptionsScreen), findsOneWidget);
+        expect(find.text('AI Engine'), findsOneWidget);
+      },
+    );
   });
 }
