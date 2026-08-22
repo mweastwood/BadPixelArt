@@ -1,7 +1,10 @@
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
+import '../logic/repositories/reference_library_repository.dart';
+import '../screens/reference_library_screen.dart';
 
 class ReferenceImagePrompt extends ConsumerStatefulWidget {
   const ReferenceImagePrompt({super.key});
@@ -38,6 +41,7 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
       canvasStateProvider.select((s) => s.isSuggestingDescription),
     );
     final notifier = ref.read(canvasStateProvider.notifier);
+    final repository = ref.read(referenceLibraryRepositoryProvider);
     final theme = Theme.of(context);
 
     // Keep controller text in sync with provider state if updated externally
@@ -118,16 +122,46 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
+                              key: const ValueKey('library_button_active'),
+                              icon: const Icon(
+                                Icons.photo_library_outlined,
+                                size: 18,
+                              ),
+                              tooltip: 'Choose from library',
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(6),
+                              onPressed: () => _openReferenceLibrary(context),
+                            ),
+                            IconButton(
+                              key: const ValueKey('save_to_library_button'),
+                              icon: const Icon(
+                                Icons.bookmark_add_outlined,
+                                size: 18,
+                              ),
+                              tooltip: 'Save to library',
+                              constraints: const BoxConstraints(),
+                              padding: const EdgeInsets.all(6),
+                              onPressed: () => _saveCurrentToLibrary(
+                                context,
+                                repository,
+                                originalReferenceImage ?? referenceImage,
+                                referenceImage,
+                              ),
+                            ),
+                            IconButton(
+                              key: const ValueKey('change_reference_button'),
                               icon: const Icon(Icons.edit_outlined, size: 18),
-                              tooltip: 'Change reference image',
+                              tooltip: 'Upload new image',
                               constraints: const BoxConstraints(),
                               padding: const EdgeInsets.all(6),
                               onPressed: () => _pickAndUploadReferenceImage(
                                 context,
                                 notifier,
+                                repository,
                               ),
                             ),
                             IconButton(
+                              key: const ValueKey('remove_reference_button'),
                               icon: const Icon(
                                 Icons.delete_outline,
                                 color: Colors.redAccent,
@@ -228,24 +262,46 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
                 ),
               )
             else
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () =>
-                      _pickAndUploadReferenceImage(context, notifier),
-                  icon: const Icon(Icons.upload_file),
-                  label: const Text('Upload Reference Image'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    side: BorderSide(
-                      color: theme.colorScheme.outlineVariant,
-                      width: 1.5,
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const ValueKey('upload_reference_button'),
+                      onPressed: () => _pickAndUploadReferenceImage(
+                        context,
+                        notifier,
+                        repository,
+                      ),
+                      icon: const Icon(Icons.upload_file),
+                      label: const Text('Upload Image'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(
+                          color: theme.colorScheme.outlineVariant,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      key: const ValueKey('library_reference_button'),
+                      onPressed: () => _openReferenceLibrary(context),
+                      icon: const Icon(Icons.photo_library),
+                      label: const Text('From Library'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
 
             const SizedBox(height: 16),
@@ -313,9 +369,49 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
     );
   }
 
+  void _openReferenceLibrary(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ReferenceLibraryScreen(isPickerMode: true),
+      ),
+    );
+  }
+
+  Future<void> _saveCurrentToLibrary(
+    BuildContext context,
+    ReferenceLibraryRepository repository,
+    Uint8List originalBytes,
+    Uint8List bmpBytes,
+  ) async {
+    try {
+      final prompt = ref.read(canvasStateProvider).userPrompt;
+      final saved = await repository.addReferenceImage(
+        imageBytes: originalBytes,
+        bmpBytes: bmpBytes,
+        prompt: prompt.isNotEmpty ? prompt : null,
+        source: 'upload',
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Saved "${saved.title}" to Reference Library'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save to library: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _pickAndUploadReferenceImage(
     BuildContext context,
     CanvasNotifier notifier,
+    ReferenceLibraryRepository repository,
   ) async {
     try {
       final result = await FilePicker.pickFiles(
@@ -328,6 +424,20 @@ class _ReferenceImagePromptState extends ConsumerState<ReferenceImagePrompt> {
         final bytes = file.bytes;
         if (bytes != null) {
           await notifier.setUploadedReferenceImage(bytes);
+          final fileName = file.name.split('.').first;
+          await repository.addReferenceImage(
+            imageBytes: bytes,
+            title: fileName.isNotEmpty ? fileName : null,
+            source: 'upload',
+          );
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Image set as reference & added to library'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         }
       }
     } catch (e) {
