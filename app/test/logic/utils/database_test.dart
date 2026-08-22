@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
@@ -125,6 +126,74 @@ void main() {
       expect(loaded.selectedTool, equals('circle'));
       expect(loaded.userPrompt, equals('draw a dragon'));
     });
+
+    test('insert, query, watch, update, delete reference images', () async {
+      final now = DateTime.now();
+      final companion = ReferenceImagesCompanion(
+        title: const drift.Value('Ref 1'),
+        imageData: drift.Value(Uint8List.fromList([1, 2, 3])),
+        bmpData: drift.Value(Uint8List.fromList([4, 5, 6])),
+        prompt: const drift.Value('a cool reference'),
+        source: const drift.Value('upload'),
+        createdAt: drift.Value(now),
+        updatedAt: drift.Value(now),
+      );
+
+      // Insert
+      final id = await db.createReferenceImage(companion);
+      expect(id, isPositive);
+
+      // Query all
+      final all = await db.getAllReferenceImages();
+      expect(all.length, equals(1));
+      expect(all[0].id, equals(id));
+      expect(all[0].title, equals('Ref 1'));
+      expect(all[0].prompt, equals('a cool reference'));
+
+      // Query by ID
+      final single = await db.getReferenceImageById(id);
+      expect(single, isNotNull);
+      expect(single!.title, equals('Ref 1'));
+
+      // Update
+      final updateCompanion = companion.copyWith(
+        id: drift.Value(id),
+        title: const drift.Value('Updated Ref'),
+      );
+      await db.updateReferenceImage(updateCompanion);
+
+      final updated = await db.getReferenceImageById(id);
+      expect(updated!.title, equals('Updated Ref'));
+
+      // Delete
+      await db.deleteReferenceImage(id);
+      final deleted = await db.getReferenceImageById(id);
+      expect(deleted, isNull);
+    });
+  });
+
+  group('Database Migration Tests', () {
+    test('schemaVersion is 2', () {
+      expect(db.schemaVersion, equals(2));
+    });
+
+    test(
+      'migration onUpgrade from version 1 creates reference_images table',
+      () async {
+        final migrator = db.createMigrator();
+        // Should run without throwing errors
+        await db.migration.onUpgrade(migrator, 1, 2);
+
+        final companion = ReferenceImagesCompanion(
+          title: const drift.Value('Migration Test Ref'),
+          imageData: drift.Value(Uint8List.fromList([10, 20])),
+          createdAt: drift.Value(DateTime.now()),
+          updatedAt: drift.Value(DateTime.now()),
+        );
+        final id = await db.createReferenceImage(companion);
+        expect(id, isPositive);
+      },
+    );
   });
 
   group('AppDatabaseHelper Isolation & Reset Tests', () {
