@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../agents/base_agent.dart';
 import '../agents/refinement_agent.dart';
 import '../drawing_commands.dart';
+import '../utils/bmp_utils.dart';
 import '../utils/json_utils.dart';
 
 class RefinementOrchestrator {
@@ -15,14 +17,16 @@ class RefinementOrchestrator {
     PixelArtAgent agent,
     AgentContext context,
     List<PixelArtStepResult> history,
-    void Function(AgentHistoryEntry) onLogHistory,
-  ) async {
+    void Function(AgentHistoryEntry) onLogHistory, {
+    Uint8List? imageBytes,
+  }) async {
     final systemPrompt = agent.getSystemInstruction(context);
     final userPrompt = agent.getFormattedUserPrompt(context, history);
     final fullPrompt = '$systemPrompt\n\n$userPrompt';
 
     final response = await _aiService.generateContentWithContinuation(
       prompt: fullPrompt,
+      imageBytes: imageBytes,
       temperature: 0.2,
       autoContinueLimit: 1,
     );
@@ -47,6 +51,7 @@ class RefinementOrchestrator {
     required double autoRunSpeed,
     required void Function(List<List<int>> updatedGrid) onStep,
     required void Function(AgentHistoryEntry log) onLogHistory,
+    int maxSteps = 5,
     bool Function()? isShouldStop,
   }) async {
     final List<List<int>> workingGrid = List.generate(
@@ -56,7 +61,6 @@ class RefinementOrchestrator {
 
     final List<PixelArtStepResult> history = [];
     int step = 0;
-    const maxSteps = 5;
 
     while (step < maxSteps) {
       if (isShouldStop?.call() == true) break;
@@ -69,6 +73,8 @@ class RefinementOrchestrator {
         currentGrid: workingGrid,
       );
 
+      final visualBytes = generateBmp(workingGrid, palette);
+
       final refinementAgent = RefinementAgent();
       Map<String, dynamic>? agentJson;
       try {
@@ -77,6 +83,7 @@ class RefinementOrchestrator {
           context,
           history,
           onLogHistory,
+          imageBytes: visualBytes,
         );
       } catch (e) {
         final entry = AgentHistoryEntry(
@@ -91,7 +98,23 @@ class RefinementOrchestrator {
 
       if (agentJson != null) {
         final String thought = agentJson['thought'] as String? ?? '';
-        final String tool = agentJson['tool'] as String? ?? '';
+        final String tool = (agentJson['tool'] as String? ?? '')
+            .trim()
+            .toLowerCase();
+
+        // Check for termination / completion signal
+        if (tool == 'done' || tool == 'none' || tool.isEmpty) {
+          final entry = AgentHistoryEntry(
+            timestamp: DateTime.now(),
+            prompt: 'Refine canvas with prompt: $userPrompt',
+            response:
+                'Thought: $thought\nRefinement completed: artwork is finalized.',
+            isError: false,
+          );
+          onLogHistory(entry);
+          break;
+        }
+
         final List<int> params = (agentJson['params'] as List? ?? [])
             .map(parseCoordinateValue)
             .whereType<int>()
