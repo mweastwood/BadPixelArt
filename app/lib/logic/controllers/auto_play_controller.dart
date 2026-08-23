@@ -1,7 +1,7 @@
-import '../wizard_state.dart';
 import '../canvas_state.dart';
+import '../wizard_state.dart';
 
-/// Controller for executing the automated AutoPlay wizard step-by-step loop.
+/// Generic controller for executing automated AutoPlay step-by-step loops for any wizard pipeline.
 class AutoPlayWizardController {
   /// Starts the AutoPlay loop with the provided [notifier] and [wizardNotifier].
   Future<void> startAutoPlay(
@@ -19,128 +19,33 @@ class AutoPlayWizardController {
         break;
       }
 
-      final currentStep = wizardNotifier.currentStep;
+      final wizard = wizardNotifier.wizard;
+      final currentStepDef = wizardNotifier.currentStepDefinition;
 
-      switch (currentStep) {
-        case WizardStep.selectGridSize:
-          await Future.delayed(const Duration(seconds: 1));
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.setupPrompt);
-          break;
-
-        case WizardStep.setupPrompt:
-          if (notifier.model.userPrompt.trim().isEmpty &&
-              notifier.model.referenceImage != null) {
-            await notifier.suggestDescriptionFromReference();
-          }
-          if (notifier.model.userPrompt.trim().isEmpty) {
-            notifier.setAutoRunState(autoRun: false, isPausing: false);
-            break;
-          }
-          await Future.delayed(const Duration(seconds: 1));
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.selectPalette);
-          break;
-
-        case WizardStep.selectPalette:
-          if (notifier.model.suggestedPalette == null &&
-              notifier.model.referenceImage != null) {
-            await notifier.suggestPaletteFromReference();
-            if (notifier.model.suggestedPalette != null) {
-              notifier.acceptSuggestedPalette();
-            } else {
-              notifier.setAutoRunState(autoRun: false, isPausing: false);
-              break;
-            }
-          } else if (notifier.model.suggestedPalette != null &&
-              notifier.model.showPaletteSuggestion) {
-            notifier.acceptSuggestedPalette();
-          }
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          await Future.delayed(const Duration(seconds: 1));
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.sketchingPlan);
-          break;
-
-        case WizardStep.sketchingPlan:
-          if (notifier.model.decomposedComponents.isEmpty &&
-              !notifier.model.isGenerating) {
-            await notifier.triggerDecomposition();
-            if (notifier.model.pendingDecompositionOptions.isNotEmpty) {
-              notifier.applyDecompositionOption(0);
-            }
-          }
-          if (notifier.model.decomposedComponents.isEmpty) {
-            notifier.setAutoRunState(autoRun: false, isPausing: false);
-            break;
-          }
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          await Future.delayed(const Duration(seconds: 1));
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.componentSculpting);
-          break;
-
-        case WizardStep.componentSculpting:
-          if (notifier.model.decomposedComponents.isNotEmpty) {
-            bool allComplete = notifier.model.decomposedComponents.every(
-              (c) => c.grid != null,
-            );
-            if (!allComplete && !notifier.model.isGenerating) {
-              await notifier.sketchComponents();
-            }
-            if (!notifier.model.autoRun || notifier.model.isPausing) break;
-            final hasIncomplete = notifier.model.decomposedComponents.any(
-              (c) => c.grid == null,
-            );
-            if (hasIncomplete) {
-              notifier.setAutoRunState(autoRun: false, isPausing: false);
-              break;
-            }
-            await Future.delayed(const Duration(seconds: 1));
-            if (!notifier.model.autoRun || notifier.model.isPausing) break;
-            wizardNotifier.autoAdvance(WizardStep.colorAndOutline);
-          } else {
-            await Future.delayed(const Duration(seconds: 1));
-            if (!notifier.model.autoRun || notifier.model.isPausing) break;
-            wizardNotifier.autoAdvance(WizardStep.colorAndOutline);
-          }
-          break;
-
-        case WizardStep.colorAndOutline:
-          if (notifier.model.decomposedComponents.isNotEmpty &&
-              notifier.model.referenceImage != null &&
-              !notifier.model.isGenerating) {
-            final result = await notifier.suggestComponentColors();
-            if (result != null) {
-              notifier.batchUpdateComponentColors(result.updatedComponents);
-            } else {
-              notifier.setAutoRunState(autoRun: false, isPausing: false);
-              break;
-            }
-          }
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          await Future.delayed(const Duration(seconds: 1));
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.layerOrderingAndMerge);
-          break;
-
-        case WizardStep.layerOrderingAndMerge:
-          if (notifier.model.decomposedComponents.isNotEmpty) {
-            notifier.mergeComponentsToCanvas();
-          }
-          await Future.delayed(const Duration(seconds: 1));
-          if (!notifier.model.autoRun || notifier.model.isPausing) break;
-          wizardNotifier.autoAdvance(WizardStep.refinement);
-          break;
-
-        case WizardStep.refinement:
-          if (!notifier.model.isGenerating &&
-              notifier.model.userPrompt.trim().isNotEmpty) {
-            await notifier.refineCanvas(notifier.model.userPrompt);
-          }
-          notifier.setAutoRunState(autoRun: false, isPausing: false);
-          return;
+      bool success = false;
+      try {
+        success = await currentStepDef.executeAutoPlay(notifier);
+      } catch (e) {
+        notifier.setAutoRunState(autoRun: false, isPausing: false);
+        break;
       }
+
+      if (!success || !notifier.model.autoRun || notifier.model.isPausing) {
+        notifier.setAutoRunState(autoRun: false, isPausing: false);
+        break;
+      }
+
+      final currentIndex = wizard.indexOfStep(currentStepDef.step);
+      if (currentIndex >= wizard.steps.length - 1) {
+        notifier.setAutoRunState(autoRun: false, isPausing: false);
+        return;
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+      if (!notifier.model.autoRun || notifier.model.isPausing) break;
+
+      final nextStepDef = wizard.steps[currentIndex + 1];
+      wizardNotifier.autoAdvance(nextStepDef.step);
 
       if (notifier.model.isPausing) {
         notifier.setAutoRunState(autoRun: false, isPausing: false);
