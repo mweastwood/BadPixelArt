@@ -89,7 +89,12 @@ Please select color assignments for each component.
       if (response == null || response.trim().isEmpty) return null;
 
       final cleanedJson = cleanJsonString(response);
-      final decoded = jsonDecode(cleanedJson) as Map<String, dynamic>;
+      final decoded = jsonDecode(cleanedJson);
+      if (decoded is! Map<String, dynamic>) {
+        throw FormatException(
+          'Invalid JSON map response from ColorSelectionAgent',
+        );
+      }
       if (decoded.containsKey('error')) {
         throw FormatException('Color selection error: ${decoded['error']}');
       }

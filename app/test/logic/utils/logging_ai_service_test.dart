@@ -191,5 +191,61 @@ void main() {
         );
       },
     );
+
+    test(
+      'updates entry with isError: true for formatted and markdown code-fenced error JSON variations',
+      () async {
+        final variations = [
+          '{ "error": "Spaced error format" }',
+          '{\n  "error": "Multiline error format"\n}',
+          '```json\n{\n  "error": "Markdown fenced error"\n}\n```',
+          '  { \n "error" : "Indented and colon spaced" }  ',
+        ];
+
+        for (final errorText in variations) {
+          final fakeService = TestMockAiService(
+            completer: Completer<AiResponse?>(),
+          );
+          final loggingService = LoggingAiService(
+            fakeService,
+            modelName: 'test-model',
+          );
+          final notifier = CanvasNotifier(loggingService);
+
+          final future = loggingService.generateContentRaw(
+            prompt: 'Test error format',
+          );
+          fakeService.completer!.complete(AiResponse(text: errorText));
+          await future;
+
+          expect(notifier.state.aiHistory.length, equals(1));
+          expect(notifier.state.aiHistory.first.isError, isTrue);
+          expect(notifier.state.aiHistory.first.response, equals(errorText));
+        }
+      },
+    );
+
+    test(
+      'updates entry with isError: false when response is valid non-error JSON',
+      () async {
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+        final notifier = CanvasNotifier(loggingService);
+
+        final future = loggingService.generateContentRaw(prompt: 'Draw circle');
+        fakeService.completer!.complete(
+          AiResponse(text: '{"tool": "circle_filled", "params": [5, 5, 2]}'),
+        );
+        await future;
+
+        expect(notifier.state.aiHistory.length, equals(1));
+        expect(notifier.state.aiHistory.first.isError, isFalse);
+      },
+    );
   });
 }

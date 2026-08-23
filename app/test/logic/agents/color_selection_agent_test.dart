@@ -67,5 +67,57 @@ void main() {
         expect(hiltLine.fillColor2, isNull);
       },
     );
+
+    test(
+      'suggestColors gracefully handles error JSON payload by returning null',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '{"error": "Quota exceeded for model"}',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'solid blade',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        final result = await agent.suggestColors(
+          userPrompt: 'magic sword',
+          components: components,
+          palette: const [Color(0xFF000000)],
+        );
+
+        expect(result, isNull);
+      },
+    );
+
+    test(
+      'suggestColors gracefully handles non-map JSON shapes by returning null',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '["unexpected", "list", "response"]',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'solid blade',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        final result = await agent.suggestColors(
+          userPrompt: 'magic sword',
+          components: components,
+          palette: const [Color(0xFF000000)],
+        );
+
+        expect(result, isNull);
+      },
+    );
   });
 }
