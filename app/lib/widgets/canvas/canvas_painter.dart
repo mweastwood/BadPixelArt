@@ -160,28 +160,30 @@ class CanvasPainter extends CustomPainter {
       }
 
       // Draw the individual component grids (outlines) as semi-transparent overlays
-      final overlayPaint = Paint()..isAntiAlias = false;
-      for (int i = 0; i < decomposedComponents.length; i++) {
-        final comp = decomposedComponents[i];
-        final compOutline = comp.outlineGrid;
-        if (compOutline != null) {
-          final compColor = PixelArtComponent.getColor(
-            i,
-          ).withValues(alpha: 0.4);
-          overlayPaint.color = compColor;
+      if (currentStep != WizardStep.refinement) {
+        final overlayPaint = Paint()..isAntiAlias = false;
+        for (int i = 0; i < decomposedComponents.length; i++) {
+          final comp = decomposedComponents[i];
+          final compOutline = comp.outlineGrid;
+          if (compOutline != null) {
+            final compColor = PixelArtComponent.getColor(
+              i,
+            ).withValues(alpha: 0.4);
+            overlayPaint.color = compColor;
 
-          for (int y = 0; y < gridSize; y++) {
-            for (int x = 0; x < gridSize; x++) {
-              if (y < compOutline.length &&
-                  x < compOutline[y].length &&
-                  compOutline[y][x] > 0) {
-                final rect = Rect.fromLTWH(
-                  x * cellWidth,
-                  y * cellHeight,
-                  cellWidth,
-                  cellHeight,
-                );
-                canvas.drawRect(rect, overlayPaint);
+            for (int y = 0; y < gridSize; y++) {
+              for (int x = 0; x < gridSize; x++) {
+                if (y < compOutline.length &&
+                    x < compOutline[y].length &&
+                    compOutline[y][x] > 0) {
+                  final rect = Rect.fromLTWH(
+                    x * cellWidth,
+                    y * cellHeight,
+                    cellWidth,
+                    cellHeight,
+                  );
+                  canvas.drawRect(rect, overlayPaint);
+                }
               }
             }
           }
@@ -308,9 +310,11 @@ class CanvasPainter extends CustomPainter {
           )..layout();
 
           labelBgPaint.color = activeColor;
+          final maxLeft = max(0.0, size.width - textPainter.width);
+          final maxTop = max(0.0, size.height - textPainter.height);
           final labelRect = Rect.fromLTWH(
-            rect.left.clamp(0.0, size.width - textPainter.width),
-            (rect.top - 14.0).clamp(0.0, size.height - textPainter.height),
+            rect.left.clamp(0.0, maxLeft),
+            (rect.top - 14.0).clamp(0.0, maxTop),
             textPainter.width,
             14.0,
           );
