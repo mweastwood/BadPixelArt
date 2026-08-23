@@ -36,6 +36,9 @@ class SketchOrchestrator {
     final cleaned = cleanJsonString(response);
     final parsed = jsonDecode(cleaned);
     if (parsed is Map<String, dynamic>) {
+      if (parsed.containsKey('error')) {
+        throw FormatException('AI sketch error: ${parsed['error']}');
+      }
       return parsed;
     }
     throw FormatException('Invalid JSON map response from agent ${agent.name}');

@@ -1,7 +1,9 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
+import 'json_utils.dart';
 import 'settings_provider.dart';
 
 class LoggingAiService implements AiService {
@@ -12,6 +14,19 @@ class LoggingAiService implements AiService {
   onLogUpdate;
 
   LoggingAiService(this._delegate, {this.modelName});
+
+  static bool _isErrorPayload(String responseText) {
+    final trimmed = responseText.trim();
+    if (trimmed.isEmpty) return false;
+    try {
+      final cleaned = cleanJsonString(trimmed);
+      final decoded = jsonDecode(cleaned);
+      if (decoded is Map<String, dynamic> && decoded.containsKey('error')) {
+        return true;
+      }
+    } catch (_) {}
+    return RegExp(r'^\s*\{\s*"error"\s*:', multiLine: false).hasMatch(trimmed);
+  }
 
   @override
   Future<AiCoreStatus> checkStatus() => _delegate.checkStatus();
@@ -56,11 +71,14 @@ class LoggingAiService implements AiService {
         maxOutputTokens: maxOutputTokens,
       );
 
+      final responseText = response?.text ?? '';
+      final isErrorResponse = response == null || _isErrorPayload(responseText);
+
       final completedEntry = AgentHistoryEntry(
         timestamp: startTime,
         prompt: prompt,
-        response: response?.text ?? '',
-        isError: response == null,
+        response: responseText,
+        isError: isErrorResponse,
         imageBytes: imageBytes,
         modelName: modelName,
         inputTokens: response?.inputTokens,

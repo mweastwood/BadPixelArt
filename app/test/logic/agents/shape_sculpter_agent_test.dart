@@ -263,5 +263,33 @@ void main() {
         expect(resultGrid[10][8], equals(1));
       },
     );
+
+    test(
+      'sculptComponent throws FormatException when AI response contains error JSON',
+      () async {
+        const errorJson = '{"error": "Server returned code 503"}';
+        final mockAi = TestMockAiService(response: errorJson);
+        final agent = ShapeSculpterAgent();
+
+        final comp = PixelArtComponent(
+          name: 'bubbles',
+          description: 'rising bubbles',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+        );
+
+        final context = AgentContext(
+          gridSize: 16,
+          activePalette: const [Colors.black, Colors.white],
+          userPrompt: 'bubbles',
+          targetComponent: comp,
+          currentGrid: List.generate(16, (_) => List.filled(16, 0)),
+        );
+
+        expect(
+          () => agent.sculptComponent(mockAi, context),
+          throwsA(isA<FormatException>()),
+        );
+      },
+    );
   });
 }
