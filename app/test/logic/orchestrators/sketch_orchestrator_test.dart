@@ -225,5 +225,82 @@ void main() {
         expect(history.isEmpty || history.every((h) => !h.isError), isTrue);
       },
     );
+
+    test('sketchSingleComponent sculpts only target component index', () async {
+      final aiService = TestMockAiService(
+        responses: [
+          '{"thought": "sculpt body", "tool": "apply_rectangle_filled", "params": [4, 4, 6, 6], "isComplete": true}',
+        ],
+        tokenCount: 15,
+      );
+      final orchestrator = SketchOrchestrator(aiService);
+
+      final comp1 = PixelArtComponent(
+        name: 'Head',
+        description: 'Head component',
+        relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 0.5, 0.5),
+        shapes: const [],
+        grid: List.generate(8, (_) => List.filled(8, 0)),
+      );
+      final comp2 = PixelArtComponent(
+        name: 'Body',
+        description: 'Body component',
+        relativeBoundingBox: const Rect.fromLTWH(0.5, 0.5, 0.5, 0.5),
+        shapes: const [],
+        grid: List.generate(8, (_) => List.filled(8, 0)),
+      );
+
+      final history = <AgentHistoryEntry>[];
+      final result = await orchestrator.sketchSingleComponent(
+        components: [comp1, comp2],
+        targetIndex: 1,
+        gridSize: 8,
+        palette: [Colors.black, Colors.red],
+        userPrompt: 'a robot character',
+        autoRunSpeed: 0.001,
+        onStep: (idx, updated, status) {},
+        onLogHistory: (log) => history.add(log),
+      );
+
+      expect(result[0].isSculpted, isFalse);
+      expect(result[1].isSculpted, isTrue);
+      expect(aiService.callCount, equals(1));
+    });
+
+    test('sketch records out-of-bounds warnings in step history feedback', () async {
+      final aiService = TestMockAiService(
+        responses: [
+          // Coordinate (10, 10) is outside the 8x8 grid bounds
+          '{"thought": "sculpt with oob coords", "tool": "", "params": [], "add": [[10, 10]], "erase": [[9, 9]], "isComplete": false}',
+          '{"thought": "done", "tool": "", "params": [], "add": [], "erase": [], "isComplete": true}',
+        ],
+        tokenCount: 15,
+      );
+      final orchestrator = SketchOrchestrator(aiService);
+
+      final comp = PixelArtComponent(
+        name: 'Head',
+        description: 'Head component',
+        relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 0.5, 0.5),
+        shapes: const [],
+        grid: List.generate(8, (_) => List.filled(8, 0)),
+      );
+
+      await orchestrator.sketchSingleComponent(
+        components: [comp],
+        targetIndex: 0,
+        gridSize: 8,
+        palette: [Colors.black, Colors.red],
+        userPrompt: 'a robot character',
+        autoRunSpeed: 0.001,
+        onStep: (idx, updated, status) {},
+        onLogHistory: (log) {},
+      );
+
+      expect(aiService.callCount, equals(2));
+      // Second prompt sent to AI must contain the out-of-bounds warning feedback from turn 1
+      expect(aiService.capturedPrompts.last, contains('WARNING:'));
+      expect(aiService.capturedPrompts.last, contains('OUT OF BOUNDS'));
+    });
   });
 }
