@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/wizard_state.dart';
+import 'gradient_angle_selector.dart';
 
 class LayerOrderingList extends ConsumerWidget {
   const LayerOrderingList({super.key});
@@ -165,7 +166,7 @@ class LayerOrderingList extends ConsumerWidget {
                                 const SizedBox(width: 4),
                                 Text(
                                   comp.fillColor2 != null
-                                      ? 'Gradient (${comp.gradientAngle.round()}°)'
+                                      ? 'Gradient (${getGradientAngleDescription(comp.gradientAngle)})'
                                       : 'Filled',
                                   style: theme.textTheme.bodySmall,
                                 ),

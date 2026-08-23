@@ -70,6 +70,45 @@ void main() {
       expect(submittedPrompt, equals('add shiny gold blade highlights'));
     });
 
+    testWidgets('tapping suggestion chips appends text to prompt', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          overrides: [
+            aiServiceProvider.overrideWithValue(TestMockAiService()),
+            canvasStateProvider.overrideWith((ref) {
+              final aiService = ref.watch(aiServiceProvider);
+              final notifier = CanvasNotifier(aiService);
+              notifier.state = notifier.state.copyWith(userPrompt: '');
+              return notifier;
+            }),
+          ],
+          child: const Scaffold(body: RefinementPanel()),
+        ),
+      );
+
+      // Tap 'Highlights & Shadows' chip
+      await tester.tap(find.text('Highlights & Shadows'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Add lighting highlights and shadow depth'),
+        findsOneWidget,
+      );
+
+      // Tap 'Smooth Contours' chip
+      await tester.tap(find.text('Smooth Contours'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'Add lighting highlights and shadow depth, Smooth jagged pixel outlines and curves',
+        ),
+        findsOneWidget,
+      );
+    });
+
     testGoldens('RefinementPanel renders correctly in multiple states', (
       tester,
     ) async {
@@ -111,7 +150,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: testMaterialAppWrapper(),
-        surfaceSize: const Size(400, 900),
+        surfaceSize: const Size(400, 1100),
       );
 
       await screenMatchesGolden(
