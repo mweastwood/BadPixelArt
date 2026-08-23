@@ -86,6 +86,14 @@ class AutoPlayWizardController {
           break;
 
         case WizardStep.colorAndOutline:
+          if (notifier.model.decomposedComponents.isNotEmpty &&
+              notifier.model.referenceImage != null &&
+              !notifier.model.isGenerating) {
+            final result = await notifier.suggestComponentColors();
+            if (result != null) {
+              notifier.batchUpdateComponentColors(result.updatedComponents);
+            }
+          }
           await Future.delayed(const Duration(seconds: 1));
           if (!notifier.model.autoRun || notifier.model.isPausing) break;
           wizardNotifier.autoAdvance(WizardStep.layerOrderingAndMerge);

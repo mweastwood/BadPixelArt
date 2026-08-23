@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
@@ -119,6 +120,75 @@ void main() {
         await future;
 
         expect(canvasNotifier.state.autoRun, isFalse);
+      },
+    );
+
+    test(
+      'startAutoPlay executes color suggestion on WizardStep.colorAndOutline',
+      () async {
+        wizardNotifier.setStep(WizardStep.colorAndOutline);
+        final solidGrid = List.generate(16, (_) => List.filled(16, 1));
+        canvasNotifier.state = canvasNotifier.state.copyWith(
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+          userPrompt: 'magic sword',
+          palette: [
+            const Color(0xFF000000),
+            const Color(0xFF0000FF),
+            const Color(0xFFFF0000),
+          ],
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'solid blade',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: solidGrid,
+            ),
+          ],
+        );
+
+        final mockAi = TestMockAiService(
+          response: TestJsonFixtures.colorSelectionResponse,
+        );
+        canvasNotifier = CanvasNotifier(
+          mockAi,
+          autoPlayController: controller,
+          wizardNotifier: wizardNotifier,
+        );
+        canvasNotifier.state = canvasNotifier.state.copyWith(
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+          userPrompt: 'magic sword',
+          palette: [
+            const Color(0xFF000000),
+            const Color(0xFF0000FF),
+            const Color(0xFFFF0000),
+          ],
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'solid blade',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: solidGrid,
+            ),
+          ],
+        );
+
+        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
+        await Future.delayed(const Duration(milliseconds: 100));
+        canvasNotifier.stopAutoPlay();
+        await future;
+
+        expect(
+          canvasNotifier.state.decomposedComponents.first.fillColor,
+          isNotNull,
+        );
+        expect(
+          canvasNotifier.state.decomposedComponents.first.fillColor2,
+          isNotNull,
+        );
+        expect(
+          canvasNotifier.state.decomposedComponents.first.gradientAngle,
+          equals(45.0),
+        );
       },
     );
   });

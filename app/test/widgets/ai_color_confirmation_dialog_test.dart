@@ -1,4 +1,3 @@
-import 'package:bad_pixel_art/logic/agents/color_selection_agent.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/widgets/ai_color_confirmation_dialog.dart';
 import 'package:flutter/material.dart';

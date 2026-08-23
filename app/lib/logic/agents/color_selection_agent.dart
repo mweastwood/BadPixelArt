@@ -48,13 +48,21 @@ Select colors for each component from the provided color palette: $paletteHexLis
 
 Rules for color assignment:
 1. If "hasInterior" is false, the component is a thin line/outline without interior volume. You MUST only pick ONE color (either outlineColorHex or fillColorHex, set fillColor2Hex to null).
-2. If "hasInterior" is true, you can pick a primary fillColorHex and optionally a secondary fillColor2Hex to create a 2-color pixel-art hatched gradient (shading/highlighting). Set gradientAngle to 0, 45, 90, 135, 180, 225, 270, or 315 degrees.
+2. If "hasInterior" is true, you can pick a primary fillColorHex (Color A) and optionally a secondary fillColor2Hex (Color B) to create a 2-color pixel-art hatched gradient (for shading, lighting, or volumetric depth). When using a gradient, set gradientAngle to one of the following 8 directional angles (degrees):
+   - 0.0: Left to Right (→) [Color A on left, Color B on right]
+   - 45.0: Top-Left to Bottom-Right (↘) [Diagonal downward-right highlight/shade]
+   - 90.0: Top to Bottom (↓) [Color A on top, Color B on bottom (e.g. top light highlight, bottom shadow)]
+   - 135.0: Top-Right to Bottom-Left (↙) [Diagonal downward-left highlight/shade]
+   - 180.0: Right to Left (←) [Color A on right, Color B on left]
+   - 225.0: Bottom-Right to Top-Left (↖) [Diagonal upward-left highlight/shade]
+   - 270.0: Bottom to Top (↑) [Color A on bottom, Color B on top (e.g. upward glow/bottom reflection)]
+   - 315.0: Bottom-Left to Top-Right (↗) [Diagonal upward-right highlight/shade]
 3. Every color selected MUST match an exact hex code from the palette: $paletteHexList.
 4. Include a concise, 1-2 sentence reasoning summary explaining your color choices.
 
 Return ONLY a single valid JSON object in this format:
 {
-  "reasoning": "Selected deep steel blues with a 90 degree downward highlight for the blade, and warm dark brown for the hilt.",
+  "reasoning": "Selected deep steel blues with a 90 degree downward (top-to-bottom) highlight for the blade, and warm dark brown for the hilt.",
   "componentColors": [
     {
       "name": "blade",
