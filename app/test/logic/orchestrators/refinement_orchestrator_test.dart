@@ -35,6 +35,103 @@ void main() {
       expect(history.first.response, contains('add gold highlight'));
     });
 
+    test('refine terminates early when agent returns tool: done', () async {
+      final aiService = TestMockAiService(
+        responses: [
+          '{"thought": "add gold highlight", "tool": "pixel", "params": [1, 1], "colorIndex": 2}',
+          '{"thought": "The pixel art has clean highlights; finished.", "tool": "done", "params": [], "colorIndex": 0}',
+          '{"thought": "should not be called", "tool": "pixel", "params": [0, 0], "colorIndex": 1}',
+        ],
+        tokenCount: 10,
+      );
+      final orchestrator = RefinementOrchestrator(aiService);
+
+      final grid = List.generate(8, (_) => List.filled(8, 0));
+      final palette = [Colors.red, Colors.green, Colors.blue];
+      final history = <AgentHistoryEntry>[];
+
+      final result = await orchestrator.refine(
+        initialGrid: grid,
+        gridSize: 8,
+        palette: palette,
+        userPrompt: 'add highlights',
+        autoRunSpeed: 0.01,
+        onStep: (updated) {},
+        onLogHistory: (entry) => history.add(entry),
+      );
+
+      // Only 2 calls should have been made before early termination
+      expect(aiService.callCount, equals(2));
+      expect(result[1][1], equals(2));
+      expect(history, hasLength(2));
+      expect(
+        history.last.response,
+        contains('Refinement completed: artwork is finalized.'),
+      );
+    });
+
+    test(
+      'refine terminates early when agent returns tool: none or empty tool',
+      () async {
+        final aiService = TestMockAiService(
+          responses: [
+            '{"thought": "Artwork looks complete.", "tool": "none", "params": [], "colorIndex": 0}',
+          ],
+          tokenCount: 10,
+        );
+        final orchestrator = RefinementOrchestrator(aiService);
+
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        final palette = [Colors.red, Colors.green, Colors.blue];
+        final history = <AgentHistoryEntry>[];
+
+        await orchestrator.refine(
+          initialGrid: grid,
+          gridSize: 8,
+          palette: palette,
+          userPrompt: 'add highlights',
+          autoRunSpeed: 0.01,
+          onStep: (updated) {},
+          onLogHistory: (entry) => history.add(entry),
+        );
+
+        expect(aiService.callCount, equals(1));
+        expect(
+          history.last.response,
+          contains('Refinement completed: artwork is finalized.'),
+        );
+      },
+    );
+
+    test(
+      'refine passes rendered imageBytes to aiService on each step',
+      () async {
+        final aiService = TestMockAiService(
+          responses: [
+            '{"thought": "done", "tool": "done", "params": [], "colorIndex": 0}',
+          ],
+          tokenCount: 10,
+        );
+        final orchestrator = RefinementOrchestrator(aiService);
+
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        final palette = [Colors.red, Colors.green, Colors.blue];
+
+        await orchestrator.refine(
+          initialGrid: grid,
+          gridSize: 8,
+          palette: palette,
+          userPrompt: 'refine',
+          autoRunSpeed: 0.01,
+          onStep: (updated) {},
+          onLogHistory: (_) {},
+        );
+
+        expect(aiService.capturedImageBytes.last, isNotNull);
+        expect(aiService.capturedImageBytes.last!.length, greaterThan(0));
+      },
+    );
+
     test(
       'refine handles colorIndex decoded as double without type error',
       () async {

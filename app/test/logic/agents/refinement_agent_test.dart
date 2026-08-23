@@ -12,32 +12,43 @@ void main() {
       expect(agent.availableTools, contains('pixel'));
       expect(agent.availableTools, contains('line'));
       expect(agent.availableTools, contains('circle_filled'));
+      expect(agent.availableTools, contains('done'));
+      expect(agent.availableTools, contains('none'));
     });
 
-    test('getSystemInstruction returns valid instruction', () {
-      final context = AgentContext(
-        userPrompt: 'sword',
-        gridSize: 16,
-        currentGrid: List.generate(16, (_) => List.filled(16, 0)),
-        activePalette: [const Color(0xFF000000)],
-      );
+    test(
+      'getSystemInstruction returns valid instruction with termination rules',
+      () {
+        final context = AgentContext(
+          userPrompt: 'sword',
+          gridSize: 16,
+          currentGrid: List.generate(16, (_) => List.filled(16, 0)),
+          activePalette: [const Color(0xFF000000)],
+        );
 
-      final instructions = agent.getSystemInstruction(context);
-      expect(instructions, contains('refinement'));
-      expect(instructions, contains('X: 0 to 15'));
-    });
+        final instructions = agent.getSystemInstruction(context);
+        expect(instructions, contains('refinement'));
+        expect(instructions, contains('X: 0 to 15'));
+        expect(instructions, contains('TERMINATION'));
+        expect(instructions, contains('"tool": "done"'));
+      },
+    );
 
-    test('getFormattedUserPrompt builds correct prompt string', () {
-      final context = AgentContext(
-        userPrompt: 'shield',
-        gridSize: 8,
-        currentGrid: List.generate(8, (_) => List.filled(8, 1)),
-        activePalette: [const Color(0xFF000000)],
-      );
+    test(
+      'getFormattedUserPrompt builds correct prompt string with done reminder',
+      () {
+        final context = AgentContext(
+          userPrompt: 'shield',
+          gridSize: 8,
+          currentGrid: List.generate(8, (_) => List.filled(8, 1)),
+          activePalette: [const Color(0xFF000000)],
+        );
 
-      final prompt = agent.getFormattedUserPrompt(context, []);
-      expect(prompt, contains('Overall Prompt: "shield"'));
-      expect(prompt, contains('Index 1: Hex #000000'));
-    });
+        final prompt = agent.getFormattedUserPrompt(context, []);
+        expect(prompt, contains('Overall Prompt: "shield"'));
+        expect(prompt, contains('Index 1: Hex #000000'));
+        expect(prompt, contains('"tool": "done"'));
+      },
+    );
   });
 }

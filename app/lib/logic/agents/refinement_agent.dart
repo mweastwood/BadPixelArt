@@ -16,6 +16,8 @@ class RefinementAgent implements PixelArtAgent {
     'ellipse',
     'ellipse_filled',
     'triangle',
+    'done',
+    'none',
   ];
 
   @override
@@ -55,6 +57,9 @@ class RefinementAgent implements PixelArtAgent {
     toolHelp.writeln(
       '- {"tool": "triangle", "params": [x1, y1, x2, y2, x3, y3], "colorIndex": idx} (draws a filled triangle)',
     );
+    toolHelp.writeln(
+      '- {"tool": "done", "params": [], "colorIndex": 0} (signals that the pixel art is refined, complete, and needs no further edits)',
+    );
 
     return 'You are an AI pixel art refinement agent named "refinement". Your goal is to refine, shade, highlight, or edit the pixel art on the entire canvas.\n'
         'You have no spatial constraints. You can draw anywhere on the grid from X: 0 to ${gridSize - 1}, Y: 0 to ${gridSize - 1}.\n'
@@ -64,7 +69,8 @@ class RefinementAgent implements PixelArtAgent {
         'Output rules:\n'
         '- You must output EXACTLY a valid JSON object. Do not wrap in markdown blocks.\n'
         '- The format must be: { "thought": "reasoning for this step", "tool": "toolName", "params": [int, int, ...], "colorIndex": int }\n'
-        '- Ensure all coordinates are strictly within the canvas bounds [0, ${gridSize - 1}].';
+        '- Ensure all coordinates are strictly within the canvas bounds [0, ${gridSize - 1}].\n'
+        '- TERMINATION: If you are satisfied with the overall drawing, highlights, shadows, and contours and NO further modifications are needed, return: { "thought": "The pixel art has clean lighting and contours; no further edits needed.", "tool": "done", "params": [], "colorIndex": 0 }. Returning "done" or "none" signals that refinement is complete.';
   }
 
   @override
@@ -105,7 +111,9 @@ class RefinementAgent implements PixelArtAgent {
       }
     }
 
-    sb.writeln('\nPropose the next refinement drawing action:');
+    sb.writeln(
+      '\nPropose the next refinement drawing action (or "tool": "done" if finished):',
+    );
     return sb.toString();
   }
 }
