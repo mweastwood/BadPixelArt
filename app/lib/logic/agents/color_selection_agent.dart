@@ -90,6 +90,9 @@ Please select color assignments for each component.
 
       final cleanedJson = cleanJsonString(response);
       final decoded = jsonDecode(cleanedJson) as Map<String, dynamic>;
+      if (decoded.containsKey('error')) {
+        throw FormatException('Color selection error: ${decoded['error']}');
+      }
 
       final reasoning =
           decoded['reasoning'] as String? ??

@@ -252,6 +252,10 @@ class ShapeSculpterAgent implements PixelArtAgent {
       final cleaned = cleanJsonString(response);
       final parsed = jsonDecode(cleaned);
       if (parsed is Map<String, dynamic>) {
+        if (parsed.containsKey('error')) {
+          throw FormatException('AI sculpting error: ${parsed['error']}');
+        }
+
         final tool = parsed['tool'] as String? ?? '';
         final params = (parsed['params'] as List? ?? [])
             .map(parseCoordinateValue)

@@ -56,11 +56,18 @@ class LoggingAiService implements AiService {
         maxOutputTokens: maxOutputTokens,
       );
 
+      final responseText = response?.text ?? '';
+      final isErrorResponse =
+          response == null ||
+          responseText.trim().startsWith('{"error":') ||
+          responseText.trim().startsWith('{"error" :') ||
+          responseText.trim().startsWith('{"error\n');
+
       final completedEntry = AgentHistoryEntry(
         timestamp: startTime,
         prompt: prompt,
-        response: response?.text ?? '',
-        isError: response == null,
+        response: responseText,
+        isError: isErrorResponse,
         imageBytes: imageBytes,
         modelName: modelName,
         inputTokens: response?.inputTokens,

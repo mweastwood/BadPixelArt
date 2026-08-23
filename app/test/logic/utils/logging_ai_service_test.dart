@@ -164,5 +164,32 @@ void main() {
       expect(notifier.state.aiHistory.length, equals(1));
       expect(notifier.state.aiHistory.first.response, equals('New response'));
     });
+
+    test(
+      'updates entry with isError: true when response text is error JSON',
+      () async {
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+        final notifier = CanvasNotifier(loggingService);
+
+        final future = loggingService.generateContentRaw(prompt: 'Trigger 503');
+        fakeService.completer!.complete(
+          AiResponse(text: '{"error": "Server returned code 503"}'),
+        );
+        await future;
+
+        expect(notifier.state.aiHistory.length, equals(1));
+        expect(notifier.state.aiHistory.first.isError, isTrue);
+        expect(
+          notifier.state.aiHistory.first.response,
+          equals('{"error": "Server returned code 503"}'),
+        );
+      },
+    );
   });
 }
