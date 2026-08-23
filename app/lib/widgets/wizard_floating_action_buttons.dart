@@ -28,8 +28,8 @@ class WizardFloatingActionButtons extends ConsumerWidget {
     final isAutoPlaying = autoRun || isPausing;
     final step = wizardState.currentStep;
 
-    final hasBack = step.index > 0;
-    final hasNext = step.index < WizardStep.refinement.index;
+    final hasBack = !wizardState.isFirstStep;
+    final hasNext = !wizardState.isLastStep;
 
     final onNext = resolveNextStepHandler(
       ref,
@@ -71,53 +71,29 @@ class WizardFloatingActionButtons extends ConsumerWidget {
     WidgetRef ref,
     WizardStep step, {
     required bool isAutoPlaying,
-    required bool isUserPromptNotEmpty,
-    required bool isGenerating,
-    required bool hasDecomposedComponents,
+    bool? isUserPromptNotEmpty,
+    bool? isGenerating,
+    bool? hasDecomposedComponents,
   }) {
     if (isAutoPlaying) return null;
-
-    switch (step) {
-      case WizardStep.selectGridSize:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.setupPrompt);
-      case WizardStep.setupPrompt:
-        return isUserPromptNotEmpty
-            ? () => ref
-                  .read(wizardStateProvider.notifier)
-                  .setStep(WizardStep.selectPalette)
-            : null;
-      case WizardStep.selectPalette:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.sketchingPlan);
-      case WizardStep.sketchingPlan:
-        return (isGenerating || !hasDecomposedComponents)
-            ? null
-            : () => ref
-                  .read(wizardStateProvider.notifier)
-                  .setStep(WizardStep.componentSculpting);
-      case WizardStep.componentSculpting:
-        return !hasDecomposedComponents
-            ? null
-            : () => ref
-                  .read(wizardStateProvider.notifier)
-                  .setStep(WizardStep.colorAndOutline);
-      case WizardStep.colorAndOutline:
-        return !hasDecomposedComponents
-            ? null
-            : () => ref
-                  .read(wizardStateProvider.notifier)
-                  .setStep(WizardStep.layerOrderingAndMerge);
-      case WizardStep.layerOrderingAndMerge:
-        return () {
-          ref.read(canvasStateProvider.notifier).mergeComponentsToCanvas();
-          ref.read(wizardStateProvider.notifier).setStep(WizardStep.refinement);
-        };
-      case WizardStep.refinement:
-        return null;
+    final wizardState = ref.read(wizardStateProvider);
+    final stepDef = wizardState.wizard.getStepDefinition(step);
+    if (stepDef == null) return null;
+    if (wizardState.isLastStep && step == wizardState.wizard.steps.last.step) {
+      return null;
     }
+
+    if (!stepDef.canAdvance(ref)) return null;
+
+    return () {
+      stepDef.onManualAdvance(ref);
+      final wizard = wizardState.wizard;
+      final currentIndex = wizard.indexOfStep(step);
+      if (currentIndex >= 0 && currentIndex < wizard.steps.length - 1) {
+        final nextStep = wizard.steps[currentIndex + 1].step;
+        ref.read(wizardStateProvider.notifier).setStep(nextStep);
+      }
+    };
   }
 
   /// Resolves the backward navigation handler for the current [WizardStep].
@@ -127,39 +103,24 @@ class WizardFloatingActionButtons extends ConsumerWidget {
     bool isAutoPlaying,
   ) {
     if (isAutoPlaying) return null;
-
-    switch (step) {
-      case WizardStep.selectGridSize:
-        return null;
-      case WizardStep.setupPrompt:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.selectGridSize);
-      case WizardStep.selectPalette:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.setupPrompt);
-      case WizardStep.sketchingPlan:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.selectPalette);
-      case WizardStep.componentSculpting:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.sketchingPlan);
-      case WizardStep.colorAndOutline:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.componentSculpting);
-      case WizardStep.layerOrderingAndMerge:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.colorAndOutline);
-      case WizardStep.refinement:
-        return () => ref
-            .read(wizardStateProvider.notifier)
-            .setStep(WizardStep.layerOrderingAndMerge);
+    final wizardState = ref.read(wizardStateProvider);
+    final stepDef = wizardState.wizard.getStepDefinition(step);
+    if (stepDef == null) return null;
+    if (wizardState.isFirstStep &&
+        step == wizardState.wizard.steps.first.step) {
+      return null;
     }
+
+    if (!stepDef.canGoBack(ref)) return null;
+
+    return () {
+      final wizard = wizardState.wizard;
+      final currentIndex = wizard.indexOfStep(step);
+      if (currentIndex > 0) {
+        final prevStep = wizard.steps[currentIndex - 1].step;
+        ref.read(wizardStateProvider.notifier).setStep(prevStep);
+      }
+    };
   }
 }
 

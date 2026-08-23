@@ -2,14 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
 import '../logic/wizard_state.dart';
-import 'grid_size_selection_card.dart';
-import 'reference_image_prompt.dart';
-import 'color_palette_generator.dart';
-import 'semantic_components_list.dart';
-import 'shape_decomposition_list.dart';
-import 'component_color_selection_list.dart';
-import 'layer_ordering_list.dart';
-import 'refinement_panel.dart';
 
 class WizardControls extends ConsumerWidget {
   const WizardControls({super.key});
@@ -39,56 +31,11 @@ class WizardControls extends ConsumerWidget {
       });
     }
 
-    Widget stepWidget;
-    if (wizardState.currentStep == WizardStep.selectGridSize) {
-      stepWidget = const Column(
-        key: ValueKey('step_0'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [GridSizeSelectionCard()],
-      );
-    } else if (wizardState.currentStep == WizardStep.setupPrompt) {
-      stepWidget = const Column(
-        key: ValueKey('step_1'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [ReferenceImagePrompt()],
-      );
-    } else if (wizardState.currentStep == WizardStep.selectPalette) {
-      stepWidget = const Column(
-        key: ValueKey('step_2'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [ColorPaletteGenerator()],
-      );
-    } else if (wizardState.currentStep == WizardStep.sketchingPlan) {
-      stepWidget = const Column(
-        key: ValueKey('step_3'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [SemanticComponentsList()],
-      );
-    } else if (wizardState.currentStep == WizardStep.componentSculpting) {
-      stepWidget = const Column(
-        key: ValueKey('step_4'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [ShapeDecompositionList()],
-      );
-    } else if (wizardState.currentStep == WizardStep.colorAndOutline) {
-      stepWidget = const Column(
-        key: ValueKey('step_5'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [ComponentColorSelectionList()],
-      );
-    } else if (wizardState.currentStep == WizardStep.layerOrderingAndMerge) {
-      stepWidget = const Column(
-        key: ValueKey('step_6'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [LayerOrderingList()],
-      );
-    } else {
-      stepWidget = const Column(
-        key: ValueKey('step_7'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [RefinementPanel()],
-      );
-    }
+    final stepWidget = Column(
+      key: ValueKey('step_${wizardState.currentStep.index}'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [wizardState.currentStepDefinition.buildWidget(context, ref)],
+    );
 
     final theme = Theme.of(context);
 
