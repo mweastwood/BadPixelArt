@@ -155,6 +155,7 @@ void main() {
         WizardStep.componentSculpting,
         WizardStep.colorAndOutline,
         WizardStep.layerOrderingAndMerge,
+        WizardStep.refinement,
       ];
 
       for (int i = 0; i < steps.length - 1; i++) {
