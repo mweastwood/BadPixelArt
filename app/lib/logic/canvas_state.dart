@@ -9,6 +9,7 @@ import 'prompts.dart';
 import 'drawing_commands.dart';
 import 'algorithms/k_means_quantizer.dart';
 import 'agents/base_agent.dart';
+import 'agents/color_selection_agent.dart';
 import 'orchestrators/sketch_orchestrator.dart';
 import 'orchestrators/refinement_orchestrator.dart';
 import 'orchestrators/decomposition_orchestrator.dart';
@@ -26,6 +27,7 @@ import 'wizard_state.dart';
 export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
 export 'models/pixel_art_component.dart';
+export 'agents/color_selection_agent.dart';
 export 'controllers/canvas_history_controller.dart';
 export 'controllers/canvas_drawing_handler.dart';
 
@@ -53,6 +55,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   static const int gridSize = 16;
 
   CanvasModel get model => state;
+  AiService get aiService => _aiService;
 
   @override
   List<List<int>> get grid => state.grid;
@@ -415,6 +418,32 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
     }
     state = state.copyWith(decomposedComponents: updated);
+  }
+
+  Future<AiColorSelectionResult?> suggestComponentColors() async {
+    if (!mounted || state.isGenerating || state.decomposedComponents.isEmpty) {
+      return null;
+    }
+    state = state.copyWith(isGenerating: true);
+    try {
+      final agent = ColorSelectionAgent(_aiService);
+      final result = await agent.suggestColors(
+        userPrompt: state.userPrompt,
+        components: state.decomposedComponents,
+        palette: state.palette,
+        imageBytes: state.referenceImage,
+      );
+      if (mounted) {
+        state = state.copyWith(isGenerating: false);
+      }
+      return result;
+    } catch (e) {
+      debugPrint('Error suggesting component colors: $e');
+      if (mounted) {
+        state = state.copyWith(isGenerating: false);
+      }
+      return null;
+    }
   }
 
   void deleteComponent(int index) {

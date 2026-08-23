@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
-import '../logic/agents/color_selection_agent.dart';
 import '../logic/utils/logging_ai_service.dart';
 import 'ai_color_confirmation_dialog.dart';
 import 'gradient_angle_selector.dart';

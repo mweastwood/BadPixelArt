@@ -65,6 +65,45 @@ void main() {
         final hiltLine = result.updatedComponents[1];
         // Hilt line has no interior -> fillColor2 MUST be enforced null (1 color rule)
         expect(hiltLine.fillColor2, isNull);
+
+        // Verify captured prompt includes plain directional descriptions
+        final prompt = mockAi.capturedPrompts.first;
+        expect(prompt, contains('Left to Right (→)'));
+        expect(prompt, contains('Top to Bottom (↓)'));
+        expect(prompt, contains('Top-Left to Bottom-Right (↘)'));
+        expect(prompt, contains('Bottom to Top (↑)'));
+      },
+    );
+
+    test(
+      'suggestColors returns null for empty components or empty palette',
+      () async {
+        final mockAi = TestMockAiService();
+        final agent = ColorSelectionAgent(mockAi);
+
+        expect(
+          await agent.suggestColors(
+            userPrompt: 'test',
+            components: [],
+            palette: [const Color(0xFF000000)],
+          ),
+          isNull,
+        );
+
+        expect(
+          await agent.suggestColors(
+            userPrompt: 'test',
+            components: [
+              PixelArtComponent(
+                name: 'comp',
+                description: 'desc',
+                relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              ),
+            ],
+            palette: [],
+          ),
+          isNull,
+        );
       },
     );
 

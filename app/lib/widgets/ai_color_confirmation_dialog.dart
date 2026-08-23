@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../logic/agents/color_selection_agent.dart';
 import '../logic/canvas_state.dart';
 
 class AiColorConfirmationDialog extends StatelessWidget {
