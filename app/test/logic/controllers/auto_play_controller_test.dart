@@ -191,6 +191,62 @@ void main() {
         );
       },
     );
+
+    test(
+      'startAutoPlay executes merge on WizardStep.layerOrderingAndMerge',
+      () async {
+        wizardNotifier.setStep(WizardStep.layerOrderingAndMerge);
+        final solidGrid = List.generate(16, (y) => List.generate(16, (x) => 1));
+        canvasNotifier.state = canvasNotifier.state.copyWith(
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+          userPrompt: 'magic sword',
+          palette: [const Color(0xFF000000), const Color(0xFF0000FF)],
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'solid blade',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: solidGrid,
+              fillColor: const Color(0xFF0000FF),
+            ),
+          ],
+        );
+
+        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
+        await Future.delayed(const Duration(milliseconds: 100));
+        canvasNotifier.stopAutoPlay();
+        await future;
+
+        // Ensure canvas grid was merged with component color (color index 2)
+        expect(canvasNotifier.state.grid[0][0], equals(2));
+      },
+    );
+
+    test(
+      'startAutoPlay executes refinement on WizardStep.refinement and completes',
+      () async {
+        wizardNotifier.setStep(WizardStep.refinement);
+        final mockAi = TestMockAiService(
+          response:
+              '{"thought": "done", "tool": "pixel", "params": [0, 0], "colorIndex": 1}',
+        );
+        canvasNotifier = CanvasNotifier(
+          mockAi,
+          autoPlayController: controller,
+          wizardNotifier: wizardNotifier,
+        );
+        canvasNotifier.state = canvasNotifier.state.copyWith(
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+          userPrompt: 'magic sword',
+          palette: [const Color(0xFF000000), const Color(0xFF0000FF)],
+        );
+
+        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
+
+        expect(canvasNotifier.state.autoRun, isFalse);
+        expect(mockAi.callCount, greaterThanOrEqualTo(1));
+      },
+    );
   });
 
   group('CanvasNotifier.startAutoPlay integration', () {

@@ -100,12 +100,19 @@ class AutoPlayWizardController {
           break;
 
         case WizardStep.layerOrderingAndMerge:
+          if (notifier.model.decomposedComponents.isNotEmpty) {
+            notifier.mergeComponentsToCanvas();
+          }
           await Future.delayed(const Duration(seconds: 1));
           if (!notifier.model.autoRun || notifier.model.isPausing) break;
           wizardNotifier.autoAdvance(WizardStep.refinement);
           break;
 
         case WizardStep.refinement:
+          if (!notifier.model.isGenerating &&
+              notifier.model.userPrompt.trim().isNotEmpty) {
+            await notifier.refineCanvas(notifier.model.userPrompt);
+          }
           notifier.setAutoRunState(autoRun: false, isPausing: false);
           return;
       }

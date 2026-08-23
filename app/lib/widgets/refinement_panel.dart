@@ -66,6 +66,57 @@ class _RefinementPanelState extends ConsumerState<RefinementPanel> {
             labelText: 'Refinement Prompt',
           ),
         ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 6.0,
+          children: [
+            ActionChip(
+              avatar: const Icon(Icons.wb_sunny_outlined, size: 16),
+              label: const Text('Highlights & Shadows'),
+              onPressed: () {
+                final current = _promptController.text.trim();
+                final addition = 'Add lighting highlights and shadow depth';
+                _promptController.text = current.isEmpty
+                    ? addition
+                    : '$current, $addition';
+              },
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.brush_outlined, size: 16),
+              label: const Text('Smooth Contours'),
+              onPressed: () {
+                final current = _promptController.text.trim();
+                final addition = 'Smooth jagged pixel outlines and curves';
+                _promptController.text = current.isEmpty
+                    ? addition
+                    : '$current, $addition';
+              },
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.palette_outlined, size: 16),
+              label: const Text('Enhance Contrast'),
+              onPressed: () {
+                final current = _promptController.text.trim();
+                final addition = 'Enhance contrast and color saturation';
+                _promptController.text = current.isEmpty
+                    ? addition
+                    : '$current, $addition';
+              },
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.search_outlined, size: 16),
+              label: const Text('Fine Details'),
+              onPressed: () {
+                final current = _promptController.text.trim();
+                final addition = 'Add subtle micro-details and textures';
+                _promptController.text = current.isEmpty
+                    ? addition
+                    : '$current, $addition';
+              },
+            ),
+          ],
+        ),
         const SizedBox(height: 16),
         ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
