@@ -890,30 +890,43 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     );
 
     try {
-      final updatedComponents = List<PixelArtComponent>.from(
-        state.decomposedComponents,
-      );
-      final comp = updatedComponents[index];
-
-      final newGrid = await _sculptingOrchestrator.sculptSingleComponent(
-        component: comp,
-        index: index,
-        allComponents: updatedComponents,
+      final orchestrator = SketchOrchestrator(_aiService);
+      final updatedComponents = await orchestrator.sketchSingleComponent(
+        components: state.decomposedComponents,
+        targetIndex: index,
         gridSize: state.gridSize,
-        activePalette: state.palette,
+        palette: state.palette,
         userPrompt: state.userPrompt,
-        referenceImage: state.referenceImage,
+        autoRunSpeed: state.autoRunSpeed,
+        onStep: (activeIndex, updated, status) {
+          if (!mounted) return;
+          state = state.copyWith(
+            decomposingComponentIndex: activeIndex,
+            activeComponentIndex: activeIndex,
+            sculptingStatus: status,
+            decomposedComponents: List.from(updated),
+          );
+        },
+        onLogHistory: (log) {
+          if (!mounted) return;
+          final newHistory = List<AgentHistoryEntry>.from(state.aiHistory);
+          newHistory.add(log);
+          state = state.copyWith(aiHistory: newHistory);
+        },
+        isShouldStop: () => !mounted || state.isPausing,
       );
 
       if (!mounted) return;
-      updatedComponents[index] = comp.copyWith(grid: newGrid, isSculpted: true);
-
+      final willStop = state.isPausing;
       state = state.copyWith(
         decomposedComponents: updatedComponents,
         isGenerating: false,
+        autoRun: willStop ? false : state.autoRun,
+        isPausing: false,
         clearDecomposingComponent: true,
         clearSculptingStatus: true,
       );
+      _scheduleSave();
     } catch (e) {
       debugPrint('Error sculpting component: $e');
       if (!mounted) return;

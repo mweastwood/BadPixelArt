@@ -132,7 +132,7 @@ class ShapeSculpterAgent implements PixelArtAgent {
         'You can draw shape primitives, add border pixels, and remove border pixels all in a single turn.\n\n'
         'ALLOWED DRAWING AREA & BOUNDS (Canvas size: ${gridSize}x$gridSize):\n'
         '- Component Bounding Box Bounds: X range: $minX to $maxX, Y range: $minY to $maxY\n'
-        '- CRITICAL: All shape primitives and pixel additions MUST be placed within X: [$minX..$maxX] and Y: [$minY..$maxY]. Any pixels outside this range will be cropped out.\n\n'
+        '- CRITICAL: All shape primitives, pixel additions, and pixel removals MUST be placed strictly within X: [$minX..$maxX] and Y: [$minY..$maxY]. Any coordinates outside this box are invalid and will be ignored.\n\n'
         'Available tools and parameters:\n'
         '- Shape tools (optional, set "tool": "" and "params": [] if not drawing a shape primitive):\n'
         '  - {"tool": "circle_filled", "params": [centerX, centerY, radius]}\n'
@@ -204,11 +204,24 @@ class ShapeSculpterAgent implements PixelArtAgent {
       );
     }
 
+    final StringBuffer historyBuffer = StringBuffer();
+    if (history.isNotEmpty) {
+      historyBuffer.writeln('HISTORY OF ACTIONS IN THIS SCULPTING PHASE:');
+      for (final step in history) {
+        historyBuffer.writeln('- Thought: ${step.thought}');
+        historyBuffer.writeln(
+          '  Action: ${step.tool} with params ${step.params}',
+        );
+        historyBuffer.writeln('  Feedback: ${step.feedback}');
+      }
+    }
+
     return 'Sculpt the component "${comp.name}" (Description: "${comp.description}").\n\n'
         'TARGET COMPONENT BOUNDING BOX (Allowed drawing bounds on ${gridSize}x$gridSize grid):\n'
         'X range: $minX to $maxX | Y range: $minY to $maxY\n'
-        '(MUST place shape tool parameters and pixel additions strictly within this X and Y range!)\n\n'
+        '(MUST place shape tool parameters, pixel additions, and pixel removals strictly within X: [$minX..$maxX] and Y: [$minY..$maxY]! Out-of-bounds coordinates are invalid.)\n\n'
         '${otherCompsBuffer.isNotEmpty ? '$otherCompsBuffer\n' : ''}'
+        '${historyBuffer.isNotEmpty ? '$historyBuffer\n' : ''}'
         'CANDIDATES EXPLANATION:\n'
         '- Remove Candidates: Outer edge pixels of your current shape that can be erased to trim or reshape your component.\n'
         '- Add Candidates: Empty pixels directly touching your current shape that can be added to expand or curve your component.\n'
