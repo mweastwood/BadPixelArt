@@ -440,7 +440,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     } catch (e) {
       debugPrint('Error suggesting component colors: $e');
       if (mounted) {
-        state = state.copyWith(isGenerating: false);
+        state = state.copyWith(
+          isGenerating: false,
+          autoRun: false,
+          isPausing: false,
+        );
       }
       return null;
     }
@@ -627,9 +631,23 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
           suggestedPalette: colors,
           showPaletteSuggestion: true,
         );
+      } else {
+        state = state.copyWith(
+          isSuggestingPalette: false,
+          autoRun: false,
+          isPausing: false,
+        );
+        return;
       }
     } catch (e) {
       debugPrint('Error suggesting palette: $e');
+      if (!mounted) return;
+      state = state.copyWith(
+        isSuggestingPalette: false,
+        autoRun: false,
+        isPausing: false,
+      );
+      return;
     } finally {
       if (mounted) {
         final willStop = state.isPausing;
@@ -663,6 +681,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       }
     } catch (e) {
       debugPrint('Error suggesting description from reference image: $e');
+      if (!mounted) return;
+      state = state.copyWith(
+        isSuggestingDescription: false,
+        autoRun: false,
+        isPausing: false,
+      );
+      return;
     } finally {
       if (mounted) {
         final willStop = state.isPausing;
@@ -981,6 +1006,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         clearDecomposingComponent: true,
         clearSculptingStatus: true,
       );
+      _scheduleSave();
     }
   }
 
@@ -1027,6 +1053,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         isPausing: false,
         clearSculptingStatus: true,
       );
+      _scheduleSave();
     } catch (e) {
       debugPrint('Error in sketching components: $e');
       if (!mounted) return;
@@ -1036,6 +1063,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         isPausing: false,
         clearSculptingStatus: true,
       );
+      _scheduleSave();
     }
   }
 

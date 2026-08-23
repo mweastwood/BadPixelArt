@@ -33,6 +33,10 @@ class AutoPlayWizardController {
               notifier.model.referenceImage != null) {
             await notifier.suggestDescriptionFromReference();
           }
+          if (notifier.model.userPrompt.trim().isEmpty) {
+            notifier.setAutoRunState(autoRun: false, isPausing: false);
+            break;
+          }
           await Future.delayed(const Duration(seconds: 1));
           if (!notifier.model.autoRun || notifier.model.isPausing) break;
           wizardNotifier.autoAdvance(WizardStep.selectPalette);
@@ -44,11 +48,15 @@ class AutoPlayWizardController {
             await notifier.suggestPaletteFromReference();
             if (notifier.model.suggestedPalette != null) {
               notifier.acceptSuggestedPalette();
+            } else {
+              notifier.setAutoRunState(autoRun: false, isPausing: false);
+              break;
             }
           } else if (notifier.model.suggestedPalette != null &&
               notifier.model.showPaletteSuggestion) {
             notifier.acceptSuggestedPalette();
           }
+          if (!notifier.model.autoRun || notifier.model.isPausing) break;
           await Future.delayed(const Duration(seconds: 1));
           if (!notifier.model.autoRun || notifier.model.isPausing) break;
           wizardNotifier.autoAdvance(WizardStep.sketchingPlan);
@@ -62,6 +70,11 @@ class AutoPlayWizardController {
               notifier.applyDecompositionOption(0);
             }
           }
+          if (notifier.model.decomposedComponents.isEmpty) {
+            notifier.setAutoRunState(autoRun: false, isPausing: false);
+            break;
+          }
+          if (!notifier.model.autoRun || notifier.model.isPausing) break;
           await Future.delayed(const Duration(seconds: 1));
           if (!notifier.model.autoRun || notifier.model.isPausing) break;
           wizardNotifier.autoAdvance(WizardStep.componentSculpting);
@@ -74,6 +87,14 @@ class AutoPlayWizardController {
             );
             if (!allComplete && !notifier.model.isGenerating) {
               await notifier.sketchComponents();
+            }
+            if (!notifier.model.autoRun || notifier.model.isPausing) break;
+            final hasIncomplete = notifier.model.decomposedComponents.any(
+              (c) => c.grid == null,
+            );
+            if (hasIncomplete) {
+              notifier.setAutoRunState(autoRun: false, isPausing: false);
+              break;
             }
             await Future.delayed(const Duration(seconds: 1));
             if (!notifier.model.autoRun || notifier.model.isPausing) break;
@@ -92,8 +113,12 @@ class AutoPlayWizardController {
             final result = await notifier.suggestComponentColors();
             if (result != null) {
               notifier.batchUpdateComponentColors(result.updatedComponents);
+            } else {
+              notifier.setAutoRunState(autoRun: false, isPausing: false);
+              break;
             }
           }
+          if (!notifier.model.autoRun || notifier.model.isPausing) break;
           await Future.delayed(const Duration(seconds: 1));
           if (!notifier.model.autoRun || notifier.model.isPausing) break;
           wizardNotifier.autoAdvance(WizardStep.layerOrderingAndMerge);

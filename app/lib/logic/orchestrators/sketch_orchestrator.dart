@@ -297,6 +297,10 @@ class SketchOrchestrator {
 
     for (int i = 0; i < updatedComponents.length; i++) {
       if (isShouldStop?.call() == true) break;
+      final comp = updatedComponents[i];
+      if (comp.isSculpted && comp.grid != null) {
+        continue;
+      }
       await _sketchComponentLoop(
         componentIndex: i,
         allComponents: updatedComponents,

@@ -88,8 +88,11 @@ class SculptingOrchestrator {
     final agent = ShapeSculpterAgent();
 
     for (int i = 0; i < updatedComponents.length; i++) {
-      onStep(i, updatedComponents, 'Sculpting shape...');
       var comp = updatedComponents[i];
+      if (comp.isSculpted && comp.grid != null) {
+        continue;
+      }
+      onStep(i, updatedComponents, 'Sculpting shape...');
 
       comp = comp.initializeDefaultGrid(gridSize);
       final existingGrid = buildBackgroundGrid(

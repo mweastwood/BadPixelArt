@@ -163,5 +163,41 @@ void main() {
         expect(stepUpdates, isNotEmpty);
       },
     );
+
+    test(
+      'sculptAllComponents skips already sculpted components and processes only unsculpted ones',
+      () async {
+        final comp1 = PixelArtComponent(
+          name: 'Head',
+          description: 'Head',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+          shapes: const [],
+          isSculpted: true,
+          grid: List.generate(16, (_) => List.filled(16, 1)),
+        );
+        final comp2 = PixelArtComponent(
+          name: 'Body',
+          description: 'Body',
+          relativeBoundingBox: const Rect.fromLTWH(0.5, 0.5, 0.5, 0.5),
+          shapes: const [],
+          isSculpted: false,
+          grid: null,
+        );
+
+        final results = await orchestrator.sculptAllComponents(
+          components: [comp1, comp2],
+          gridSize: 16,
+          activePalette: [Colors.black, Colors.white, Colors.red],
+          userPrompt: 'a simple character',
+          onStep: (activeIndex, updated, status) {},
+        );
+
+        expect(results.length, equals(2));
+        expect(results[0].isSculpted, isTrue);
+        expect(results[0].grid![0][0], equals(1));
+        expect(results[1].isSculpted, isTrue);
+        expect(mockAiService.callCount, equals(1)); // Only called for comp2!
+      },
+    );
   });
 }
