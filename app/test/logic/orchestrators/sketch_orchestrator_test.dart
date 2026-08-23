@@ -302,5 +302,54 @@ void main() {
       expect(aiService.capturedPrompts.last, contains('WARNING:'));
       expect(aiService.capturedPrompts.last, contains('OUT OF BOUNDS'));
     });
+
+    test(
+      'sketch skips already sculpted components and only sculpts incomplete ones',
+      () async {
+        final aiService = TestMockAiService(
+          responses: [
+            '{"thought": "sculpt body", "tool": "apply_rectangle_filled", "params": [4, 4, 6, 6], "isComplete": true}',
+          ],
+          tokenCount: 15,
+        );
+        final orchestrator = SketchOrchestrator(aiService);
+
+        final alreadySculptedHead = PixelArtComponent(
+          name: 'Head',
+          description: 'Head component',
+          relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 0.5, 0.5),
+          shapes: const [],
+          isSculpted: true,
+          grid: List.generate(8, (_) => List.filled(8, 1)),
+        );
+        final unsculptedBody = PixelArtComponent(
+          name: 'Body',
+          description: 'Body component',
+          relativeBoundingBox: const Rect.fromLTWH(0.5, 0.5, 0.5, 0.5),
+          shapes: const [],
+          isSculpted: false,
+          grid: null,
+        );
+
+        final result = await orchestrator.sketch(
+          components: [alreadySculptedHead, unsculptedBody],
+          gridSize: 8,
+          palette: [Colors.black, Colors.red],
+          userPrompt: 'a robot character',
+          autoRunSpeed: 0.001,
+          onStep: (idx, updated, status) {},
+          onLogHistory: (log) {},
+        );
+
+        expect(result.length, equals(2));
+        expect(result[0].isSculpted, isTrue);
+        expect(result[0].grid![0][0], equals(1)); // Untouched
+        expect(result[1].isSculpted, isTrue);
+        expect(
+          aiService.callCount,
+          equals(1),
+        ); // Only called for unsculptedBody!
+      },
+    );
   });
 }
