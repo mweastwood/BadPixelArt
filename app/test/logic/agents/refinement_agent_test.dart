@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
@@ -35,18 +36,37 @@ void main() {
     );
 
     test(
-      'getFormattedUserPrompt builds correct prompt string with done reminder',
+      'getSystemInstruction adjusts role description when referenceImage is present',
+      () {
+        final context = AgentContext(
+          userPrompt: 'sword',
+          gridSize: 16,
+          currentGrid: List.generate(16, (_) => List.filled(16, 0)),
+          activePalette: [const Color(0xFF000000)],
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+        );
+
+        final instructions = agent.getSystemInstruction(context);
+        expect(instructions, contains('matching the reference image'));
+        expect(instructions, contains('refinement'));
+        expect(instructions, contains('TERMINATION'));
+      },
+    );
+
+    test(
+      'getFormattedUserPrompt includes reference image note when referenceImage is present',
       () {
         final context = AgentContext(
           userPrompt: 'shield',
           gridSize: 8,
           currentGrid: List.generate(8, (_) => List.filled(8, 1)),
           activePalette: [const Color(0xFF000000)],
+          referenceImage: Uint8List.fromList([1, 2, 3]),
         );
 
         final prompt = agent.getFormattedUserPrompt(context, []);
         expect(prompt, contains('Overall Prompt: "shield"'));
-        expect(prompt, contains('Index 1: Hex #000000'));
+        expect(prompt, contains('Reference image is provided'));
         expect(prompt, contains('"tool": "done"'));
       },
     );

@@ -3,7 +3,7 @@ import 'wizard_definition.dart';
 
 /// Registry holding all available wizard configurations.
 class WizardRegistry {
-  static const defaultPixelArtWizard = WizardDefinition(
+  static const structuredPixelArtWizard = WizardDefinition(
     id: 'default_pixel_art',
     title: 'Pixel Art Generator',
     description:
@@ -20,8 +20,24 @@ class WizardRegistry {
     ],
   );
 
+  static const directPixelArtWizard = WizardDefinition(
+    id: 'direct_pixel_art',
+    title: 'Direct Painting Wizard',
+    description:
+        'Paints directly onto the canvas from the reference image, prompt description, and color palette.',
+    steps: [
+      SelectGridSizeStepDefinition(),
+      SetupPromptStepDefinition(),
+      SelectPaletteStepDefinition(),
+      RefinementStepDefinition(),
+    ],
+  );
+
+  static const defaultPixelArtWizard = structuredPixelArtWizard;
+
   static final Map<String, WizardDefinition> _registeredWizards = {
-    defaultPixelArtWizard.id: defaultPixelArtWizard,
+    structuredPixelArtWizard.id: structuredPixelArtWizard,
+    directPixelArtWizard.id: directPixelArtWizard,
   };
 
   /// Returns all registered wizard pipelines.

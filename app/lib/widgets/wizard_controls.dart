@@ -16,7 +16,8 @@ class WizardControls extends ConsumerWidget {
     final wizardState = ref.watch(wizardStateProvider);
 
     // Auto-advancing logic
-    if (!wizardState.autoAdvanced &&
+    if (wizardState.mode == WizardMode.structured &&
+        !wizardState.autoAdvanced &&
         wizardState.currentStep.index < WizardStep.sketchingPlan.index &&
         decomposedComponents.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {

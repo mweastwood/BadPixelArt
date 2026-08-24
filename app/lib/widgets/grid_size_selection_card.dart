@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
+import '../logic/wizard_state.dart';
 
 class GridSizeSelectionCard extends ConsumerWidget {
   const GridSizeSelectionCard({super.key});
@@ -8,6 +9,7 @@ class GridSizeSelectionCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final gridSize = ref.watch(canvasStateProvider.select((s) => s.gridSize));
+    final wizardMode = ref.watch(wizardStateProvider.select((s) => s.mode));
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
@@ -63,6 +65,53 @@ class GridSizeSelectionCard extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Wizard Mode',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose between structured step-by-step layer decomposition or direct freeform AI painting.',
+              style: TextStyle(
+                fontSize: 13,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<WizardMode>(
+              key: const ValueKey('wizard_mode_selector'),
+              segments: const [
+                ButtonSegment<WizardMode>(
+                  value: WizardMode.structured,
+                  label: Text('Structured'),
+                  icon: Icon(Icons.account_tree_outlined),
+                ),
+                ButtonSegment<WizardMode>(
+                  value: WizardMode.direct,
+                  label: Text('Direct Paint'),
+                  icon: Icon(Icons.brush_outlined),
+                ),
+              ],
+              selected: {wizardMode},
+              onSelectionChanged: (newSelection) {
+                ref
+                    .read(wizardStateProvider.notifier)
+                    .setMode(newSelection.first);
+              },
             ),
           ],
         ),

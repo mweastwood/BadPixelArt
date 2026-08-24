@@ -53,6 +53,7 @@ class RefinementOrchestrator {
     required void Function(AgentHistoryEntry log) onLogHistory,
     int maxSteps = 5,
     bool Function()? isShouldStop,
+    Uint8List? referenceImage,
   }) async {
     final List<List<int>> workingGrid = List.generate(
       gridSize,
@@ -71,9 +72,32 @@ class RefinementOrchestrator {
         activePalette: palette,
         userPrompt: userPrompt,
         currentGrid: workingGrid,
+        referenceImage: referenceImage,
       );
 
-      final visualBytes = generateBmp(workingGrid, palette);
+      final visualBytes = referenceImage != null
+          ? combineBmps([
+              () {
+                var refGrid = bmpToDownscaledColorGrid(referenceImage, gridSize);
+                if (refGrid.isEmpty) {
+                  refGrid = bmpToColorGrid(referenceImage);
+                  if (refGrid.isNotEmpty && refGrid.length != gridSize) {
+                    refGrid = downscaleColorGrid(refGrid, gridSize);
+                  }
+                }
+                if (refGrid.isNotEmpty) {
+                  final blurredGrid = applyGaussianBlur(refGrid);
+                  final quantizedGrid = applyColorQuantization(
+                    blurredGrid,
+                    palette,
+                  );
+                  return bmpFromColorGrid(quantizedGrid);
+                }
+                return referenceImage;
+              }(),
+              generateBmp(workingGrid, palette),
+            ])
+          : generateBmp(workingGrid, palette);
 
       final refinementAgent = RefinementAgent();
       Map<String, dynamic>? agentJson;

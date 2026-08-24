@@ -1190,6 +1190,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         palette: state.palette,
         userPrompt: promptToUse,
         autoRunSpeed: state.autoRunSpeed,
+        referenceImage: state.referenceImage,
         onStep: (updatedGrid) {
           if (!mounted) return;
           state = state.copyWith(grid: updatedGrid);
