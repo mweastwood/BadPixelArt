@@ -290,8 +290,8 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "v0.0.23"
-      resolved-ref: "4ab129e1c641183c177bdd35484c8c5bcc2d6e2d"
+      ref: "v0.0.25"
+      resolved-ref: "507c5ef1128707a1fd5a035bdf1c7da3a9787205"
       url: "https://github.com/mweastwood/flutter-agent-core.git"
     source: git
     version: "0.0.1"
