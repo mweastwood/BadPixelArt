@@ -17,10 +17,7 @@ void main() {
       expect(directWizard.id, equals('direct_pixel_art'));
       expect(directWizard.stepCount, equals(4));
       expect(WizardRegistry.allWizards, contains(directWizard));
-      expect(
-        WizardRegistry.getById('direct_pixel_art'),
-        equals(directWizard),
-      );
+      expect(WizardRegistry.getById('direct_pixel_art'), equals(directWizard));
     });
 
     test('getById returns registered wizard or null', () {

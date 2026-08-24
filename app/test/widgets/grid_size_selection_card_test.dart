@@ -45,45 +45,47 @@ void main() {
       },
     );
 
-    testWidgets(
-      'renders wizard mode selector and switches mode on tap',
-      (tester) async {
-        final mockAiService = TestMockAiService();
-        final notifier = CanvasNotifier(mockAiService);
-        final wizardNotifier = WizardNotifier();
+    testWidgets('renders wizard mode selector and switches mode on tap', (
+      tester,
+    ) async {
+      final mockAiService = TestMockAiService();
+      final notifier = CanvasNotifier(mockAiService);
+      final wizardNotifier = WizardNotifier();
 
-        await tester.pumpWidget(
-          ProviderScope(
-            overrides: [
-              canvasStateProvider.overrideWith((ref) => notifier),
-              wizardStateProvider.overrideWith((ref) => wizardNotifier),
-            ],
-            child: const MaterialApp(
-              home: Scaffold(
-                body: SingleChildScrollView(child: GridSizeSelectionCard()),
-              ),
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            canvasStateProvider.overrideWith((ref) => notifier),
+            wizardStateProvider.overrideWith((ref) => wizardNotifier),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(child: GridSizeSelectionCard()),
             ),
           ),
-        );
+        ),
+      );
 
-        expect(find.byKey(const ValueKey('wizard_mode_selector')), findsOneWidget);
-        expect(wizardNotifier.mode, equals(WizardMode.structured));
+      expect(
+        find.byKey(const ValueKey('wizard_mode_selector')),
+        findsOneWidget,
+      );
+      expect(wizardNotifier.mode, equals(WizardMode.structured));
 
-        // Tap Direct Paint segment
-        await tester.tap(find.text('Direct Paint'));
-        await tester.pumpAndSettle();
+      // Tap Direct Paint segment
+      await tester.tap(find.text('Direct Paint'));
+      await tester.pumpAndSettle();
 
-        expect(wizardNotifier.mode, equals(WizardMode.direct));
-        expect(wizardNotifier.wizard.id, equals('direct_pixel_art'));
+      expect(wizardNotifier.mode, equals(WizardMode.direct));
+      expect(wizardNotifier.wizard.id, equals('direct_pixel_art'));
 
-        // Tap Structured segment
-        await tester.tap(find.text('Structured'));
-        await tester.pumpAndSettle();
+      // Tap Structured segment
+      await tester.tap(find.text('Structured'));
+      await tester.pumpAndSettle();
 
-        expect(wizardNotifier.mode, equals(WizardMode.structured));
-        expect(wizardNotifier.wizard.id, equals('default_pixel_art'));
-      },
-    );
+      expect(wizardNotifier.mode, equals(WizardMode.structured));
+      expect(wizardNotifier.wizard.id, equals('default_pixel_art'));
+    });
 
     testGoldens('GridSizeSelectionCard golden render', (tester) async {
       await tester.pumpWidgetBuilder(

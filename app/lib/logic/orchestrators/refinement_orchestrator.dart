@@ -78,7 +78,10 @@ class RefinementOrchestrator {
       final visualBytes = referenceImage != null
           ? combineBmps([
               () {
-                var refGrid = bmpToDownscaledColorGrid(referenceImage, gridSize);
+                var refGrid = bmpToDownscaledColorGrid(
+                  referenceImage,
+                  gridSize,
+                );
                 if (refGrid.isEmpty) {
                   refGrid = bmpToColorGrid(referenceImage);
                   if (refGrid.isNotEmpty && refGrid.length != gridSize) {

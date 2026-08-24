@@ -143,18 +143,25 @@ void main() {
       },
     );
 
-    test('reset resets step to selectGridSize and autoAdvanced to false while preserving mode', () {
-      final notifier = WizardNotifier(WizardStep.refinement, null, WizardMode.direct);
-      notifier.autoAdvance(WizardStep.refinement);
-      expect(notifier.state.autoAdvanced, isTrue);
-      expect(notifier.mode, equals(WizardMode.direct));
+    test(
+      'reset resets step to selectGridSize and autoAdvanced to false while preserving mode',
+      () {
+        final notifier = WizardNotifier(
+          WizardStep.refinement,
+          null,
+          WizardMode.direct,
+        );
+        notifier.autoAdvance(WizardStep.refinement);
+        expect(notifier.state.autoAdvanced, isTrue);
+        expect(notifier.mode, equals(WizardMode.direct));
 
-      notifier.reset();
-      expect(notifier.state.currentStep, equals(WizardStep.selectGridSize));
-      expect(notifier.state.prevStep, equals(WizardStep.selectGridSize));
-      expect(notifier.state.autoAdvanced, isFalse);
-      expect(notifier.mode, equals(WizardMode.direct));
-    });
+        notifier.reset();
+        expect(notifier.state.currentStep, equals(WizardStep.selectGridSize));
+        expect(notifier.state.prevStep, equals(WizardStep.selectGridSize));
+        expect(notifier.state.autoAdvanced, isFalse);
+        expect(notifier.mode, equals(WizardMode.direct));
+      },
+    );
   });
 
   group('WizardNotifier.parseStep Edge Cases', () {

@@ -443,7 +443,10 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(wizardNotifier.mode, equals(WizardMode.direct));
-        expect(wizardNotifier.state.currentStep, equals(WizardStep.selectPalette));
+        expect(
+          wizardNotifier.state.currentStep,
+          equals(WizardStep.selectPalette),
+        );
 
         // Advance forward from selectPalette -> refinement directly
         await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
@@ -457,7 +460,10 @@ void main() {
         await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
         await tester.pumpAndSettle();
 
-        expect(wizardNotifier.state.currentStep, equals(WizardStep.selectPalette));
+        expect(
+          wizardNotifier.state.currentStep,
+          equals(WizardStep.selectPalette),
+        );
       },
     );
   });

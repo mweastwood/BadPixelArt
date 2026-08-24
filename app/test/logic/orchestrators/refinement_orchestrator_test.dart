@@ -257,34 +257,37 @@ void main() {
       },
     );
 
-    test('refine combines reference image with canvas grid into visual input when referenceImage is provided', () async {
-      final aiService = TestMockAiService(
-        responses: [
-          '{"thought": "paint sword matching reference", "tool": "line", "params": [0, 0, 7, 7], "colorIndex": 1}',
-          '{"thought": "finished", "tool": "done", "params": [], "colorIndex": 0}',
-        ],
-        tokenCount: 10,
-      );
-      final orchestrator = RefinementOrchestrator(aiService);
+    test(
+      'refine combines reference image with canvas grid into visual input when referenceImage is provided',
+      () async {
+        final aiService = TestMockAiService(
+          responses: [
+            '{"thought": "paint sword matching reference", "tool": "line", "params": [0, 0, 7, 7], "colorIndex": 1}',
+            '{"thought": "finished", "tool": "done", "params": [], "colorIndex": 0}',
+          ],
+          tokenCount: 10,
+        );
+        final orchestrator = RefinementOrchestrator(aiService);
 
-      final grid = List.generate(8, (_) => List.filled(8, 0));
-      final palette = [Colors.red, Colors.green, Colors.blue];
-      final history = <AgentHistoryEntry>[];
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        final palette = [Colors.red, Colors.green, Colors.blue];
+        final history = <AgentHistoryEntry>[];
 
-      final result = await orchestrator.refine(
-        initialGrid: grid,
-        gridSize: 8,
-        palette: palette,
-        userPrompt: 'paint sword',
-        autoRunSpeed: 0.01,
-        referenceImage: Uint8List.fromList([1, 2, 3]),
-        onStep: (updated) {},
-        onLogHistory: (entry) => history.add(entry),
-      );
+        final result = await orchestrator.refine(
+          initialGrid: grid,
+          gridSize: 8,
+          palette: palette,
+          userPrompt: 'paint sword',
+          autoRunSpeed: 0.01,
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+          onStep: (updated) {},
+          onLogHistory: (entry) => history.add(entry),
+        );
 
-      expect(result[0][0], equals(1));
-      expect(result[7][7], equals(1));
-      expect(aiService.capturedImageBytes.isNotEmpty, isTrue);
-    });
+        expect(result[0][0], equals(1));
+        expect(result[7][7], equals(1));
+        expect(aiService.capturedImageBytes.isNotEmpty, isTrue);
+      },
+    );
   });
 }

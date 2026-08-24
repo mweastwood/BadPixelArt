@@ -15,10 +15,7 @@ enum WizardStep {
   refinement,
 }
 
-enum WizardMode {
-  structured,
-  direct,
-}
+enum WizardMode { structured, direct }
 
 class WizardState {
   final WizardDefinition wizard;
@@ -71,13 +68,15 @@ class WizardNotifier extends StateNotifier<WizardState> {
     WizardMode? initialMode,
   ]) : super(
          WizardState(
-           wizard: initialWizard ??
+           wizard:
+               initialWizard ??
                (initialMode == WizardMode.direct
                    ? WizardRegistry.directPixelArtWizard
                    : WizardRegistry.defaultWizard),
            currentStep: parseStep(initialStep),
            prevStep: parseStep(initialStep),
-           mode: initialMode ??
+           mode:
+               initialMode ??
                (initialWizard?.id == WizardRegistry.directPixelArtWizard.id
                    ? WizardMode.direct
                    : WizardMode.structured),
@@ -106,8 +105,8 @@ class WizardNotifier extends StateNotifier<WizardState> {
     final nextStep = targetWizard.steps.any((s) => s.step == state.currentStep)
         ? state.currentStep
         : (targetWizard.steps.isNotEmpty
-            ? targetWizard.steps.first.step
-            : WizardStep.selectGridSize);
+              ? targetWizard.steps.first.step
+              : WizardStep.selectGridSize);
     state = state.copyWith(
       mode: mode,
       wizard: targetWizard,

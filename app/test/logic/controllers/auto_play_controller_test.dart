@@ -278,7 +278,10 @@ void main() {
         // In direct mode, selectPalette should advance straight to refinement (not sketchingPlan)
         expect(
           wizardNotifier.state.currentStep,
-          anyOf(equals(WizardStep.selectPalette), equals(WizardStep.refinement)),
+          anyOf(
+            equals(WizardStep.selectPalette),
+            equals(WizardStep.refinement),
+          ),
         );
         expect(canvasNotifier.state.decomposedComponents, isEmpty);
       },
