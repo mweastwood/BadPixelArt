@@ -92,3 +92,14 @@ int? parseCoordinateValue(dynamic value) {
   }
   return null;
 }
+
+/// Safely parses numeric values (including floats/doubles) from JSON, supporting both [num] and [String].
+/// Returns `null` if the value is null, non-numeric, or unparseable.
+num? parseNumValue(dynamic value) {
+  if (value is num) {
+    return value;
+  } else if (value is String) {
+    return num.tryParse(value);
+  }
+  return null;
+}

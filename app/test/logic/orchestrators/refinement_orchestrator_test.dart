@@ -258,7 +258,7 @@ void main() {
     );
 
     test(
-      'refine combines reference image with canvas grid into visual input when referenceImage is provided',
+      'refine captures canvas grid visual input and executes drawing actions',
       () async {
         final aiService = TestMockAiService(
           responses: [

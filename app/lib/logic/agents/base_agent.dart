@@ -43,7 +43,7 @@ class AgentContext {
 class PixelArtStepResult {
   final String thought;
   final String tool;
-  final List<int> params;
+  final List<num> params;
   final int colorIndex;
   final String feedback;
 
@@ -69,7 +69,9 @@ class PixelArtStepResult {
     return PixelArtStepResult(
       thought: json['thought'] as String? ?? '',
       tool: json['tool'] as String? ?? '',
-      params: List<int>.from(json['params'] as List? ?? []),
+      params: (json['params'] as List? ?? [])
+          .map((e) => e is num ? e : (num.tryParse(e.toString()) ?? 0))
+          .toList(),
       colorIndex: json['colorIndex'] as int? ?? 0,
       feedback: json['feedback'] as String? ?? '',
     );

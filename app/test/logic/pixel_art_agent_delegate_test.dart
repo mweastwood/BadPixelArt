@@ -8,7 +8,7 @@ import 'package:bad_pixel_art/logic/prompts.dart';
 
 class AppliedCommand {
   final String toolName;
-  final List<int> params;
+  final List<num> params;
   final int colorIndex;
 
   const AppliedCommand(this.toolName, this.params, this.colorIndex);
@@ -25,7 +25,7 @@ class AppliedCommand {
   @override
   int get hashCode => Object.hash(toolName, Object.hashAll(params), colorIndex);
 
-  static bool _listEquals(List<int> a, List<int> b) {
+  static bool _listEquals(List<num> a, List<num> b) {
     if (a.length != b.length) return false;
     for (int i = 0; i < a.length; i++) {
       if (a[i] != b[i]) return false;
@@ -42,9 +42,9 @@ class FakeAgentCanvas implements AgentCanvas {
   List<Color> palette;
 
   final List<AppliedCommand> appliedCommands = [];
-  Uint8List? mockVisualInput;
   Uint8List? lastReferenceBmp;
   Uint8List? lastPreviousBmp;
+  Uint8List? mockVisualInput;
 
   FakeAgentCanvas({
     List<List<int>>? grid,
@@ -61,7 +61,7 @@ class FakeAgentCanvas implements AgentCanvas {
            ];
 
   @override
-  void applyCommand(String toolName, List<int> params, int colorIndex) {
+  void applyCommand(String toolName, List<num> params, int colorIndex) {
     appliedCommands.add(AppliedCommand(toolName, params, colorIndex));
   }
 

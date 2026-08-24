@@ -71,8 +71,12 @@ class PixelArtAgentDelegate implements AgentDelegate<PixelArtStepResult> {
   Future<String> applyAction(Map<String, dynamic> actionMap) async {
     final tool = actionMap['tool'] as String? ?? '';
     final paramsRaw = actionMap['params'];
-    final List<int> params = paramsRaw is List
-        ? List<int>.from(paramsRaw.map((x) => x as int))
+    final List<num> params = paramsRaw is List
+        ? List<num>.from(
+            paramsRaw.map(
+              (x) => x is num ? x : (num.tryParse(x.toString()) ?? 0),
+            ),
+          )
         : [];
     final colorIndex = actionMap['color'] as int? ?? 0;
 

@@ -160,9 +160,9 @@ class SketchOrchestrator {
 
       final String thought = json['thought'] as String? ?? '';
       final String tool = json['tool'] as String? ?? '';
-      final List<int> params = (json['params'] as List? ?? [])
-          .map(parseCoordinateValue)
-          .whereType<int>()
+      final List<num> params = (json['params'] as List? ?? [])
+          .map(parseNumValue)
+          .whereType<num>()
           .toList();
       final List<dynamic> rawAdd = json['add'] as List? ?? [];
       final List<dynamic> rawErase =

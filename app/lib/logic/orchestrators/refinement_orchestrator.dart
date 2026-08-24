@@ -75,32 +75,7 @@ class RefinementOrchestrator {
         referenceImage: referenceImage,
       );
 
-      final visualBytes = referenceImage != null
-          ? combineBmps([
-              () {
-                var refGrid = bmpToDownscaledColorGrid(
-                  referenceImage,
-                  gridSize,
-                );
-                if (refGrid.isEmpty) {
-                  refGrid = bmpToColorGrid(referenceImage);
-                  if (refGrid.isNotEmpty && refGrid.length != gridSize) {
-                    refGrid = downscaleColorGrid(refGrid, gridSize);
-                  }
-                }
-                if (refGrid.isNotEmpty) {
-                  final blurredGrid = applyGaussianBlur(refGrid);
-                  final quantizedGrid = applyColorQuantization(
-                    blurredGrid,
-                    palette,
-                  );
-                  return bmpFromColorGrid(quantizedGrid);
-                }
-                return referenceImage;
-              }(),
-              generateBmp(workingGrid, palette),
-            ])
-          : generateBmp(workingGrid, palette);
+      final visualBytes = generateBmp(workingGrid, palette);
 
       final refinementAgent = RefinementAgent();
       Map<String, dynamic>? agentJson;
@@ -130,7 +105,10 @@ class RefinementOrchestrator {
             .toLowerCase();
 
         // Check for termination / completion signal
-        if (tool == 'done' || tool == 'none' || tool.isEmpty) {
+        if (tool == 'done' ||
+            tool == 'none' ||
+            tool == 'finish' ||
+            tool.isEmpty) {
           final entry = AgentHistoryEntry(
             timestamp: DateTime.now(),
             prompt: 'Refine canvas with prompt: $userPrompt',
@@ -142,9 +120,9 @@ class RefinementOrchestrator {
           break;
         }
 
-        final List<int> params = (agentJson['params'] as List? ?? [])
-            .map(parseCoordinateValue)
-            .whereType<int>()
+        final List<num> params = (agentJson['params'] as List? ?? [])
+            .map(parseNumValue)
+            .whereType<num>()
             .toList();
         final int colorIndex =
             parseCoordinateValue(agentJson['colorIndex']) ?? 1;

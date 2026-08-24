@@ -18,44 +18,94 @@ import 'noise_rectangle_command.dart';
 import 'noise_circle_command.dart';
 import 'voronoi_command.dart';
 
-typedef CommandCreator = DrawingCommand? Function(List<int> params);
+typedef CommandCreator = DrawingCommand? Function(List<num> params);
 
 /// Factory class to instantiate DrawingCommands from tool configurations.
 class DrawingCommandFactory {
   static final Map<String, CommandCreator> _registry = {
-    'line': (p) => p.length >= 4 ? LineCommand(p[0], p[1], p[2], p[3]) : null,
+    'line': (p) => p.length >= 4
+        ? LineCommand(p[0].round(), p[1].round(), p[2].round(), p[3].round())
+        : null,
     'circle': (p) => p.length >= 3 ? CircleCommand(p[0], p[1], p[2]) : null,
     'circle_filled': (p) =>
         p.length >= 3 ? CircleFilledCommand(p[0], p[1], p[2]) : null,
     'circle_hatched': (p) =>
         p.length >= 3 ? CircleHatchedCommand(p[0], p[1], p[2]) : null,
-    'rectangle': (p) =>
-        p.length >= 4 ? RectangleCommand(p[0], p[1], p[2], p[3]) : null,
-    'rectangle_filled': (p) =>
-        p.length >= 4 ? RectangleFilledCommand(p[0], p[1], p[2], p[3]) : null,
-    'rectangle_hatched': (p) =>
-        p.length >= 4 ? RectangleHatchedCommand(p[0], p[1], p[2], p[3]) : null,
-    'fill': (p) => p.length >= 2 ? FillCommand(p[0], p[1]) : null,
-    'hatch': (p) => p.length >= 2 ? HatchCommand(p[0], p[1]) : null,
-    'pixel': (p) => p.length >= 2 ? PixelCommand(p[0], p[1]) : null,
-    'pixels': (p) => PixelsCommand(p),
+    'rectangle': (p) => p.length >= 4
+        ? RectangleCommand(
+            p[0].round(),
+            p[1].round(),
+            p[2].round(),
+            p[3].round(),
+          )
+        : null,
+    'rectangle_filled': (p) => p.length >= 4
+        ? RectangleFilledCommand(
+            p[0].round(),
+            p[1].round(),
+            p[2].round(),
+            p[3].round(),
+          )
+        : null,
+    'rectangle_hatched': (p) => p.length >= 4
+        ? RectangleHatchedCommand(
+            p[0].round(),
+            p[1].round(),
+            p[2].round(),
+            p[3].round(),
+          )
+        : null,
+    'fill': (p) =>
+        p.length >= 2 ? FillCommand(p[0].round(), p[1].round()) : null,
+    'hatch': (p) =>
+        p.length >= 2 ? HatchCommand(p[0].round(), p[1].round()) : null,
+    'pixel': (p) =>
+        p.length >= 2 ? PixelCommand(p[0].round(), p[1].round()) : null,
+    'pixels': (p) => PixelsCommand(p.map((e) => e.round()).toList()),
     'ellipse': (p) =>
         p.length >= 4 ? EllipseCommand(p[0], p[1], p[2], p[3]) : null,
     'ellipse_filled': (p) =>
         p.length >= 4 ? EllipseFilledCommand(p[0], p[1], p[2], p[3]) : null,
     'triangle': (p) => p.length >= 6
-        ? TriangleCommand(p[0], p[1], p[2], p[3], p[4], p[5])
+        ? TriangleCommand(
+            p[0].round(),
+            p[1].round(),
+            p[2].round(),
+            p[3].round(),
+            p[4].round(),
+            p[5].round(),
+          )
         : null,
     'rotated_rectangle': (p) => p.length >= 5
-        ? RotatedRectangleCommand(p[0], p[1], p[2], p[3], p[4].toDouble())
+        ? RotatedRectangleCommand(
+            p[0].round(),
+            p[1].round(),
+            p[2].round(),
+            p[3].round(),
+            p[4].toDouble(),
+          )
         : null,
     'noise_rectangle': (p) => p.length >= 5
-        ? NoiseRectangleCommand(p[0], p[1], p[2], p[3], p[4])
+        ? NoiseRectangleCommand(
+            p[0].round(),
+            p[1].round(),
+            p[2].round(),
+            p[3].round(),
+            p[4].round(),
+          )
         : null,
-    'noise_circle': (p) =>
-        p.length >= 4 ? NoiseCircleCommand(p[0], p[1], p[2], p[3]) : null,
+    'noise_circle': (p) => p.length >= 4
+        ? NoiseCircleCommand(p[0], p[1], p[2], p[3].round())
+        : null,
     'voronoi': (p) => p.length >= 6
-        ? VoronoiCommand(p[0], p[1], p[2], p[3], p[4], p[5])
+        ? VoronoiCommand(
+            p[0].round(),
+            p[1].round(),
+            p[2].round(),
+            p[3].round(),
+            p[4].round(),
+            p[5].round(),
+          )
         : null,
   };
 
@@ -91,7 +141,7 @@ class DrawingCommandFactory {
 
   /// Returns the matching [DrawingCommand] instance based on the [toolName] and [params].
   /// Returns `null` if the tool configurations are invalid or unsupported.
-  static DrawingCommand? create(String toolName, List<int> params) {
+  static DrawingCommand? create(String toolName, List<num> params) {
     final creator = _registry[toolName];
     if (creator != null) {
       return creator(params);

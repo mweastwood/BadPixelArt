@@ -7,15 +7,10 @@ class RefinementAgent implements PixelArtAgent {
   @override
   List<String> get availableTools => [
     'pixel',
+    'pixels',
     'line',
     'circle',
-    'circle_filled',
     'rectangle',
-    'rectangle_filled',
-    'fill',
-    'ellipse',
-    'ellipse_filled',
-    'triangle',
     'done',
     'none',
   ];
@@ -26,56 +21,37 @@ class RefinementAgent implements PixelArtAgent {
     final paletteLength = context.activePalette.length;
 
     final toolHelp = StringBuffer();
-    toolHelp.writeln('Available tools and parameters:');
+    toolHelp.writeln('Available refinement tools and parameters:');
     toolHelp.writeln(
-      '- {"tool": "pixel", "params": [x, y], "colorIndex": idx}',
+      '- {"tool": "pixel", "params": [x, y], "colorIndex": idx} (draws or clears a single pixel)',
     );
     toolHelp.writeln(
-      '- {"tool": "line", "params": [x1, y1, x2, y2], "colorIndex": idx}',
+      '- {"tool": "pixels", "params": [x1, y1, x2, y2, ...], "colorIndex": idx} (modifies multiple specific pixels)',
     );
     toolHelp.writeln(
-      '- {"tool": "circle", "params": [centerX, centerY, radius], "colorIndex": idx}',
+      '- {"tool": "line", "params": [x1, y1, x2, y2], "colorIndex": idx} (draws an outline stroke or edge line)',
     );
     toolHelp.writeln(
-      '- {"tool": "circle_filled", "params": [centerX, centerY, radius], "colorIndex": idx}',
+      '- {"tool": "circle", "params": [centerX, centerY, radius], "colorIndex": idx} (draws a thin outline circle; fractional coordinates like 7.5 on a 16x16 grid are supported for symmetry)',
     );
     toolHelp.writeln(
-      '- {"tool": "rectangle", "params": [x1, y1, x2, y2], "colorIndex": idx}',
+      '- {"tool": "rectangle", "params": [x1, y1, x2, y2], "colorIndex": idx} (draws a thin outline box)',
     );
     toolHelp.writeln(
-      '- {"tool": "rectangle_filled", "params": [x1, y1, x2, y2], "colorIndex": idx}',
-    );
-    toolHelp.writeln(
-      '- {"tool": "fill", "params": [x, y], "colorIndex": idx} (flood fills adjacent matching pixels)',
-    );
-    toolHelp.writeln(
-      '- {"tool": "ellipse", "params": [centerX, centerY, rx, ry], "colorIndex": idx}',
-    );
-    toolHelp.writeln(
-      '- {"tool": "ellipse_filled", "params": [centerX, centerY, rx, ry], "colorIndex": idx}',
-    );
-    toolHelp.writeln(
-      '- {"tool": "triangle", "params": [x1, y1, x2, y2, x3, y3], "colorIndex": idx} (draws a filled triangle)',
-    );
-    toolHelp.writeln(
-      '- {"tool": "done", "params": [], "colorIndex": 0} (signals that the pixel art is refined, complete, and needs no further edits)',
+      '- {"tool": "done", "params": [], "colorIndex": 0} (signals that refinement is complete)',
     );
 
-    final hasRefImage = context.referenceImage != null;
-    final roleGoal = hasRefImage
-        ? 'You are an AI pixel art refinement and painting agent named "refinement". Your goal is to paint and refine pixel art on the canvas directly matching the reference image, prompt description, and active palette.\n'
-        : 'You are an AI pixel art refinement agent named "refinement". Your goal is to refine, shade, highlight, or edit the pixel art on the entire canvas.\n';
-
-    return '$roleGoal'
+    return 'You are an AI pixel art refinement agent named "refinement". Your goal is to inspect the current pixel art canvas and description, and make subtle, targeted refinements (highlights, shading, outline cleanups, stray pixel removal) using the active palette.\n'
         'You have no spatial constraints. You can draw anywhere on the grid from X: 0 to ${gridSize - 1}, Y: 0 to ${gridSize - 1}.\n'
-        'All coordinates are 0-indexed integers.\n\n'
+        'Coordinates are 0-indexed.\n\n'
         'You can draw using any color from the active palette. The palette has $paletteLength colors. The colorIndex must be an integer from 1 to $paletteLength (where 1 is the first color, 2 is the second, etc.), or 0 to erase/clear to transparent.\n\n'
         '${toolHelp.toString()}\n'
         'Output rules:\n'
         '- You must output EXACTLY a valid JSON object. Do not wrap in markdown blocks.\n'
-        '- The format must be: { "thought": "reasoning for this step", "tool": "toolName", "params": [int, int, ...], "colorIndex": int }\n'
-        '- Ensure all coordinates are strictly within the canvas bounds [0, ${gridSize - 1}].\n'
-        '- TERMINATION: If you are satisfied with the overall drawing, highlights, shadows, and contours and NO further modifications are needed, return: { "thought": "The pixel art has clean lighting and contours; no further edits needed.", "tool": "done", "params": [], "colorIndex": 0 }. Returning "done" or "none" signals that refinement is complete.';
+        '- Format: { "thought": "reasoning for this step", "tool": "toolName", "params": [...], "colorIndex": int }\n'
+        '- Keep edits subtle and targeted to preserve existing gradients and shapes.\n'
+        '- TERMINATION: If the artwork looks complete and requires no further touch-ups, immediately return:\n'
+        '  { "thought": "Artwork is complete and polished.", "tool": "done", "params": [], "colorIndex": 0 }';
   }
 
   @override
@@ -84,13 +60,7 @@ class RefinementAgent implements PixelArtAgent {
     List<PixelArtStepResult> history,
   ) {
     final sb = StringBuffer();
-    sb.writeln('Overall Prompt: "${context.userPrompt}"');
-
-    if (context.referenceImage != null) {
-      sb.writeln(
-        'Reference image is provided. Please match the subject, shapes, and colors from the reference image and active palette.',
-      );
-    }
+    sb.writeln('Drawing Description: "${context.userPrompt}"');
 
     sb.writeln('\nCurrent palette mapping:');
     for (int i = 0; i < context.activePalette.length; i++) {

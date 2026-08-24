@@ -4,27 +4,30 @@ import 'base_command.dart';
 class EllipseCommand implements DrawingCommand {
   static const String usage = 'params [centerX, centerY, rx, ry] (outline)';
 
-  final int cx;
-  final int cy;
-  final int rx;
-  final int ry;
+  final num cx;
+  final num cy;
+  final num rx;
+  final num ry;
 
   EllipseCommand(this.cx, this.cy, this.rx, this.ry);
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
-    final int rxVal = rx < 1 ? 1 : rx;
-    final int ryVal = ry < 1 ? 1 : ry;
+    final double rxVal = rx < 0.5 ? 0.5 : rx.toDouble();
+    final double ryVal = ry < 0.5 ? 0.5 : ry.toDouble();
 
-    for (int y = cy - ryVal; y <= cy + ryVal; y++) {
-      for (int x = cx - rxVal; x <= cx + rxVal; x++) {
-        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-          final double dx = (x - cx) / rxVal;
-          final double dy = (y - cy) / ryVal;
-          final double dist = dx * dx + dy * dy;
-          if ((dist - 1.0).abs() <= 0.3) {
-            grid[y][x] = color;
-          }
+    final int minX = (cx - rxVal - 1).floor().clamp(0, gridSize - 1);
+    final int maxX = (cx + rxVal + 1).ceil().clamp(0, gridSize - 1);
+    final int minY = (cy - ryVal - 1).floor().clamp(0, gridSize - 1);
+    final int maxY = (cy + ryVal + 1).ceil().clamp(0, gridSize - 1);
+
+    for (int y = minY; y <= maxY; y++) {
+      for (int x = minX; x <= maxX; x++) {
+        final double dx = (x - cx) / rxVal;
+        final double dy = (y - cy) / ryVal;
+        final double dist = dx * dx + dy * dy;
+        if ((dist - 1.0).abs() <= 0.35) {
+          grid[y][x] = color;
         }
       }
     }

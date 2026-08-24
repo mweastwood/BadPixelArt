@@ -1,55 +1,90 @@
+import 'dart:math' as math;
 import 'base_command.dart';
 
-/// Command to draw an outlined circle using standard Midpoint Circle algorithm.
+/// Command to draw an outlined circle supporting both integer and fractional centers.
 class CircleCommand implements DrawingCommand {
   static const String usage = 'params [centerX, centerY, radius] (outline)';
 
-  final int xc;
-  final int yc;
-  final int r;
+  final num xc;
+  final num yc;
+  final num r;
 
   CircleCommand(this.xc, this.yc, this.r);
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
     if (r <= 0) {
-      if (xc >= 0 && xc < gridSize && yc >= 0 && yc < gridSize) {
-        grid[yc][xc] = color;
+      final int px = xc.round();
+      final int py = yc.round();
+      if (px >= 0 && px < gridSize && py >= 0 && py < gridSize) {
+        grid[py][px] = color;
       }
       return;
     }
 
-    void setPixel(int px, int py) {
-      if (px >= 0 && px < gridSize && py >= 0 && py < gridSize) {
-        grid[py][px] = color;
+    final bool isInteger =
+        xc == xc.roundToDouble() &&
+        yc == yc.roundToDouble() &&
+        r == r.roundToDouble();
+
+    if (isInteger) {
+      final int xcInt = xc.round();
+      final int ycInt = yc.round();
+      final int rInt = r.round();
+
+      void setPixel(int px, int py) {
+        if (px >= 0 && px < gridSize && py >= 0 && py < gridSize) {
+          grid[py][px] = color;
+        }
       }
-    }
 
-    void drawCirclePoints(int x, int y) {
-      setPixel(xc + x, yc + y);
-      setPixel(xc - x, yc + y);
-      setPixel(xc + x, yc - y);
-      setPixel(xc - x, yc - y);
-      setPixel(xc + y, yc + x);
-      setPixel(xc - y, yc + x);
-      setPixel(xc + y, yc - x);
-      setPixel(xc - y, yc - x);
-    }
-
-    int x = 0;
-    int y = r;
-    int d = 1 - r;
-    drawCirclePoints(x, y);
-
-    while (x < y) {
-      x++;
-      if (d < 0) {
-        d += 2 * x + 1;
-      } else {
-        y--;
-        d += 2 * (x - y) + 1;
+      void drawCirclePoints(int x, int y) {
+        setPixel(xcInt + x, ycInt + y);
+        setPixel(xcInt - x, ycInt + y);
+        setPixel(xcInt + x, ycInt - y);
+        setPixel(xcInt - x, ycInt - y);
+        setPixel(xcInt + y, ycInt + x);
+        setPixel(xcInt - y, ycInt + x);
+        setPixel(xcInt + y, ycInt - x);
+        setPixel(xcInt - y, ycInt - x);
       }
+
+      int x = 0;
+      int y = rInt;
+      int d = 1 - rInt;
       drawCirclePoints(x, y);
+
+      while (x < y) {
+        x++;
+        if (d < 0) {
+          d += 2 * x + 1;
+        } else {
+          y--;
+          d += 2 * (x - y) + 1;
+        }
+        drawCirclePoints(x, y);
+      }
+    } else {
+      final double rIn = math.max(0.0, r - 0.75);
+      final double rInSq = rIn * rIn;
+      final double rOut = (r + 0.5).toDouble();
+      final double rOutSq = rOut * rOut;
+
+      final int minX = math.max(0, (xc - r - 1).floor());
+      final int maxX = math.min(gridSize - 1, (xc + r + 1).ceil());
+      final int minY = math.max(0, (yc - r - 1).floor());
+      final int maxY = math.min(gridSize - 1, (yc + r + 1).ceil());
+
+      for (int y = minY; y <= maxY; y++) {
+        final double dy = y - yc.toDouble();
+        for (int x = minX; x <= maxX; x++) {
+          final double dx = x - xc.toDouble();
+          final double distSq = dx * dx + dy * dy;
+          if (distSq >= rInSq && distSq <= rOutSq) {
+            grid[y][x] = color;
+          }
+        }
+      }
     }
   }
 }

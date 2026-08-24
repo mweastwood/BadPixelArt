@@ -34,7 +34,7 @@ export 'controllers/canvas_drawing_handler.dart';
 abstract class AgentCanvas {
   List<List<int>> get grid;
   List<Color> get palette;
-  void applyCommand(String toolName, List<int> params, int colorIndex);
+  void applyCommand(String toolName, List<num> params, int colorIndex);
   Uint8List generateCombinedVisualInput(
     Uint8List? referenceBmp,
     Uint8List? previousBmp,
@@ -64,7 +64,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   List<Color> get palette => state.palette;
 
   @override
-  void applyCommand(String toolName, List<int> params, int colorIndex) {
+  void applyCommand(String toolName, List<num> params, int colorIndex) {
     final boundedColorIndex = state.palette.isEmpty
         ? 0
         : colorIndex.clamp(0, state.palette.length - 1);
@@ -816,11 +816,11 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   void applyLine(int x1, int y1, int x2, int y2) =>
       _executeCommand(LineCommand(x1, y1, x2, y2));
-  void applyCircle(int cx, int cy, int r) =>
+  void applyCircle(num cx, num cy, num r) =>
       _executeCommand(CircleCommand(cx, cy, r));
-  void applyCircleFilled(int cx, int cy, int r) =>
+  void applyCircleFilled(num cx, num cy, num r) =>
       _executeCommand(CircleFilledCommand(cx, cy, r));
-  void applyCircleHatched(int cx, int cy, int r) =>
+  void applyCircleHatched(num cx, num cy, num r) =>
       _executeCommand(CircleHatchedCommand(cx, cy, r));
   void applyRectangle(int x1, int y1, int x2, int y2) =>
       _executeCommand(RectangleCommand(x1, y1, x2, y2));
