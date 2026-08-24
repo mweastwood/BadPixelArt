@@ -10,6 +10,7 @@ import 'drawing_commands.dart';
 import 'algorithms/k_means_quantizer.dart';
 import 'agents/base_agent.dart';
 import 'agents/color_selection_agent.dart';
+import 'agents/layer_ordering_agent.dart';
 import 'orchestrators/sketch_orchestrator.dart';
 import 'orchestrators/refinement_orchestrator.dart';
 import 'orchestrators/decomposition_orchestrator.dart';
@@ -28,6 +29,7 @@ export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
 export 'models/pixel_art_component.dart';
 export 'agents/color_selection_agent.dart';
+export 'agents/layer_ordering_agent.dart';
 export 'controllers/canvas_history_controller.dart';
 export 'controllers/canvas_drawing_handler.dart';
 
@@ -1173,6 +1175,58 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     list.insert(newIndex, item);
     state = state.copyWith(decomposedComponents: list);
     _scheduleSave();
+  }
+
+  Future<void> reorderLayersWithAi() async {
+    if (!mounted ||
+        state.isGenerating ||
+        state.decomposedComponents.length <= 1) {
+      return;
+    }
+    state = state.copyWith(isGenerating: true);
+
+    try {
+      final agent = LayerOrderingAgent(_aiService);
+      final visualBytes = generateBmp(state.grid, state.palette);
+
+      final result = await agent.suggestLayerOrder(
+        userPrompt: state.userPrompt,
+        components: state.decomposedComponents,
+        imageBytes: visualBytes,
+      );
+
+      if (result != null && result.reorderedComponents.isNotEmpty) {
+        final entry = AgentHistoryEntry(
+          timestamp: DateTime.now(),
+          prompt: 'Suggest layer drawing order for prompt: ${state.userPrompt}',
+          response:
+              'Reasoning: ${result.reasoning}\nOrder: ${result.reorderedComponents.map((c) => c.name).join(" -> ")}',
+          isError: false,
+        );
+        final newHistory = List<AgentHistoryEntry>.from(state.aiHistory)
+          ..add(entry);
+        state = state.copyWith(
+          decomposedComponents: result.reorderedComponents,
+          aiHistory: newHistory,
+        );
+        _scheduleSave();
+      }
+    } catch (e) {
+      debugPrint('Error in reorderLayersWithAi: $e');
+      final entry = AgentHistoryEntry(
+        timestamp: DateTime.now(),
+        prompt: 'Suggest layer drawing order for prompt: ${state.userPrompt}',
+        response: 'Error determining layer order: $e',
+        isError: true,
+      );
+      final newHistory = List<AgentHistoryEntry>.from(state.aiHistory)
+        ..add(entry);
+      state = state.copyWith(aiHistory: newHistory);
+    } finally {
+      if (mounted) {
+        state = state.copyWith(isGenerating: false);
+      }
+    }
   }
 
   Future<void> refineCanvas(String refinementPrompt) async {
