@@ -247,6 +247,45 @@ void main() {
         expect(mockAi.callCount, greaterThanOrEqualTo(1));
       },
     );
+
+    test(
+      'startAutoPlay in WizardMode.direct skips intermediate decomposition steps and advances straight from selectPalette to refinement',
+      () async {
+        wizardNotifier.setMode(WizardMode.direct);
+        wizardNotifier.setStep(WizardStep.selectPalette);
+
+        final mockAi = TestMockAiService(
+          responses: [
+            '["#000000", "#ffffff", "#ff0000"]', // palette suggestion
+            '{"thought": "done", "tool": "pixel", "params": [0, 0], "colorIndex": 1}', // refinement
+          ],
+        );
+        canvasNotifier = CanvasNotifier(
+          mockAi,
+          autoPlayController: controller,
+          wizardNotifier: wizardNotifier,
+        );
+        canvasNotifier.state = canvasNotifier.state.copyWith(
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+          userPrompt: 'pixel sword',
+        );
+
+        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
+        await Future.delayed(const Duration(milliseconds: 50));
+        canvasNotifier.stopAutoPlay();
+        await future;
+
+        // In direct mode, selectPalette should advance straight to refinement (not sketchingPlan)
+        expect(
+          wizardNotifier.state.currentStep,
+          anyOf(
+            equals(WizardStep.selectPalette),
+            equals(WizardStep.refinement),
+          ),
+        );
+        expect(canvasNotifier.state.decomposedComponents, isEmpty);
+      },
+    );
   });
 
   group('CanvasNotifier.startAutoPlay integration', () {

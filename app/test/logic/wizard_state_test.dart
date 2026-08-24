@@ -9,6 +9,7 @@ void main() {
       expect(state.currentStep, equals(WizardStep.selectGridSize));
       expect(state.prevStep, equals(WizardStep.selectGridSize));
       expect(state.autoAdvanced, isFalse);
+      expect(state.mode, equals(WizardMode.structured));
     });
 
     test('copyWith updates specified fields and retains others', () {
@@ -17,11 +18,13 @@ void main() {
         currentStep: WizardStep.sketchingPlan,
         prevStep: WizardStep.setupPrompt,
         autoAdvanced: true,
+        mode: WizardMode.direct,
       );
 
       expect(updated.currentStep, equals(WizardStep.sketchingPlan));
       expect(updated.prevStep, equals(WizardStep.setupPrompt));
       expect(updated.autoAdvanced, isTrue);
+      expect(updated.mode, equals(WizardMode.direct));
 
       final partialUpdate = updated.copyWith(
         currentStep: WizardStep.componentSculpting,
@@ -29,19 +32,59 @@ void main() {
       expect(partialUpdate.currentStep, equals(WizardStep.componentSculpting));
       expect(partialUpdate.prevStep, equals(WizardStep.setupPrompt));
       expect(partialUpdate.autoAdvanced, isTrue);
+      expect(partialUpdate.mode, equals(WizardMode.direct));
     });
   });
 
   group('WizardNotifier Unit Tests', () {
     test(
-      'default constructor initializes to selectGridSize with autoAdvanced false',
+      'default constructor initializes to selectGridSize with autoAdvanced false and structured mode',
       () {
         final notifier = WizardNotifier();
         expect(notifier.state.currentStep, equals(WizardStep.selectGridSize));
         expect(notifier.state.prevStep, equals(WizardStep.selectGridSize));
         expect(notifier.state.autoAdvanced, isFalse);
+        expect(notifier.mode, equals(WizardMode.structured));
       },
     );
+
+    test('constructor with initialMode initializes state to direct mode', () {
+      final notifier = WizardNotifier(
+        WizardStep.selectGridSize,
+        null,
+        WizardMode.direct,
+      );
+      expect(notifier.mode, equals(WizardMode.direct));
+      expect(notifier.wizard.id, equals('direct_pixel_art'));
+      expect(notifier.wizard.steps.length, equals(4));
+    });
+
+    test('setMode switches between structured and direct modes', () {
+      final notifier = WizardNotifier();
+      expect(notifier.mode, equals(WizardMode.structured));
+      expect(notifier.wizard.id, equals('default_pixel_art'));
+
+      notifier.setMode(WizardMode.direct);
+      expect(notifier.mode, equals(WizardMode.direct));
+      expect(notifier.wizard.id, equals('direct_pixel_art'));
+      expect(notifier.wizard.steps.length, equals(4));
+
+      notifier.setMode(WizardMode.structured);
+      expect(notifier.mode, equals(WizardMode.structured));
+      expect(notifier.wizard.id, equals('default_pixel_art'));
+      expect(notifier.wizard.steps.length, equals(8));
+    });
+
+    test('toggleMode alternates between structured and direct modes', () {
+      final notifier = WizardNotifier();
+      expect(notifier.mode, equals(WizardMode.structured));
+
+      notifier.toggleMode();
+      expect(notifier.mode, equals(WizardMode.direct));
+
+      notifier.toggleMode();
+      expect(notifier.mode, equals(WizardMode.structured));
+    });
 
     test('constructor with WizardStep initializes state accurately', () {
       final notifier = WizardNotifier(WizardStep.componentSculpting);
@@ -100,16 +143,25 @@ void main() {
       },
     );
 
-    test('reset resets step to selectGridSize and autoAdvanced to false', () {
-      final notifier = WizardNotifier(WizardStep.refinement);
-      notifier.autoAdvance(WizardStep.refinement);
-      expect(notifier.state.autoAdvanced, isTrue);
+    test(
+      'reset resets step to selectGridSize and autoAdvanced to false while preserving mode',
+      () {
+        final notifier = WizardNotifier(
+          WizardStep.refinement,
+          null,
+          WizardMode.direct,
+        );
+        notifier.autoAdvance(WizardStep.refinement);
+        expect(notifier.state.autoAdvanced, isTrue);
+        expect(notifier.mode, equals(WizardMode.direct));
 
-      notifier.reset();
-      expect(notifier.state.currentStep, equals(WizardStep.selectGridSize));
-      expect(notifier.state.prevStep, equals(WizardStep.selectGridSize));
-      expect(notifier.state.autoAdvanced, isFalse);
-    });
+        notifier.reset();
+        expect(notifier.state.currentStep, equals(WizardStep.selectGridSize));
+        expect(notifier.state.prevStep, equals(WizardStep.selectGridSize));
+        expect(notifier.state.autoAdvanced, isFalse);
+        expect(notifier.mode, equals(WizardMode.direct));
+      },
+    );
   });
 
   group('WizardNotifier.parseStep Edge Cases', () {

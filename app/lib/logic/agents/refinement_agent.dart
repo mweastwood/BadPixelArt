@@ -61,7 +61,12 @@ class RefinementAgent implements PixelArtAgent {
       '- {"tool": "done", "params": [], "colorIndex": 0} (signals that the pixel art is refined, complete, and needs no further edits)',
     );
 
-    return 'You are an AI pixel art refinement agent named "refinement". Your goal is to refine, shade, highlight, or edit the pixel art on the entire canvas.\n'
+    final hasRefImage = context.referenceImage != null;
+    final roleGoal = hasRefImage
+        ? 'You are an AI pixel art refinement and painting agent named "refinement". Your goal is to paint and refine pixel art on the canvas directly matching the reference image, prompt description, and active palette.\n'
+        : 'You are an AI pixel art refinement agent named "refinement". Your goal is to refine, shade, highlight, or edit the pixel art on the entire canvas.\n';
+
+    return '$roleGoal'
         'You have no spatial constraints. You can draw anywhere on the grid from X: 0 to ${gridSize - 1}, Y: 0 to ${gridSize - 1}.\n'
         'All coordinates are 0-indexed integers.\n\n'
         'You can draw using any color from the active palette. The palette has $paletteLength colors. The colorIndex must be an integer from 1 to $paletteLength (where 1 is the first color, 2 is the second, etc.), or 0 to erase/clear to transparent.\n\n'
@@ -80,6 +85,12 @@ class RefinementAgent implements PixelArtAgent {
   ) {
     final sb = StringBuffer();
     sb.writeln('Overall Prompt: "${context.userPrompt}"');
+
+    if (context.referenceImage != null) {
+      sb.writeln(
+        'Reference image is provided. Please match the subject, shapes, and colors from the reference image and active palette.',
+      );
+    }
 
     sb.writeln('\nCurrent palette mapping:');
     for (int i = 0; i < context.activePalette.length; i++) {

@@ -419,5 +419,52 @@ void main() {
         notifier.stopAutoPlay();
       },
     );
+
+    testWidgets(
+      'Direct Mode: Step 2 (selectPalette) navigates directly to refinement, and Step 3 (refinement) goes back to selectPalette',
+      (tester) async {
+        final mockAi = MockAiService();
+        final notifier = CanvasNotifier(mockAi);
+        final wizardNotifier = WizardNotifier(
+          WizardStep.selectPalette,
+          null,
+          WizardMode.direct,
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: const WizardFloatingActionButtons(),
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => notifier),
+              wizardStateProvider.overrideWith((ref) => wizardNotifier),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(wizardNotifier.mode, equals(WizardMode.direct));
+        expect(
+          wizardNotifier.state.currentStep,
+          equals(WizardStep.selectPalette),
+        );
+
+        // Advance forward from selectPalette -> refinement directly
+        await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
+        await tester.pumpAndSettle();
+
+        expect(wizardNotifier.state.currentStep, equals(WizardStep.refinement));
+        expect(find.byKey(const ValueKey('wizard_next_fab')), findsNothing);
+        expect(find.byKey(const ValueKey('wizard_back_fab')), findsOneWidget);
+
+        // Tap Back FAB in refinement -> returns directly to selectPalette
+        await tester.tap(find.byKey(const ValueKey('wizard_back_fab')));
+        await tester.pumpAndSettle();
+
+        expect(
+          wizardNotifier.state.currentStep,
+          equals(WizardStep.selectPalette),
+        );
+      },
+    );
   });
 }

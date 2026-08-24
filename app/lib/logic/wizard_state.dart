@@ -15,17 +15,21 @@ enum WizardStep {
   refinement,
 }
 
+enum WizardMode { structured, direct }
+
 class WizardState {
   final WizardDefinition wizard;
   final WizardStep currentStep;
   final WizardStep prevStep;
   final bool autoAdvanced;
+  final WizardMode mode;
 
   const WizardState({
     this.wizard = WizardRegistry.defaultPixelArtWizard,
     this.currentStep = WizardStep.selectGridSize,
     this.prevStep = WizardStep.selectGridSize,
     this.autoAdvanced = false,
+    this.mode = WizardMode.structured,
   });
 
   WizardStepDefinition get currentStepDefinition {
@@ -45,12 +49,14 @@ class WizardState {
     WizardStep? currentStep,
     WizardStep? prevStep,
     bool? autoAdvanced,
+    WizardMode? mode,
   }) {
     return WizardState(
       wizard: wizard ?? this.wizard,
       currentStep: currentStep ?? this.currentStep,
       prevStep: prevStep ?? this.prevStep,
       autoAdvanced: autoAdvanced ?? this.autoAdvanced,
+      mode: mode ?? this.mode,
     );
   }
 }
@@ -59,11 +65,21 @@ class WizardNotifier extends StateNotifier<WizardState> {
   WizardNotifier([
     Object initialStep = WizardStep.selectGridSize,
     WizardDefinition? initialWizard,
+    WizardMode? initialMode,
   ]) : super(
          WizardState(
-           wizard: initialWizard ?? WizardRegistry.defaultWizard,
+           wizard:
+               initialWizard ??
+               (initialMode == WizardMode.direct
+                   ? WizardRegistry.directPixelArtWizard
+                   : WizardRegistry.defaultWizard),
            currentStep: parseStep(initialStep),
            prevStep: parseStep(initialStep),
+           mode:
+               initialMode ??
+               (initialWizard?.id == WizardRegistry.directPixelArtWizard.id
+                   ? WizardMode.direct
+                   : WizardMode.structured),
          ),
        );
 
@@ -71,6 +87,7 @@ class WizardNotifier extends StateNotifier<WizardState> {
   WizardStep get currentStep => state.currentStep;
   WizardDefinition get wizard => state.wizard;
   WizardStepDefinition get currentStepDefinition => state.currentStepDefinition;
+  WizardMode get mode => state.mode;
 
   @visibleForTesting
   static WizardStep parseStep(Object? step) {
@@ -81,15 +98,45 @@ class WizardNotifier extends StateNotifier<WizardState> {
     return WizardStep.selectGridSize;
   }
 
+  void setMode(WizardMode mode) {
+    final targetWizard = mode == WizardMode.direct
+        ? WizardRegistry.directPixelArtWizard
+        : WizardRegistry.defaultPixelArtWizard;
+    final nextStep = targetWizard.steps.any((s) => s.step == state.currentStep)
+        ? state.currentStep
+        : (targetWizard.steps.isNotEmpty
+              ? targetWizard.steps.first.step
+              : WizardStep.selectGridSize);
+    state = state.copyWith(
+      mode: mode,
+      wizard: targetWizard,
+      currentStep: nextStep,
+      prevStep: nextStep,
+      autoAdvanced: false,
+    );
+  }
+
+  void toggleMode() {
+    setMode(
+      state.mode == WizardMode.structured
+          ? WizardMode.direct
+          : WizardMode.structured,
+    );
+  }
+
   void setWizard(WizardDefinition wizard) {
     final firstStep = wizard.steps.isNotEmpty
         ? wizard.steps.first.step
         : WizardStep.selectGridSize;
+    final newMode = wizard.id == WizardRegistry.directPixelArtWizard.id
+        ? WizardMode.direct
+        : WizardMode.structured;
     state = WizardState(
       wizard: wizard,
       currentStep: firstStep,
       prevStep: firstStep,
       autoAdvanced: false,
+      mode: newMode,
     );
   }
 
@@ -118,6 +165,7 @@ class WizardNotifier extends StateNotifier<WizardState> {
       currentStep: firstStep,
       prevStep: firstStep,
       autoAdvanced: false,
+      mode: state.mode,
     );
   }
 }
