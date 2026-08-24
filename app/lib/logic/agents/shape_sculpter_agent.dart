@@ -135,7 +135,7 @@ class ShapeSculpterAgent implements PixelArtAgent {
         '- CRITICAL: All shape primitives, pixel additions, and pixel removals MUST be placed strictly within X: [$minX..$maxX] and Y: [$minY..$maxY]. Any coordinates outside this box are invalid and will be ignored.\n\n'
         'Available tools and parameters:\n'
         '- Shape tools (optional, set "tool": "" and "params": [] if not drawing a shape primitive):\n'
-        '  - {"tool": "circle_filled", "params": [centerX, centerY, radius]}\n'
+        '  - {"tool": "circle_filled", "params": [centerX, centerY, radius]} (Fractional coordinates like 7.5 on 16x16 are supported for exact bilateral symmetry)\n'
         '  - {"tool": "rectangle_filled", "params": [x1, y1, x2, y2]}\n'
         '  - {"tool": "ellipse_filled", "params": [centerX, centerY, rx, ry]}\n'
         '  - {"tool": "triangle", "params": [x1, y1, x2, y2, x3, y3]}\n'
@@ -271,8 +271,8 @@ class ShapeSculpterAgent implements PixelArtAgent {
 
         final tool = parsed['tool'] as String? ?? '';
         final params = (parsed['params'] as List? ?? [])
-            .map(parseCoordinateValue)
-            .whereType<int>()
+            .map(parseNumValue)
+            .whereType<num>()
             .toList();
         final removeList = (parsed['remove'] ?? parsed['erase']) as List? ?? [];
         final addList = parsed['add'] as List? ?? [];

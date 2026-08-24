@@ -15,5 +15,43 @@ void main() {
       // Center remains empty
       expect(grid[3][3], equals(0));
     });
+
+    test(
+      'ellipse outline with fractional center on 16x16 is left-right symmetric',
+      () {
+        final grid = List.generate(16, (_) => List.filled(16, 0));
+        // Fractional center ensures the rasterised outline is symmetric by
+        // construction (both halves use the same Euclidean distance).
+        EllipseCommand(7.5, 7.5, 5.5, 3.5).execute(grid, 1, 16);
+
+        for (int y = 0; y < 16; y++) {
+          for (int x = 0; x < 8; x++) {
+            expect(
+              grid[y][x],
+              equals(grid[y][15 - x]),
+              reason: 'Left-right mismatch at Y=$y: X=$x vs X=${15 - x}',
+            );
+          }
+        }
+      },
+    );
+
+    test(
+      'ellipse outline with fractional center on 16x16 is top-bottom symmetric',
+      () {
+        final grid = List.generate(16, (_) => List.filled(16, 0));
+        EllipseCommand(7.5, 7.5, 5.5, 3.5).execute(grid, 1, 16);
+
+        for (int y = 0; y < 8; y++) {
+          for (int x = 0; x < 16; x++) {
+            expect(
+              grid[y][x],
+              equals(grid[15 - y][x]),
+              reason: 'Top-bottom mismatch at X=$x: Y=$y vs Y=${15 - y}',
+            );
+          }
+        }
+      },
+    );
   });
 }

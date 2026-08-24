@@ -532,7 +532,9 @@ void main() {
 
         DrawingCommandFactory.register(
           customToolName,
-          (p) => p.length >= 2 ? _CustomMockCommand(p[0], p[1]) : null,
+          (p) => p.length >= 2
+              ? _CustomMockCommand(p[0].round(), p[1].round())
+              : null,
           customUsage,
         );
 

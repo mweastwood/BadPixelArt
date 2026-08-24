@@ -85,6 +85,24 @@ void main() {
           ),
         );
       });
+
+      test(
+        'ASCII art filled circle with fractional center on 16x16 is symmetric',
+        () {
+          final grid = List.generate(16, (_) => List.filled(16, 0));
+          CircleFilledCommand(7.5, 7.5, 5.5).execute(grid, 1, 16);
+
+          for (int y = 0; y < 16; y++) {
+            for (int x = 0; x < 8; x++) {
+              expect(
+                grid[y][x],
+                equals(grid[y][15 - x]),
+                reason: 'Mismatch at Y=$y: X=$x vs X=${15 - x}',
+              );
+            }
+          }
+        },
+      );
     });
   });
 }
