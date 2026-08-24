@@ -69,9 +69,16 @@ class PixelArtStepResult {
     return PixelArtStepResult(
       thought: json['thought'] as String? ?? '',
       tool: json['tool'] as String? ?? '',
-      params: (json['params'] as List? ?? [])
-          .map((e) => e is num ? e : (num.tryParse(e.toString()) ?? 0))
-          .toList(),
+      params: (json['params'] as List? ?? []).expand((e) {
+        if (e is num) return [e];
+        final parsed = num.tryParse(e.toString());
+        if (parsed != null) return [parsed];
+        debugPrint(
+          'PixelArtStepResult.fromJson: dropping non-numeric param value: $e '
+          '(type: ${e.runtimeType})',
+        );
+        return const <num>[];
+      }).toList(),
       colorIndex: json['colorIndex'] as int? ?? 0,
       feedback: json['feedback'] as String? ?? '',
     );

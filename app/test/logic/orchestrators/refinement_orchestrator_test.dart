@@ -287,6 +287,19 @@ void main() {
         expect(result[0][0], equals(1));
         expect(result[7][7], equals(1));
         expect(aiService.capturedImageBytes.isNotEmpty, isTrue);
+
+        // The refinement orchestrator must NOT forward the raw referenceImage
+        // to the AI service — it passes only the rendered canvas BMP so that
+        // the model polishes the current canvas without the original reference.
+        const referenceBytes = [1, 2, 3];
+        for (final captured in aiService.capturedImageBytes) {
+          expect(
+            captured,
+            isNot(equals(Uint8List.fromList(referenceBytes))),
+            reason:
+                'referenceImage should be excluded from refinement AI calls',
+          );
+        }
       },
     );
   });

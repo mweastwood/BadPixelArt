@@ -65,15 +65,17 @@ class CircleCommand implements DrawingCommand {
         drawCirclePoints(x, y);
       }
     } else {
-      final double rIn = math.max(0.0, r - 0.75);
+      // Symmetric ±0.5 band around the ideal circle radius produces an even
+      // one-pixel-wide outline regardless of the fractional center position.
+      final double rIn = math.max(0.0, r - 0.5);
       final double rInSq = rIn * rIn;
       final double rOut = (r + 0.5).toDouble();
       final double rOutSq = rOut * rOut;
 
-      final int minX = math.max(0, (xc - r - 1).floor());
-      final int maxX = math.min(gridSize - 1, (xc + r + 1).ceil());
-      final int minY = math.max(0, (yc - r - 1).floor());
-      final int maxY = math.min(gridSize - 1, (yc + r + 1).ceil());
+      final int minX = (xc - r - 1).floor().clamp(0, gridSize - 1);
+      final int maxX = (xc + r + 1).ceil().clamp(0, gridSize - 1);
+      final int minY = (yc - r - 1).floor().clamp(0, gridSize - 1);
+      final int maxY = (yc + r + 1).ceil().clamp(0, gridSize - 1);
 
       for (int y = minY; y <= maxY; y++) {
         final double dy = y - yc.toDouble();

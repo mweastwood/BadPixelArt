@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'prompts.dart';
@@ -72,11 +72,16 @@ class PixelArtAgentDelegate implements AgentDelegate<PixelArtStepResult> {
     final tool = actionMap['tool'] as String? ?? '';
     final paramsRaw = actionMap['params'];
     final List<num> params = paramsRaw is List
-        ? List<num>.from(
-            paramsRaw.map(
-              (x) => x is num ? x : (num.tryParse(x.toString()) ?? 0),
-            ),
-          )
+        ? paramsRaw.expand<num>((x) {
+            if (x is num) return [x];
+            final parsed = num.tryParse(x.toString());
+            if (parsed != null) return [parsed];
+            debugPrint(
+              'PixelArtAgentDelegate.applyAction: dropping non-numeric param '
+              'value: $x (type: ${x.runtimeType})',
+            );
+            return const <num>[];
+          }).toList()
         : [];
     final colorIndex = actionMap['color'] as int? ?? 0;
 

@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'base_command.dart';
 
 /// Command to draw a hatched (checkerboard pattern) filled circle.
@@ -24,10 +23,10 @@ class CircleHatchedCommand implements DrawingCommand {
     }
 
     final double rSq = (r * r).toDouble();
-    final int minX = math.max(0, (xc - r).floor());
-    final int maxX = math.min(gridSize - 1, (xc + r).ceil());
-    final int minY = math.max(0, (yc - r).floor());
-    final int maxY = math.min(gridSize - 1, (yc + r).ceil());
+    final int minX = (xc - r).floor().clamp(0, gridSize - 1);
+    final int maxX = (xc + r).ceil().clamp(0, gridSize - 1);
+    final int minY = (yc - r).floor().clamp(0, gridSize - 1);
+    final int maxY = (yc + r).ceil().clamp(0, gridSize - 1);
 
     for (int y = minY; y <= maxY; y++) {
       final double dy = y - yc.toDouble();

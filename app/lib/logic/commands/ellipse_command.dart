@@ -26,6 +26,9 @@ class EllipseCommand implements DrawingCommand {
         final double dx = (x - cx) / rxVal;
         final double dy = (y - cy) / ryVal;
         final double dist = dx * dx + dy * dy;
+        // Threshold 0.35 (widened from 0.30) ensures the outline is at least
+        // one pixel wide at low resolutions and for near-circular shapes where
+        // the pixel grid is coarse relative to the ellipse perimeter.
         if ((dist - 1.0).abs() <= 0.35) {
           grid[y][x] = color;
         }

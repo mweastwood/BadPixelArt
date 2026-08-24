@@ -13,6 +13,12 @@ class RefinementAgent implements PixelArtAgent {
     'rectangle',
     'done',
     'none',
+    // NOTE: 'ellipse' (outline) was intentionally removed alongside
+    // 'ellipse_filled', 'circle_filled', 'rectangle_filled', 'fill', and
+    // 'triangle'. The refinement stage is restricted to pixel-precise,
+    // non-destructive tools (pixel, pixels, line, circle, rectangle) to avoid
+    // accidentally overwriting gradients or large canvas regions during
+    // touch-up passes.
   ];
 
   @override
