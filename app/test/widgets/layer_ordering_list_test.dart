@@ -159,6 +159,55 @@ void main() {
       },
     );
 
+    testWidgets('tapping AI Auto-Order button triggers reorderLayersWithAi', (
+      tester,
+    ) async {
+      final mockComponents = [
+        PixelArtComponent(
+          name: 'Blade',
+          description: 'A sharp blade',
+          relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+          shapes: [],
+        ),
+        PixelArtComponent(
+          name: 'Hilt',
+          description: 'Hilt guard',
+          relativeBoundingBox: const Rect.fromLTWH(0.4, 0.7, 0.2, 0.2),
+          shapes: [],
+        ),
+      ];
+
+      bool aiReorderCalled = false;
+
+      await tester.pumpWidget(
+        buildTestableWidget(
+          overrides: [
+            canvasStateProvider.overrideWith((ref) {
+              final aiService = ref.watch(loggingAiServiceProvider);
+              final notifier = _MockLayerCanvasNotifier(
+                aiService,
+                onAiReorder: () async {
+                  aiReorderCalled = true;
+                },
+              );
+              notifier.state = notifier.state.copyWith(
+                decomposedComponents: mockComponents,
+              );
+              return notifier;
+            }),
+          ],
+          child: const Scaffold(body: LayerOrderingList()),
+        ),
+      );
+
+      expect(find.text('AI Auto-Order'), findsOneWidget);
+      await tester.tap(find.text('AI Auto-Order'));
+      await tester.pumpAndSettle();
+
+      expect(aiReorderCalled, isTrue);
+      expect(find.text('AI reordered layers by depth!'), findsOneWidget);
+    });
+
     testGoldens('LayerOrderingList renders correctly in multiple states', (
       tester,
     ) async {
@@ -234,8 +283,14 @@ void main() {
 class _MockLayerCanvasNotifier extends CanvasNotifier {
   final Function(int, int)? onReorder;
   final VoidCallback? onMerge;
+  final Future<void> Function()? onAiReorder;
 
-  _MockLayerCanvasNotifier(super.aiService, {this.onReorder, this.onMerge});
+  _MockLayerCanvasNotifier(
+    super.aiService, {
+    this.onReorder,
+    this.onMerge,
+    this.onAiReorder,
+  });
 
   @override
   void reorderComponents(int oldIndex, int newIndex) {
@@ -247,5 +302,14 @@ class _MockLayerCanvasNotifier extends CanvasNotifier {
   void mergeComponentsToCanvas() {
     if (onMerge != null) onMerge!();
     super.mergeComponentsToCanvas();
+  }
+
+  @override
+  Future<void> reorderLayersWithAi() async {
+    if (onAiReorder != null) {
+      await onAiReorder!();
+    } else {
+      await super.reorderLayersWithAi();
+    }
   }
 }

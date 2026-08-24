@@ -263,6 +263,7 @@ class LayerOrderingAndMergeStepDefinition extends WizardStepDefinition {
   @override
   Future<bool> executeAutoPlay(CanvasNotifier notifier) async {
     if (notifier.model.decomposedComponents.isNotEmpty) {
+      await notifier.reorderLayersWithAi();
       notifier.mergeComponentsToCanvas();
     }
     return true;
