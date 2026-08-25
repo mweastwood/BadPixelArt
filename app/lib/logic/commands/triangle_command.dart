@@ -16,30 +16,28 @@ class TriangleCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
+    if (gridSize <= 0) return;
+
     int sign(int px, int py, int ax, int ay, int bx, int by) {
       return (px - bx) * (ay - by) - (ax - bx) * (py - by);
     }
 
-    final int minX = [
-      x1,
-      x2,
-      x3,
-    ].reduce((a, b) => a < b ? a : b).clamp(0, gridSize - 1);
-    final int maxX = [
-      x1,
-      x2,
-      x3,
-    ].reduce((a, b) => a > b ? a : b).clamp(0, gridSize - 1);
-    final int minY = [
-      y1,
-      y2,
-      y3,
-    ].reduce((a, b) => a < b ? a : b).clamp(0, gridSize - 1);
-    final int maxY = [
-      y1,
-      y2,
-      y3,
-    ].reduce((a, b) => a > b ? a : b).clamp(0, gridSize - 1);
+    final int rawMinX = [x1, x2, x3].reduce((a, b) => a < b ? a : b);
+    final int rawMaxX = [x1, x2, x3].reduce((a, b) => a > b ? a : b);
+    final int rawMinY = [y1, y2, y3].reduce((a, b) => a < b ? a : b);
+    final int rawMaxY = [y1, y2, y3].reduce((a, b) => a > b ? a : b);
+
+    if (rawMaxX < 0 ||
+        rawMinX >= gridSize ||
+        rawMaxY < 0 ||
+        rawMinY >= gridSize) {
+      return;
+    }
+
+    final int minX = rawMinX.clamp(0, gridSize - 1);
+    final int maxX = rawMaxX.clamp(0, gridSize - 1);
+    final int minY = rawMinY.clamp(0, gridSize - 1);
+    final int maxY = rawMaxY.clamp(0, gridSize - 1);
 
     for (int y = minY; y <= maxY; y++) {
       for (int x = minX; x <= maxX; x++) {
