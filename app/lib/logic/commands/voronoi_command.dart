@@ -1,3 +1,4 @@
+import '../utils/noise_utils.dart';
 import 'base_command.dart';
 
 /// Command to draw a Voronoi cellular texture.
@@ -14,13 +15,6 @@ class VoronoiCommand implements DrawingCommand {
 
   VoronoiCommand(this.x1, this.y1, this.x2, this.y2, this.numCells, this.seed);
 
-  static double _hashNoise(int x, int y, int seed) {
-    int n = x * 374761393 + y * 668265263 + seed * 1274126177;
-    n = ((n ^ (n >> 13)) * 1274126177) & 0x7fffffff;
-    n = n ^ (n >> 16);
-    return (n & 0x7fffffff) / 0x7fffffff;
-  }
-
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
     final int startX = x1 < x2 ? x1 : x2;
@@ -34,8 +28,8 @@ class VoronoiCommand implements DrawingCommand {
 
     final List<List<int>> points = [];
     for (int i = 0; i < numCells; i++) {
-      final int px = startX + (_hashNoise(i, 0, seed) * w).floor();
-      final int py = startY + (_hashNoise(0, i, seed + 99) * h).floor();
+      final int px = startX + (hashNoise(i, 0, seed) * w).floor();
+      final int py = startY + (hashNoise(0, i, seed + 99) * h).floor();
       points.add([px, py, i % 2 == 0 ? color : 0]);
     }
 
