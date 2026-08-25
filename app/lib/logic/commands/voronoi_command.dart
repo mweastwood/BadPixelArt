@@ -17,10 +17,16 @@ class VoronoiCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
+    if (numCells <= 0 || gridSize <= 0) return;
+
     final int startX = x1 < x2 ? x1 : x2;
     final int endX = x1 < x2 ? x2 : x1;
     final int startY = y1 < y2 ? y1 : y2;
     final int endY = y1 < y2 ? y2 : y1;
+
+    if (endX < 0 || startX >= gridSize || endY < 0 || startY >= gridSize) {
+      return;
+    }
 
     final int w = endX - startX + 1;
     final int h = endY - startY + 1;
@@ -33,16 +39,13 @@ class VoronoiCommand implements DrawingCommand {
       points.add([px, py, i % 2 == 0 ? color : 0]);
     }
 
-    for (
-      int y = startY.clamp(0, gridSize - 1);
-      y <= endY.clamp(0, gridSize - 1);
-      y++
-    ) {
-      for (
-        int x = startX.clamp(0, gridSize - 1);
-        x <= endX.clamp(0, gridSize - 1);
-        x++
-      ) {
+    final int clampedStartY = startY.clamp(0, gridSize - 1);
+    final int clampedEndY = endY.clamp(0, gridSize - 1);
+    final int clampedStartX = startX.clamp(0, gridSize - 1);
+    final int clampedEndX = endX.clamp(0, gridSize - 1);
+
+    for (int y = clampedStartY; y <= clampedEndY; y++) {
+      for (int x = clampedStartX; x <= clampedEndX; x++) {
         double bestDist = double.infinity;
         int bestColor = color;
         for (final pt in points) {

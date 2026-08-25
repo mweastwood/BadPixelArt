@@ -16,21 +16,24 @@ class NoiseRectangleCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
+    if (gridSize <= 0) return;
+
     final int startX = x1 < x2 ? x1 : x2;
     final int endX = x1 < x2 ? x2 : x1;
     final int startY = y1 < y2 ? y1 : y2;
     final int endY = y1 < y2 ? y2 : y1;
 
-    for (
-      int y = startY.clamp(0, gridSize - 1);
-      y <= endY.clamp(0, gridSize - 1);
-      y++
-    ) {
-      for (
-        int x = startX.clamp(0, gridSize - 1);
-        x <= endX.clamp(0, gridSize - 1);
-        x++
-      ) {
+    if (endX < 0 || startX >= gridSize || endY < 0 || startY >= gridSize) {
+      return;
+    }
+
+    final int clampedStartY = startY.clamp(0, gridSize - 1);
+    final int clampedEndY = endY.clamp(0, gridSize - 1);
+    final int clampedStartX = startX.clamp(0, gridSize - 1);
+    final int clampedEndX = endX.clamp(0, gridSize - 1);
+
+    for (int y = clampedStartY; y <= clampedEndY; y++) {
+      for (int x = clampedStartX; x <= clampedEndX; x++) {
         final double n = hashNoise(x, y, seed);
         final int idx = (n * 2).floor() % 2;
         if (idx == 0) {
