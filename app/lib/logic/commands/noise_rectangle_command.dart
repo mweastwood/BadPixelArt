@@ -1,3 +1,4 @@
+import '../utils/noise_utils.dart';
 import 'base_command.dart';
 
 /// Command to fill a rectangular area with noise-distributed pixels.
@@ -12,13 +13,6 @@ class NoiseRectangleCommand implements DrawingCommand {
   final int seed;
 
   NoiseRectangleCommand(this.x1, this.y1, this.x2, this.y2, this.seed);
-
-  static double _hashNoise(int x, int y, int seed) {
-    int n = x * 374761393 + y * 668265263 + seed * 1274126177;
-    n = ((n ^ (n >> 13)) * 1274126177) & 0x7fffffff;
-    n = n ^ (n >> 16);
-    return (n & 0x7fffffff) / 0x7fffffff;
-  }
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
@@ -37,7 +31,7 @@ class NoiseRectangleCommand implements DrawingCommand {
         x <= endX.clamp(0, gridSize - 1);
         x++
       ) {
-        final double n = _hashNoise(x, y, seed);
+        final double n = hashNoise(x, y, seed);
         final int idx = (n * 2).floor() % 2;
         if (idx == 0) {
           grid[y][x] = color;

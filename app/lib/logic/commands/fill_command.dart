@@ -17,22 +17,25 @@ class FillCommand implements DrawingCommand {
     int targetColor = grid[startY][startX];
     if (targetColor == color) return;
 
-    List<List<int>> queue = [
-      [startX, startY],
-    ];
+    grid[startY][startX] = color;
+    final List<int> queue = [startY * gridSize + startX];
+
     while (queue.isNotEmpty) {
-      var curr = queue.removeLast();
-      int cx = curr[0];
-      int cy = curr[1];
+      final int pos = queue.removeLast();
+      final int cx = pos % gridSize;
+      final int cy = pos ~/ gridSize;
 
-      if (grid[cy][cx] == targetColor) {
-        grid[cy][cx] = color;
-
-        if (cx > 0) queue.add([cx - 1, cy]);
-        if (cx < gridSize - 1) queue.add([cx + 1, cy]);
-        if (cy > 0) queue.add([cx, cy - 1]);
-        if (cy < gridSize - 1) queue.add([cx, cy + 1]);
+      void checkNeighbor(int nx, int ny) {
+        if (grid[ny][nx] == targetColor) {
+          grid[ny][nx] = color;
+          queue.add(ny * gridSize + nx);
+        }
       }
+
+      if (cx > 0) checkNeighbor(cx - 1, cy);
+      if (cx < gridSize - 1) checkNeighbor(cx + 1, cy);
+      if (cy > 0) checkNeighbor(cx, cy - 1);
+      if (cy < gridSize - 1) checkNeighbor(cx, cy + 1);
     }
   }
 }

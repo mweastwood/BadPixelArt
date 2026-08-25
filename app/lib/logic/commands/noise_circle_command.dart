@@ -1,3 +1,4 @@
+import '../utils/noise_utils.dart';
 import 'base_command.dart';
 
 /// Command to fill a circular area with noise-distributed pixels.
@@ -12,13 +13,6 @@ class NoiseCircleCommand implements DrawingCommand {
 
   NoiseCircleCommand(this.cx, this.cy, this.r, this.seed);
 
-  static double _hashNoise(int x, int y, int seed) {
-    int n = x * 374761393 + y * 668265263 + seed * 1274126177;
-    n = ((n ^ (n >> 13)) * 1274126177) & 0x7fffffff;
-    n = n ^ (n >> 16);
-    return (n & 0x7fffffff) / 0x7fffffff;
-  }
-
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
     final double rSq = (r * r).toDouble();
@@ -32,7 +26,7 @@ class NoiseCircleCommand implements DrawingCommand {
       for (int x = minX; x <= maxX; x++) {
         final double dx = x - cx.toDouble();
         if (dx * dx + dy * dy <= rSq) {
-          final double n = _hashNoise(x, y, seed);
+          final double n = hashNoise(x, y, seed);
           final int idx = (n * 2).floor() % 2;
           if (idx == 0) {
             grid[y][x] = color;
