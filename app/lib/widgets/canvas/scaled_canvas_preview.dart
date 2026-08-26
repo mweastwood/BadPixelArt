@@ -139,8 +139,9 @@ class MiniPixelPainter extends CustomPainter {
 
     final cellPaint = Paint()..isAntiAlias = false;
     for (int r = 0; r < height; r++) {
-      for (int c = 0; c < width; c++) {
-        final colorIdx = grid[r][c];
+      final row = grid[r];
+      for (int c = 0; c < width && c < row.length; c++) {
+        final colorIdx = row[c];
         if (colorIdx > 0 && colorIdx <= palette.length) {
           cellPaint.color = palette[colorIdx - 1];
           final rect = Rect.fromLTWH(c * cellW, r * cellH, cellW, cellH);

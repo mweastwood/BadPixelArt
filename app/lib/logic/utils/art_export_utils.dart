@@ -16,12 +16,28 @@ enum ExportFormat { png, svg }
 
 /// Sanitizes a string to be safely used as a filename.
 String sanitizeFileName(String input, {String fallback = 'pixel_art'}) {
-  final clean = input
-      .trim()
-      .replaceAll(RegExp(r'[\\/:*?"<>|]+'), '_')
-      .replaceAll(RegExp(r'\s+'), '_')
-      .replaceAll(RegExp(r'_+'), '_');
-  if (clean.isEmpty || clean == '_') {
+  String clean = input.trim();
+  // Strip trailing .png or .svg extensions (case-insensitive) to prevent duplicate extensions on export
+  clean = clean.replaceAll(
+    RegExp(r'(\.(png|svg))+$', caseSensitive: false),
+    '',
+  );
+  // Sanitize path component traversals (e.g. ..)
+  clean = clean.replaceAll(RegExp(r'\.{2,}'), '_');
+  // Sanitize illegal filename special characters (\/:*?"<>|)
+  clean = clean.replaceAll(RegExp(r'[\\/:*?"<>|]+'), '_');
+  // Replace whitespace with underscore
+  clean = clean.replaceAll(RegExp(r'\s+'), '_');
+  // Collapse multiple underscores
+  clean = clean.replaceAll(RegExp(r'_+'), '_');
+  // Cap max filename length to 200 chars to avoid OS filesystem errors
+  if (clean.length > 200) {
+    clean = clean.substring(0, 200);
+  }
+  // Trim leading/trailing dots or underscores after length truncation and sanitization
+  clean = clean.replaceAll(RegExp(r'^[_.]+|[_.]+$'), '');
+
+  if (clean.isEmpty) {
     return '${fallback}_${DateTime.now().millisecondsSinceEpoch}';
   }
   return clean;
@@ -70,8 +86,9 @@ Future<Uint8List> generatePngBytes(
   final cellPaint = Paint()..isAntiAlias = false;
 
   for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      final colorIndex = grid[y][x];
+    final row = grid[y];
+    for (int x = 0; x < width && x < row.length; x++) {
+      final colorIndex = row[x];
       if (colorIndex > 0 && colorIndex <= palette.length) {
         cellPaint.color = palette[colorIndex - 1];
         canvas.drawRect(
@@ -130,12 +147,15 @@ String generateSvgString(
 
   // Combine contiguous horizontal pixels of the same color into a single <rect>
   for (int y = 0; y < height; y++) {
+    final row = grid[y];
     int x = 0;
-    while (x < width) {
-      final colorIndex = grid[y][x];
+    while (x < width && x < row.length) {
+      final colorIndex = row[x];
       if (colorIndex > 0 && colorIndex <= palette.length) {
         int runLength = 1;
-        while (x + runLength < width && grid[y][x + runLength] == colorIndex) {
+        while (x + runLength < width &&
+            x + runLength < row.length &&
+            row[x + runLength] == colorIndex) {
           runLength++;
         }
         final color = palette[colorIndex - 1];

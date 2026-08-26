@@ -140,5 +140,26 @@ void main() {
 
       expect(() => painter.paint(canvas, const Size(100, 50)), returnsNormally);
     });
+
+    test(
+      'MiniPixelPainter handles non-uniform ragged grids without RangeError',
+      () {
+        final palette = [Colors.red, Colors.green];
+        final grid = [
+          [1, 2, 1, 2],
+          [1],
+          [2, 1],
+        ];
+
+        final painter = MiniPixelPainter(grid: grid, palette: palette);
+        final recorder = PictureRecorder();
+        final canvas = Canvas(recorder);
+
+        expect(
+          () => painter.paint(canvas, const Size(100, 100)),
+          returnsNormally,
+        );
+      },
+    );
   });
 }

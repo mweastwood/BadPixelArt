@@ -208,5 +208,45 @@ void main() {
         );
       },
     );
+
+    test(
+      'sanitizeFileName handles extensions, path traversals, and max length capping',
+      () {
+        expect(sanitizeFileName('my_art.png'), 'my_art');
+        expect(sanitizeFileName('my_art.svg'), 'my_art');
+        expect(sanitizeFileName('my_art.PNG'), 'my_art');
+        expect(sanitizeFileName('my_art.Svg'), 'my_art');
+        expect(sanitizeFileName('my_art.png.png'), 'my_art');
+        expect(sanitizeFileName('my_art.svg.png'), 'my_art');
+        expect(sanitizeFileName('../secret/my_art.png'), 'secret_my_art');
+        expect(sanitizeFileName('..'), startsWith('pixel_art_'));
+
+        final longTitle = 'a' * 300;
+        final sanitizedLong = sanitizeFileName(longTitle);
+        expect(sanitizedLong.length, 200);
+      },
+    );
+
+    test(
+      'generatePngBytes and generateSvgString safely handle non-uniform ragged grids',
+      () async {
+        final raggedGrid = [
+          [1, 2, 1],
+          [1],
+          [2, 1],
+        ];
+        final palette = [const Color(0xFFFF0000), const Color(0xFF00FF00)];
+
+        final pngBytes = await generatePngBytes(raggedGrid, palette, scale: 2);
+        expect(pngBytes, isNotEmpty);
+
+        final svgString = generateSvgString(raggedGrid, palette, scale: 2);
+        expect(svgString, contains('<svg'));
+        expect(
+          svgString,
+          contains('<rect x="0" y="0" width="1" height="1" fill="#ff0000" />'),
+        );
+      },
+    );
   });
 }
