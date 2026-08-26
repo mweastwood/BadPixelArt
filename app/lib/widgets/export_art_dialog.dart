@@ -116,9 +116,7 @@ class _ExportArtDialogState extends State<ExportArtDialog> {
                   width: 128,
                   height: 128,
                   decoration: BoxDecoration(
-                    color: _transparentBackground
-                        ? const Color(0xFF1E1E1E)
-                        : const Color(0xFF1E1E1E),
+                    color: const Color(0xFF1E1E1E),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: theme.colorScheme.outlineVariant.withValues(
@@ -132,6 +130,7 @@ class _ExportArtDialogState extends State<ExportArtDialog> {
                     painter: MiniPixelPainter(
                       grid: widget.grid,
                       palette: widget.palette,
+                      transparentBackground: _transparentBackground,
                     ),
                   ),
                 ),

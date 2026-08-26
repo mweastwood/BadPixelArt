@@ -180,5 +180,28 @@ void main() {
         );
       },
     );
+
+    test(
+      'generateSvgString skips zero-opacity pixels and preserves precision for small alpha',
+      () {
+        final grid = [
+          [1, 2],
+        ];
+        final palette = [
+          const Color(0x00FF0000), // aInt == 0 (zero opacity)
+          const Color(0x0100FF00), // aInt == 1 (small non-zero alpha, ~0.0039)
+        ];
+
+        final svg = generateSvgString(grid, palette, scale: 1);
+
+        // Color 1 (zero opacity) should NOT produce a rect element
+        expect(svg, isNot(contains('fill-opacity="0"')));
+        expect(svg, isNot(contains('fill-opacity="0.00"')));
+        expect(svg, isNot(contains('<rect x="0"')));
+
+        // Color 2 (small non-zero alpha) should produce a rect element with non-zero fill-opacity
+        expect(svg, contains('<rect x="1" y="0" width="1" height="1" fill="#00ff00" fill-opacity="0.0039" />'));
+      },
+    );
   });
 }

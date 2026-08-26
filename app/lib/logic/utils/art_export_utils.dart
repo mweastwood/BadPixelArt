@@ -7,8 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-import 'bmp_utils.dart';
 import 'web_download.dart';
 
 /// Supported export formats for pixel art creations.
@@ -139,16 +137,22 @@ String generateSvgString(
           runLength++;
         }
         final color = palette[colorIndex - 1];
-        final hex = colorToHex(color);
-        final double opacity = color.aInt / 255.0;
-        if (opacity < 1.0) {
-          buffer.writeln(
-            '  <rect x="$x" y="$y" width="$runLength" height="1" fill="$hex" fill-opacity="${opacity.toStringAsFixed(2)}" />',
-          );
-        } else {
-          buffer.writeln(
-            '  <rect x="$x" y="$y" width="$runLength" height="1" fill="$hex" />',
-          );
+        if (color.aInt > 0) {
+          final hex = colorToHex(color);
+          if (color.aInt < 255) {
+            final double opacity = color.aInt / 255.0;
+            final opacityStr = opacity
+                .toStringAsFixed(4)
+                .replaceAll(RegExp(r'0+$'), '')
+                .replaceAll(RegExp(r'\.$'), '');
+            buffer.writeln(
+              '  <rect x="$x" y="$y" width="$runLength" height="1" fill="$hex" fill-opacity="$opacityStr" />',
+            );
+          } else {
+            buffer.writeln(
+              '  <rect x="$x" y="$y" width="$runLength" height="1" fill="$hex" />',
+            );
+          }
         }
         x += runLength;
       } else {
@@ -192,40 +196,15 @@ Future<bool> saveExportedArtFile({
       return true;
     }
 
-    String? outputFile;
-    try {
-      outputFile = await FilePicker.saveFile(
-        dialogTitle: 'Save Pixel Art',
-        fileName: fileName,
-        allowedExtensions: [extension],
-        type: FileType.custom,
-      );
-    } catch (_) {
-      outputFile = null;
-    }
+    final String? outputFile = await FilePicker.saveFile(
+      dialogTitle: 'Save Pixel Art',
+      fileName: fileName,
+      allowedExtensions: [extension],
+      type: FileType.custom,
+    );
 
     if (outputFile == null) {
-      try {
-        final String? selectedDir = await FilePicker.getDirectoryPath(
-          dialogTitle: 'Select Directory to Save Pixel Art',
-        );
-        if (selectedDir != null) {
-          outputFile = p.join(selectedDir, fileName);
-        }
-      } catch (_) {
-        outputFile = null;
-      }
-    }
-
-    if (outputFile == null) {
-      String targetDir;
-      try {
-        final appDocsDir = await getApplicationDocumentsDirectory();
-        targetDir = appDocsDir.path;
-      } catch (_) {
-        targetDir = Directory.systemTemp.path;
-      }
-      outputFile = p.join(targetDir, fileName);
+      return false;
     }
 
     final file = File(outputFile);
