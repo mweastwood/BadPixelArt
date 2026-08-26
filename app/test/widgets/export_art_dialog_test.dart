@@ -162,9 +162,32 @@ void main() {
 
     expect(find.byKey(const ValueKey('export_art_dialog')), findsOneWidget);
 
+    expect(find.byKey(const ValueKey('export_cancel_button')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('export_cancel_button')));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('export_art_dialog')), findsNothing);
   });
+
+  testWidgets(
+    'ExportArtDialog correctly displays dimensions for non-square grids',
+    (tester) async {
+      final rectangularGrid = List.generate(16, (_) => List.filled(32, 1));
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ExportArtDialog(
+              grid: rectangularGrid,
+              palette: dummyPalette,
+              initialTitle: 'Rectangle',
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('32×16 px original ➔ 256×128 px (8x)'), findsOneWidget);
+      expect(find.text('256×128 px'), findsOneWidget);
+    },
+  );
 }

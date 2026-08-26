@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
@@ -9,6 +10,7 @@ import 'package:bad_pixel_art/logic/repositories/reference_library_repository.da
 import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/logic/utils/bmp_utils.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+
 import '../test_helper.dart';
 
 void main() {

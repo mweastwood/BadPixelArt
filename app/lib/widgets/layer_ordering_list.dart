@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../logic/canvas_state.dart';
 import '../logic/wizard_state.dart';
 import 'gradient_angle_selector.dart';

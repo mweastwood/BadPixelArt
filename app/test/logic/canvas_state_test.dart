@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import 'package:bad_pixel_art/logic/repositories/canvas_repository.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
 import 'package:bad_pixel_art/logic/utils/logging_ai_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../test_helper.dart';
 
 void main() {

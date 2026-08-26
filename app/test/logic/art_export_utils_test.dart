@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/utils/art_export_utils.dart';
@@ -201,7 +202,10 @@ void main() {
 
         // Color 2 (small non-zero alpha) should produce a rect element with non-zero fill-opacity
         expect(svg, contains('fill-opacity="0.0039"'));
-        expect(svg, contains('<rect x="1" y="0" width="1" height="1" fill="#00ff00"'));
+        expect(
+          svg,
+          contains('<rect x="1" y="0" width="1" height="1" fill="#00ff00"'),
+        );
       },
     );
   });

@@ -1,10 +1,12 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/widgets/wizard_floating_action_buttons.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+
 import '../test_helper.dart';
 
 void main() {

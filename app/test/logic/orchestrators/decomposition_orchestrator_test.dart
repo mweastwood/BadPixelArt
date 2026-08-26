@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/orchestrators/decomposition_orchestrator.dart';
 import 'package:bad_pixel_art/logic/models/color_palette.dart';
+
 import '../../test_helper.dart';
 
 void main() {

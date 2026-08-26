@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../logic/canvas_state.dart';
 import '../logic/utils/logging_ai_service.dart';
 import 'ai_color_confirmation_dialog.dart';

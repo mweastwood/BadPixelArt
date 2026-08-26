@@ -1,4 +1,5 @@
 import 'dart:ui';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import 'package:bad_pixel_art/logic/agents/refinement_agent.dart';

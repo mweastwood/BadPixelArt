@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+
 import '../test_helper.dart';
 
 void main() {

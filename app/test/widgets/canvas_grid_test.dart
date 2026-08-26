@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bad_pixel_art/widgets/canvas_grid.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+
 import '../test_helper.dart';
 
 /// Helper to calculate an absolute screen offset relative to the [CanvasGrid] widget bounds.

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:ui';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';

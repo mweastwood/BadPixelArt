@@ -8,6 +8,7 @@ import 'package:bad_pixel_art/logic/agents/sketch_eraser_agent.dart';
 import 'package:bad_pixel_art/logic/agents/sketch_evaluator_agent.dart';
 import 'package:bad_pixel_art/logic/orchestrators/sketch_orchestrator.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+
 import '../../test_helper.dart';
 
 void main() {

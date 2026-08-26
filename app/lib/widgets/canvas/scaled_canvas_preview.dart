@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../logic/canvas_state.dart';
 
 class ScaledCanvasPreview extends StatelessWidget {
@@ -18,9 +19,10 @@ class ScaledCanvasPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gridSize = grid.length;
-    final displayWidth = (gridSize * scaleFactor).toDouble();
-    final displayHeight = (gridSize * scaleFactor).toDouble();
+    final height = grid.length;
+    final width = grid.isNotEmpty ? grid[0].length : 0;
+    final displayWidth = (width * scaleFactor).toDouble();
+    final displayHeight = (height * scaleFactor).toDouble();
     final theme = Theme.of(context);
 
     return Container(
@@ -106,10 +108,11 @@ class MiniPixelPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final gridSize = grid.length;
-    if (gridSize == 0) return;
-    final cellW = size.width / gridSize;
-    final cellH = size.height / gridSize;
+    final height = grid.length;
+    final width = grid.isNotEmpty ? grid[0].length : 0;
+    if (height == 0 || width == 0) return;
+    final cellW = size.width / width;
+    final cellH = size.height / height;
 
     if (!transparentBackground) {
       final bgPaint = Paint()
@@ -125,8 +128,8 @@ class MiniPixelPainter extends CustomPainter {
         ..color = const Color(0xFF1E1E1E)
         ..isAntiAlias = false;
 
-      for (int r = 0; r < gridSize; r++) {
-        for (int c = 0; c < gridSize; c++) {
+      for (int r = 0; r < height; r++) {
+        for (int c = 0; c < width; c++) {
           final rect = Rect.fromLTWH(c * cellW, r * cellH, cellW, cellH);
           final bg = ((r + c) % 2 == 0) ? bgPaint1 : bgPaint2;
           canvas.drawRect(rect, bg);
@@ -135,8 +138,8 @@ class MiniPixelPainter extends CustomPainter {
     }
 
     final cellPaint = Paint()..isAntiAlias = false;
-    for (int r = 0; r < gridSize; r++) {
-      for (int c = 0; c < gridSize; c++) {
+    for (int r = 0; r < height; r++) {
+      for (int c = 0; c < width; c++) {
         final colorIdx = grid[r][c];
         if (colorIdx > 0 && colorIdx <= palette.length) {
           cellPaint.color = palette[colorIdx - 1];

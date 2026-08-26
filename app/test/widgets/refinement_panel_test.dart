@@ -8,6 +8,7 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/widgets/refinement_panel.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+
 import '../test_helper.dart';
 
 void main() {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../logic/utils/art_export_utils.dart';
 import 'canvas/scaled_canvas_preview.dart';
 
@@ -91,8 +92,10 @@ class _ExportArtDialogState extends State<ExportArtDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final int gridSize = widget.grid.length;
-    final int outputDimension = gridSize * _scale;
+    final int height = widget.grid.length;
+    final int width = widget.grid.isNotEmpty ? widget.grid[0].length : 0;
+    final int outWidth = width * _scale;
+    final int outHeight = height * _scale;
 
     return AlertDialog(
       key: const ValueKey('export_art_dialog'),
@@ -147,7 +150,7 @@ class _ExportArtDialogState extends State<ExportArtDialog> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '$gridSize×$gridSize px original ➔ $outputDimension×$outputDimension px (${_scale}x)',
+                    '$width×$height px original ➔ $outWidth×$outHeight px (${_scale}x)',
                     style: theme.textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -215,7 +218,7 @@ class _ExportArtDialogState extends State<ExportArtDialog> {
                     ),
                   ),
                   Text(
-                    '$outputDimension×$outputDimension px',
+                    '$outWidth×$outHeight px',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.primary,
                       fontWeight: FontWeight.bold,

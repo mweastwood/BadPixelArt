@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'base_command.dart';
 
 /// Command to draw a filled rotated rectangle.

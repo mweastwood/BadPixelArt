@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+
 import 'base_command.dart';
 
 /// Command to draw a filled circle supporting both integer and fractional centers.

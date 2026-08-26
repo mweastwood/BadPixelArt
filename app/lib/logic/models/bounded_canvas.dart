@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../utils/coordinate_converter.dart';
 
 class BoundedCanvas {
