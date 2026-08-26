@@ -1,6 +1,8 @@
 import 'dart:math';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import '../../logic/models/pixel_art_component.dart';
 import '../../logic/wizard_state.dart';
 

@@ -5,6 +5,7 @@ import 'package:bad_pixel_art/screens/model_options_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
+
 import '../test_helper.dart';
 
 void main() {

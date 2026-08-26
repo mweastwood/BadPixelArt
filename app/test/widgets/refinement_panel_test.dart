@@ -8,6 +8,7 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/widgets/refinement_panel.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+
 import '../test_helper.dart';
 
 void main() {
@@ -150,7 +151,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: testMaterialAppWrapper(),
-        surfaceSize: const Size(400, 1100),
+        surfaceSize: const Size(400, 1300),
       );
 
       await screenMatchesGolden(

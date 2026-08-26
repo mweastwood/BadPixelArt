@@ -1,7 +1,9 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/widgets/canvas/scaled_canvas_preview.dart';
+
 import '../../test_helper.dart';
 
 void main() {
@@ -101,6 +103,62 @@ void main() {
         );
         expect(find.text('Preview 4x (8×8px)'), findsOneWidget);
         expect(find.byType(CustomPaint), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'ScaledCanvasPreview computes non-square grid dimensions correctly',
+      (tester) async {
+        final grid = List.generate(16, (_) => List.filled(32, 1));
+        final palette = [Colors.red];
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: ScaledCanvasPreview(
+              grid: grid,
+              palette: palette,
+              scaleFactor: 2.0,
+              label: 'Preview 2x',
+            ),
+          ),
+        );
+
+        expect(find.text('Preview 2x (64×32px)'), findsOneWidget);
+      },
+    );
+
+    test('MiniPixelPainter paints non-square grid without error', () {
+      final palette = [Colors.red];
+      final grid = [
+        [1, 0, 1, 0],
+        [0, 1, 0, 1],
+      ];
+
+      final painter = MiniPixelPainter(grid: grid, palette: palette);
+      final recorder = PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      expect(() => painter.paint(canvas, const Size(100, 50)), returnsNormally);
+    });
+
+    test(
+      'MiniPixelPainter handles non-uniform ragged grids without RangeError',
+      () {
+        final palette = [Colors.red, Colors.green];
+        final grid = [
+          [1, 2, 1, 2],
+          [1],
+          [2, 1],
+        ];
+
+        final painter = MiniPixelPainter(grid: grid, palette: palette);
+        final recorder = PictureRecorder();
+        final canvas = Canvas(recorder);
+
+        expect(
+          () => painter.paint(canvas, const Size(100, 100)),
+          returnsNormally,
+        );
       },
     );
   });

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+
 import 'screens/pixel_art_screen.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+
 import 'logic/utils/settings_provider.dart';
 import 'logic/canvas_state.dart';
 import 'logic/utils/database.dart';

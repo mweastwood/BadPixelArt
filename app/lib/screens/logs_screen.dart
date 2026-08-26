@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../widgets/ai_history_dock.dart';
 
 class LogsScreen extends ConsumerWidget {

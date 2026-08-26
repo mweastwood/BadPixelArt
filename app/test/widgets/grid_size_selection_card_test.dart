@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
+
 import '../test_helper.dart';
 
 void main() {

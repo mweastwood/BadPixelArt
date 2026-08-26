@@ -1,6 +1,8 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+
 import '../agents/base_agent.dart';
 import '../agents/decomposer_agent.dart';
 

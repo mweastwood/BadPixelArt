@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../logic/canvas_state.dart';
 import '../logic/repositories/canvas_repository.dart';
 import '../logic/utils/database.dart';
 import '../logic/utils/database_helpers.dart';
 import '../logic/wizard_state.dart';
+import 'export_art_dialog.dart';
 
 class CreationsDrawer extends ConsumerStatefulWidget {
   final VoidCallback? onCreationSelected;
@@ -155,7 +157,16 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                       trailing: PopupMenuButton<String>(
                         icon: const Icon(Icons.more_vert),
                         onSelected: (action) async {
-                          if (action == 'rename') {
+                          if (action == 'export') {
+                            showExportArtDialog(
+                              context,
+                              grid: deserializeGrid(creation.gridData),
+                              palette: deserializePalette(
+                                creation.paletteColors,
+                              ),
+                              initialTitle: creation.title,
+                            );
+                          } else if (action == 'rename') {
                             _showRenameDialog(context, creation, notifier);
                           } else if (action == 'duplicate') {
                             await notifier.duplicateCanvas(creation.id);
@@ -169,6 +180,14 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                           }
                         },
                         itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'export',
+                            child: ListTile(
+                              leading: Icon(Icons.file_download_outlined),
+                              title: Text('Export...'),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
                           const PopupMenuItem(
                             value: 'rename',
                             child: ListTile(

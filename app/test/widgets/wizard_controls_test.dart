@@ -15,6 +15,7 @@ import 'package:bad_pixel_art/widgets/layer_ordering_list.dart';
 import 'package:bad_pixel_art/widgets/refinement_panel.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+
 import '../test_helper.dart';
 
 void main() {

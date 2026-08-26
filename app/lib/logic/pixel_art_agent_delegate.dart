@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
+
 import 'canvas_state.dart';
+
 import 'package:flutter_agent_core/flutter_agent_core.dart';
+
 import 'prompts.dart';
 import 'agents/base_agent.dart';
 

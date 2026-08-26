@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -7,6 +8,7 @@ import 'package:bad_pixel_art/logic/repositories/reference_library_repository.da
 import 'package:bad_pixel_art/logic/services/share_receiver_service.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
+
 import '../../test_helper.dart';
 
 void main() {

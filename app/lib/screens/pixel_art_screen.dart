@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../logic/canvas_state.dart';
+
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 import 'model_options_screen.dart';
@@ -17,6 +19,7 @@ import 'logs_screen.dart';
 import '../logic/app_route_manager.dart';
 import '../logic/services/share_receiver_service.dart';
 import '../logic/utils/app_version.dart';
+import '../widgets/export_art_dialog.dart';
 import 'reference_library_screen.dart';
 
 class PixelArtScreen extends ConsumerStatefulWidget {
@@ -171,6 +174,20 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
                   horizontal: 8.0,
                 ),
                 child: _buildStatusChip(aiStatus, notifier, theme),
+              ),
+              IconButton(
+                key: const ValueKey('export_pixel_art_button'),
+                icon: const Icon(Icons.file_download_outlined),
+                tooltip: 'Export Pixel Art',
+                onPressed: () {
+                  final canvasState = ref.read(canvasStateProvider);
+                  showExportArtDialog(
+                    context,
+                    grid: canvasState.grid,
+                    palette: canvasState.palette,
+                    initialTitle: canvasState.title,
+                  );
+                },
               ),
               IconButton(
                 key: const ValueKey('model_options_button'),

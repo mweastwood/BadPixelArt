@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
+
 import 'database_connection/connection.dart' as impl;
 
 part 'database.g.dart';

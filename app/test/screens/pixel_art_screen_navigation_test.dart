@@ -7,6 +7,7 @@ import 'package:bad_pixel_art/screens/logs_screen.dart';
 import 'package:bad_pixel_art/screens/model_options_screen.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
+
 import '../test_helper.dart';
 
 void main() {

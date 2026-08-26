@@ -8,6 +8,7 @@ import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/widgets/component_color_selection_list.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/utils/logging_ai_service.dart';
+
 import '../test_helper.dart';
 
 void main() {

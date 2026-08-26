@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../logic/canvas_state.dart';
 
 class ScaledCanvasPreview extends StatelessWidget {
@@ -18,9 +19,10 @@ class ScaledCanvasPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gridSize = grid.length;
-    final displayWidth = (gridSize * scaleFactor).toDouble();
-    final displayHeight = (gridSize * scaleFactor).toDouble();
+    final height = grid.length;
+    final width = grid.isNotEmpty ? grid[0].length : 0;
+    final displayWidth = (width * scaleFactor).toDouble();
+    final displayHeight = (height * scaleFactor).toDouble();
     final theme = Theme.of(context);
 
     return Container(
@@ -94,36 +96,56 @@ class ScaledCanvasPreview extends StatelessWidget {
 class MiniPixelPainter extends CustomPainter {
   final List<List<int>> grid;
   final List<Color> palette;
+  final bool transparentBackground;
+  final Color backgroundColor;
 
-  MiniPixelPainter({required this.grid, required this.palette});
+  MiniPixelPainter({
+    required this.grid,
+    required this.palette,
+    this.transparentBackground = true,
+    this.backgroundColor = const Color(0xFF1E1E1E),
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final gridSize = grid.length;
-    if (gridSize == 0) return;
-    final cellW = size.width / gridSize;
-    final cellH = size.height / gridSize;
+    final height = grid.length;
+    final width = grid.isNotEmpty ? grid[0].length : 0;
+    if (height == 0 || width == 0) return;
+    final cellW = size.width / width;
+    final cellH = size.height / height;
 
-    // Checkerboard background
-    final bgPaint1 = Paint()
-      ..color = const Color(0xFF262626)
-      ..isAntiAlias = false;
-    final bgPaint2 = Paint()
-      ..color = const Color(0xFF1E1E1E)
-      ..isAntiAlias = false;
+    if (!transparentBackground) {
+      final bgPaint = Paint()
+        ..color = backgroundColor
+        ..isAntiAlias = false;
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), bgPaint);
+    } else {
+      // Checkerboard background
+      final bgPaint1 = Paint()
+        ..color = const Color(0xFF262626)
+        ..isAntiAlias = false;
+      final bgPaint2 = Paint()
+        ..color = const Color(0xFF1E1E1E)
+        ..isAntiAlias = false;
 
-    for (int r = 0; r < gridSize; r++) {
-      for (int c = 0; c < gridSize; c++) {
-        final rect = Rect.fromLTWH(c * cellW, r * cellH, cellW, cellH);
-        final bg = ((r + c) % 2 == 0) ? bgPaint1 : bgPaint2;
-        canvas.drawRect(rect, bg);
+      for (int r = 0; r < height; r++) {
+        for (int c = 0; c < width; c++) {
+          final rect = Rect.fromLTWH(c * cellW, r * cellH, cellW, cellH);
+          final bg = ((r + c) % 2 == 0) ? bgPaint1 : bgPaint2;
+          canvas.drawRect(rect, bg);
+        }
+      }
+    }
 
-        final colorIdx = grid[r][c];
+    final cellPaint = Paint()..isAntiAlias = false;
+    for (int r = 0; r < height; r++) {
+      final row = grid[r];
+      for (int c = 0; c < width && c < row.length; c++) {
+        final colorIdx = row[c];
         if (colorIdx > 0 && colorIdx <= palette.length) {
-          final p = Paint()
-            ..color = palette[colorIdx - 1]
-            ..isAntiAlias = false;
-          canvas.drawRect(rect, p);
+          cellPaint.color = palette[colorIdx - 1];
+          final rect = Rect.fromLTWH(c * cellW, r * cellH, cellW, cellH);
+          canvas.drawRect(rect, cellPaint);
         }
       }
     }
@@ -131,7 +153,10 @@ class MiniPixelPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant MiniPixelPainter oldDelegate) {
-    return oldDelegate.grid != grid || oldDelegate.palette != palette;
+    return oldDelegate.grid != grid ||
+        oldDelegate.palette != palette ||
+        oldDelegate.transparentBackground != transparentBackground ||
+        oldDelegate.backgroundColor != backgroundColor;
   }
 }
 

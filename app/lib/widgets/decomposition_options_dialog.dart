@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
 import '../logic/canvas_state.dart';
 
 class DecompositionOptionsDialog extends StatelessWidget {

@@ -1,5 +1,7 @@
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+
 import '../models/pixel_art_component.dart';
 
 export '../models/pixel_art_component.dart';
