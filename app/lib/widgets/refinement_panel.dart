@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
+import 'export_art_dialog.dart';
 
 class RefinementPanel extends ConsumerStatefulWidget {
   const RefinementPanel({super.key});
@@ -155,6 +156,30 @@ class _RefinementPanelState extends ConsumerState<RefinementPanel> {
                     );
                   }
                 },
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          key: const ValueKey('refinement_export_art_button'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          icon: const Icon(Icons.file_download_outlined),
+          label: const Text(
+            'Export Artwork (PNG / SVG)',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          onPressed: () {
+            final canvasState = ref.read(canvasStateProvider);
+            showExportArtDialog(
+              context,
+              grid: canvasState.grid,
+              palette: canvasState.palette,
+              initialTitle: canvasState.title,
+            );
+          },
         ),
       ],
     );

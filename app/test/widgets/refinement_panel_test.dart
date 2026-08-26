@@ -150,7 +150,7 @@ void main() {
       await tester.pumpWidgetBuilder(
         builder.build(),
         wrapper: testMaterialAppWrapper(),
-        surfaceSize: const Size(400, 1100),
+        surfaceSize: const Size(400, 1300),
       );
 
       await screenMatchesGolden(
