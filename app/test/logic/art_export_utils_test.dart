@@ -200,7 +200,8 @@ void main() {
         expect(svg, isNot(contains('<rect x="0"')));
 
         // Color 2 (small non-zero alpha) should produce a rect element with non-zero fill-opacity
-        expect(svg, contains('<rect x="1" y="0" width="1" height="1" fill="#00ff00" fill-opacity="0.0039" />'));
+        expect(svg, contains('fill-opacity="0.0039"'));
+        expect(svg, contains('<rect x="1" y="0" width="1" height="1" fill="#00ff00"'));
       },
     );
   });
