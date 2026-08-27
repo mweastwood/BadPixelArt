@@ -3,6 +3,10 @@ import '../wizard_state.dart';
 
 /// Generic controller for executing automated AutoPlay step-by-step loops for any wizard pipeline.
 class AutoPlayWizardController {
+  final Duration stepDelay;
+
+  const AutoPlayWizardController({this.stepDelay = const Duration(seconds: 1)});
+
   /// Starts the AutoPlay loop with the provided [notifier] and [wizardNotifier].
   Future<void> startAutoPlay(
     CanvasNotifier notifier,
@@ -41,7 +45,9 @@ class AutoPlayWizardController {
         return;
       }
 
-      await Future.delayed(const Duration(seconds: 1));
+      if (stepDelay > Duration.zero) {
+        await Future.delayed(stepDelay);
+      }
       if (!notifier.model.autoRun || notifier.model.isPausing) break;
 
       final nextStepDef = wizard.steps[currentIndex + 1];
