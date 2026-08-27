@@ -31,6 +31,7 @@ class WizardFloatingActionButtons extends ConsumerWidget {
 
     final hasBack = !wizardState.isFirstStep;
     final hasNext = !wizardState.isLastStep;
+    final canAutoPlay = hasRefImage || wizardState.mode == WizardMode.template;
 
     final onNext = resolveNextStepHandler(
       ref,
@@ -52,10 +53,10 @@ class WizardFloatingActionButtons extends ConsumerWidget {
         WizardAutoPlayFab(
           isAutoPlaying: isAutoPlaying,
           isPausing: isPausing,
-          hasRefImage: hasRefImage,
+          hasRefImage: canAutoPlay,
           onStopAutoPlay: () =>
               ref.read(canvasStateProvider.notifier).stopAutoPlay(),
-          onStartAutoPlay: hasRefImage
+          onStartAutoPlay: canAutoPlay
               ? () => ref.read(canvasStateProvider.notifier).startAutoPlay()
               : null,
         ),

@@ -80,6 +80,13 @@ void main() {
       expect(wizardNotifier.mode, equals(WizardMode.direct));
       expect(wizardNotifier.wizard.id, equals('direct_pixel_art'));
 
+      // Tap Template segment
+      await tester.tap(find.text('Template'));
+      await tester.pumpAndSettle();
+
+      expect(wizardNotifier.mode, equals(WizardMode.template));
+      expect(wizardNotifier.wizard.id, equals('template_pixel_art'));
+
       // Tap Structured segment
       await tester.tap(find.text('Structured'));
       await tester.pumpAndSettle();

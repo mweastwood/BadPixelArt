@@ -288,6 +288,35 @@ void main() {
         expect(canvasNotifier.state.decomposedComponents, isEmpty);
       },
     );
+
+    test(
+      'startAutoPlay in WizardMode.template steps through selectTemplate, setupPrompt, selectPalette, and refinement',
+      () async {
+        wizardNotifier.setMode(WizardMode.template);
+        wizardNotifier.setStep(WizardStep.selectTemplate);
+
+        final mockAi = TestMockAiService(
+          responses: [
+            '{"thought": "done", "tool": "pixel", "params": [0, 0], "colorIndex": 1}',
+          ],
+        );
+        canvasNotifier = CanvasNotifier(
+          mockAi,
+          autoPlayController: controller,
+          wizardNotifier: wizardNotifier,
+        );
+
+        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
+        await Future.delayed(const Duration(milliseconds: 50));
+        canvasNotifier.stopAutoPlay();
+        await future;
+
+        expect(
+          canvasNotifier.state.grid.any((r) => r.any((c) => c > 0)),
+          isTrue,
+        );
+      },
+    );
   });
 
   group('CanvasNotifier.startAutoPlay integration', () {

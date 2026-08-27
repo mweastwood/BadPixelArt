@@ -1,4 +1,5 @@
 import 'steps/default_wizard_steps.dart';
+import 'steps/template_wizard_steps.dart';
 import 'wizard_definition.dart';
 
 /// Registry holding all available wizard configurations.
@@ -33,11 +34,25 @@ class WizardRegistry {
     ],
   );
 
+  static const templateSpriteWizard = WizardDefinition(
+    id: 'template_pixel_art',
+    title: 'Template Sprite Wizard',
+    description:
+        'Generates pixel art sprites starting from predefined or custom template grids.',
+    steps: [
+      SelectTemplateStepDefinition(),
+      SetupPromptStepDefinition(),
+      SelectPaletteStepDefinition(),
+      RefinementStepDefinition(),
+    ],
+  );
+
   static const defaultPixelArtWizard = structuredPixelArtWizard;
 
   static final Map<String, WizardDefinition> _registeredWizards = {
     structuredPixelArtWizard.id: structuredPixelArtWizard,
     directPixelArtWizard.id: directPixelArtWizard,
+    templateSpriteWizard.id: templateSpriteWizard,
   };
 
   /// Returns all registered wizard pipelines.

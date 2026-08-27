@@ -24,12 +24,14 @@ import 'repositories/canvas_repository.dart';
 import 'utils/bmp_utils.dart';
 import 'models/color_palette.dart';
 import 'models/canvas_model.dart';
+import 'models/sprite_template.dart';
 import 'utils/logging_ai_service.dart';
 import 'wizard_state.dart';
 
 export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
 export 'models/pixel_art_component.dart';
+export 'models/sprite_template.dart';
 export 'agents/color_selection_agent.dart';
 export 'agents/layer_ordering_agent.dart';
 export 'controllers/canvas_history_controller.dart';
@@ -368,6 +370,44 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       clearSuggestedPalette: true,
       undoStack: const [],
       redoStack: const [],
+    );
+  }
+
+  void loadTemplateGrid(
+    List<List<int>> newGrid, {
+    String? prompt,
+    int? gridSize,
+    bool overridePrompt = false,
+  }) {
+    final size =
+        gridSize ?? (newGrid.isNotEmpty ? newGrid.length : state.gridSize);
+    state = state.copyWith(
+      gridSize: size,
+      grid: newGrid,
+      userPrompt:
+          (prompt != null &&
+              prompt.trim().isNotEmpty &&
+              (overridePrompt || state.userPrompt.trim().isEmpty))
+          ? prompt
+          : state.userPrompt,
+      decomposedComponents: const [],
+      pendingDecompositionOptions: const [],
+      activeComponentIndex: 0,
+      undoStack: const [],
+      redoStack: const [],
+    );
+  }
+
+  void loadTemplate(
+    SpriteTemplate template, {
+    bool autoPrompt = true,
+    bool overridePrompt = false,
+  }) {
+    loadTemplateGrid(
+      template.parseToGrid(),
+      prompt: autoPrompt ? template.defaultPrompt : null,
+      overridePrompt: overridePrompt,
+      gridSize: template.width,
     );
   }
 

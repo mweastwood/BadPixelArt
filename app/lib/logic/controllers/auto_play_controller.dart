@@ -8,7 +8,10 @@ class AutoPlayWizardController {
     CanvasNotifier notifier,
     WizardNotifier wizardNotifier,
   ) async {
-    if (notifier.model.referenceImage == null) return;
+    if (notifier.model.referenceImage == null &&
+        wizardNotifier.mode != WizardMode.template) {
+      return;
+    }
     if (notifier.model.autoRun) return;
 
     notifier.setAutoRunState(autoRun: true, isPausing: false);

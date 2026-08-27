@@ -14,9 +14,10 @@ enum WizardStep {
   colorAndOutline,
   layerOrderingAndMerge,
   refinement,
+  selectTemplate,
 }
 
-enum WizardMode { structured, direct }
+enum WizardMode { structured, direct, template }
 
 class WizardState {
   final WizardDefinition wizard;
@@ -73,6 +74,8 @@ class WizardNotifier extends StateNotifier<WizardState> {
                initialWizard ??
                (initialMode == WizardMode.direct
                    ? WizardRegistry.directPixelArtWizard
+                   : initialMode == WizardMode.template
+                   ? WizardRegistry.templateSpriteWizard
                    : WizardRegistry.defaultWizard),
            currentStep: parseStep(initialStep),
            prevStep: parseStep(initialStep),
@@ -80,6 +83,8 @@ class WizardNotifier extends StateNotifier<WizardState> {
                initialMode ??
                (initialWizard?.id == WizardRegistry.directPixelArtWizard.id
                    ? WizardMode.direct
+                   : initialWizard?.id == WizardRegistry.templateSpriteWizard.id
+                   ? WizardMode.template
                    : WizardMode.structured),
          ),
        );
@@ -100,9 +105,11 @@ class WizardNotifier extends StateNotifier<WizardState> {
   }
 
   void setMode(WizardMode mode) {
-    final targetWizard = mode == WizardMode.direct
-        ? WizardRegistry.directPixelArtWizard
-        : WizardRegistry.defaultPixelArtWizard;
+    final targetWizard = switch (mode) {
+      WizardMode.direct => WizardRegistry.directPixelArtWizard,
+      WizardMode.template => WizardRegistry.templateSpriteWizard,
+      WizardMode.structured => WizardRegistry.defaultPixelArtWizard,
+    };
     final nextStep = targetWizard.steps.any((s) => s.step == state.currentStep)
         ? state.currentStep
         : (targetWizard.steps.isNotEmpty
@@ -121,6 +128,8 @@ class WizardNotifier extends StateNotifier<WizardState> {
     setMode(
       state.mode == WizardMode.structured
           ? WizardMode.direct
+          : state.mode == WizardMode.direct
+          ? WizardMode.template
           : WizardMode.structured,
     );
   }
@@ -131,6 +140,8 @@ class WizardNotifier extends StateNotifier<WizardState> {
         : WizardStep.selectGridSize;
     final newMode = wizard.id == WizardRegistry.directPixelArtWizard.id
         ? WizardMode.direct
+        : wizard.id == WizardRegistry.templateSpriteWizard.id
+        ? WizardMode.template
         : WizardMode.structured;
     state = WizardState(
       wizard: wizard,

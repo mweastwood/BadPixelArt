@@ -20,6 +20,17 @@ void main() {
       expect(WizardRegistry.getById('direct_pixel_art'), equals(directWizard));
     });
 
+    test('templateSpriteWizard contains 4 template steps', () {
+      final templateWizard = WizardRegistry.templateSpriteWizard;
+      expect(templateWizard.id, equals('template_pixel_art'));
+      expect(templateWizard.stepCount, equals(4));
+      expect(WizardRegistry.allWizards, contains(templateWizard));
+      expect(
+        WizardRegistry.getById('template_pixel_art'),
+        equals(templateWizard),
+      );
+    });
+
     test('getById returns registered wizard or null', () {
       expect(
         WizardRegistry.getById('default_pixel_art'),
