@@ -93,13 +93,22 @@ class SelectPaletteStepDefinition extends WizardStepDefinition {
 
   @override
   Future<bool> executeAutoPlay(CanvasNotifier notifier) async {
-    if (notifier.model.suggestedPalette == null &&
-        notifier.model.referenceImage != null) {
-      await notifier.suggestPaletteFromReference();
-      if (notifier.model.suggestedPalette != null) {
-        notifier.acceptSuggestedPalette();
-      } else {
-        return false;
+    final isTemplateMode = notifier.wizardNotifier?.mode == WizardMode.template;
+    if (notifier.model.suggestedPalette == null) {
+      if (notifier.model.referenceImage != null) {
+        await notifier.suggestPaletteFromReference();
+        if (notifier.model.suggestedPalette != null) {
+          notifier.acceptSuggestedPalette();
+        } else {
+          return false;
+        }
+      } else if (isTemplateMode) {
+        await notifier.suggestPaletteForTemplate();
+        if (notifier.model.suggestedPalette != null) {
+          notifier.acceptSuggestedPalette();
+        } else {
+          return false;
+        }
       }
     } else if (notifier.model.suggestedPalette != null &&
         notifier.model.showPaletteSuggestion) {

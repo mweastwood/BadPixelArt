@@ -75,6 +75,60 @@ void main() {
       },
     );
 
+    test('formatTemplatePalettePrompt contains semantic part hierarchy', () {
+      final prompt = formatTemplatePalettePrompt(
+        prompt: 'cyberpunk warrior',
+        template: SpriteTemplate.characterPreset,
+      );
+
+      expect(prompt, contains('Sprite Character'));
+      expect(prompt, contains('cyberpunk warrior'));
+      expect(prompt, contains('Color 1 (Index 1): Dark outline'));
+      expect(prompt, contains('Color 2 (Index 2): Main body'));
+      expect(prompt, contains('Color 3 (Index 3): Eye / accent'));
+      expect(prompt, contains('Colors 4–8 (Indices 4-8)'));
+    });
+
+    test(
+      'suggestPaletteForTemplate triggers AI suggestion and populates suggestedPalette',
+      () async {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.updatePrompt('retro wizard hero');
+
+        await notifier.suggestPaletteForTemplate(
+          template: SpriteTemplate.characterPreset,
+        );
+
+        final state = container.read(canvasStateProvider);
+        expect(state.suggestedPalette, isNotNull);
+        expect(state.suggestedPalette!.length, equals(8));
+        expect(state.showPaletteSuggestion, isTrue);
+        expect(
+          mockAiService.capturedPrompts.last,
+          contains('retro wizard hero'),
+        );
+        expect(
+          mockAiService.capturedPrompts.last,
+          contains('Sprite Character'),
+        );
+      },
+    );
+
+    test(
+      'suggestPaletteForTemplate handles error gracefully without throwing',
+      () async {
+        mockAiService.shouldThrow = true;
+        mockAiService.exceptionMessage = 'Rate limit';
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        await notifier.suggestPaletteForTemplate();
+
+        final state = container.read(canvasStateProvider);
+        expect(state.isSuggestingPalette, isFalse);
+        expect(state.suggestedPalette, isNull);
+      },
+    );
+
     test('acceptSuggestedPalette updates palette and resets canvas', () {
       final notifier = container.read(canvasStateProvider.notifier);
       final suggested = List.generate(8, (i) => Color(0xFF000000 + i));

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 import 'drawing_commands.dart';
+import 'models/sprite_template.dart';
 
 String formatSystemInstruction() {
   final tools = DrawingCommandFactory.toolInstructions.entries
@@ -37,6 +38,21 @@ String formatSystemInstruction() {
 String formatPalettePrompt() {
   return 'Analyze this reference image and suggest a palette of exactly 8 colors. '
       'Output a JSON array containing exactly 8 hex color strings (e.g. ["#ff0000", "#00ff00", ...]). '
+      'Output nothing else.';
+}
+
+String formatTemplatePalettePrompt({
+  required String prompt,
+  SpriteTemplate? template,
+}) {
+  final templateName = template?.name ?? 'Sprite Character';
+  return 'Suggest a cohesive 8-color pixel art palette for "$templateName" based on the prompt: "$prompt".\n\n'
+      'The template encodes semantic parts by numeric indices:\n'
+      '- Color 1 (Index 1): Dark outline / border / hair / silhouette contour tone.\n'
+      '- Color 2 (Index 2): Main body / skin / primary clothing fill tone.\n'
+      '- Color 3 (Index 3): Eye / accent / highlight feature tone.\n'
+      '- Colors 4–8 (Indices 4-8): Complementary shading, midtones, and highlight tones matching the prompt theme.\n\n'
+      'Output a JSON array containing exactly 8 hex color strings (e.g. ["#000000", "#ffccaa", ...]).\n'
       'Output nothing else.';
 }
 
@@ -290,6 +306,23 @@ extension PixelArtAiServiceExtension on AiService {
       final String? response = await _generateContentWithRetry(
         prompt: formatPalettePrompt(),
         imageBytes: referenceImage,
+        temperature: 0.1,
+      );
+      if (response == null) return null;
+      return parsePaletteColors(response);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<Color>?> suggestPaletteForTemplate({
+    required String prompt,
+    SpriteTemplate? template,
+  }) async {
+    try {
+      final String? response = await _generateContentWithRetry(
+        prompt: formatTemplatePalettePrompt(prompt: prompt, template: template),
+        imageBytes: null,
         temperature: 0.1,
       );
       if (response == null) return null;

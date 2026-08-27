@@ -589,7 +589,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       decomposedComponents: const [],
       pendingDecompositionOptions: const [],
     );
-    resetCanvas();
+    if (wizardNotifier?.mode != WizardMode.template) {
+      resetCanvas();
+    }
   }
 
   void selectPalette(String name) {
@@ -704,6 +706,57 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  Future<void> suggestPaletteForTemplate({SpriteTemplate? template}) async {
+    if (!mounted) return;
+    state = state.copyWith(
+      isSuggestingPalette: true,
+      showPaletteSuggestion: false,
+    );
+
+    try {
+      final activeTemplate = template ?? SpriteTemplate.characterPreset;
+      final prompt = state.userPrompt.isNotEmpty
+          ? state.userPrompt
+          : activeTemplate.defaultPrompt;
+      final colors = await _aiService.suggestPaletteForTemplate(
+        prompt: prompt,
+        template: activeTemplate,
+      );
+      if (!mounted) return;
+      if (colors != null) {
+        state = state.copyWith(
+          suggestedPalette: colors,
+          showPaletteSuggestion: true,
+        );
+      } else {
+        state = state.copyWith(
+          isSuggestingPalette: false,
+          autoRun: false,
+          isPausing: false,
+        );
+        return;
+      }
+    } catch (e) {
+      debugPrint('Error suggesting template palette: $e');
+      if (!mounted) return;
+      state = state.copyWith(
+        isSuggestingPalette: false,
+        autoRun: false,
+        isPausing: false,
+      );
+      return;
+    } finally {
+      if (mounted) {
+        final willStop = state.isPausing;
+        state = state.copyWith(
+          isSuggestingPalette: false,
+          autoRun: willStop ? false : state.autoRun,
+          isPausing: false,
+        );
+      }
+    }
+  }
+
   Future<void> suggestDescriptionFromReference() async {
     if (!mounted) return;
     final refImg = state.referenceImage;
@@ -752,7 +805,9 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         showPaletteSuggestion: false,
         selectedColorIndex: 0,
       );
-      resetCanvas();
+      if (wizardNotifier?.mode != WizardMode.template) {
+        resetCanvas();
+      }
     }
   }
 
@@ -1280,6 +1335,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       final promptToUse = refinementPrompt.trim().isNotEmpty
           ? refinementPrompt
           : state.userPrompt;
+      final isTemplateMode = wizardNotifier?.mode == WizardMode.template;
       final result = await orchestrator.refine(
         initialGrid: state.grid,
         gridSize: state.gridSize,
@@ -1287,6 +1343,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
         userPrompt: promptToUse,
         autoRunSpeed: state.autoRunSpeed,
         referenceImage: state.referenceImage,
+        isTemplate: isTemplateMode,
         onStep: (updatedGrid) {
           if (!mounted) return;
           state = state.copyWith(grid: updatedGrid);

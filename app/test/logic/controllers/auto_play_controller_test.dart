@@ -272,6 +272,7 @@ void main() {
 
         final mockAi = TestMockAiService(
           responses: [
+            '["#111111", "#ffccaa", "#3366cc", "#444444", "#555555", "#666666", "#777777", "#888888"]',
             '{"thought": "done", "tool": "pixel", "params": [0, 0], "colorIndex": 1}',
           ],
         );

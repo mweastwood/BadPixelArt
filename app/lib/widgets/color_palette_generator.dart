@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../logic/canvas_state.dart';
+import '../logic/wizard_state.dart';
 
 class ColorPaletteGenerator extends ConsumerStatefulWidget {
   const ColorPaletteGenerator({super.key});
@@ -29,6 +30,8 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
     final hasSuggestedPalette = ref.watch(
       canvasStateProvider.select((s) => s.suggestedPalette != null),
     );
+    final wizardMode = ref.watch(wizardStateProvider.select((s) => s.mode));
+    final isTemplateMode = wizardMode == WizardMode.template;
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
 
@@ -55,20 +58,26 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
       ),
     ];
 
-    if (hasRefImage) {
-      dropdownItems.addAll([
+    if (hasRefImage || isTemplateMode) {
+      dropdownItems.add(
         const DropdownMenuItem(value: 'suggested', child: Text('AI Suggested')),
+      );
+    }
+    if (hasRefImage) {
+      dropdownItems.add(
         const DropdownMenuItem(
           value: 'algorithmic',
           child: Text('K-Means Quantized'),
         ),
-      ]);
+      );
     }
 
     final isCustomMode =
         paletteName == 'suggested' || paletteName == 'algorithmic';
 
-    final showRefreshIcon = hasRefImage && isCustomMode;
+    final showRefreshIcon =
+        (hasRefImage || (isTemplateMode && paletteName == 'suggested')) &&
+        isCustomMode;
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -127,7 +136,11 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
                       if (val != null) {
                         if (val == 'suggested') {
                           if (!hasSuggestedPalette) {
-                            notifier.suggestPaletteFromReference().then((_) {
+                            final Future<void> future =
+                                isTemplateMode && !hasRefImage
+                                ? notifier.suggestPaletteForTemplate()
+                                : notifier.suggestPaletteFromReference();
+                            future.then((_) {
                               notifier.acceptSuggestedPalette();
                             });
                           } else {
@@ -158,7 +171,11 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
                         : 'Re-extract K-Means Palette',
                     onPressed: () {
                       if (paletteName == 'suggested') {
-                        notifier.suggestPaletteFromReference().then((_) {
+                        final Future<void> future =
+                            isTemplateMode && !hasRefImage
+                            ? notifier.suggestPaletteForTemplate()
+                            : notifier.suggestPaletteFromReference();
+                        future.then((_) {
                           notifier.acceptSuggestedPalette();
                         });
                       } else {
@@ -203,10 +220,19 @@ class _ColorPaletteGeneratorState extends ConsumerState<ColorPaletteGenerator> {
               ),
             ],
 
-            if (!hasRefImage) ...[
+            if (!hasRefImage && !isTemplateMode) ...[
               const SizedBox(height: 8),
               Text(
                 'Upload a reference image to unlock AI & K-Means Quantization.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ] else if (isTemplateMode && !hasRefImage) ...[
+              const SizedBox(height: 8),
+              Text(
+                'AI Suggested palette is tailored to character template regions (outline, body, accents).',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.outline,
                 ),

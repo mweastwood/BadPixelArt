@@ -90,25 +90,24 @@ DEF
       expect(grid[5][10], equals(3));
     });
 
-    test('getById returns presets or null for non-existent', () {
-      expect(
-        SpriteTemplate.getById('sprite_character'),
-        equals(SpriteTemplate.characterPreset),
-      );
-      expect(
-        SpriteTemplate.getById('sword'),
-        equals(SpriteTemplate.swordPreset),
-      );
-      expect(
-        SpriteTemplate.getById('potion'),
-        equals(SpriteTemplate.potionPreset),
-      );
-      expect(
-        SpriteTemplate.getById('heart'),
-        equals(SpriteTemplate.heartPreset),
-      );
-      expect(SpriteTemplate.getById('invalid_id'), isNull);
+    test('presets list contains only characterPreset', () {
+      expect(SpriteTemplate.presets, equals([SpriteTemplate.characterPreset]));
+      expect(SpriteTemplate.presets.length, equals(1));
     });
+
+    test(
+      'getById returns characterPreset or null for non-existent/pruned presets',
+      () {
+        expect(
+          SpriteTemplate.getById('sprite_character'),
+          equals(SpriteTemplate.characterPreset),
+        );
+        expect(SpriteTemplate.getById('sword'), isNull);
+        expect(SpriteTemplate.getById('potion'), isNull);
+        expect(SpriteTemplate.getById('heart'), isNull);
+        expect(SpriteTemplate.getById('invalid_id'), isNull);
+      },
+    );
 
     test('parseToGrid preserves leading whitespace and space indentation', () {
       const template = SpriteTemplate(

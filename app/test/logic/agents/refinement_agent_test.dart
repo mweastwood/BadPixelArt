@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
 import 'package:bad_pixel_art/logic/agents/refinement_agent.dart';
+import 'package:bad_pixel_art/logic/models/sprite_template.dart';
 
 void main() {
   group('RefinementAgent Unit Tests', () {
@@ -58,6 +59,42 @@ void main() {
         expect(prompt, contains('Drawing Description: "shield"'));
         expect(prompt, isNot(contains('Reference image is provided')));
         expect(prompt, contains('"tool": "done"'));
+        expect(prompt, isNot(contains('Template Structural Semantics')));
+      },
+    );
+
+    test(
+      'getFormattedUserPrompt includes template structural semantics when isTemplate is true',
+      () {
+        final context = AgentContext(
+          userPrompt: 'hero character',
+          gridSize: 16,
+          currentGrid: SpriteTemplate.characterPreset.parseToGrid(),
+          activePalette: [
+            const Color(0xFF000000),
+            const Color(0xFFFFFFFF),
+            const Color(0xFFFF0000),
+          ],
+          isTemplate: true,
+        );
+
+        final prompt = agent.getFormattedUserPrompt(context, []);
+        expect(prompt, contains('Template Structural Semantics:'));
+        expect(
+          prompt,
+          contains('Index 1: Outline / Hair / Silhouette contour'),
+        );
+        expect(
+          prompt,
+          contains('Index 2: Main body / Skin / Primary clothing fill'),
+        );
+        expect(prompt, contains('Index 3: Eye / Accent / Highlight features'));
+        expect(
+          prompt,
+          contains(
+            'Refinement Directive: Add micro-details, shadows, highlights',
+          ),
+        );
       },
     );
   });
