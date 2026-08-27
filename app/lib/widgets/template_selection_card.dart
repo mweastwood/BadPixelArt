@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../logic/canvas_state.dart';
@@ -21,11 +22,14 @@ class _TemplateSelectionCardState extends ConsumerState<TemplateSelectionCard> {
   void initState() {
     super.initState();
     _textController = TextEditingController(
-      text: SpriteTemplate.characterPreset.rawTemplate.trim(),
+      text: SpriteTemplate.characterPreset.rawTemplate
+          .replaceAll('\r', '')
+          .trim(),
     );
 
     // Initial grid load if canvas is empty
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _applyCurrentTemplate(autoPrompt: true);
     });
   }
@@ -37,13 +41,14 @@ class _TemplateSelectionCardState extends ConsumerState<TemplateSelectionCard> {
   }
 
   void _onSelectPreset(String presetId) {
+    if (!mounted) return;
     setState(() {
       _selectedPresetId = presetId;
       _errorMessage = null;
       if (presetId != 'custom') {
         final preset = SpriteTemplate.getById(presetId);
         if (preset != null) {
-          _textController.text = preset.rawTemplate.trim();
+          _textController.text = preset.rawTemplate.replaceAll('\r', '').trim();
         }
       }
     });
@@ -54,8 +59,16 @@ class _TemplateSelectionCardState extends ConsumerState<TemplateSelectionCard> {
     bool autoPrompt = false,
     bool overridePrompt = false,
   }) {
-    final text = _textController.text.trim();
-    if (text.isEmpty) {
+    if (!mounted) return;
+    final text = _textController.text;
+    final lines = text
+        .replaceAll('\r', '')
+        .split('\n')
+        .where((l) => l.isNotEmpty)
+        .toList();
+
+    if (lines.isEmpty) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Template cannot be empty.';
       });
@@ -63,13 +76,10 @@ class _TemplateSelectionCardState extends ConsumerState<TemplateSelectionCard> {
     }
 
     try {
-      final lines = text
-          .split('\n')
-          .map((l) => l.trim())
-          .where((l) => l.isNotEmpty)
-          .toList();
       final height = lines.length;
-      final width = lines.isNotEmpty ? lines[0].length : 16;
+      final width = lines.isNotEmpty
+          ? lines.map((l) => l.length).reduce(max)
+          : 16;
 
       final preset = SpriteTemplate.getById(_selectedPresetId);
       final template = SpriteTemplate(
@@ -91,10 +101,12 @@ class _TemplateSelectionCardState extends ConsumerState<TemplateSelectionCard> {
         gridSize: width,
       );
 
+      if (!mounted) return;
       setState(() {
         _errorMessage = null;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = 'Error parsing template: $e';
       });

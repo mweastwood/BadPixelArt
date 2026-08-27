@@ -36,9 +36,8 @@ class SpriteTemplate {
         const {'#': 1, 'o': 2, 'O': 2, 'x': 3, 'X': 3};
 
     final lines = rawTemplate
-        .trim()
+        .replaceAll('\r', '')
         .split('\n')
-        .map((l) => l.trim())
         .where((l) => l.isNotEmpty)
         .toList();
 

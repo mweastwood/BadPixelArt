@@ -110,6 +110,66 @@ DEF
       expect(SpriteTemplate.getById('invalid_id'), isNull);
     });
 
+    test('parseToGrid preserves leading whitespace and space indentation', () {
+      const template = SpriteTemplate(
+        id: 'test_whitespace',
+        name: 'Test Whitespace',
+        description: 'Test whitespace indentation preservation',
+        width: 6,
+        height: 3,
+        rawTemplate: '''
+  11  
+ 1221 
+122221
+''',
+      );
+
+      final grid = template.parseToGrid();
+      expect(grid.length, equals(3));
+      // Row 0: 2 leading spaces, two 1s, 2 trailing spaces
+      expect(grid[0], equals([0, 0, 1, 1, 0, 0]));
+      // Row 1: 1 leading space, 1, 2, 2, 1, 1 trailing space
+      expect(grid[1], equals([0, 1, 2, 2, 1, 0]));
+      // Row 2: 0 leading spaces, 1, 2, 2, 2, 2, 1
+      expect(grid[2], equals([1, 2, 2, 2, 2, 1]));
+    });
+
+    test('parseToGrid handles irregular line lengths with zero padding', () {
+      const template = SpriteTemplate(
+        id: 'test_irregular',
+        name: 'Test Irregular',
+        description: 'Test template with irregular row lengths',
+        width: 6,
+        height: 3,
+        rawTemplate: '''
+12
+123456
+1234
+''',
+      );
+
+      final grid = template.parseToGrid();
+      expect(grid.length, equals(3));
+      expect(grid[0], equals([1, 2, 0, 0, 0, 0]));
+      expect(grid[1], equals([1, 2, 3, 4, 5, 6]));
+      expect(grid[2], equals([1, 2, 3, 4, 0, 0]));
+    });
+
+    test('parseToGrid sanitizes Windows carriage returns (CRLF)', () {
+      const template = SpriteTemplate(
+        id: 'test_crlf',
+        name: 'Test CRLF',
+        description: 'Test CRLF line endings',
+        width: 4,
+        height: 2,
+        rawTemplate: "1234\r\n5678\r\n",
+      );
+
+      final grid = template.parseToGrid();
+      expect(grid[0], equals([1, 2, 3, 4]));
+      expect(grid[1], equals([5, 6, 7, 8]));
+    });
+
     test('copyWith updates properties properly', () {
       final modified = SpriteTemplate.characterPreset.copyWith(
         name: 'Custom Hero',
