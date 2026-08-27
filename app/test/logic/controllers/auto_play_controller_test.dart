@@ -35,7 +35,7 @@ void main() {
         }),
       );
       wizardNotifier = WizardNotifier();
-      controller = AutoPlayWizardController();
+      controller = const AutoPlayWizardController(stepDelay: Duration.zero);
       canvasNotifier = CanvasNotifier(
         mockAiService,
         autoPlayController: controller,
@@ -45,6 +45,16 @@ void main() {
 
     tearDown(() {
       canvasNotifier.stopAutoPlay();
+    });
+
+    test('defaults stepDelay to 1 second and accepts custom stepDelay', () {
+      const defaultCtrl = AutoPlayWizardController();
+      expect(defaultCtrl.stepDelay, equals(const Duration(seconds: 1)));
+
+      const customCtrl = AutoPlayWizardController(
+        stepDelay: Duration(milliseconds: 500),
+      );
+      expect(customCtrl.stepDelay, equals(const Duration(milliseconds: 500)));
     });
 
     test('startAutoPlay does nothing when referenceImage is null', () async {
@@ -113,15 +123,13 @@ void main() {
           referenceImage: Uint8List.fromList([1, 2, 3]),
         );
 
-        // Start autoplay asynchronously
-        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
-
-        // Stop autoplay after brief delay so loop terminates
-        await Future.delayed(const Duration(milliseconds: 100));
-        canvasNotifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
 
         expect(canvasNotifier.state.autoRun, isFalse);
+        expect(
+          wizardNotifier.state.currentStep,
+          isNot(equals(WizardStep.selectGridSize)),
+        );
       },
     );
 
@@ -130,24 +138,6 @@ void main() {
       () async {
         wizardNotifier.setStep(WizardStep.colorAndOutline);
         final solidGrid = List.generate(16, (_) => List.filled(16, 1));
-        canvasNotifier.state = canvasNotifier.state.copyWith(
-          referenceImage: Uint8List.fromList([1, 2, 3]),
-          userPrompt: 'magic sword',
-          palette: [
-            const Color(0xFF000000),
-            const Color(0xFF0000FF),
-            const Color(0xFFFF0000),
-          ],
-          decomposedComponents: [
-            PixelArtComponent(
-              name: 'blade',
-              description: 'solid blade',
-              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
-              grid: solidGrid,
-            ),
-          ],
-        );
-
         final mockAi = TestMockAiService(
           response: TestJsonFixtures.colorSelectionResponse,
         );
@@ -174,10 +164,7 @@ void main() {
           ],
         );
 
-        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 100));
-        canvasNotifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
 
         expect(
           canvasNotifier.state.decomposedComponents.first.fillColor,
@@ -214,10 +201,7 @@ void main() {
           ],
         );
 
-        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 100));
-        canvasNotifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
 
         // Ensure canvas grid was merged with component color (color index 2)
         expect(canvasNotifier.state.grid[0][0], equals(2));
@@ -272,19 +256,10 @@ void main() {
           userPrompt: 'pixel sword',
         );
 
-        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 50));
-        canvasNotifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
 
         // In direct mode, selectPalette should advance straight to refinement (not sketchingPlan)
-        expect(
-          wizardNotifier.state.currentStep,
-          anyOf(
-            equals(WizardStep.selectPalette),
-            equals(WizardStep.refinement),
-          ),
-        );
+        expect(wizardNotifier.state.currentStep, equals(WizardStep.refinement));
         expect(canvasNotifier.state.decomposedComponents, isEmpty);
       },
     );
@@ -377,7 +352,9 @@ void main() {
         );
         final wizardNotifier = WizardNotifier();
         wizardNotifier.setStep(WizardStep.setupPrompt);
-        final controller = AutoPlayWizardController();
+        final controller = const AutoPlayWizardController(
+          stepDelay: Duration.zero,
+        );
         final notifier = CanvasNotifier(
           mockAi,
           autoPlayController: controller,
@@ -401,10 +378,7 @@ void main() {
         mockAi.response = 'A majestic pixel art dragon';
 
         // Restart wizard
-        final future = controller.startAutoPlay(notifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 50));
-        notifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(notifier, wizardNotifier);
 
         // Prompt was generated and wizard moved past setupPrompt
         expect(
@@ -424,7 +398,9 @@ void main() {
         );
         final wizardNotifier = WizardNotifier();
         wizardNotifier.setStep(WizardStep.selectPalette);
-        final controller = AutoPlayWizardController();
+        final controller = const AutoPlayWizardController(
+          stepDelay: Duration.zero,
+        );
         final notifier = CanvasNotifier(
           mockAi,
           autoPlayController: controller,
@@ -445,10 +421,7 @@ void main() {
         mockAi.shouldThrow = false;
         mockAi.response = '["#112233", "#445566", "#778899"]';
 
-        final future = controller.startAutoPlay(notifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 50));
-        notifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(notifier, wizardNotifier);
 
         expect(notifier.state.paletteName, equals('suggested'));
       },
@@ -463,7 +436,9 @@ void main() {
         );
         final wizardNotifier = WizardNotifier();
         wizardNotifier.setStep(WizardStep.sketchingPlan);
-        final controller = AutoPlayWizardController();
+        final controller = const AutoPlayWizardController(
+          stepDelay: Duration.zero,
+        );
         final notifier = CanvasNotifier(
           mockAi,
           autoPlayController: controller,
@@ -496,10 +471,7 @@ void main() {
           },
         ]);
 
-        final future = controller.startAutoPlay(notifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 50));
-        notifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(notifier, wizardNotifier);
 
         expect(notifier.state.decomposedComponents, isNotEmpty);
       },
@@ -510,7 +482,9 @@ void main() {
       () async {
         final wizardNotifier = WizardNotifier();
         wizardNotifier.setStep(WizardStep.componentSculpting);
-        final controller = AutoPlayWizardController();
+        final controller = const AutoPlayWizardController(
+          stepDelay: Duration.zero,
+        );
 
         final comp0 = PixelArtComponent(
           name: 'head',
@@ -571,10 +545,16 @@ void main() {
         expect(notifier.state.decomposedComponents[1].grid, isNull);
 
         // Model recovers - now provide response for second component
-        int resumeCalls = 0;
+        int headSculptCalls = 0;
+        int tailSculptCalls = 0;
         mockAi.onGenerateContentRaw =
             ({required prompt, imageBytes, temperature, maxOutputTokens}) {
-              resumeCalls++;
+              if (prompt.contains('Sculpt the component "head"')) {
+                headSculptCalls++;
+              }
+              if (prompt.contains('Sculpt the component "tail"')) {
+                tailSculptCalls++;
+              }
               return AiResponse(
                 text: jsonEncode({
                   'thought': 'sculpt tail',
@@ -586,13 +566,11 @@ void main() {
             };
 
         // Restart wizard
-        final future = controller.startAutoPlay(notifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 50));
-        notifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(notifier, wizardNotifier);
 
-        // Head was NOT re-sculpted; only tail was sculpted (resumeCalls == 1)
-        expect(resumeCalls, equals(1));
+        // Head was NOT re-sculpted; only tail was sculpted
+        expect(headSculptCalls, equals(0));
+        expect(tailSculptCalls, equals(1));
         expect(notifier.state.decomposedComponents[0].isSculpted, isTrue);
         expect(notifier.state.decomposedComponents[1].isSculpted, isTrue);
         expect(notifier.state.decomposedComponents[1].grid, isNotNull);
@@ -609,7 +587,9 @@ void main() {
         );
         final wizardNotifier = WizardNotifier();
         wizardNotifier.setStep(WizardStep.colorAndOutline);
-        final controller = AutoPlayWizardController();
+        final controller = const AutoPlayWizardController(
+          stepDelay: Duration.zero,
+        );
         final notifier = CanvasNotifier(
           mockAi,
           autoPlayController: controller,
@@ -643,10 +623,7 @@ void main() {
         mockAi.shouldThrow = false;
         mockAi.response = TestJsonFixtures.colorSelectionResponse;
 
-        final future = controller.startAutoPlay(notifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 50));
-        notifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(notifier, wizardNotifier);
 
         expect(notifier.state.decomposedComponents.first.fillColor, isNotNull);
       },
