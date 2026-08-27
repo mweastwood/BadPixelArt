@@ -86,7 +86,7 @@ class GridSizeSelectionCard extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Choose between structured step-by-step layer decomposition or direct freeform AI painting.',
+              'Choose between structured step-by-step layer decomposition, direct freeform AI painting, or starting from a sprite template.',
               style: TextStyle(
                 fontSize: 13,
                 color: theme.colorScheme.onSurfaceVariant,
@@ -105,6 +105,11 @@ class GridSizeSelectionCard extends ConsumerWidget {
                   value: WizardMode.direct,
                   label: Text('Direct Paint'),
                   icon: Icon(Icons.brush_outlined),
+                ),
+                ButtonSegment<WizardMode>(
+                  value: WizardMode.template,
+                  label: Text('Template'),
+                  icon: Icon(Icons.pattern_outlined),
                 ),
               ],
               selected: {wizardMode},

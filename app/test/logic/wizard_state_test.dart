@@ -59,7 +59,18 @@ void main() {
       expect(notifier.wizard.steps.length, equals(4));
     });
 
-    test('setMode switches between structured and direct modes', () {
+    test('constructor with initialMode initializes state to template mode', () {
+      final notifier = WizardNotifier(
+        WizardStep.selectTemplate,
+        null,
+        WizardMode.template,
+      );
+      expect(notifier.mode, equals(WizardMode.template));
+      expect(notifier.wizard.id, equals('template_pixel_art'));
+      expect(notifier.wizard.steps.length, equals(4));
+    });
+
+    test('setMode switches between structured, direct, and template modes', () {
       final notifier = WizardNotifier();
       expect(notifier.mode, equals(WizardMode.structured));
       expect(notifier.wizard.id, equals('default_pixel_art'));
@@ -69,22 +80,33 @@ void main() {
       expect(notifier.wizard.id, equals('direct_pixel_art'));
       expect(notifier.wizard.steps.length, equals(4));
 
+      notifier.setMode(WizardMode.template);
+      expect(notifier.mode, equals(WizardMode.template));
+      expect(notifier.wizard.id, equals('template_pixel_art'));
+      expect(notifier.wizard.steps.length, equals(4));
+
       notifier.setMode(WizardMode.structured);
       expect(notifier.mode, equals(WizardMode.structured));
       expect(notifier.wizard.id, equals('default_pixel_art'));
       expect(notifier.wizard.steps.length, equals(8));
     });
 
-    test('toggleMode alternates between structured and direct modes', () {
-      final notifier = WizardNotifier();
-      expect(notifier.mode, equals(WizardMode.structured));
+    test(
+      'toggleMode alternates between structured, direct, and template modes',
+      () {
+        final notifier = WizardNotifier();
+        expect(notifier.mode, equals(WizardMode.structured));
 
-      notifier.toggleMode();
-      expect(notifier.mode, equals(WizardMode.direct));
+        notifier.toggleMode();
+        expect(notifier.mode, equals(WizardMode.direct));
 
-      notifier.toggleMode();
-      expect(notifier.mode, equals(WizardMode.structured));
-    });
+        notifier.toggleMode();
+        expect(notifier.mode, equals(WizardMode.template));
+
+        notifier.toggleMode();
+        expect(notifier.mode, equals(WizardMode.structured));
+      },
+    );
 
     test('constructor with WizardStep initializes state accurately', () {
       final notifier = WizardNotifier(WizardStep.componentSculpting);
@@ -182,9 +204,9 @@ void main() {
       expect(WizardNotifier.parseStep(-100), equals(WizardStep.selectGridSize));
     });
 
-    test('clamps integers exceeding range to refinement (last index)', () {
-      expect(WizardNotifier.parseStep(8), equals(WizardStep.refinement));
-      expect(WizardNotifier.parseStep(999), equals(WizardStep.refinement));
+    test('clamps integers exceeding range to last index', () {
+      expect(WizardNotifier.parseStep(8), equals(WizardStep.selectTemplate));
+      expect(WizardNotifier.parseStep(999), equals(WizardStep.selectTemplate));
     });
 
     test('falls back to selectGridSize on invalid types and null', () {
