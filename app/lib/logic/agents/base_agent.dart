@@ -30,6 +30,7 @@ class AgentContext {
   final List<List<int>> currentGrid;
   final Uint8List? referenceImage;
   final List<PixelArtComponent>? allComponents;
+  final bool isTemplate;
 
   AgentContext({
     required this.gridSize,
@@ -39,6 +40,7 @@ class AgentContext {
     required this.currentGrid,
     this.referenceImage,
     this.allComponents,
+    this.isTemplate = false,
   });
 }
 

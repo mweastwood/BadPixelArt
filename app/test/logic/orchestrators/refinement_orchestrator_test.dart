@@ -304,5 +304,51 @@ void main() {
         }
       },
     );
+
+    test(
+      'refine includes template structural semantics when isTemplate is true',
+      () async {
+        final aiService = TestMockAiService(
+          responses: [
+            '{"thought": "add character shading", "tool": "pixel", "params": [4, 5], "colorIndex": 2}',
+            '{"thought": "done", "tool": "done", "params": [], "colorIndex": 0}',
+          ],
+          tokenCount: 10,
+        );
+        final orchestrator = RefinementOrchestrator(aiService);
+
+        final grid = List.generate(16, (_) => List.filled(16, 0));
+        final palette = [Colors.black, Colors.white, Colors.blue];
+        final history = <AgentHistoryEntry>[];
+
+        await orchestrator.refine(
+          initialGrid: grid,
+          gridSize: 16,
+          palette: palette,
+          userPrompt: 'hero character',
+          autoRunSpeed: 0.01,
+          isTemplate: true,
+          onStep: (updated) {},
+          onLogHistory: (entry) => history.add(entry),
+        );
+
+        expect(
+          aiService.capturedPrompts.first,
+          contains('Template Structural Semantics:'),
+        );
+        expect(
+          aiService.capturedPrompts.first,
+          contains('Index 1: Outline / Hair / Silhouette contour'),
+        );
+        expect(
+          aiService.capturedPrompts.first,
+          contains('Index 2: Main body / Skin / Primary clothing fill'),
+        );
+        expect(
+          aiService.capturedPrompts.first,
+          contains('Index 3: Eye / Accent / Highlight features'),
+        );
+      },
+    );
   });
 }

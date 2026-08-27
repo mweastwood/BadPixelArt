@@ -87,6 +87,16 @@ class RefinementAgent implements PixelArtAgent {
       sb.writeln(row);
     }
 
+    if (context.isTemplate) {
+      sb.writeln('\nTemplate Structural Semantics:');
+      sb.writeln('- Index 1: Outline / Hair / Silhouette contour');
+      sb.writeln('- Index 2: Main body / Skin / Primary clothing fill');
+      sb.writeln('- Index 3: Eye / Accent / Highlight features');
+      sb.writeln(
+        'Refinement Directive: Add micro-details, shadows, highlights, and facial expression refinements on top of the established character sprite foundation without destroying the core silhouette.',
+      );
+    }
+
     if (history.isNotEmpty) {
       sb.writeln('\nHistory of actions in this phase:');
       for (final step in history) {

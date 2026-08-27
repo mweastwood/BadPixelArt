@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 import 'package:bad_pixel_art/widgets/color_palette_generator.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/wizard_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
@@ -121,6 +122,62 @@ void main() {
           equals('algorithmic'),
         );
         expect(container.read(canvasStateProvider).palette.length, equals(16));
+      },
+    );
+
+    testWidgets(
+      'in template mode without ref image, enables AI Suggested option and displays template helper text',
+      (tester) async {
+        final mockAi = TestMockAiService();
+        final container = ProviderContainer(
+          overrides: [
+            aiServiceProvider.overrideWithValue(mockAi),
+            wizardStateProvider.overrideWith(
+              (ref) => WizardNotifier(
+                WizardStep.selectPalette,
+                null,
+                WizardMode.template,
+              ),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const MaterialApp(
+              home: Scaffold(body: ColorPaletteGenerator()),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Helper text should mention template regions
+        expect(
+          find.text(
+            'AI Suggested palette is tailored to character template regions (outline, body, accents).',
+          ),
+          findsOneWidget,
+        );
+
+        // Open dropdown
+        await tester.tap(find.byType(DropdownButtonFormField<String>));
+        await tester.pumpAndSettle();
+
+        // AI Suggested should be present even without ref image
+        expect(find.text('AI Suggested'), findsOneWidget);
+        // K-Means should NOT be present without ref image
+        expect(find.text('K-Means Quantized'), findsNothing);
+
+        // Select AI Suggested
+        await tester.tap(find.text('AI Suggested'));
+        await tester.pumpAndSettle();
+
+        expect(
+          container.read(canvasStateProvider).paletteName,
+          equals('suggested'),
+        );
       },
     );
 

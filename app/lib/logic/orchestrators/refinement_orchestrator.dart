@@ -56,6 +56,7 @@ class RefinementOrchestrator {
     int maxSteps = 5,
     bool Function()? isShouldStop,
     Uint8List? referenceImage,
+    bool isTemplate = false,
   }) async {
     final List<List<int>> workingGrid = List.generate(
       gridSize,
@@ -75,6 +76,7 @@ class RefinementOrchestrator {
         userPrompt: userPrompt,
         currentGrid: workingGrid,
         referenceImage: referenceImage,
+        isTemplate: isTemplate,
       );
 
       final visualBytes = generateBmp(workingGrid, palette);

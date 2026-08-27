@@ -8,7 +8,52 @@ import '../test_helper.dart';
 
 void main() {
   group('TemplateSelectionCard Widget Tests', () {
-    testWidgets('renders all template preset chips and mode selector', (
+    testWidgets(
+      'renders only character template preset chip, custom chip, and mode selector',
+      (tester) async {
+        final mockAiService = TestMockAiService();
+        final notifier = CanvasNotifier(mockAiService);
+        final wizardNotifier = WizardNotifier(
+          WizardStep.selectTemplate,
+          null,
+          WizardMode.template,
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => notifier),
+              wizardStateProvider.overrideWith((ref) => wizardNotifier),
+            ],
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SingleChildScrollView(child: TemplateSelectionCard()),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(TemplateSelectionCard), findsOneWidget);
+        expect(find.text('Select Sprite Template'), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('template_chip_sprite_character')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const ValueKey('template_chip_sword')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('template_chip_potion')),
+          findsNothing,
+        );
+        expect(find.byKey(const ValueKey('template_chip_heart')), findsNothing);
+        expect(
+          find.byKey(const ValueKey('template_chip_custom')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('tapping character preset updates text field and canvas grid', (
       tester,
     ) async {
       final mockAiService = TestMockAiService();
@@ -34,56 +79,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(TemplateSelectionCard), findsOneWidget);
-      expect(find.text('Select Sprite Template'), findsOneWidget);
-      expect(
+      // Tap character chip
+      await tester.tap(
         find.byKey(const ValueKey('template_chip_sprite_character')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('template_chip_sword')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('template_chip_potion')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const ValueKey('template_chip_heart')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('template_chip_custom')),
-        findsOneWidget,
-      );
-    });
-
-    testWidgets('tapping sword preset updates text field and canvas grid', (
-      tester,
-    ) async {
-      final mockAiService = TestMockAiService();
-      final notifier = CanvasNotifier(mockAiService);
-      final wizardNotifier = WizardNotifier(
-        WizardStep.selectTemplate,
-        null,
-        WizardMode.template,
-      );
-
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            canvasStateProvider.overrideWith((ref) => notifier),
-            wizardStateProvider.overrideWith((ref) => wizardNotifier),
-          ],
-          child: const MaterialApp(
-            home: Scaffold(
-              body: SingleChildScrollView(child: TemplateSelectionCard()),
-            ),
-          ),
-        ),
       );
       await tester.pumpAndSettle();
 
-      // Tap sword chip
-      await tester.tap(find.byKey(const ValueKey('template_chip_sword')));
-      await tester.pumpAndSettle();
-
-      // Verify canvas prompt updated with sword prompt
-      expect(notifier.state.userPrompt, contains('sword'));
+      // Verify canvas prompt updated with character prompt
+      expect(notifier.state.userPrompt, contains('character sprite hero'));
       expect(notifier.state.grid.any((r) => r.any((c) => c > 0)), isTrue);
     });
 
