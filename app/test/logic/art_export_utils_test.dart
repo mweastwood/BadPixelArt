@@ -1,13 +1,55 @@
-import 'dart:typed_data';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/src/platform/file_picker_platform_interface.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:bad_pixel_art/logic/utils/art_export_utils.dart';
+
+class FakeFilePickerPlatform extends FilePickerPlatform
+    with MockPlatformInterfaceMixin {
+  final String? saveFilePath;
+  final bool shouldThrow;
+  String? lastDialogTitle;
+  String? lastFileName;
+  List<String>? lastAllowedExtensions;
+  FileType? lastType;
+
+  FakeFilePickerPlatform({this.saveFilePath, this.shouldThrow = false});
+
+  @override
+  Future<String?> saveFile({
+    String? dialogTitle,
+    String? fileName,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Uint8List? bytes,
+    bool lockParentWindow = false,
+  }) async {
+    lastDialogTitle = dialogTitle;
+    lastFileName = fileName;
+    lastAllowedExtensions = allowedExtensions;
+    lastType = type;
+    if (shouldThrow) {
+      throw Exception('FilePicker saveFile error');
+    }
+    return saveFilePath;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('art_export_utils tests', () {
+    test('ExportFormat enum values are defined', () {
+      expect(ExportFormat.values, contains(ExportFormat.png));
+      expect(ExportFormat.values, contains(ExportFormat.svg));
+    });
+
     test('sanitizeFileName removes invalid characters and whitespace', () {
       expect(sanitizeFileName('My Cool Pixel Art!'), 'My_Cool_Pixel_Art!');
       expect(
@@ -246,6 +288,365 @@ void main() {
           svgString,
           contains('<rect x="0" y="0" width="1" height="1" fill="#ff0000" />'),
         );
+      },
+    );
+  });
+
+  group('saveExportedArtFile tests', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('art_export_test_');
+    });
+
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    testWidgets('returns false and presents SnackBar when bytes are empty', (
+      tester,
+    ) async {
+      late BuildContext buildContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                buildContext = context;
+                return const Text('Ready');
+              },
+            ),
+          ),
+        ),
+      );
+
+      bool? result;
+      await tester.runAsync(() async {
+        result = await saveExportedArtFile(
+          context: buildContext,
+          bytes: Uint8List(0),
+          fileName: 'empty.png',
+          mimeType: 'image/png',
+          extension: 'png',
+        );
+      });
+      await tester.pump();
+
+      expect(result, isFalse);
+      expect(find.text('Cannot export empty canvas'), findsOneWidget);
+    });
+
+    testWidgets('returns false when user cancels FilePicker saveFile dialog', (
+      tester,
+    ) async {
+      final fakePicker = FakeFilePickerPlatform(saveFilePath: null);
+      FilePickerPlatform.instance = fakePicker;
+
+      late BuildContext buildContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                buildContext = context;
+                return const Text('Ready');
+              },
+            ),
+          ),
+        ),
+      );
+
+      bool? result;
+      final sampleBytes = Uint8List.fromList([1, 2, 3, 4]);
+      await tester.runAsync(() async {
+        result = await saveExportedArtFile(
+          context: buildContext,
+          bytes: sampleBytes,
+          fileName: 'artwork.png',
+          mimeType: 'image/png',
+          extension: 'png',
+        );
+      });
+      await tester.pump();
+
+      expect(result, isFalse);
+      expect(fakePicker.lastFileName, 'artwork.png');
+      expect(fakePicker.lastAllowedExtensions, ['png']);
+      expect(fakePicker.lastType, FileType.custom);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets(
+      'writes bytes to file and displays success SnackBar with working Copy Path action',
+      (tester) async {
+        final targetPath = p.join(tempDir.path, 'exported_art.png');
+        final fakePicker = FakeFilePickerPlatform(saveFilePath: targetPath);
+        FilePickerPlatform.instance = fakePicker;
+
+        String? clipboardText;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (MethodCall methodCall) async {
+            if (methodCall.method == 'Clipboard.setData') {
+              clipboardText = (methodCall.arguments as Map)['text'] as String?;
+              return null;
+            }
+            return null;
+          },
+        );
+
+        late BuildContext buildContext;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  buildContext = context;
+                  return const Text('Ready');
+                },
+              ),
+            ),
+          ),
+        );
+
+        final sampleBytes = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x01]);
+        bool? result;
+        await tester.runAsync(() async {
+          result = await saveExportedArtFile(
+            context: buildContext,
+            bytes: sampleBytes,
+            fileName: 'exported_art.png',
+            mimeType: 'image/png',
+            extension: 'png',
+          );
+        });
+        await tester.pump();
+
+        expect(result, isTrue);
+        expect(File(targetPath).existsSync(), isTrue);
+        expect(File(targetPath).readAsBytesSync(), equals(sampleBytes));
+        expect(
+          find.text('Exported successfully to: exported_art.png'),
+          findsOneWidget,
+        );
+
+        // Tap Copy Path action button
+        expect(find.byType(SnackBarAction), findsOneWidget);
+        final action = tester.widget<SnackBarAction>(
+          find.byType(SnackBarAction),
+        );
+        action.onPressed();
+        await tester.pump();
+
+        expect(clipboardText, equals(targetPath));
+      },
+    );
+
+    testWidgets('catches file picker error and displays error SnackBar', (
+      tester,
+    ) async {
+      FilePickerPlatform.instance = FakeFilePickerPlatform(shouldThrow: true);
+
+      late BuildContext buildContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                buildContext = context;
+                return const Text('Ready');
+              },
+            ),
+          ),
+        ),
+      );
+
+      bool? result;
+      await tester.runAsync(() async {
+        result = await saveExportedArtFile(
+          context: buildContext,
+          bytes: Uint8List.fromList([1, 2, 3]),
+          fileName: 'error_test.png',
+          mimeType: 'image/png',
+          extension: 'png',
+        );
+      });
+      await tester.pump();
+
+      expect(result, isFalse);
+      expect(find.textContaining('Error exporting pixel art:'), findsOneWidget);
+    });
+
+    testWidgets(
+      'catches filesystem I/O write error and displays error SnackBar',
+      (tester) async {
+        // Pointing saveFilePath to an existing directory instead of a file causes File.writeAsBytes to throw FileSystemException
+        FilePickerPlatform.instance = FakeFilePickerPlatform(
+          saveFilePath: tempDir.path,
+        );
+
+        late BuildContext buildContext;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  buildContext = context;
+                  return const Text('Ready');
+                },
+              ),
+            ),
+          ),
+        );
+
+        bool? result;
+        await tester.runAsync(() async {
+          result = await saveExportedArtFile(
+            context: buildContext,
+            bytes: Uint8List.fromList([1, 2, 3]),
+            fileName: 'io_error.png',
+            mimeType: 'image/png',
+            extension: 'png',
+          );
+        });
+        await tester.pump();
+
+        expect(result, isFalse);
+        expect(
+          find.textContaining('Error exporting pixel art:'),
+          findsOneWidget,
+        );
+      },
+    );
+  });
+
+  group('exportArtworkAsPng & exportArtworkAsSvg tests', () {
+    late Directory tempDir;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('artwork_export_test_');
+    });
+
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    testWidgets(
+      'exportArtworkAsPng sanitizes title, generates valid PNG bytes, and forwards to saveExportedArtFile',
+      (tester) async {
+        final targetFile = p.join(tempDir.path, 'My_Pixel_Sprite.png');
+        final fakePicker = FakeFilePickerPlatform(saveFilePath: targetFile);
+        FilePickerPlatform.instance = fakePicker;
+
+        late BuildContext buildContext;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  buildContext = context;
+                  return const Text('Ready');
+                },
+              ),
+            ),
+          ),
+        );
+
+        final grid = [
+          [1, 0],
+          [0, 1],
+        ];
+        final palette = [const Color(0xFFFF0000)];
+
+        bool? result;
+        await tester.runAsync(() async {
+          result = await exportArtworkAsPng(
+            buildContext,
+            grid: grid,
+            palette: palette,
+            title: 'My Pixel Sprite.png',
+            scale: 4,
+          );
+        });
+        await tester.pump();
+
+        expect(result, isTrue);
+        expect(fakePicker.lastFileName, 'My_Pixel_Sprite.png');
+        expect(fakePicker.lastAllowedExtensions, ['png']);
+        expect(File(targetFile).existsSync(), isTrue);
+
+        final writtenBytes = File(targetFile).readAsBytesSync();
+        expect(
+          writtenBytes.sublist(0, 8),
+          equals(
+            Uint8List.fromList([
+              0x89,
+              0x50,
+              0x4E,
+              0x47,
+              0x0D,
+              0x0A,
+              0x1A,
+              0x0A,
+            ]),
+          ),
+        );
+      },
+    );
+
+    testWidgets(
+      'exportArtworkAsSvg sanitizes title, generates UTF-8 SVG string bytes, and forwards to saveExportedArtFile',
+      (tester) async {
+        final targetFile = p.join(tempDir.path, 'Vector_Art.svg');
+        final fakePicker = FakeFilePickerPlatform(saveFilePath: targetFile);
+        FilePickerPlatform.instance = fakePicker;
+
+        late BuildContext buildContext;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) {
+                  buildContext = context;
+                  return const Text('Ready');
+                },
+              ),
+            ),
+          ),
+        );
+
+        final grid = [
+          [1, 2],
+        ];
+        final palette = [const Color(0xFFFF0000), const Color(0xFF00FF00)];
+
+        bool? result;
+        await tester.runAsync(() async {
+          result = await exportArtworkAsSvg(
+            buildContext,
+            grid: grid,
+            palette: palette,
+            title: 'Vector/Art*.svg',
+            scale: 8,
+          );
+        });
+        await tester.pump();
+
+        expect(result, isTrue);
+        expect(fakePicker.lastFileName, 'Vector_Art.svg');
+        expect(fakePicker.lastAllowedExtensions, ['svg']);
+        expect(File(targetFile).existsSync(), isTrue);
+
+        final writtenSvg = File(targetFile).readAsStringSync();
+        expect(writtenSvg, contains('<svg'));
+        expect(writtenSvg, contains('viewBox="0 0 2 1"'));
+        expect(writtenSvg, contains('width="16" height="8"'));
+        expect(writtenSvg, contains('fill="#ff0000"'));
+        expect(writtenSvg, contains('fill="#00ff00"'));
       },
     );
   });
