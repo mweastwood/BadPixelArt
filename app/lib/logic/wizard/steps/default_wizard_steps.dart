@@ -229,7 +229,6 @@ class ColorAndOutlineStepDefinition extends WizardStepDefinition {
   @override
   Future<bool> executeAutoPlay(CanvasNotifier notifier) async {
     if (notifier.model.decomposedComponents.isNotEmpty &&
-        notifier.model.referenceImage != null &&
         !notifier.model.isGenerating) {
       final result = await notifier.suggestComponentColors();
       if (result != null) {

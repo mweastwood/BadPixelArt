@@ -15,10 +15,8 @@ class SemanticComponentsList extends ConsumerWidget {
     final activeIndex = ref.watch(
       canvasStateProvider.select((s) => s.activeComponentIndex),
     );
-    final hasPromptAndRef = ref.watch(
-      canvasStateProvider.select(
-        (s) => s.referenceImage != null && s.userPrompt.trim().isNotEmpty,
-      ),
+    final hasPrompt = ref.watch(
+      canvasStateProvider.select((s) => s.userPrompt.trim().isNotEmpty),
     );
     final isGenerating = ref.watch(
       canvasStateProvider.select((s) => s.isGenerating),
@@ -61,7 +59,7 @@ class SemanticComponentsList extends ConsumerWidget {
                       icon: const Icon(Icons.refresh, size: 20),
                       tooltip: 'Re-generate Drawing Plan',
                       onPressed:
-                          !hasPromptAndRef ||
+                          !hasPrompt ||
                               isGenerating ||
                               aiStatus != AiCoreStatus.available
                           ? null
@@ -101,7 +99,7 @@ class SemanticComponentsList extends ConsumerWidget {
                             : 'Generate Drawing Plan',
                       ),
                       onPressed:
-                          !hasPromptAndRef ||
+                          !hasPrompt ||
                               isGenerating ||
                               aiStatus != AiCoreStatus.available
                           ? null

@@ -43,11 +43,24 @@ class DecomposerAgent implements PixelArtAgent {
 
   @override
   String getSystemInstruction(AgentContext context) {
+    final bool hasTemplate = context.currentGrid.any(
+      (row) => row.any((cell) => cell > 0),
+    );
+
+    final templateInstructions = hasTemplate
+        ? '\nEXISTING BASE TEMPLATE PRESENT:\n'
+              'The canvas already contains an existing base template (e.g. base character body/silhouette).\n'
+              '- DO NOT replicate, re-decompose, or re-draw the base body/silhouette or any features already established by the template.\n'
+              '- Focus EXCLUSIVELY on decomposing ADD-ON components requested in the user prompt (such as armor, clothing, cape, wings, weapons, shield, helmet/hat, hair, accessories, magical effects).\n'
+              '- Ensure the relative bounding boxes for these new add-on components align properly with the base template body (on a 0.0 to 1.0 scale).\n'
+        : '';
+
     return 'You are an AI pixel art decomposer agent. Your job is to analyze a drawing prompt and break it down into its constituent semantic components.\n'
         'For each component, you must identify:\n'
         '1. "name": The name of the component (e.g. "blade", "hilt", "guard").\n'
         '2. "description": A descriptive instruction of what to draw (e.g. "straight blade with a sharp tip").\n'
         '3. "relativeBoundingBox": A bounding box where this component should be drawn, using normalized coordinates from 0.0 to 1.0. Bounding boxes can overlap. Format as: { "left": double, "top": double, "width": double, "height": double }\n\n'
+        '$templateInstructions\n'
         'Output rules:\n'
         '- You must output EXACTLY a valid JSON array of objects. Do not wrap in markdown tags (e.g. ```json).\n'
         '- Bounding boxes must cover the area of the components on a 0.0 to 1.0 scale.\n'
@@ -72,6 +85,25 @@ class DecomposerAgent implements PixelArtAgent {
     AgentContext context,
     List<PixelArtStepResult> history,
   ) {
+    final bool hasTemplate = context.currentGrid.any(
+      (row) => row.any((cell) => cell > 0),
+    );
+
+    if (hasTemplate) {
+      final textGrid = StringBuffer();
+      final size = context.gridSize;
+      for (int y = 0; y < size; y++) {
+        final row = context.currentGrid[y]
+            .map((v) => v > 0 ? '#' : '.')
+            .join('');
+        textGrid.writeln(row);
+      }
+
+      return 'A base template is already loaded on the canvas ($size x $size):\n'
+          '$textGrid\n'
+          'Decompose ONLY the additional items, equipment, armor, accessories, weapons, wings, cape, or garments required for: "${context.userPrompt}" without re-creating the base template.';
+    }
+
     return 'Decompose the drawing instruction: "${context.userPrompt}" into its sub-components with bounding boxes.';
   }
 
@@ -161,9 +193,45 @@ class DecomposerAgent implements PixelArtAgent {
       }
 
       if (parsedItems.isNotEmpty) {
-        final scaledComponents = _scaleAndCenter(parsedItems, context.gridSize);
+        final bool hasTemplate = context.currentGrid.any(
+          (row) => row.any((cell) => cell > 0),
+        );
+
+        final List<PixelArtComponent> components;
+        if (hasTemplate) {
+          // If a base template is present, align add-on components directly without re-scaling/centering
+          components = parsedItems.map((item) {
+            final alignedRect = _alignRectToPixels(item.rect, context.gridSize);
+            return PixelArtComponent(
+              name: item.name,
+              description: item.description,
+              relativeBoundingBox: alignedRect,
+              shapes: item.shapes,
+            );
+          }).toList();
+
+          // Retain the base template as the foundational component at index 0
+          final templateGrid = List.generate(
+            context.gridSize,
+            (y) => List.generate(
+              context.gridSize,
+              (x) => context.currentGrid[y][x] > 0 ? 1 : 0,
+            ),
+          );
+          final templateComponent = PixelArtComponent(
+            name: 'base_template',
+            description: 'Base template body / silhouette',
+            relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0),
+            grid: templateGrid,
+            isSculpted: true,
+          );
+          components.insert(0, templateComponent);
+        } else {
+          components = _scaleAndCenter(parsedItems, context.gridSize);
+        }
+
         return DecomposerResult(
-          components: scaledComponents,
+          components: components,
           rawPrompt: fullPrompt,
           rawResponse: response,
         );
@@ -239,6 +307,27 @@ class DecomposerAgent implements PixelArtAgent {
   }
 
   List<PixelArtComponent> getDefaultComponents(AgentContext context) {
+    final bool hasTemplate = context.currentGrid.any(
+      (row) => row.any((cell) => cell > 0),
+    );
+    if (hasTemplate) {
+      final templateGrid = List.generate(
+        context.gridSize,
+        (y) => List.generate(
+          context.gridSize,
+          (x) => context.currentGrid[y][x] > 0 ? 1 : 0,
+        ),
+      );
+      return [
+        PixelArtComponent(
+          name: 'base_template',
+          description: 'Base template body / silhouette',
+          relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0),
+          grid: templateGrid,
+          isSculpted: true,
+        ),
+      ];
+    }
     return [
       PixelArtComponent(
         name: 'main',

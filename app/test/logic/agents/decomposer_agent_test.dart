@@ -135,6 +135,83 @@ void main() {
       );
     });
 
+    test(
+      'retains base_template component when canvas has existing template grid',
+      () async {
+        final templateGrid = List.generate(16, (_) => List.filled(16, 0));
+        // Put some template pixels in the center
+        templateGrid[4][5] = 1;
+        templateGrid[4][6] = 2;
+
+        final templateContext = AgentContext(
+          gridSize: 16,
+          activePalette: activePalette,
+          userPrompt: 'add golden armor and wings to character',
+          currentGrid: templateGrid,
+        );
+
+        final agent = DecomposerAgent();
+        expect(
+          agent.getSystemInstruction(templateContext),
+          contains('EXISTING BASE TEMPLATE PRESENT'),
+        );
+        expect(
+          agent.getFormattedUserPrompt(templateContext, []),
+          contains('A base template is already loaded on the canvas'),
+        );
+
+        final mockAi = TestMockAiService(
+          responseToReturn: '''
+[
+  {
+    "name": "wings",
+    "description": "white feathered wings",
+    "relativeBoundingBox": { "left": 0.0, "top": 0.1, "width": 1.0, "height": 0.5 }
+  },
+  {
+    "name": "golden_armor",
+    "description": "yellow breastplate armor",
+    "relativeBoundingBox": { "left": 0.3, "top": 0.5, "width": 0.4, "height": 0.35 }
+  }
+]
+''',
+        );
+
+        final result = await agent.decompose(mockAi, templateContext);
+
+        // Should contain base_template at index 0 + 2 add-on components = 3 components
+        expect(result.components, hasLength(3));
+        expect(result.components[0].name, equals('base_template'));
+        expect(result.components[0].isSculpted, isTrue);
+        expect(result.components[0].grid![4][5], equals(1));
+        expect(result.components[0].grid![4][6], equals(1));
+        expect(result.components[1].name, equals('wings'));
+        expect(result.components[2].name, equals('golden_armor'));
+      },
+    );
+
+    test(
+      'getDefaultComponents returns base_template if template is present',
+      () {
+        final templateGrid = List.generate(16, (_) => List.filled(16, 0));
+        templateGrid[2][3] = 1;
+
+        final templateContext = AgentContext(
+          gridSize: 16,
+          activePalette: activePalette,
+          userPrompt: 'test prompt',
+          currentGrid: templateGrid,
+        );
+
+        final agent = DecomposerAgent();
+        final defaults = agent.getDefaultComponents(templateContext);
+        expect(defaults, hasLength(1));
+        expect(defaults[0].name, equals('base_template'));
+        expect(defaults[0].isSculpted, isTrue);
+        expect(defaults[0].grid![2][3], equals(1));
+      },
+    );
+
     test('propagates exception when aiService throws', () async {
       final agent = DecomposerAgent();
       final mockAi = TestMockAiService(

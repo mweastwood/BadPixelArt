@@ -43,6 +43,10 @@ class WizardRegistry {
       SelectTemplateStepDefinition(),
       SetupPromptStepDefinition(),
       SelectPaletteStepDefinition(),
+      SketchingPlanStepDefinition(),
+      ComponentSculptingStepDefinition(),
+      ColorAndOutlineStepDefinition(),
+      LayerOrderingAndMergeStepDefinition(),
       RefinementStepDefinition(),
     ],
   );
