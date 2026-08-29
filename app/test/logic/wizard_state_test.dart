@@ -67,7 +67,7 @@ void main() {
       );
       expect(notifier.mode, equals(WizardMode.template));
       expect(notifier.wizard.id, equals('template_pixel_art'));
-      expect(notifier.wizard.steps.length, equals(4));
+      expect(notifier.wizard.steps.length, equals(8));
     });
 
     test('setMode switches between structured, direct, and template modes', () {
@@ -83,7 +83,7 @@ void main() {
       notifier.setMode(WizardMode.template);
       expect(notifier.mode, equals(WizardMode.template));
       expect(notifier.wizard.id, equals('template_pixel_art'));
-      expect(notifier.wizard.steps.length, equals(4));
+      expect(notifier.wizard.steps.length, equals(8));
 
       notifier.setMode(WizardMode.structured);
       expect(notifier.mode, equals(WizardMode.structured));
