@@ -15,6 +15,8 @@ class NoiseCircleCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
+    if (gridSize <= 0) return;
+
     final double rSq = (r * r).toDouble();
     final int minX = (cx - r).floor().clamp(0, gridSize - 1);
     final int maxX = (cx + r).ceil().clamp(0, gridSize - 1);

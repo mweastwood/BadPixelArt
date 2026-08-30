@@ -103,5 +103,24 @@ void main() {
         },
       );
     });
+
+    test('handles non-positive gridSize safely', () {
+      final grid = <List<int>>[];
+      // Integer radius
+      expect(() => CircleCommand(2, 2, 2).execute(grid, 1, 0), returnsNormally);
+      expect(
+        () => CircleCommand(2, 2, 2).execute(grid, 1, -1),
+        returnsNormally,
+      );
+      // Fractional center/radius
+      expect(
+        () => CircleCommand(2.5, 2.5, 2.5).execute(grid, 1, 0),
+        returnsNormally,
+      );
+      expect(
+        () => CircleCommand(2.5, 2.5, 2.5).execute(grid, 1, -1),
+        returnsNormally,
+      );
+    });
   });
 }

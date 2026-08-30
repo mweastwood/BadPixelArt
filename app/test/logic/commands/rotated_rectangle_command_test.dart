@@ -14,5 +14,17 @@ void main() {
       expect(grid[6][4], equals(2));
       expect(grid[4][2], equals(0)); // wider horizontally should be empty
     });
+
+    test('handles non-positive gridSize safely', () {
+      final grid = <List<int>>[];
+      expect(
+        () => RotatedRectangleCommand(4, 4, 6, 2, 90.0).execute(grid, 1, 0),
+        returnsNormally,
+      );
+      expect(
+        () => RotatedRectangleCommand(4, 4, 6, 2, 90.0).execute(grid, 1, -1),
+        returnsNormally,
+      );
+    });
   });
 }
