@@ -245,6 +245,7 @@ class _ReferenceLibraryScreenState
     ThemeData theme,
   ) {
     final isGemini = item.source.toLowerCase() == 'gemini';
+    final thumbnailBytes = item.bmpData ?? item.imageData;
 
     return Card(
       key: ValueKey('reference_card_${item.id}'),
@@ -275,8 +276,10 @@ class _ReferenceLibraryScreenState
                   Container(
                     color: theme.colorScheme.surfaceContainerHighest,
                     child: Image.memory(
-                      item.imageData,
+                      thumbnailBytes,
                       fit: BoxFit.cover,
+                      cacheWidth: 300,
+                      cacheHeight: 300,
                       errorBuilder: (context, error, stackTrace) =>
                           const Center(
                             child: Icon(Icons.broken_image_outlined),

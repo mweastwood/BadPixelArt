@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/drift.dart' as drift;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bad_pixel_art/screens/reference_library_screen.dart';
 import 'package:bad_pixel_art/logic/repositories/reference_library_repository.dart';
@@ -14,7 +14,7 @@ import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
 
 void main() {
-  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  drift.driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ReferenceLibraryScreen Widget Tests', () {
@@ -226,5 +226,113 @@ void main() {
       expect(selected, isNotNull);
       expect(selected?.title, equals('Selected Item'));
     });
+
+    testWidgets(
+      'renders thumbnail using bmpData when available with cache constraints',
+      (tester) async {
+        final originalBytes = generateBmpFromRgba(
+          Uint8List.fromList([255, 0, 0, 255]),
+          1,
+          1,
+        );
+        final downscaledBmpBytes = generateBmpFromRgba(
+          Uint8List.fromList([0, 255, 0, 255]),
+          1,
+          1,
+        );
+        final item = await repository.addReferenceImage(
+          imageBytes: originalBytes,
+          bmpBytes: downscaledBmpBytes,
+          title: 'Thumbnail Test',
+          source: 'upload',
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            overrides: [
+              referenceLibraryRepositoryProvider.overrideWithValue(repository),
+            ],
+            child: const ReferenceLibraryScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final cardFinder = find.byKey(ValueKey('reference_card_${item.id}'));
+        expect(cardFinder, findsOneWidget);
+
+        final imageFinder = find.descendant(
+          of: cardFinder,
+          matching: find.byType(Image),
+        );
+        expect(imageFinder, findsOneWidget);
+
+        final imageWidget = tester.widget<Image>(imageFinder);
+        final imageProvider = imageWidget.image;
+        expect(imageProvider, isA<ResizeImage>());
+
+        final resizeImage = imageProvider as ResizeImage;
+        expect(resizeImage.width, equals(300));
+        expect(resizeImage.height, equals(300));
+        expect(resizeImage.imageProvider, isA<MemoryImage>());
+
+        final memoryImage = resizeImage.imageProvider as MemoryImage;
+        expect(memoryImage.bytes, equals(downscaledBmpBytes));
+      },
+    );
+
+    testWidgets(
+      'falls back to imageData when bmpData is null with cache constraints',
+      (tester) async {
+        final originalBytes = generateBmpFromRgba(
+          Uint8List.fromList([0, 0, 255, 255]),
+          1,
+          1,
+        );
+        final now = DateTime.now();
+        final id = await db.createReferenceImage(
+          ReferenceImagesCompanion(
+            title: const drift.Value('Null Bmp Test'),
+            imageData: drift.Value(originalBytes),
+            bmpData: const drift.Value(null),
+            source: const drift.Value('upload'),
+            createdAt: drift.Value(now),
+            updatedAt: drift.Value(now),
+          ),
+        );
+        final item = await db.getReferenceImageById(id);
+        expect(item, isNotNull);
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            overrides: [
+              referenceLibraryRepositoryProvider.overrideWithValue(repository),
+            ],
+            child: const ReferenceLibraryScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final cardFinder = find.byKey(ValueKey('reference_card_${item!.id}'));
+        expect(cardFinder, findsOneWidget);
+
+        final imageFinder = find.descendant(
+          of: cardFinder,
+          matching: find.byType(Image),
+        );
+        expect(imageFinder, findsOneWidget);
+
+        final imageWidget = tester.widget<Image>(imageFinder);
+        final imageProvider = imageWidget.image;
+        expect(imageProvider, isA<ResizeImage>());
+
+        final resizeImage = imageProvider as ResizeImage;
+        expect(resizeImage.width, equals(300));
+        expect(resizeImage.height, equals(300));
+        expect(resizeImage.imageProvider, isA<MemoryImage>());
+
+        final memoryImage = resizeImage.imageProvider as MemoryImage;
+        expect(memoryImage.bytes, equals(originalBytes));
+      },
+    );
   });
 }
