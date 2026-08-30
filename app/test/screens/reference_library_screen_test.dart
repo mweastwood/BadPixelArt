@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:drift/native.dart';
-import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:drift/drift.dart' as drift;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bad_pixel_art/screens/reference_library_screen.dart';
 import 'package:bad_pixel_art/logic/repositories/reference_library_repository.dart';
@@ -14,7 +14,7 @@ import 'package:bad_pixel_art/logic/canvas_state.dart';
 import '../test_helper.dart';
 
 void main() {
-  driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
+  drift.driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ReferenceLibraryScreen Widget Tests', () {
@@ -288,12 +288,19 @@ void main() {
           1,
           1,
         );
-        final item = await repository.addReferenceImage(
-          imageBytes: originalBytes,
-          bmpBytes: null,
-          title: 'Null Bmp Test',
-          source: 'upload',
+        final now = DateTime.now();
+        final id = await db.createReferenceImage(
+          ReferenceImagesCompanion(
+            title: const drift.Value('Null Bmp Test'),
+            imageData: drift.Value(originalBytes),
+            bmpData: const drift.Value(null),
+            source: const drift.Value('upload'),
+            createdAt: drift.Value(now),
+            updatedAt: drift.Value(now),
+          ),
         );
+        final item = await db.getReferenceImageById(id);
+        expect(item, isNotNull);
 
         await tester.pumpWidget(
           buildTestableWidget(
@@ -305,7 +312,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final cardFinder = find.byKey(ValueKey('reference_card_${item.id}'));
+        final cardFinder = find.byKey(ValueKey('reference_card_${item!.id}'));
         expect(cardFinder, findsOneWidget);
 
         final imageFinder = find.descendant(
