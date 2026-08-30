@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import '../models/drag_handle.dart';
@@ -89,8 +90,9 @@ class ComponentBoundingBoxGestureHandler {
       case DragHandle.topRight:
         double newTop = snapToGrid(startRect.top + deltaY, gridSize);
         double newWidth = snapToGrid(startRect.width + deltaX, gridSize);
+        final maxWidth = math.max(minSize, 1.0 - startRect.left);
+        newWidth = newWidth.clamp(minSize, maxWidth);
         double newHeight = startRect.bottom - newTop;
-        if (newWidth < minSize) newWidth = minSize;
         if (newHeight < minSize) {
           newTop = startRect.bottom - minSize;
           newHeight = minSize;
@@ -105,14 +107,17 @@ class ComponentBoundingBoxGestureHandler {
           newLeft = startRect.right - minSize;
           newWidth = minSize;
         }
-        if (newHeight < minSize) newHeight = minSize;
+        final maxHeight = math.max(minSize, 1.0 - startRect.top);
+        newHeight = newHeight.clamp(minSize, maxHeight);
         return Rect.fromLTWH(newLeft, startRect.top, newWidth, newHeight);
 
       case DragHandle.bottomRight:
         double newWidth = snapToGrid(startRect.width + deltaX, gridSize);
         double newHeight = snapToGrid(startRect.height + deltaY, gridSize);
-        if (newWidth < minSize) newWidth = minSize;
-        if (newHeight < minSize) newHeight = minSize;
+        final maxWidth = math.max(minSize, 1.0 - startRect.left);
+        final maxHeight = math.max(minSize, 1.0 - startRect.top);
+        newWidth = newWidth.clamp(minSize, maxWidth);
+        newHeight = newHeight.clamp(minSize, maxHeight);
         return Rect.fromLTWH(
           startRect.left,
           startRect.top,
@@ -136,7 +141,8 @@ class ComponentBoundingBoxGestureHandler {
 
       case DragHandle.bottom:
         double newHeight = snapToGrid(startRect.height + deltaY, gridSize);
-        if (newHeight < minSize) newHeight = minSize;
+        final maxHeight = math.max(minSize, 1.0 - startRect.top);
+        newHeight = newHeight.clamp(minSize, maxHeight);
         return Rect.fromLTWH(
           startRect.left,
           startRect.top,
@@ -160,7 +166,8 @@ class ComponentBoundingBoxGestureHandler {
 
       case DragHandle.right:
         double newWidth = snapToGrid(startRect.width + deltaX, gridSize);
-        if (newWidth < minSize) newWidth = minSize;
+        final maxWidth = math.max(minSize, 1.0 - startRect.left);
+        newWidth = newWidth.clamp(minSize, maxWidth);
         return Rect.fromLTWH(
           startRect.left,
           startRect.top,
@@ -171,8 +178,10 @@ class ComponentBoundingBoxGestureHandler {
       case DragHandle.center:
         double newLeft = snapToGrid(startRect.left + deltaX, gridSize);
         double newTop = snapToGrid(startRect.top + deltaY, gridSize);
-        newLeft = newLeft.clamp(0.0, 1.0 - startRect.width);
-        newTop = newTop.clamp(0.0, 1.0 - startRect.height);
+        final maxLeft = math.max(0.0, 1.0 - startRect.width);
+        final maxTop = math.max(0.0, 1.0 - startRect.height);
+        newLeft = newLeft.clamp(0.0, maxLeft);
+        newTop = newTop.clamp(0.0, maxTop);
         return Rect.fromLTWH(
           newLeft,
           newTop,

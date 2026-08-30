@@ -434,6 +434,129 @@ void main() {
           );
         },
       );
+
+      test(
+        'guards center drag against ArgumentError crash when startRect width or height exceeds 1.0',
+        () {
+          final oversizedResult = handler.applyDelta(
+            handle: DragHandle.center,
+            startRect: const Rect.fromLTWH(0.0, 0.0, 1.1, 1.1),
+            pixelDelta: Offset.zero,
+            canvasSize: canvasSize,
+            gridSize: gridSize,
+          );
+          expect(
+            oversizedResult,
+            equals(const Rect.fromLTWH(0.0, 0.0, 1.1, 1.1)),
+          );
+
+          final oversizedWithDelta = handler.applyDelta(
+            handle: DragHandle.center,
+            startRect: const Rect.fromLTWH(0.2, 0.2, 1.2, 1.3),
+            pixelDelta: const Offset(50.0, 50.0),
+            canvasSize: canvasSize,
+            gridSize: gridSize,
+          );
+          expect(
+            oversizedWithDelta,
+            equals(const Rect.fromLTWH(0.0, 0.0, 1.2, 1.3)),
+          );
+        },
+      );
+
+      test('clamps right resize handles within normalized canvas bounds', () {
+        // startRect: left=0.75, width=0.125. Remaining width available on canvas = 1.0 - 0.75 = 0.25
+        const rightEdgeRect = Rect.fromLTWH(0.75, 0.25, 0.125, 0.5);
+
+        // Drag right handle past canvas edge
+        final rightResult = handler.applyDelta(
+          handle: DragHandle.right,
+          startRect: rightEdgeRect,
+          pixelDelta: const Offset(100.0, 0.0),
+          canvasSize: canvasSize,
+          gridSize: gridSize,
+        );
+        expect(rightResult, isNotNull);
+        expect(rightResult!.left + rightResult.width, lessThanOrEqualTo(1.0));
+        expect(rightResult.width, equals(0.25));
+
+        // Drag topRight handle past canvas edge
+        final topRightResult = handler.applyDelta(
+          handle: DragHandle.topRight,
+          startRect: rightEdgeRect,
+          pixelDelta: const Offset(100.0, 0.0),
+          canvasSize: canvasSize,
+          gridSize: gridSize,
+        );
+        expect(topRightResult, isNotNull);
+        expect(
+          topRightResult!.left + topRightResult.width,
+          lessThanOrEqualTo(1.0),
+        );
+        expect(topRightResult.width, equals(0.25));
+
+        // Drag bottomRight handle past canvas edge
+        final bottomRightResult = handler.applyDelta(
+          handle: DragHandle.bottomRight,
+          startRect: rightEdgeRect,
+          pixelDelta: const Offset(100.0, 0.0),
+          canvasSize: canvasSize,
+          gridSize: gridSize,
+        );
+        expect(bottomRightResult, isNotNull);
+        expect(
+          bottomRightResult!.left + bottomRightResult.width,
+          lessThanOrEqualTo(1.0),
+        );
+        expect(bottomRightResult.width, equals(0.25));
+      });
+
+      test('clamps bottom resize handles within normalized canvas bounds', () {
+        // startRect: top=0.75, height=0.125. Remaining height available on canvas = 1.0 - 0.75 = 0.25
+        const bottomEdgeRect = Rect.fromLTWH(0.25, 0.75, 0.5, 0.125);
+
+        // Drag bottom handle past canvas edge
+        final bottomResult = handler.applyDelta(
+          handle: DragHandle.bottom,
+          startRect: bottomEdgeRect,
+          pixelDelta: const Offset(0.0, 100.0),
+          canvasSize: canvasSize,
+          gridSize: gridSize,
+        );
+        expect(bottomResult, isNotNull);
+        expect(bottomResult!.top + bottomResult.height, lessThanOrEqualTo(1.0));
+        expect(bottomResult.height, equals(0.25));
+
+        // Drag bottomLeft handle past canvas edge
+        final bottomLeftResult = handler.applyDelta(
+          handle: DragHandle.bottomLeft,
+          startRect: bottomEdgeRect,
+          pixelDelta: const Offset(0.0, 100.0),
+          canvasSize: canvasSize,
+          gridSize: gridSize,
+        );
+        expect(bottomLeftResult, isNotNull);
+        expect(
+          bottomLeftResult!.top + bottomLeftResult.height,
+          lessThanOrEqualTo(1.0),
+        );
+        expect(bottomLeftResult.height, equals(0.25));
+
+        // Drag bottomRight handle past canvas edge
+        final bottomRightResult = handler.applyDelta(
+          handle: DragHandle.bottomRight,
+          startRect: bottomEdgeRect,
+          pixelDelta: const Offset(0.0, 100.0),
+          canvasSize: canvasSize,
+          gridSize: gridSize,
+        );
+        expect(bottomRightResult, isNotNull);
+        expect(
+          bottomRightResult!.top + bottomRightResult.height,
+          lessThanOrEqualTo(1.0),
+        );
+        expect(bottomRightResult.height, equals(0.25));
+      });
     });
   });
 }
