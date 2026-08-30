@@ -12,5 +12,17 @@ void main() {
       // (1,2) -> (1+2)%2 == 3 -> not filled
       expect(grid[2][1], equals(0));
     });
+
+    test('handles non-positive gridSize safely', () {
+      final grid = <List<int>>[];
+      expect(
+        () => CircleHatchedCommand(2, 2, 2).execute(grid, 7, 0),
+        returnsNormally,
+      );
+      expect(
+        () => CircleHatchedCommand(2, 2, 2).execute(grid, 7, -1),
+        returnsNormally,
+      );
+    });
   });
 }

@@ -53,5 +53,17 @@ void main() {
         }
       },
     );
+
+    test('handles non-positive gridSize safely', () {
+      final grid = <List<int>>[];
+      expect(
+        () => EllipseCommand(3, 3, 3, 2).execute(grid, 6, 0),
+        returnsNormally,
+      );
+      expect(
+        () => EllipseCommand(3, 3, 3, 2).execute(grid, 6, -1),
+        returnsNormally,
+      );
+    });
   });
 }

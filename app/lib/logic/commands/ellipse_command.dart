@@ -13,6 +13,8 @@ class EllipseCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
+    if (gridSize <= 0) return;
+
     final double rxVal = rx < 0.5 ? 0.5 : rx.toDouble();
     final double ryVal = ry < 0.5 ? 0.5 : ry.toDouble();
 

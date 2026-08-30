@@ -20,5 +20,17 @@ void main() {
       expect(hasColor, isTrue);
       expect(hasBackground, isTrue);
     });
+
+    test('handles non-positive gridSize safely', () {
+      final grid = <List<int>>[];
+      expect(
+        () => NoiseCircleCommand(2, 2, 2, 99).execute(grid, 1, 0),
+        returnsNormally,
+      );
+      expect(
+        () => NoiseCircleCommand(2, 2, 2, 99).execute(grid, 1, -1),
+        returnsNormally,
+      );
+    });
   });
 }

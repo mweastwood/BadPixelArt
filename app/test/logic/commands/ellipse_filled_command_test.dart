@@ -39,13 +39,25 @@ void main() {
         for (int y = 0; y < 8; y++) {
           for (int x = 0; x < 16; x++) {
             expect(
-              grid[y][x],
-              equals(grid[15 - y][x]),
+              grid[15 - y][x],
+              equals(grid[y][x]),
               reason: 'Top-bottom mismatch at X=$x: Y=$y vs Y=${15 - y}',
             );
           }
         }
       },
     );
+
+    test('handles non-positive gridSize safely', () {
+      final grid = <List<int>>[];
+      expect(
+        () => EllipseFilledCommand(3, 3, 3, 2).execute(grid, 5, 0),
+        returnsNormally,
+      );
+      expect(
+        () => EllipseFilledCommand(3, 3, 3, 2).execute(grid, 5, -1),
+        returnsNormally,
+      );
+    });
   });
 }

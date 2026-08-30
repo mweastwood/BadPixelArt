@@ -14,6 +14,8 @@ class CircleCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
+    if (gridSize <= 0) return;
+
     if (r <= 0) {
       final int px = xc.round();
       final int py = yc.round();

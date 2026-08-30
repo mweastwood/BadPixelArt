@@ -17,6 +17,8 @@ class RotatedRectangleCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
+    if (gridSize <= 0) return;
+
     final double rad = angle * pi / 180.0;
     final double cosA = cos(rad);
     final double sinA = sin(rad);
