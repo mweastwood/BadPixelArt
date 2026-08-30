@@ -226,5 +226,106 @@ void main() {
       expect(selected, isNotNull);
       expect(selected?.title, equals('Selected Item'));
     });
+
+    testWidgets(
+      'renders thumbnail using bmpData when available with cache constraints',
+      (tester) async {
+        final originalBytes = generateBmpFromRgba(
+          Uint8List.fromList([255, 0, 0, 255]),
+          1,
+          1,
+        );
+        final downscaledBmpBytes = generateBmpFromRgba(
+          Uint8List.fromList([0, 255, 0, 255]),
+          1,
+          1,
+        );
+        final item = await repository.addReferenceImage(
+          imageBytes: originalBytes,
+          bmpBytes: downscaledBmpBytes,
+          title: 'Thumbnail Test',
+          source: 'upload',
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            overrides: [
+              referenceLibraryRepositoryProvider.overrideWithValue(repository),
+            ],
+            child: const ReferenceLibraryScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final cardFinder = find.byKey(ValueKey('reference_card_${item.id}'));
+        expect(cardFinder, findsOneWidget);
+
+        final imageFinder = find.descendant(
+          of: cardFinder,
+          matching: find.byType(Image),
+        );
+        expect(imageFinder, findsOneWidget);
+
+        final imageWidget = tester.widget<Image>(imageFinder);
+        final imageProvider = imageWidget.image;
+        expect(imageProvider, isA<ResizeImage>());
+
+        final resizeImage = imageProvider as ResizeImage;
+        expect(resizeImage.width, equals(300));
+        expect(resizeImage.height, equals(300));
+        expect(resizeImage.imageProvider, isA<MemoryImage>());
+
+        final memoryImage = resizeImage.imageProvider as MemoryImage;
+        expect(memoryImage.bytes, equals(downscaledBmpBytes));
+      },
+    );
+
+    testWidgets(
+      'falls back to imageData when bmpData is null with cache constraints',
+      (tester) async {
+        final originalBytes = generateBmpFromRgba(
+          Uint8List.fromList([0, 0, 255, 255]),
+          1,
+          1,
+        );
+        final item = await repository.addReferenceImage(
+          imageBytes: originalBytes,
+          bmpBytes: null,
+          title: 'Null Bmp Test',
+          source: 'upload',
+        );
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            overrides: [
+              referenceLibraryRepositoryProvider.overrideWithValue(repository),
+            ],
+            child: const ReferenceLibraryScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final cardFinder = find.byKey(ValueKey('reference_card_${item.id}'));
+        expect(cardFinder, findsOneWidget);
+
+        final imageFinder = find.descendant(
+          of: cardFinder,
+          matching: find.byType(Image),
+        );
+        expect(imageFinder, findsOneWidget);
+
+        final imageWidget = tester.widget<Image>(imageFinder);
+        final imageProvider = imageWidget.image;
+        expect(imageProvider, isA<ResizeImage>());
+
+        final resizeImage = imageProvider as ResizeImage;
+        expect(resizeImage.width, equals(300));
+        expect(resizeImage.height, equals(300));
+        expect(resizeImage.imageProvider, isA<MemoryImage>());
+
+        final memoryImage = resizeImage.imageProvider as MemoryImage;
+        expect(memoryImage.bytes, equals(originalBytes));
+      },
+    );
   });
 }
