@@ -372,9 +372,11 @@ Widget buildTestableWidget({
     overrides: [
       aiServiceProvider.overrideWithValue(TestMockAiService()),
       sharedPreferencesProvider.overrideWithValue(FakeSharedPreferences()),
-      shareReceiverServiceProvider.overrideWith(
-        (ref) => FakeShareReceiverService(),
-      ),
+      shareReceiverServiceProvider.overrideWith((ref) {
+        final service = FakeShareReceiverService();
+        ref.onDispose(service.dispose);
+        return service;
+      }),
       ...overrides,
     ],
     child: MaterialApp(
@@ -395,9 +397,11 @@ gt.WidgetWrapper testMaterialAppWrapper({
       overrides: [
         aiServiceProvider.overrideWithValue(TestMockAiService()),
         sharedPreferencesProvider.overrideWithValue(FakeSharedPreferences()),
-        shareReceiverServiceProvider.overrideWith(
-          (ref) => FakeShareReceiverService(),
-        ),
+        shareReceiverServiceProvider.overrideWith((ref) {
+          final service = FakeShareReceiverService();
+          ref.onDispose(service.dispose);
+          return service;
+        }),
         ...overrides,
       ],
       child: gt.materialAppWrapper(platform: platform, theme: ThemeData.dark())(

@@ -10,6 +10,8 @@ import 'package:bad_pixel_art/screens/model_options_screen.dart';
 import 'package:bad_pixel_art/screens/reference_library_screen.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
+import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/repositories/reference_library_repository.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/logic/services/share_receiver_service.dart';
 
@@ -306,11 +308,20 @@ void main() {
         setupMockShareReceiverChannel();
         addTearDown(clearMockShareReceiverChannel);
 
-        // Do not override shareReceiverServiceProvider, so the real provider is instantiated
+        // Explicitly override with the real ShareReceiverService to exercise the mock channel handler
         await tester.pumpWidget(
           buildTestableWidget(
             child: const PixelArtScreen(),
-            overrides: const [],
+            overrides: [
+              shareReceiverServiceProvider.overrideWith((ref) {
+                final service = ShareReceiverService(
+                  ref.read(referenceLibraryRepositoryProvider),
+                  () => ref.read(canvasStateProvider.notifier),
+                );
+                ref.onDispose(service.dispose);
+                return service;
+              }),
+            ],
           ),
         );
         await tester.pumpAndSettle();
