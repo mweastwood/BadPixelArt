@@ -1,11 +1,17 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:golden_toolkit/golden_toolkit.dart' as gt;
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:drift/native.dart';
+import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/repositories/reference_library_repository.dart';
+import 'package:bad_pixel_art/logic/services/share_receiver_service.dart';
+import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/logic/utils/settings_provider.dart';
 
 const Object _sentinel = Object();
@@ -283,6 +289,80 @@ class FakeSharedPreferences implements SharedPreferences {
   Future<void> reload() async {}
 }
 
+/// Fake implementation of [ShareReceiverService] for tests that avoids
+/// invoking unmocked platform channels.
+class FakeShareReceiverService extends ShareReceiverService {
+  void Function(ReferenceImage importedImage)? onImportedCallback;
+  final StreamController<ReferenceImage> _controller =
+      StreamController<ReferenceImage>.broadcast();
+
+  FakeShareReceiverService({
+    ReferenceLibraryRepository? repository,
+    CanvasNotifier Function()? getCanvasNotifier,
+  }) : super(
+         repository ??
+             ReferenceLibraryRepository(
+               dbGetter: () => AppDatabase(NativeDatabase.memory()),
+             ),
+         getCanvasNotifier ?? (() => CanvasNotifier(TestMockAiService())),
+       );
+
+  @override
+  Stream<ReferenceImage> get onSharedImageImported => _controller.stream;
+
+  @override
+  void initialize({void Function(ReferenceImage importedImage)? onImported}) {
+    onImportedCallback = onImported;
+  }
+
+  /// Emits a simulated shared image to both the broadcast stream and the onImported callback.
+  void emitSharedImage(ReferenceImage image) {
+    _controller.add(image);
+    onImportedCallback?.call(image);
+  }
+
+  @override
+  Future<ReferenceImage?> handleSharedItem(SharedMediaItem item) async {
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _controller.close();
+  }
+}
+
+/// Method channel name for share receiver intents.
+const String shareReceiverChannelName =
+    'com.mweastwood.bad_pixel_art/share_receiver';
+
+/// Sets up a mock MethodChannel handler for `com.mweastwood.bad_pixel_art/share_receiver`
+/// to cleanly handle `getInitialSharedData` and other methods without throwing MissingPluginException.
+void setupMockShareReceiverChannel({
+  Future<Object?>? Function(MethodCall call)? handler,
+}) {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+        const MethodChannel(shareReceiverChannelName),
+        handler ??
+            (MethodCall call) async {
+              if (call.method == 'getInitialSharedData') {
+                return null;
+              }
+              return null;
+            },
+      );
+}
+
+/// Clears the mock MethodChannel handler for `com.mweastwood.bad_pixel_art/share_receiver`.
+void clearMockShareReceiverChannel() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(
+        const MethodChannel(shareReceiverChannelName),
+        null,
+      );
+}
+
 /// Wraps the widget under test in ProviderScope and MaterialApp.
 Widget buildTestableWidget({
   required Widget child,
@@ -292,6 +372,9 @@ Widget buildTestableWidget({
     overrides: [
       aiServiceProvider.overrideWithValue(TestMockAiService()),
       sharedPreferencesProvider.overrideWithValue(FakeSharedPreferences()),
+      shareReceiverServiceProvider.overrideWith(
+        (ref) => FakeShareReceiverService(),
+      ),
       ...overrides,
     ],
     child: MaterialApp(
@@ -312,6 +395,9 @@ gt.WidgetWrapper testMaterialAppWrapper({
       overrides: [
         aiServiceProvider.overrideWithValue(TestMockAiService()),
         sharedPreferencesProvider.overrideWithValue(FakeSharedPreferences()),
+        shareReceiverServiceProvider.overrideWith(
+          (ref) => FakeShareReceiverService(),
+        ),
         ...overrides,
       ],
       child: gt.materialAppWrapper(platform: platform, theme: ThemeData.dark())(
