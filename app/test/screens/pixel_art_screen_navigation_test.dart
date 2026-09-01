@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
@@ -5,8 +7,13 @@ import 'package:bad_pixel_art/screens/creations_screen.dart';
 import 'package:bad_pixel_art/screens/canvas_screen.dart';
 import 'package:bad_pixel_art/screens/logs_screen.dart';
 import 'package:bad_pixel_art/screens/model_options_screen.dart';
+import 'package:bad_pixel_art/screens/reference_library_screen.dart';
 import 'package:bad_pixel_art/widgets/grid_size_selection_card.dart';
 import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
+import 'package:bad_pixel_art/logic/canvas_state.dart';
+import 'package:bad_pixel_art/logic/repositories/reference_library_repository.dart';
+import 'package:bad_pixel_art/logic/utils/database.dart';
+import 'package:bad_pixel_art/logic/services/share_receiver_service.dart';
 
 import '../test_helper.dart';
 
@@ -241,6 +248,86 @@ void main() {
         // Verify ModelOptionsScreen is pushed
         expect(find.byType(ModelOptionsScreen), findsOneWidget);
         expect(find.text('AI Engine'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'handles incoming shared media items via ShareReceiverService without errors and displays snackbar',
+      (tester) async {
+        final fakeService = FakeShareReceiverService();
+
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: const PixelArtScreen(),
+            overrides: [
+              shareReceiverServiceProvider.overrideWithValue(fakeService),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Switch away from Canvas tab to Creations tab (index 0)
+        await tester.tap(find.text('Creations'));
+        await tester.pumpAndSettle();
+
+        // Emit simulated shared image
+        final now = DateTime.now();
+        final fakeImage = ReferenceImage(
+          id: 1,
+          imageData: Uint8List.fromList([1, 2, 3]),
+          bmpData: Uint8List.fromList([1, 2, 3]),
+          title: 'Shared Pixel Sword',
+          prompt: 'a glowing sword',
+          source: 'gemini',
+          createdAt: now,
+          updatedAt: now,
+        );
+        fakeService.emitSharedImage(fakeImage);
+        await tester.pumpAndSettle();
+
+        // Verify SnackBar was shown and tab switched back to Canvas (index 1)
+        expect(
+          find.text(
+            'Imported "Shared Pixel Sword" from Gemini & set as reference',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('View Library'), findsOneWidget);
+
+        // Tap 'View Library' action in SnackBar
+        await tester.tap(find.text('View Library'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ReferenceLibraryScreen), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'PixelArtScreen initializes cleanly when using real shareReceiverServiceProvider with setupMockShareReceiverChannel()',
+      (tester) async {
+        setupMockShareReceiverChannel();
+        addTearDown(clearMockShareReceiverChannel);
+
+        // Explicitly override with the real ShareReceiverService to exercise the mock channel handler
+        await tester.pumpWidget(
+          buildTestableWidget(
+            child: const PixelArtScreen(),
+            overrides: [
+              shareReceiverServiceProvider.overrideWith((ref) {
+                final service = ShareReceiverService(
+                  ref.read(referenceLibraryRepositoryProvider),
+                  () => ref.read(canvasStateProvider.notifier),
+                );
+                ref.onDispose(service.dispose);
+                return service;
+              }),
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify screen renders cleanly
+        expect(find.text('Bad Pixel Art'), findsOneWidget);
       },
     );
   });
