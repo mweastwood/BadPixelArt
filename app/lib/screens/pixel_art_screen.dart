@@ -19,6 +19,7 @@ import 'logs_screen.dart';
 import '../logic/app_route_manager.dart';
 import '../logic/services/share_receiver_service.dart';
 import '../logic/utils/app_version.dart';
+import '../logic/utils/layout_breakpoints.dart';
 import '../widgets/export_art_dialog.dart';
 import 'reference_library_screen.dart';
 
@@ -135,10 +136,27 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
     final notifier = ref.read(canvasStateProvider.notifier);
     final theme = Theme.of(context);
     final isDraggingCanvas = ref.watch(isDraggingCanvasProvider);
+    final isWide = isWideScreen(context);
 
     final double totalCost = history.fold(
       0.0,
       (sum, item) => sum + (item.estimatedCostUsd ?? 0.0),
+    );
+
+    final tabContent = TabBarView(
+      controller: _tabController,
+      physics: isDraggingCanvas
+          ? const NeverScrollableScrollPhysics()
+          : const BouncingScrollPhysics(),
+      children: [
+        CreationsScreen(
+          onCreationSelected: () {
+            _tabController.animateTo(1);
+          },
+        ),
+        const CanvasScreen(),
+        const LogsScreen(),
+      ],
     );
 
     return Stack(
@@ -204,54 +222,83 @@ class _PixelArtScreenState extends ConsumerState<PixelArtScreen>
               ),
             ],
           ),
-          body: TabBarView(
-            controller: _tabController,
-            physics: isDraggingCanvas
-                ? const NeverScrollableScrollPhysics()
-                : const BouncingScrollPhysics(),
-            children: [
-              CreationsScreen(
-                onCreationSelected: () {
-                  _tabController.animateTo(1);
-                },
-              ),
-              const CanvasScreen(),
-              const LogsScreen(),
-            ],
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _tabController.index,
-            onDestinationSelected: (int index) {
-              _tabController.animateTo(index);
-            },
-            destinations: [
-              const NavigationDestination(
-                icon: Icon(Icons.collections_outlined),
-                selectedIcon: Icon(Icons.collections),
-                label: 'Creations',
-              ),
-              const NavigationDestination(
-                icon: Icon(Icons.palette_outlined),
-                selectedIcon: Icon(Icons.palette),
-                label: 'Canvas',
-              ),
-              NavigationDestination(
-                icon: history.isEmpty
-                    ? const Icon(Icons.chat_bubble_outline)
-                    : Badge(
-                        label: Text('${history.length}'),
-                        child: const Icon(Icons.chat_bubble_outline),
-                      ),
-                selectedIcon: history.isEmpty
-                    ? const Icon(Icons.chat_bubble)
-                    : Badge(
-                        label: Text('${history.length}'),
-                        child: const Icon(Icons.chat_bubble),
-                      ),
-                label: 'Logs',
-              ),
-            ],
-          ),
+          body: isWide
+              ? Row(
+                  children: [
+                    NavigationRail(
+                      selectedIndex: _tabController.index,
+                      onDestinationSelected: (int index) {
+                        _tabController.animateTo(index);
+                      },
+                      labelType: NavigationRailLabelType.all,
+                      destinations: [
+                        const NavigationRailDestination(
+                          icon: Icon(Icons.collections_outlined),
+                          selectedIcon: Icon(Icons.collections),
+                          label: Text('Creations'),
+                        ),
+                        const NavigationRailDestination(
+                          icon: Icon(Icons.palette_outlined),
+                          selectedIcon: Icon(Icons.palette),
+                          label: Text('Canvas'),
+                        ),
+                        NavigationRailDestination(
+                          icon: history.isEmpty
+                              ? const Icon(Icons.chat_bubble_outline)
+                              : Badge(
+                                  label: Text('${history.length}'),
+                                  child: const Icon(Icons.chat_bubble_outline),
+                                ),
+                          selectedIcon: history.isEmpty
+                              ? const Icon(Icons.chat_bubble)
+                              : Badge(
+                                  label: Text('${history.length}'),
+                                  child: const Icon(Icons.chat_bubble),
+                                ),
+                          label: const Text('Logs'),
+                        ),
+                      ],
+                    ),
+                    const VerticalDivider(thickness: 1, width: 1),
+                    Expanded(child: tabContent),
+                  ],
+                )
+              : tabContent,
+          bottomNavigationBar: isWide
+              ? null
+              : NavigationBar(
+                  selectedIndex: _tabController.index,
+                  onDestinationSelected: (int index) {
+                    _tabController.animateTo(index);
+                  },
+                  destinations: [
+                    const NavigationDestination(
+                      icon: Icon(Icons.collections_outlined),
+                      selectedIcon: Icon(Icons.collections),
+                      label: 'Creations',
+                    ),
+                    const NavigationDestination(
+                      icon: Icon(Icons.palette_outlined),
+                      selectedIcon: Icon(Icons.palette),
+                      label: 'Canvas',
+                    ),
+                    NavigationDestination(
+                      icon: history.isEmpty
+                          ? const Icon(Icons.chat_bubble_outline)
+                          : Badge(
+                              label: Text('${history.length}'),
+                              child: const Icon(Icons.chat_bubble_outline),
+                            ),
+                      selectedIcon: history.isEmpty
+                          ? const Icon(Icons.chat_bubble)
+                          : Badge(
+                              label: Text('${history.length}'),
+                              child: const Icon(Icons.chat_bubble),
+                            ),
+                      label: 'Logs',
+                    ),
+                  ],
+                ),
           floatingActionButton: _tabController.index == 0
               ? FloatingActionButton(
                   key: const ValueKey('new_creation_fab'),

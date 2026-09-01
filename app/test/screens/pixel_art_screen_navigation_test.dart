@@ -10,12 +10,17 @@ import 'package:bad_pixel_art/widgets/reference_image_prompt.dart';
 
 import '../test_helper.dart';
 
+Widget createScreen({Uri? mockUri, Size size = const Size(400, 800)}) {
+  return buildTestableWidget(
+    size: size,
+    child: PixelArtScreen(mockUri: mockUri),
+  );
+}
+
 void main() {
   group('PixelArtScreen Navigation, Drawer, & FAB Tests', () {
     testWidgets('renders full responsive layout components', (tester) async {
-      await tester.pumpWidget(
-        buildTestableWidget(child: const PixelArtScreen()),
-      );
+      await tester.pumpWidget(createScreen());
 
       // Verify the appBar title is visible
       expect(find.text('Bad Pixel Art'), findsOneWidget);
@@ -24,9 +29,7 @@ void main() {
     testWidgets(
       'renders 3 bottom navigation destinations (Canvas, Creations, Logs) with correct icons',
       (tester) async {
-        await tester.pumpWidget(
-          buildTestableWidget(child: const PixelArtScreen()),
-        );
+        await tester.pumpWidget(createScreen());
 
         // Verify NavigationBar destinations (Creations: 0, Canvas: 1, Logs: 2)
         final navBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
@@ -57,9 +60,7 @@ void main() {
     testWidgets(
       'switches between Canvas, Creations, and Logs tabs on bottom navigation tap',
       (tester) async {
-        await tester.pumpWidget(
-          buildTestableWidget(child: const PixelArtScreen()),
-        );
+        await tester.pumpWidget(createScreen());
 
         // Initially on Canvas tab (CanvasScreen visible)
         expect(find.byType(CanvasScreen), findsOneWidget);
@@ -90,9 +91,7 @@ void main() {
     );
 
     testWidgets('shows correct FloatingActionButton per tab', (tester) async {
-      await tester.pumpWidget(
-        buildTestableWidget(child: const PixelArtScreen()),
-      );
+      await tester.pumpWidget(createScreen());
 
       // Default on Canvas tab (index 1): wizard navigation FAB is visible
       expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
@@ -126,9 +125,7 @@ void main() {
     testWidgets(
       'tapping New Creation FAB in Creations tab resets wizard step to Step 0 and navigates back to Canvas tab',
       (tester) async {
-        await tester.pumpWidget(
-          buildTestableWidget(child: const PixelArtScreen()),
-        );
+        await tester.pumpWidget(createScreen());
 
         // Advance wizard to Step 1 (Reference & Prompt) by tapping Next FAB
         await tester.tap(find.byKey(const ValueKey('wizard_next_fab')));
@@ -152,9 +149,7 @@ void main() {
     );
 
     testWidgets('renders Export Logs FAB on Logs screen tab', (tester) async {
-      await tester.pumpWidget(
-        buildTestableWidget(child: const PixelArtScreen()),
-      );
+      await tester.pumpWidget(createScreen());
 
       // Default active tab is Canvas (tab index 1)
       expect(find.byKey(const ValueKey('export_logs_fab')), findsNothing);
@@ -170,9 +165,7 @@ void main() {
     testWidgets('opens hamburger drawer and displays version info', (
       tester,
     ) async {
-      await tester.pumpWidget(
-        buildTestableWidget(child: const PixelArtScreen()),
-      );
+      await tester.pumpWidget(createScreen());
       await tester.pump();
 
       // Open drawer using hamburger button
@@ -198,9 +191,7 @@ void main() {
     testWidgets(
       'tapping model_options_button in AppBar pushes ModelOptionsScreen',
       (tester) async {
-        await tester.pumpWidget(
-          buildTestableWidget(child: const PixelArtScreen()),
-        );
+        await tester.pumpWidget(createScreen());
         await tester.pump();
 
         expect(
@@ -218,9 +209,7 @@ void main() {
     testWidgets(
       'tapping drawer_model_options_tile in drawer pushes ModelOptionsScreen',
       (tester) async {
-        await tester.pumpWidget(
-          buildTestableWidget(child: const PixelArtScreen()),
-        );
+        await tester.pumpWidget(createScreen());
         await tester.pump();
 
         // Open drawer
@@ -243,5 +232,77 @@ void main() {
         expect(find.text('AI Engine'), findsOneWidget);
       },
     );
+  });
+
+  group('PixelArtScreen Wide Screen NavigationRail Tests', () {
+    testWidgets(
+      'renders NavigationRail and not NavigationBar on wide screen (>=600px)',
+      (tester) async {
+        await tester.pumpWidget(
+          buildTestableWidget(
+            size: const Size(900, 600),
+            child: const PixelArtScreen(),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Verify NavigationBar is NOT present, NavigationRail IS present
+        expect(find.byType(NavigationBar), findsNothing);
+        expect(find.byType(NavigationRail), findsOneWidget);
+
+        // Verify default selected destination is Canvas (index 1)
+        final NavigationRail rail = tester.widget(find.byType(NavigationRail));
+        expect(rail.selectedIndex, 1);
+
+        // Verify destinations
+        expect(rail.destinations, hasLength(3));
+        expect((rail.destinations[0].label as Text).data, equals('Creations'));
+        expect((rail.destinations[1].label as Text).data, equals('Canvas'));
+        expect((rail.destinations[2].label as Text).data, equals('Logs'));
+      },
+    );
+
+    testWidgets('switches tabs on wide screen with NavigationRail', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        buildTestableWidget(
+          size: const Size(900, 600),
+          child: const PixelArtScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Initial tab is Canvas (index 1)
+      expect(find.byType(CanvasScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
+
+      // 1. Switch to Creations tab (index 0)
+      await tester.tap(find.text('Creations'));
+      await tester.pumpAndSettle();
+
+      final NavigationRail rail1 = tester.widget(find.byType(NavigationRail));
+      expect(rail1.selectedIndex, 0);
+      expect(find.byType(CreationsScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('new_creation_fab')), findsOneWidget);
+
+      // 2. Switch to Logs tab (index 2)
+      await tester.tap(find.text('Logs'));
+      await tester.pumpAndSettle();
+
+      final NavigationRail rail2 = tester.widget(find.byType(NavigationRail));
+      expect(rail2.selectedIndex, 2);
+      expect(find.byType(LogsScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('export_logs_fab')), findsOneWidget);
+
+      // 3. Switch back to Canvas tab (index 1)
+      await tester.tap(find.text('Canvas'));
+      await tester.pumpAndSettle();
+
+      final NavigationRail rail3 = tester.widget(find.byType(NavigationRail));
+      expect(rail3.selectedIndex, 1);
+      expect(find.byType(CanvasScreen), findsOneWidget);
+      expect(find.byKey(const ValueKey('wizard_next_fab')), findsOneWidget);
+    });
   });
 }
