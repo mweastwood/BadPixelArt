@@ -272,8 +272,50 @@ void main() {
 
         final mockAi = TestMockAiService(
           responses: [
+            // 1. Palette suggestion
             '["#111111", "#ffccaa", "#3366cc", "#444444", "#555555", "#666666", "#777777", "#888888"]',
-            '{"thought": "done", "tool": "pixel", "params": [0, 0], "colorIndex": 1}',
+            // 2. Decomposition (sketchingPlan)
+            jsonEncode([
+              {
+                'name': 'character',
+                'description': 'character sprite',
+                'relativeBoundingBox': {
+                  'left': 0.1,
+                  'top': 0.1,
+                  'width': 0.8,
+                  'height': 0.8,
+                },
+              },
+            ]),
+            // 3. Component Sculpting (componentSculpting)
+            jsonEncode({
+              'thought': 'sculpt character',
+              'tool': 'apply_rectangle_filled',
+              'params': [4, 4, 28, 28],
+              'isComplete': true,
+            }),
+            // 4. Color & Outline assignment (colorAndOutline)
+            jsonEncode({
+              'reasoning': 'assign colors to character',
+              'componentColors': [
+                {
+                  'name': 'character',
+                  'fillColorHex': '#3366cc',
+                  'fillColor2Hex': '#ffccaa',
+                  'gradientAngle': 45.0,
+                  'outlineColorHex': '#111111',
+                },
+              ],
+            }),
+            // 5. Layer Ordering (layerOrderingAndMerge)
+            jsonEncode({
+              'reasoning': 'layer ordering',
+              'orderedComponentNames': ['character'],
+            }),
+            // 6. Refinement (refinement turn 1: draw pixel)
+            '{"thought": "refine pixel", "tool": "pixel", "params": [0, 0], "colorIndex": 1}',
+            // 7. Refinement (refinement turn 2: done signal)
+            '{"thought": "done", "tool": "done", "params": []}',
           ],
         );
         canvasNotifier = CanvasNotifier(
@@ -282,15 +324,15 @@ void main() {
           wizardNotifier: wizardNotifier,
         );
 
-        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 50));
-        canvasNotifier.stopAutoPlay();
-        await future;
+        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
 
+        expect(wizardNotifier.state.currentStep, equals(WizardStep.refinement));
+        expect(canvasNotifier.state.autoRun, isFalse);
         expect(
           canvasNotifier.state.grid.any((r) => r.any((c) => c > 0)),
           isTrue,
         );
+        expect(mockAi.callCount, equals(7));
       },
     );
   });
