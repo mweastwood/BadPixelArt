@@ -367,7 +367,15 @@ void clearMockShareReceiverChannel() {
 Widget buildTestableWidget({
   required Widget child,
   List<Override> overrides = const [],
+  Size? size,
 }) {
+  Widget widget = child;
+  if (size != null) {
+    widget = MediaQuery(
+      data: MediaQueryData(size: size),
+      child: widget,
+    );
+  }
   return ProviderScope(
     overrides: [
       aiServiceProvider.overrideWithValue(TestMockAiService()),
@@ -382,7 +390,7 @@ Widget buildTestableWidget({
     child: MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(),
-      home: child,
+      home: widget,
     ),
   );
 }
