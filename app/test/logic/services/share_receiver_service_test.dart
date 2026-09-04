@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -420,6 +422,163 @@ void main() {
           expect(() => container.dispose(), returnsNormally);
         },
       );
+
+      test(
+        'dispose detaches method call handler and ignores subsequent platform messages',
+        () async {
+          messenger.setMockMethodCallHandler(
+            const MethodChannel(channelName),
+            (MethodCall methodCall) async => null,
+          );
+
+          final testService = ShareReceiverService(
+            repository,
+            () => canvasNotifier,
+          );
+          int callbackCount = 0;
+          testService.initialize(onImported: (_) => callbackCount++);
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+
+          final ByteData message = codec.encodeMethodCall(
+            MethodCall('onSharedDataReceived', [
+              {
+                'bytes': sampleBmp,
+                'text': 'Prompt Before Dispose',
+                'subject': 'Art Before Dispose',
+              },
+            ]),
+          );
+
+          await messenger.handlePlatformMessage(
+            channelName,
+            message,
+            (ByteData? reply) {},
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          expect(callbackCount, equals(1));
+
+          // Dispose service; handler must be detached and initialized flag reset
+          testService.dispose();
+
+          // Subsequent platform message should be ignored with no callbacks
+          await messenger.handlePlatformMessage(
+            channelName,
+            message,
+            (ByteData? reply) {},
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          expect(callbackCount, equals(1));
+        },
+      );
+
+      test(
+        'late-resolving shared items do not throw StateError when service is disposed',
+        () async {
+          final delayedService = _DelayedShareReceiverService(
+            repository,
+            () => canvasNotifier,
+          );
+
+          messenger.setMockMethodCallHandler(
+            const MethodChannel(channelName),
+            (MethodCall methodCall) async => null,
+          );
+
+          delayedService.initialize();
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+
+          final ByteData message = codec.encodeMethodCall(
+            MethodCall('onSharedDataReceived', [
+              {
+                'bytes': sampleBmp,
+                'text': 'Late Prompt',
+                'subject': 'Late Art',
+              },
+            ]),
+          );
+
+          final platformFuture = messenger.handlePlatformMessage(
+            channelName,
+            message,
+            (ByteData? reply) {},
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+
+          // Dispose while handleSharedItem is pending
+          delayedService.dispose();
+
+          final sampleImage = ReferenceImage(
+            id: 99,
+            title: 'Late Art',
+            imageData: sampleBmp,
+            source: 'gemini',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+
+          expect(
+            () => delayedService.completer.complete(sampleImage),
+            returnsNormally,
+          );
+          await platformFuture;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        },
+      );
+
+      test(
+        'initial shared data resolving after dispose does not throw StateError',
+        () async {
+          final delayedService = _DelayedShareReceiverService(
+            repository,
+            () => canvasNotifier,
+          );
+
+          messenger.setMockMethodCallHandler(const MethodChannel(channelName), (
+            MethodCall methodCall,
+          ) async {
+            if (methodCall.method == 'getInitialSharedData') {
+              return [
+                {
+                  'bytes': sampleBmp,
+                  'text': 'Initial Late Prompt',
+                  'subject': 'Initial Late Art',
+                },
+              ];
+            }
+            return null;
+          });
+
+          delayedService.initialize();
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+
+          delayedService.dispose();
+
+          final sampleImage = ReferenceImage(
+            id: 100,
+            title: 'Initial Late Art',
+            imageData: sampleBmp,
+            source: 'gemini',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+
+          expect(
+            () => delayedService.completer.complete(sampleImage),
+            returnsNormally,
+          );
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+        },
+      );
     });
   });
+}
+
+class _DelayedShareReceiverService extends ShareReceiverService {
+  final Completer<ReferenceImage?> completer = Completer<ReferenceImage?>();
+
+  _DelayedShareReceiverService(super.repository, super.getCanvasNotifier);
+
+  @override
+  Future<ReferenceImage?> handleSharedItem(SharedMediaItem item) =>
+      completer.future;
 }
