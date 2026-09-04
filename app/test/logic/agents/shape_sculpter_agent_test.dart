@@ -1,9 +1,11 @@
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/agents/shape_sculpter_agent.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';
+import 'package:bad_pixel_art/logic/models/sculpting_candidates.dart';
 
 import '../../test_helper.dart';
 
@@ -291,6 +293,48 @@ void main() {
           () => agent.sculptComponent(mockAi, context),
           throwsA(isA<FormatException>()),
         );
+      },
+    );
+
+    test(
+      'calculateSculptingCandidates returns SculptingCandidates with Point<int>',
+      () {
+        final grid = List.generate(4, (_) => List.filled(4, 0));
+        grid[1][1] = 1;
+        const bbox = Rect.fromLTWH(0, 0, 1, 1);
+
+        final candidates = calculateSculptingCandidates(grid, 4, bbox);
+        expect(candidates, isA<SculptingCandidates>());
+        expect(candidates.remove, contains(const Point(1, 1)));
+        expect(candidates.add, contains(const Point(1, 0)));
+        expect(candidates.add, contains(const Point(0, 1)));
+        expect(candidates.add, contains(const Point(2, 1)));
+        expect(candidates.add, contains(const Point(1, 2)));
+      },
+    );
+
+    test(
+      'getFormattedUserPrompt includes candidate coords using Point<int>',
+      () {
+        final agent = ShapeSculpterAgent();
+        final compGrid = List.generate(4, (_) => List.filled(4, 0));
+        compGrid[1][1] = 1;
+        final comp = PixelArtComponent(
+          name: 'dot',
+          description: 'a single dot',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: compGrid,
+        );
+        final context = AgentContext(
+          gridSize: 4,
+          activePalette: const [Colors.black, Colors.white],
+          userPrompt: 'dot',
+          targetComponent: comp,
+          currentGrid: List.generate(4, (_) => List.filled(4, 0)),
+        );
+
+        final prompt = agent.getFormattedUserPrompt(context, []);
+        expect(prompt, contains('(1,1)'));
       },
     );
   });

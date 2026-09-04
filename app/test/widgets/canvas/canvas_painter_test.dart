@@ -1,9 +1,11 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/widgets/canvas/canvas_painter.dart';
 import 'package:bad_pixel_art/logic/models/pixel_art_component.dart';
+import 'package:bad_pixel_art/logic/models/sculpting_candidates.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
 
 void main() {
@@ -39,7 +41,7 @@ void main() {
       int activeComponentIndex = 0,
       WizardStep currentStep = WizardStep.sketchingPlan,
       bool isGenerating = false,
-      Map<String, List<Map<String, int>>>? sculptingCandidates,
+      SculptingCandidates? sculptingCandidates,
     }) {
       return CanvasPainter(
         grid: grid ?? baseGrid,
@@ -183,20 +185,16 @@ void main() {
 
     test('returns true when sculptingCandidates changes', () {
       final painter1 = createPainter(
-        sculptingCandidates: {
-          'add': [
-            {'x': 1, 'y': 1},
-          ],
-          'remove': [],
-        },
+        sculptingCandidates: const SculptingCandidates(
+          add: [Point(1, 1)],
+          remove: [],
+        ),
       );
       final painter2 = createPainter(
-        sculptingCandidates: {
-          'add': [
-            {'x': 2, 'y': 2},
-          ],
-          'remove': [],
-        },
+        sculptingCandidates: const SculptingCandidates(
+          add: [Point(2, 2)],
+          remove: [],
+        ),
       );
       final painterNull = createPainter(sculptingCandidates: null);
 
@@ -204,6 +202,27 @@ void main() {
       expect(painterNull.shouldRepaint(painter1), isTrue);
       expect(painter1.shouldRepaint(painter1), isFalse);
     });
+
+    test(
+      'returns false when sculptingCandidates instances are distinct but value-equivalent',
+      () {
+        final painter1 = createPainter(
+          sculptingCandidates: const SculptingCandidates(
+            add: [Point(1, 1), Point(3, 4)],
+            remove: [Point(2, 2)],
+          ),
+        );
+        final painter2 = createPainter(
+          sculptingCandidates: const SculptingCandidates(
+            add: [Point(1, 1), Point(3, 4)],
+            remove: [Point(2, 2)],
+          ),
+        );
+
+        expect(painter1.shouldRepaint(painter2), isFalse);
+        expect(painter2.shouldRepaint(painter1), isFalse);
+      },
+    );
   });
 
   group('CanvasPainter paint Rendering Tests', () {
@@ -228,14 +247,10 @@ void main() {
         activeComponentIndex: 0,
         currentStep: WizardStep.componentSculpting,
         isGenerating: false,
-        sculptingCandidates: {
-          'add': [
-            {'x': 4, 'y': 3},
-          ],
-          'remove': [
-            {'x': 4, 'y': 4},
-          ],
-        },
+        sculptingCandidates: const SculptingCandidates(
+          add: [Point(4, 3)],
+          remove: [Point(4, 4)],
+        ),
       );
 
       final recordingCanvas = _RecordingCanvas();
