@@ -108,6 +108,12 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
               _cachedActiveComponentIndex = activeComponentIndex;
             }
             sculptingCandidates = _cachedSculptingCandidates;
+          } else {
+            _cachedSculptingCandidates = null;
+            _cachedComponentGrid = null;
+            _cachedBoundingBox = null;
+            _cachedGridSize = null;
+            _cachedActiveComponentIndex = null;
           }
         } else {
           _cachedSculptingCandidates = null;

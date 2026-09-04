@@ -486,6 +486,27 @@ void main() {
           identical(rebuiltPainter.sculptingCandidates, initialCandidates),
           isTrue,
         );
+
+        // When active component grid is null during sculpting, cache is invalidated
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              grid: null,
+            ),
+          ],
+        );
+        await tester.pump();
+
+        customPaint = tester.widget<CustomPaint>(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CanvasPainter,
+          ),
+        );
+        final nullGridPainter = customPaint.painter as CanvasPainter;
+        expect(nullGridPainter.sculptingCandidates, isNull);
       },
     );
   });

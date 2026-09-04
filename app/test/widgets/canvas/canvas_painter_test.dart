@@ -200,6 +200,7 @@ void main() {
 
       expect(painter2.shouldRepaint(painter1), isTrue);
       expect(painterNull.shouldRepaint(painter1), isTrue);
+      expect(painter1.shouldRepaint(painterNull), isTrue);
       expect(painter1.shouldRepaint(painter1), isFalse);
     });
 
@@ -207,18 +208,22 @@ void main() {
       'returns false when sculptingCandidates instances are distinct but value-equivalent',
       () {
         final painter1 = createPainter(
-          sculptingCandidates: const SculptingCandidates(
+          sculptingCandidates: SculptingCandidates(
             add: [Point(1, 1), Point(3, 4)],
             remove: [Point(2, 2)],
           ),
         );
         final painter2 = createPainter(
-          sculptingCandidates: const SculptingCandidates(
+          sculptingCandidates: SculptingCandidates(
             add: [Point(1, 1), Point(3, 4)],
             remove: [Point(2, 2)],
           ),
         );
 
+        expect(
+          identical(painter1.sculptingCandidates, painter2.sculptingCandidates),
+          isFalse,
+        );
         expect(painter1.shouldRepaint(painter2), isFalse);
         expect(painter2.shouldRepaint(painter1), isFalse);
       },
