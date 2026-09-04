@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -9,15 +10,16 @@ import '../utils/bmp_utils.dart';
 import '../utils/coordinate_converter.dart';
 import '../utils/json_utils.dart';
 import '../models/bounded_canvas.dart';
+import '../models/sculpting_candidates.dart';
 import '../drawing_commands.dart';
 
-Map<String, List<Map<String, int>>> calculateSculptingCandidates(
+SculptingCandidates calculateSculptingCandidates(
   List<List<int>> grid,
   int gridSize,
   Rect relativeBoundingBox,
 ) {
-  final List<Map<String, int>> removeCandidates = [];
-  final List<Map<String, int>> addCandidates = [];
+  final List<Point<int>> removeCandidates = [];
+  final List<Point<int>> addCandidates = [];
 
   final bounds = relativeBoundingBox.toGridBounds(gridSize);
 
@@ -42,7 +44,7 @@ Map<String, List<Map<String, int>>> calculateSculptingCandidates(
           }
         }
         if (hasBgNeighbor) {
-          removeCandidates.add({'x': x, 'y': y});
+          removeCandidates.add(Point<int>(x, y));
         }
       } else {
         // val == 0. Check if inside box and has a foreground neighbor -> add candidate
@@ -59,14 +61,14 @@ Map<String, List<Map<String, int>>> calculateSculptingCandidates(
             }
           }
           if (hasFgNeighbor) {
-            addCandidates.add({'x': x, 'y': y});
+            addCandidates.add(Point<int>(x, y));
           }
         }
       }
     }
   }
 
-  return {'remove': removeCandidates, 'add': addCandidates};
+  return SculptingCandidates(remove: removeCandidates, add: addCandidates);
 }
 
 Uint8List generateCanvasWithSculptingBmp(
@@ -165,8 +167,8 @@ class ShapeSculpterAgent implements PixelArtAgent {
       gridSize,
       comp.relativeBoundingBox,
     );
-    final removeList = candidates['remove'];
-    final addList = candidates['add'];
+    final removeList = candidates.remove;
+    final addList = candidates.add;
 
     final bounds = comp.gridBounds(gridSize);
     final minX = bounds.minX;
@@ -174,9 +176,9 @@ class ShapeSculpterAgent implements PixelArtAgent {
     final minY = bounds.minY;
     final maxY = bounds.maxY;
 
-    String formatCompactCoords(List<Map<String, int>>? list) {
-      if (list == null || list.isEmpty) return 'None';
-      return list.map((c) => '(${c['x']},${c['y']})').join(' ');
+    String formatCompactCoords(List<Point<int>> list) {
+      if (list.isEmpty) return 'None';
+      return list.map((p) => '(${p.x},${p.y})').join(' ');
     }
 
     final removeStr = formatCompactCoords(removeList);

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../logic/models/pixel_art_component.dart';
+import '../../logic/models/sculpting_candidates.dart';
 import '../../logic/wizard_state.dart';
 
 class CanvasPainter extends CustomPainter {
@@ -13,7 +14,7 @@ class CanvasPainter extends CustomPainter {
   final int activeComponentIndex;
   final WizardStep currentStep;
   final bool isGenerating;
-  final Map<String, List<Map<String, int>>>? sculptingCandidates;
+  final SculptingCandidates? sculptingCandidates;
 
   CanvasPainter({
     required this.grid,
@@ -228,8 +229,8 @@ class CanvasPainter extends CustomPainter {
         decomposedComponents.isNotEmpty &&
         !isGenerating &&
         sculptingCandidates != null) {
-      final removeList = sculptingCandidates!['remove'] ?? [];
-      final addList = sculptingCandidates!['add'] ?? [];
+      final removeList = sculptingCandidates!.remove;
+      final addList = sculptingCandidates!.add;
 
       final removePaint = Paint()
         ..color = Colors.redAccent.withValues(alpha: 0.3)
@@ -240,11 +241,9 @@ class CanvasPainter extends CustomPainter {
         ..isAntiAlias = false;
 
       for (final p in removeList) {
-        final x = p['x']!;
-        final y = p['y']!;
         final rect = Rect.fromLTWH(
-          x * cellWidth,
-          y * cellHeight,
+          p.x * cellWidth,
+          p.y * cellHeight,
           cellWidth,
           cellHeight,
         );
@@ -252,11 +251,9 @@ class CanvasPainter extends CustomPainter {
       }
 
       for (final p in addList) {
-        final x = p['x']!;
-        final y = p['y']!;
         final rect = Rect.fromLTWH(
-          x * cellWidth,
-          y * cellHeight,
+          p.x * cellWidth,
+          p.y * cellHeight,
           cellWidth,
           cellHeight,
         );

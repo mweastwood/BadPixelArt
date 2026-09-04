@@ -411,5 +411,103 @@ void main() {
       );
       await screenMatchesGolden(tester, 'canvas_grid_scaled_4x');
     });
+
+    testWidgets(
+      'memoizes sculptingCandidates during sculpting phase across widget rebuilds and skips when non-sculpting',
+      (tester) async {
+        final mockNotifier = CanvasNotifier(TestMockAiService());
+        final compGrid = List.generate(16, (_) => List.filled(16, 0));
+        compGrid[8][8] = 1;
+
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              grid: compGrid,
+            ),
+          ],
+          activeComponentIndex: 0,
+          isGenerating: false,
+        );
+
+        // Non-sculpting phase
+        final wizardNotifier = WizardNotifier(WizardStep.sketchingPlan);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              canvasStateProvider.overrideWith((ref) => mockNotifier),
+              wizardStateProvider.overrideWith((ref) => wizardNotifier),
+            ],
+            child: const MaterialApp(
+              home: Scaffold(
+                body: SizedBox(width: 300, height: 356, child: CanvasGrid()),
+              ),
+            ),
+          ),
+        );
+
+        var customPaint = tester.widget<CustomPaint>(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CanvasPainter,
+          ),
+        );
+        var painter = customPaint.painter as CanvasPainter;
+        expect(painter.sculptingCandidates, isNull);
+
+        // Transition to component sculpting phase
+        wizardNotifier.setStep(WizardStep.componentSculpting);
+        await tester.pump();
+
+        customPaint = tester.widget<CustomPaint>(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CanvasPainter,
+          ),
+        );
+        painter = customPaint.painter as CanvasPainter;
+        expect(painter.sculptingCandidates, isNotNull);
+        final initialCandidates = painter.sculptingCandidates;
+
+        // Rebuild without changing component grid (e.g., tap scale mode)
+        await tester.tap(find.text('1x'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Full'));
+        await tester.pumpAndSettle();
+
+        customPaint = tester.widget<CustomPaint>(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CanvasPainter,
+          ),
+        );
+        final rebuiltPainter = customPaint.painter as CanvasPainter;
+        expect(
+          identical(rebuiltPainter.sculptingCandidates, initialCandidates),
+          isTrue,
+        );
+
+        // When active component grid is null during sculpting, cache is invalidated
+        mockNotifier.state = mockNotifier.state.copyWith(
+          decomposedComponents: [
+            PixelArtComponent(
+              name: 'blade',
+              description: 'vertical steel blade',
+              relativeBoundingBox: const Rect.fromLTWH(0.4, 0.1, 0.2, 0.6),
+              grid: null,
+            ),
+          ],
+        );
+        await tester.pump();
+
+        customPaint = tester.widget<CustomPaint>(
+          find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is CanvasPainter,
+          ),
+        );
+        final nullGridPainter = customPaint.painter as CanvasPainter;
+        expect(nullGridPainter.sculptingCandidates, isNull);
+      },
+    );
   });
 }

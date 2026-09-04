@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -8,6 +9,7 @@ import '../logic/agents/shape_sculpter_agent.dart';
 import '../logic/controllers/component_bounding_box_gesture_handler.dart';
 import '../logic/models/drag_handle.dart';
 export '../logic/models/drag_handle.dart';
+export '../logic/models/sculpting_candidates.dart';
 import '../logic/wizard_state.dart';
 import 'canvas/canvas_painter.dart';
 export 'canvas/canvas_painter.dart';
@@ -26,6 +28,22 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
   DragHandle _activeHandle = DragHandle.none;
   Offset? _dragStartLocalPos;
   Rect? _dragStartRect;
+
+  SculptingCandidates? _cachedSculptingCandidates;
+  List<List<int>>? _cachedComponentGrid;
+  Rect? _cachedBoundingBox;
+  int? _cachedGridSize;
+  int? _cachedActiveComponentIndex;
+
+  bool _gridEquals(List<List<int>>? a, List<List<int>>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (!listEquals(a[i], b[i])) return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +72,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             : constraints.maxWidth;
         final size = max(0.0, min(constraints.maxWidth, availableHeight));
 
-        Map<String, List<Map<String, int>>>? sculptingCandidates;
+        SculptingCandidates? sculptingCandidates;
         if (isSculptingPhase &&
             decomposedComponents.isNotEmpty &&
             !isGenerating &&
@@ -62,12 +80,47 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
             activeComponentIndex < decomposedComponents.length) {
           final comp = decomposedComponents[activeComponentIndex];
           if (comp.grid != null) {
-            sculptingCandidates = calculateSculptingCandidates(
-              comp.grid!,
-              gridSize,
-              comp.relativeBoundingBox,
+            final bool gridChanged = !_gridEquals(
+              _cachedComponentGrid,
+              comp.grid,
             );
+            final bool bboxChanged =
+                _cachedBoundingBox != comp.relativeBoundingBox;
+            final bool sizeChanged = _cachedGridSize != gridSize;
+            final bool indexChanged =
+                _cachedActiveComponentIndex != activeComponentIndex;
+
+            if (_cachedSculptingCandidates == null ||
+                gridChanged ||
+                bboxChanged ||
+                sizeChanged ||
+                indexChanged) {
+              _cachedSculptingCandidates = calculateSculptingCandidates(
+                comp.grid!,
+                gridSize,
+                comp.relativeBoundingBox,
+              );
+              _cachedComponentGrid = comp.grid!
+                  .map((r) => List<int>.from(r))
+                  .toList();
+              _cachedBoundingBox = comp.relativeBoundingBox;
+              _cachedGridSize = gridSize;
+              _cachedActiveComponentIndex = activeComponentIndex;
+            }
+            sculptingCandidates = _cachedSculptingCandidates;
+          } else {
+            _cachedSculptingCandidates = null;
+            _cachedComponentGrid = null;
+            _cachedBoundingBox = null;
+            _cachedGridSize = null;
+            _cachedActiveComponentIndex = null;
           }
+        } else {
+          _cachedSculptingCandidates = null;
+          _cachedComponentGrid = null;
+          _cachedBoundingBox = null;
+          _cachedGridSize = null;
+          _cachedActiveComponentIndex = null;
         }
 
         Widget gridContent = CustomPaint(
@@ -177,18 +230,19 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
                   // Calculate eligible candidates
                   final candidates =
                       sculptingCandidates ??
+                      _cachedSculptingCandidates ??
                       calculateSculptingCandidates(
                         activeComp.grid!,
                         gridSize,
                         activeComp.relativeBoundingBox,
                       );
 
-                  final removeList = candidates['remove'] ?? [];
-                  final addList = candidates['add'] ?? [];
+                  final removeList = candidates.remove;
+                  final addList = candidates.add;
 
                   // Check if tapped pixel is in remove candidates
                   final isRemoveCandidate = removeList.any(
-                    (p) => p['x'] == col && p['y'] == row,
+                    (p) => p.x == col && p.y == row,
                   );
                   if (isRemoveCandidate) {
                     ref
@@ -199,7 +253,7 @@ class _CanvasGridState extends ConsumerState<CanvasGrid> {
 
                   // Check if tapped pixel is in add candidates
                   final isAddCandidate = addList.any(
-                    (p) => p['x'] == col && p['y'] == row,
+                    (p) => p.x == col && p.y == row,
                   );
                   if (isAddCandidate) {
                     ref

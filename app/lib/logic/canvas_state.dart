@@ -32,6 +32,7 @@ export 'utils/bmp_utils.dart';
 export 'models/canvas_model.dart';
 export 'models/pixel_art_component.dart';
 export 'models/sprite_template.dart';
+export 'models/sculpting_candidates.dart';
 export 'agents/color_selection_agent.dart';
 export 'agents/layer_ordering_agent.dart';
 export 'controllers/canvas_history_controller.dart';
