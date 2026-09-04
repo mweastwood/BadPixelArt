@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 class _RgbPoint {
@@ -66,7 +68,10 @@ List<Color> kMeansQuantize(List<List<Color>> colorGrid, int k) {
 
   // 3. Iteratively refine centroids
   for (int iteration = 0; iteration < 5; iteration++) {
-    final List<List<_RgbPoint>> clusters = List.generate(k, (_) => []);
+    final Int64List sumR = Int64List(k);
+    final Int64List sumG = Int64List(k);
+    final Int64List sumB = Int64List(k);
+    final Int32List totalWeight = Int32List(k);
 
     // Assign each unique color to the closest centroid
     for (final pt in points) {
@@ -86,31 +91,21 @@ List<Color> kMeansQuantize(List<List<Color>> colorGrid, int k) {
           bestCentroidIndex = c;
         }
       }
-      clusters[bestCentroidIndex].add(pt);
+
+      final w = pt.weight;
+      sumR[bestCentroidIndex] += pr * w;
+      sumG[bestCentroidIndex] += pg * w;
+      sumB[bestCentroidIndex] += pb * w;
+      totalWeight[bestCentroidIndex] += w;
     }
 
     // Recompute centroids as weighted averages
     for (int c = 0; c < k; c++) {
-      final cluster = clusters[c];
-      if (cluster.isEmpty) continue;
-
-      int totalWeight = 0;
-      int sumR = 0;
-      int sumG = 0;
-      int sumB = 0;
-
-      for (final pt in cluster) {
-        final weight = pt.weight;
-        sumR += pt.r * weight;
-        sumG += pt.g * weight;
-        sumB += pt.b * weight;
-        totalWeight += weight;
-      }
-
-      if (totalWeight > 0) {
-        centroidR[c] = (sumR / totalWeight).round().clamp(0, 255);
-        centroidG[c] = (sumG / totalWeight).round().clamp(0, 255);
-        centroidB[c] = (sumB / totalWeight).round().clamp(0, 255);
+      final tw = totalWeight[c];
+      if (tw > 0) {
+        centroidR[c] = (sumR[c] / tw).round().clamp(0, 255);
+        centroidG[c] = (sumG[c] / tw).round().clamp(0, 255);
+        centroidB[c] = (sumB[c] / tw).round().clamp(0, 255);
       }
     }
   }
