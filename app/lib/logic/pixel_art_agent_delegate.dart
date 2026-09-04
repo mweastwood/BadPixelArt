@@ -6,6 +6,7 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 import 'prompts.dart';
 import 'agents/base_agent.dart';
+import 'utils/json_utils.dart';
 
 class PixelArtAgentDelegate implements AgentDelegate<PixelArtStepResult> {
   final AgentCanvas canvas;
@@ -86,7 +87,7 @@ class PixelArtAgentDelegate implements AgentDelegate<PixelArtStepResult> {
             return const <num>[];
           }).toList()
         : [];
-    final colorIndex = actionMap['color'] as int? ?? 0;
+    final colorIndex = parseCoordinateValue(actionMap['color']) ?? 0;
 
     canvas.applyCommand(tool, params, colorIndex);
 
@@ -104,11 +105,18 @@ class PixelArtAgentDelegate implements AgentDelegate<PixelArtStepResult> {
     Map<String, dynamic> actionMap,
     String feedback,
   ) {
+    final paramsRaw = actionMap['params'];
+    final List<num> params = paramsRaw is List
+        ? paramsRaw.map(parseNumValue).whereType<num>().toList()
+        : const <num>[];
+
+    final colorIndex = parseCoordinateValue(actionMap['color']) ?? 0;
+
     return PixelArtStepResult(
       thought: actionMap['thought'] as String? ?? '',
       tool: actionMap['tool'] as String? ?? '',
-      params: List<int>.from(actionMap['params'] as List? ?? []),
-      colorIndex: actionMap['color'] as int? ?? 0,
+      params: params,
+      colorIndex: colorIndex,
       feedback: feedback,
     );
   }

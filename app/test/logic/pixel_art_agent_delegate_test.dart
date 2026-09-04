@@ -445,6 +445,44 @@ void main() {
           equals(const AppliedCommand('rectangle_filled', [1, 2, 8, 9], 3)),
         );
       });
+
+      test('handles double or string-encoded color gracefully', () async {
+        final delegate = PixelArtAgentDelegate(
+          canvas: fakeCanvas,
+          referenceImageBmp: null,
+          previousCanvasBmp: null,
+        );
+
+        final result1 = await delegate.applyAction({
+          'tool': 'pixel',
+          'params': [1, 2],
+          'color': 3.0,
+        });
+
+        expect(
+          result1,
+          equals('Executed pixel with params [1, 2] and color index 3.'),
+        );
+        expect(
+          fakeCanvas.appliedCommands.last,
+          equals(const AppliedCommand('pixel', [1, 2], 3)),
+        );
+
+        final result2 = await delegate.applyAction({
+          'tool': 'pixel',
+          'params': [3, 4],
+          'color': '4',
+        });
+
+        expect(
+          result2,
+          equals('Executed pixel with params [3, 4] and color index 4.'),
+        );
+        expect(
+          fakeCanvas.appliedCommands.last,
+          equals(const AppliedCommand('pixel', [3, 4], 4)),
+        );
+      });
     });
 
     group('isFinishAction', () {
@@ -507,6 +545,73 @@ void main() {
         expect(stepResult.params, equals([0, 0, 15, 15]));
         expect(stepResult.colorIndex, equals(2));
         expect(stepResult.feedback, equals(feedback));
+      });
+
+      test('parses fractional and double parameters without error', () {
+        final actionMap = {
+          'thought': 'Draw a fractional circle',
+          'tool': 'circle',
+          'params': [7.5, 7.5, 3.5],
+          'color': 1,
+        };
+        const feedback =
+            'Executed circle with params [7.5, 7.5, 3.5] and color index 1.';
+
+        final stepResult = delegate.parseStepResult(actionMap, feedback);
+
+        expect(stepResult.thought, equals('Draw a fractional circle'));
+        expect(stepResult.tool, equals('circle'));
+        expect(stepResult.params, equals([7.5, 7.5, 3.5]));
+        expect(stepResult.colorIndex, equals(1));
+        expect(stepResult.feedback, equals(feedback));
+      });
+
+      test('parses string-encoded numbers in params and color', () {
+        final actionMap = {
+          'thought': 'Draw with string parameters',
+          'tool': 'circle',
+          'params': ['7.5', '7.5', '3.5'],
+          'color': '2',
+        };
+        const feedback =
+            'Executed circle with params [7.5, 7.5, 3.5] and color index 2.';
+
+        final stepResult = delegate.parseStepResult(actionMap, feedback);
+
+        expect(stepResult.thought, equals('Draw with string parameters'));
+        expect(stepResult.tool, equals('circle'));
+        expect(stepResult.params, equals([7.5, 7.5, 3.5]));
+        expect(stepResult.colorIndex, equals(2));
+        expect(stepResult.feedback, equals(feedback));
+      });
+
+      test('safely parses color provided as a double', () {
+        final actionMap = {
+          'thought': 'Draw with double color',
+          'tool': 'pixel',
+          'params': [1, 2],
+          'color': 1.0,
+        };
+        const feedback = 'Executed pixel';
+
+        final stepResult = delegate.parseStepResult(actionMap, feedback);
+
+        expect(stepResult.colorIndex, equals(1));
+      });
+
+      test('filters out non-numeric or null entries in params', () {
+        final actionMap = {
+          'thought': 'Draw with invalid entries in params',
+          'tool': 'circle',
+          'params': [7.5, 'invalid', null, 3.5],
+          'color': 'invalid',
+        };
+        const feedback = 'Executed circle';
+
+        final stepResult = delegate.parseStepResult(actionMap, feedback);
+
+        expect(stepResult.params, equals([7.5, 3.5]));
+        expect(stepResult.colorIndex, equals(0));
       });
 
       test(
