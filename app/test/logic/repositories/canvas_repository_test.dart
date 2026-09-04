@@ -165,5 +165,45 @@ void main() {
         expect(remaining.first.id, equals(duplicatedId));
       },
     );
+
+    test(
+      'saveNewSession explicitly resets activeCreationId to null in database session',
+      () async {
+        final model = CanvasModel(
+          gridSize: 16,
+          grid: List.generate(16, (_) => List.filled(16, 0)),
+          selectedColorIndex: 1,
+          selectedTool: CanvasTool.line,
+          paletteName: 'primary',
+          palette: [Colors.black, Colors.white],
+          userPrompt: 'A pixel cat',
+          aiStatus: AiCoreStatus.available,
+          isGenerating: false,
+          autoRun: false,
+          autoRunSpeed: 1.5,
+          undoStack: const [],
+          redoStack: const [],
+          aiHistory: const [],
+          referenceImage: null,
+          originalReferenceImage: null,
+          title: 'My Cat Canvas',
+          modelReleaseStage: 'stable',
+          modelPreference: 'full',
+        );
+
+        final saved = await repository.saveCanvas(model);
+        expect(saved.creationId, isNotNull);
+
+        final sessionBefore = await db.getSession();
+        expect(sessionBefore, isNotNull);
+        expect(sessionBefore!.activeCreationId, equals(saved.creationId));
+
+        await repository.saveNewSession(model);
+
+        final sessionAfter = await db.getSession();
+        expect(sessionAfter, isNotNull);
+        expect(sessionAfter!.activeCreationId, isNull);
+      },
+    );
   });
 }
