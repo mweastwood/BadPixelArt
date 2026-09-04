@@ -75,7 +75,9 @@ class ShareReceiverService {
               final item = SharedMediaItem.fromMap(rawItem);
               final imported = await handleSharedItem(item);
               if (imported != null) {
-                _sharedImageController.add(imported);
+                if (!_sharedImageController.isClosed) {
+                  _sharedImageController.add(imported);
+                }
                 onImported?.call(imported);
               }
             }
@@ -100,7 +102,9 @@ class ShareReceiverService {
             final item = SharedMediaItem.fromMap(rawItem);
             final imported = await handleSharedItem(item);
             if (imported != null) {
-              _sharedImageController.add(imported);
+              if (!_sharedImageController.isClosed) {
+                _sharedImageController.add(imported);
+              }
               onImported?.call(imported);
             }
           }
@@ -157,6 +161,8 @@ class ShareReceiverService {
   }
 
   void dispose() {
+    _channel.setMethodCallHandler(null);
+    _isInitialized = false;
     _sharedImageController.close();
   }
 }
