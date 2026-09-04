@@ -151,7 +151,7 @@ class CanvasRepository {
     final now = DateTime.now();
     final sessionCompanion = WorkspaceSessionsCompanion(
       id: const drift.Value(1),
-      activeCreationId: const drift.Value.absent(),
+      activeCreationId: const drift.Value(null),
       selectedColorIndex: drift.Value(state.selectedColorIndex),
       selectedTool: drift.Value(state.selectedTool.name),
       userPrompt: drift.Value(state.userPrompt),
