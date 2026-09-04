@@ -72,6 +72,61 @@ void main() {
       expect(bmp[1], equals(0x4D));
     });
 
+    test(
+      'generateBmp precomputed palette correctly writes BGR channels and checkerboard background',
+      () {
+        final palette = [
+          const Color(0xFF112233), // R=0x11, G=0x22, B=0x33
+          const Color(0xFFAABBCC), // R=0xAA, G=0xBB, B=0xCC
+        ];
+
+        // 2x2 grid:
+        // y=1: [0 (parity odd -> 0x1E), 1 (palette[0])]
+        // y=0: [2 (palette[1]), 0 (parity odd -> 0x1E)]
+        final grid = [
+          [2, 0],
+          [0, 1],
+        ];
+
+        final bmp = generateBmp(grid, palette);
+
+        // Row y=1 (first row written in bottom-up BMP loop):
+        // x=0: checkerboard (0 + 1) % 2 != 0 -> 0x1E
+        expect(bmp[54], equals(0x1E));
+        expect(bmp[55], equals(0x1E));
+        expect(bmp[56], equals(0x1E));
+        // x=1: palette[0] -> B=0x33, G=0x22, R=0x11
+        expect(bmp[57], equals(0x33));
+        expect(bmp[58], equals(0x22));
+        expect(bmp[59], equals(0x11));
+
+        // Row y=0 (second row written, offset 54 + 8 = 62):
+        // x=0: palette[1] -> B=0xCC, G=0xBB, R=0xAA
+        expect(bmp[62], equals(0xCC));
+        expect(bmp[63], equals(0xBB));
+        expect(bmp[64], equals(0xAA));
+        // x=1: checkerboard (1 + 0) % 2 != 0 -> 0x1E
+        expect(bmp[65], equals(0x1E));
+        expect(bmp[66], equals(0x1E));
+        expect(bmp[67], equals(0x1E));
+
+        // Test checkerboard parity even -> 0x26 on all-empty 2x2 grid
+        final emptyGrid = [
+          [0, 0],
+          [0, 0],
+        ];
+        final emptyBmp = generateBmp(emptyGrid, []);
+        // y=1, x=1 -> (1+1)%2 == 0 -> 0x26
+        expect(emptyBmp[57], equals(0x26));
+        expect(emptyBmp[58], equals(0x26));
+        expect(emptyBmp[59], equals(0x26));
+        // y=0, x=0 -> (0+0)%2 == 0 -> 0x26
+        expect(emptyBmp[62], equals(0x26));
+        expect(emptyBmp[63], equals(0x26));
+        expect(emptyBmp[64], equals(0x26));
+      },
+    );
+
     test('bmpToColorGrid handles empty and truncated headers gracefully', () {
       expect(bmpToColorGrid(Uint8List(0)), isEmpty);
       expect(bmpToColorGrid(Uint8List(10)), isEmpty);

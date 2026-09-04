@@ -46,19 +46,25 @@ Uint8List generateBmp(List<List<int>> grid, List<Color> palette) {
   bd.setUint32(46, 0, Endian.little);
   bd.setUint32(50, 0, Endian.little);
 
+  final paletteBgr = [
+    for (final c in palette) (b: c.bInt, g: c.gInt, r: c.rInt),
+  ];
+
   int offset = 54;
   for (int y = height - 1; y >= 0; y--) {
     for (int x = 0; x < width; x++) {
       final colorIndex = grid[y][x];
-      final color = (colorIndex > 0 && colorIndex <= palette.length)
-          ? palette[colorIndex - 1]
-          : ((x + y) % 2 == 0
-                ? const Color(0xFF262626)
-                : const Color(0xFF1E1E1E));
-
-      bmp[offset] = color.bInt;
-      bmp[offset + 1] = color.gInt;
-      bmp[offset + 2] = color.rInt;
+      if (colorIndex > 0 && colorIndex <= paletteBgr.length) {
+        final bgr = paletteBgr[colorIndex - 1];
+        bmp[offset] = bgr.b;
+        bmp[offset + 1] = bgr.g;
+        bmp[offset + 2] = bgr.r;
+      } else {
+        final byteVal = (x + y) % 2 == 0 ? 0x26 : 0x1E;
+        bmp[offset] = byteVal;
+        bmp[offset + 1] = byteVal;
+        bmp[offset + 2] = byteVal;
+      }
       offset += 3;
     }
     for (int p = 0; p < rowPadding; p++) {
