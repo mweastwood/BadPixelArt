@@ -311,7 +311,9 @@ class FakeShareReceiverService extends ShareReceiverService {
   Stream<ReferenceImage> get onSharedImageImported => _controller.stream;
 
   @override
-  void initialize({void Function(ReferenceImage importedImage)? onImported}) {
+  Future<void> initialize({
+    void Function(ReferenceImage importedImage)? onImported,
+  }) async {
     onImportedCallback = onImported;
   }
 

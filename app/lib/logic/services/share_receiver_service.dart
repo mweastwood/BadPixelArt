@@ -62,7 +62,9 @@ class ShareReceiverService {
 
   ShareReceiverService(this._repository, this._getCanvasNotifier);
 
-  void initialize({void Function(ReferenceImage importedImage)? onImported}) {
+  Future<void> initialize({
+    void Function(ReferenceImage importedImage)? onImported,
+  }) async {
     if (_isInitialized) return;
     _isInitialized = true;
 
@@ -86,7 +88,7 @@ class ShareReceiverService {
       }
     });
 
-    _fetchInitialSharedData(onImported);
+    await _fetchInitialSharedData(onImported);
   }
 
   Future<void> _fetchInitialSharedData(
