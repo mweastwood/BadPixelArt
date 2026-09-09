@@ -208,10 +208,9 @@ void main() {
           });
 
           ReferenceImage? importedCallbackImage;
-          service.initialize(onImported: (img) => importedCallbackImage = img);
-
-          // Allow async _fetchInitialSharedData to execute
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await service.initialize(
+            onImported: (img) => importedCallbackImage = img,
+          );
 
           expect(getInitialDataCalls, equals(1));
           expect(importedCallbackImage, isNotNull);
@@ -219,8 +218,7 @@ void main() {
           expect(canvasNotifier.state.userPrompt, equals('Initial Item'));
 
           // Calling initialize() again should be a no-op (idempotent)
-          service.initialize(onImported: (_) {});
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await service.initialize(onImported: (_) {});
           expect(getInitialDataCalls, equals(1));
         },
       );
@@ -238,8 +236,7 @@ void main() {
           });
 
           bool callbackCalled = false;
-          service.initialize(onImported: (_) => callbackCalled = true);
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await service.initialize(onImported: (_) => callbackCalled = true);
 
           expect(callbackCalled, isFalse);
           expect(await repository.getAllReferenceImages(), isEmpty);
@@ -263,8 +260,7 @@ void main() {
           });
 
           bool callbackCalled = false;
-          service.initialize(onImported: (_) => callbackCalled = true);
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await service.initialize(onImported: (_) => callbackCalled = true);
 
           expect(callbackCalled, isFalse);
           expect(await repository.getAllReferenceImages(), isEmpty);
@@ -286,8 +282,7 @@ void main() {
             return null;
           });
 
-          expect(() => service.initialize(), returnsNormally);
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await expectLater(service.initialize(), completes);
         },
       );
     });
@@ -301,14 +296,10 @@ void main() {
             (MethodCall methodCall) async => null,
           );
 
-          final receivedStreamImages = <ReferenceImage>[];
-          final sub = service.onSharedImageImported.listen(
-            receivedStreamImages.add,
-          );
+          final completer = Completer<ReferenceImage>();
+          final streamImageFuture = service.onSharedImageImported.first;
 
-          ReferenceImage? callbackImage;
-          service.initialize(onImported: (img) => callbackImage = img);
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await service.initialize(onImported: completer.complete);
 
           final ByteData message = codec.encodeMethodCall(
             MethodCall('onSharedDataReceived', [
@@ -326,16 +317,12 @@ void main() {
             (ByteData? reply) {},
           );
 
-          // Allow stream and async handleSharedItem to process
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          final callbackImage = await completer.future;
+          final streamImage = await streamImageFuture;
 
-          expect(callbackImage, isNotNull);
-          expect(callbackImage?.title, equals('Broadcast Art'));
-          expect(receivedStreamImages.length, equals(1));
-          expect(receivedStreamImages.first.title, equals('Broadcast Art'));
+          expect(callbackImage.title, equals('Broadcast Art'));
+          expect(streamImage.title, equals('Broadcast Art'));
           expect(canvasNotifier.state.userPrompt, equals('Broadcast Prompt'));
-
-          await sub.cancel();
         },
       );
 
@@ -348,8 +335,7 @@ void main() {
           );
 
           int callbackCount = 0;
-          service.initialize(onImported: (_) => callbackCount++);
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await service.initialize(onImported: (_) => callbackCount++);
 
           // 1. Different method name
           final ByteData unknownMethodMsg = codec.encodeMethodCall(
@@ -384,7 +370,7 @@ void main() {
             (ByteData? reply) {},
           );
 
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await pumpEventQueue();
           expect(callbackCount, equals(0));
         },
       );
@@ -436,8 +422,15 @@ void main() {
             () => canvasNotifier,
           );
           int callbackCount = 0;
-          testService.initialize(onImported: (_) => callbackCount++);
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          final completer = Completer<ReferenceImage>();
+          await testService.initialize(
+            onImported: (img) {
+              callbackCount++;
+              if (!completer.isCompleted) {
+                completer.complete(img);
+              }
+            },
+          );
 
           final ByteData message = codec.encodeMethodCall(
             MethodCall('onSharedDataReceived', [
@@ -454,7 +447,7 @@ void main() {
             message,
             (ByteData? reply) {},
           );
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await completer.future;
           expect(callbackCount, equals(1));
 
           // Dispose service; handler must be detached and initialized flag reset
@@ -466,7 +459,7 @@ void main() {
             message,
             (ByteData? reply) {},
           );
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await pumpEventQueue();
           expect(callbackCount, equals(1));
         },
       );
@@ -484,8 +477,7 @@ void main() {
             (MethodCall methodCall) async => null,
           );
 
-          delayedService.initialize();
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await delayedService.initialize();
 
           final ByteData message = codec.encodeMethodCall(
             MethodCall('onSharedDataReceived', [
@@ -502,7 +494,7 @@ void main() {
             message,
             (ByteData? reply) {},
           );
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          await delayedService.itemHandlingStarted.future;
 
           // Dispose while handleSharedItem is pending
           delayedService.dispose();
@@ -521,7 +513,7 @@ void main() {
             returnsNormally,
           );
           await platformFuture;
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await pumpEventQueue();
         },
       );
 
@@ -548,8 +540,8 @@ void main() {
             return null;
           });
 
-          delayedService.initialize();
-          await Future<void>.delayed(const Duration(milliseconds: 20));
+          final initFuture = delayedService.initialize();
+          await delayedService.itemHandlingStarted.future;
 
           delayedService.dispose();
 
@@ -566,7 +558,8 @@ void main() {
             () => delayedService.completer.complete(sampleImage),
             returnsNormally,
           );
-          await Future<void>.delayed(const Duration(milliseconds: 50));
+          await initFuture;
+          await pumpEventQueue();
         },
       );
     });
@@ -575,10 +568,15 @@ void main() {
 
 class _DelayedShareReceiverService extends ShareReceiverService {
   final Completer<ReferenceImage?> completer = Completer<ReferenceImage?>();
+  final Completer<void> itemHandlingStarted = Completer<void>();
 
   _DelayedShareReceiverService(super.repository, super.getCanvasNotifier);
 
   @override
-  Future<ReferenceImage?> handleSharedItem(SharedMediaItem item) =>
-      completer.future;
+  Future<ReferenceImage?> handleSharedItem(SharedMediaItem item) {
+    if (!itemHandlingStarted.isCompleted) {
+      itemHandlingStarted.complete();
+    }
+    return completer.future;
+  }
 }
