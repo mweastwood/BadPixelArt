@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -59,6 +60,36 @@ class ThrowingReferenceLibraryRepository extends ReferenceLibraryRepository {
     String source = 'upload',
   }) async {
     throw Exception('Database write failed');
+  }
+}
+
+class CompleterReferenceLibraryRepository extends ReferenceLibraryRepository {
+  Completer<void>? onAddReferenceImage;
+
+  CompleterReferenceLibraryRepository({
+    required super.dbGetter,
+    this.onAddReferenceImage,
+  });
+
+  @override
+  Future<ReferenceImage> addReferenceImage({
+    required Uint8List imageBytes,
+    Uint8List? bmpBytes,
+    String? title,
+    String? prompt,
+    String source = 'upload',
+  }) async {
+    final result = await super.addReferenceImage(
+      imageBytes: imageBytes,
+      bmpBytes: bmpBytes,
+      title: title,
+      prompt: prompt,
+      source: source,
+    );
+    if (onAddReferenceImage != null && !onAddReferenceImage!.isCompleted) {
+      onAddReferenceImage!.complete();
+    }
+    return result;
   }
 }
 
@@ -321,6 +352,12 @@ void main() {
     testWidgets(
       'upload_reference_button picks image, sets reference, and saves to repository',
       (tester) async {
+        final saveCompleter = Completer<void>.sync();
+        final syncRepository = CompleterReferenceLibraryRepository(
+          dbGetter: () => db,
+          onAddReferenceImage: saveCompleter,
+        );
+
         FilePickerPlatform.instance = FakeFilePickerPlatform(
           pickFilesResult: FilePickerResult([
             PlatformFile(
@@ -336,7 +373,9 @@ void main() {
         await tester.pumpWidget(
           buildTestableWidget(
             overrides: [
-              referenceLibraryRepositoryProvider.overrideWithValue(repository),
+              referenceLibraryRepositoryProvider.overrideWithValue(
+                syncRepository,
+              ),
               canvasStateProvider.overrideWith((ref) => notifier),
             ],
             child: const Scaffold(body: ReferenceImagePrompt()),
@@ -347,7 +386,7 @@ void main() {
           await tester.tap(
             find.byKey(const ValueKey('upload_reference_button')),
           );
-          await Future.delayed(const Duration(milliseconds: 200));
+          await saveCompleter.future;
         });
         await tester.pumpAndSettle();
 
@@ -358,7 +397,7 @@ void main() {
         expect(notifier.state.referenceImage, isNotNull);
         expect(find.text('Active Reference'), findsOneWidget);
 
-        final items = await repository.getAllReferenceImages();
+        final items = await syncRepository.getAllReferenceImages();
         expect(items.any((item) => item.title == 'sword_art'), isTrue);
       },
     );
@@ -366,6 +405,12 @@ void main() {
     testWidgets(
       'change_reference_button picks new image and updates reference',
       (tester) async {
+        final saveCompleter = Completer<void>.sync();
+        final syncRepository = CompleterReferenceLibraryRepository(
+          dbGetter: () => db,
+          onAddReferenceImage: saveCompleter,
+        );
+
         final notifier = CanvasNotifier(TestMockAiService());
         notifier.setReferenceImage(sampleBmp);
 
@@ -387,7 +432,9 @@ void main() {
         await tester.pumpWidget(
           buildTestableWidget(
             overrides: [
-              referenceLibraryRepositoryProvider.overrideWithValue(repository),
+              referenceLibraryRepositoryProvider.overrideWithValue(
+                syncRepository,
+              ),
               canvasStateProvider.overrideWith((ref) => notifier),
             ],
             child: const Scaffold(body: ReferenceImagePrompt()),
@@ -398,7 +445,7 @@ void main() {
           await tester.tap(
             find.byKey(const ValueKey('change_reference_button')),
           );
-          await Future.delayed(const Duration(milliseconds: 200));
+          await saveCompleter.future;
         });
         await tester.pumpAndSettle();
 
