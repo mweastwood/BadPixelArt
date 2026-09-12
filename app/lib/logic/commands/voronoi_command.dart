@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../utils/noise_utils.dart';
 import 'base_command.dart';
 
@@ -32,11 +34,14 @@ class VoronoiCommand implements DrawingCommand {
     final int h = endY - startY + 1;
     if (w <= 0 || h <= 0) return;
 
-    final List<List<int>> points = [];
+    final pointsX = Int32List(numCells);
+    final pointsY = Int32List(numCells);
+    final pointsColor = Int32List(numCells);
+
     for (int i = 0; i < numCells; i++) {
-      final int px = startX + (hashNoise(i, 0, seed) * w).floor();
-      final int py = startY + (hashNoise(0, i, seed + 99) * h).floor();
-      points.add([px, py, i % 2 == 0 ? color : 0]);
+      pointsX[i] = startX + (hashNoise(i, 0, seed) * w).floor();
+      pointsY[i] = startY + (hashNoise(0, i, seed + 99) * h).floor();
+      pointsColor[i] = i % 2 == 0 ? color : 0;
     }
 
     final int clampedStartY = startY.clamp(0, gridSize - 1);
@@ -46,15 +51,15 @@ class VoronoiCommand implements DrawingCommand {
 
     for (int y = clampedStartY; y <= clampedEndY; y++) {
       for (int x = clampedStartX; x <= clampedEndX; x++) {
-        double bestDist = double.infinity;
+        int bestDist = 0x7FFFFFFF;
         int bestColor = color;
-        for (final pt in points) {
-          final double d =
-              ((x - pt[0]) * (x - pt[0]) + (y - pt[1]) * (y - pt[1]))
-                  .toDouble();
-          if (d < bestDist) {
-            bestDist = d;
-            bestColor = pt[2];
+        for (int i = 0; i < numCells; i++) {
+          final int dx = x - pointsX[i];
+          final int dy = y - pointsY[i];
+          final int dist = dx * dx + dy * dy;
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestColor = pointsColor[i];
           }
         }
         grid[y][x] = bestColor;
