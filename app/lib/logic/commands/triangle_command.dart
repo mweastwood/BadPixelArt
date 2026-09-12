@@ -18,17 +18,19 @@ class TriangleCommand implements DrawingCommand {
     return (px - bx) * (ay - by) - (ax - bx) * (py - by);
   }
 
+  static int _min3(int a, int b, int c) =>
+      a < b ? (a < c ? a : c) : (b < c ? b : c);
+  static int _max3(int a, int b, int c) =>
+      a > b ? (a > c ? a : c) : (b > c ? b : c);
+
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
     if (gridSize <= 0) return;
 
-    int min3(int a, int b, int c) => a < b ? (a < c ? a : c) : (b < c ? b : c);
-    int max3(int a, int b, int c) => a > b ? (a > c ? a : c) : (b > c ? b : c);
-
-    final int rawMinX = min3(x1, x2, x3);
-    final int rawMaxX = max3(x1, x2, x3);
-    final int rawMinY = min3(y1, y2, y3);
-    final int rawMaxY = max3(y1, y2, y3);
+    final int rawMinX = _min3(x1, x2, x3);
+    final int rawMaxX = _max3(x1, x2, x3);
+    final int rawMinY = _min3(y1, y2, y3);
+    final int rawMaxY = _max3(y1, y2, y3);
 
     if (rawMaxX < 0 ||
         rawMinX >= gridSize ||

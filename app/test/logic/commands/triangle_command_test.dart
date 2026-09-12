@@ -79,5 +79,53 @@ void main() {
         }
       }
     });
+
+    test(
+      'handles degenerate triangle with identical vertices (single point)',
+      () {
+        final grid = List.generate(6, (_) => List.filled(6, 0));
+        TriangleCommand(2, 2, 2, 2, 2, 2).execute(grid, 5, 6);
+
+        for (int y = 0; y < 6; y++) {
+          for (int x = 0; x < 6; x++) {
+            if (x == 2 && y == 2) {
+              expect(grid[y][x], equals(5));
+            } else {
+              expect(grid[y][x], equals(0));
+            }
+          }
+        }
+      },
+    );
+
+    test('handles degenerate collinear triangle along horizontal line', () {
+      final grid = List.generate(6, (_) => List.filled(6, 0));
+      TriangleCommand(1, 3, 4, 3, 2, 3).execute(grid, 4, 6);
+
+      for (int y = 0; y < 6; y++) {
+        for (int x = 0; x < 6; x++) {
+          if (y == 3 && x >= 1 && x <= 4) {
+            expect(grid[y][x], equals(4));
+          } else {
+            expect(grid[y][x], equals(0));
+          }
+        }
+      }
+    });
+
+    test('handles degenerate collinear triangle along diagonal', () {
+      final grid = List.generate(6, (_) => List.filled(6, 0));
+      TriangleCommand(1, 1, 3, 3, 2, 2).execute(grid, 4, 6);
+
+      for (int y = 0; y < 6; y++) {
+        for (int x = 0; x < 6; x++) {
+          if (x == y && x >= 1 && x <= 3) {
+            expect(grid[y][x], equals(4));
+          } else {
+            expect(grid[y][x], equals(0));
+          }
+        }
+      }
+    });
   });
 }
