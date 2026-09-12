@@ -88,6 +88,37 @@ void main() {
           expect(item.mimeType, isNull);
         },
       );
+
+      test('SharedMediaItem parses correctly from map with null bytes', () {
+        final map = {
+          'bytes': null,
+          'text': 'A fantasy crystal dagger prompt',
+          'subject': 'Gemini Prompt Share',
+          'mimeType': 'text/plain',
+        };
+        final item = SharedMediaItem.fromMap(map);
+        expect(item.bytes, equals(Uint8List(0)));
+        expect(item.text, equals('A fantasy crystal dagger prompt'));
+        expect(item.subject, equals('Gemini Prompt Share'));
+        expect(item.mimeType, equals('text/plain'));
+      });
+
+      test(
+        'SharedMediaItem defaults bytes to empty Uint8List on non-list bytes',
+        () {
+          final map = {
+            'bytes': 'not a byte list',
+            'text': 'Some prompt',
+            'subject': 'Subject',
+            'mimeType': null,
+          };
+          final item = SharedMediaItem.fromMap(map);
+          expect(item.bytes, equals(Uint8List(0)));
+          expect(item.text, equals('Some prompt'));
+          expect(item.subject, equals('Subject'));
+          expect(item.mimeType, isNull);
+        },
+      );
     });
 
     group('handleSharedItem', () {
@@ -372,6 +403,39 @@ void main() {
 
           await pumpEventQueue();
           expect(callbackCount, equals(0));
+        },
+      );
+
+      test(
+        'handles platform messages with null bytes without throwing TypeError',
+        () async {
+          messenger.setMockMethodCallHandler(
+            const MethodChannel(channelName),
+            (MethodCall methodCall) async => null,
+          );
+
+          int callbackCount = 0;
+          await service.initialize(onImported: (_) => callbackCount++);
+
+          final ByteData nullBytesMsg = codec.encodeMethodCall(
+            MethodCall('onSharedDataReceived', [
+              {
+                'bytes': null,
+                'text': 'Prompt without image bytes',
+                'subject': 'Text Intent',
+              },
+            ]),
+          );
+
+          await messenger.handlePlatformMessage(
+            channelName,
+            nullBytesMsg,
+            (ByteData? reply) {},
+          );
+
+          await pumpEventQueue();
+          expect(callbackCount, equals(0));
+          expect(await repository.getAllReferenceImages(), isEmpty);
         },
       );
     });

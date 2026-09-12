@@ -25,7 +25,9 @@ class SharedMediaItem {
     final rawBytes = map['bytes'];
     final Uint8List bytes = rawBytes is Uint8List
         ? rawBytes
-        : Uint8List.fromList(List<int>.from(rawBytes as List));
+        : (rawBytes is List
+              ? Uint8List.fromList(List<int>.from(rawBytes))
+              : Uint8List(0));
 
     return SharedMediaItem(
       bytes: bytes,
