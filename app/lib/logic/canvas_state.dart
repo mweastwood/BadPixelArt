@@ -88,6 +88,21 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     }
   }
 
+  Uint8List? _cachedReferenceBmpSource;
+  int? _cachedReferenceGridSize;
+  List<Color>? _cachedReferencePalette;
+  Uint8List? _cachedQuantizedReferenceBmp;
+
+  @visibleForTesting
+  Uint8List? get cachedQuantizedReferenceBmp => _cachedQuantizedReferenceBmp;
+
+  void _clearReferenceBmpCache() {
+    _cachedReferenceBmpSource = null;
+    _cachedReferenceGridSize = null;
+    _cachedReferencePalette = null;
+    _cachedQuantizedReferenceBmp = null;
+  }
+
   @override
   Uint8List generateCombinedVisualInput(
     Uint8List? referenceBmp,
@@ -96,21 +111,40 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     final List<Uint8List> bmpsToCombine = [];
 
     if (referenceBmp != null) {
-      var refGrid = bmpToDownscaledColorGrid(referenceBmp, state.gridSize);
-      if (refGrid.isEmpty) {
-        refGrid = bmpToColorGrid(referenceBmp);
-        if (refGrid.isNotEmpty && refGrid.length != state.gridSize) {
-          refGrid = downscaleColorGrid(refGrid, state.gridSize);
+      final isCacheValid =
+          _cachedQuantizedReferenceBmp != null &&
+          identical(_cachedReferenceBmpSource, referenceBmp) &&
+          _cachedReferenceGridSize == state.gridSize &&
+          listEquals(_cachedReferencePalette, state.palette);
+
+      if (!isCacheValid) {
+        var refGrid = bmpToDownscaledColorGrid(referenceBmp, state.gridSize);
+        if (refGrid.isEmpty) {
+          refGrid = bmpToColorGrid(referenceBmp);
+          if (refGrid.isNotEmpty && refGrid.length != state.gridSize) {
+            refGrid = downscaleColorGrid(refGrid, state.gridSize);
+          }
+        }
+        if (refGrid.isNotEmpty) {
+          final blurredGrid = applyGaussianBlur(refGrid);
+          final quantizedGrid = applyColorQuantization(
+            blurredGrid,
+            state.palette,
+          );
+          _cachedQuantizedReferenceBmp = bmpFromColorGrid(quantizedGrid);
+          _cachedReferenceBmpSource = referenceBmp;
+          _cachedReferenceGridSize = state.gridSize;
+          _cachedReferencePalette = List<Color>.from(state.palette);
+        } else {
+          _cachedQuantizedReferenceBmp = null;
+          _cachedReferenceBmpSource = null;
+          _cachedReferenceGridSize = null;
+          _cachedReferencePalette = null;
         }
       }
-      if (refGrid.isNotEmpty) {
-        final blurredGrid = applyGaussianBlur(refGrid);
-        final quantizedGrid = applyColorQuantization(
-          blurredGrid,
-          state.palette,
-        );
-        final quantizedBmp = bmpFromColorGrid(quantizedGrid);
-        bmpsToCombine.add(quantizedBmp);
+
+      if (_cachedQuantizedReferenceBmp != null) {
+        bmpsToCombine.add(_cachedQuantizedReferenceBmp!);
       }
     }
 
@@ -215,6 +249,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       if (state.autoRun) {
         _autoRunTimer?.cancel();
       }
+      _clearReferenceBmpCache();
 
       state = CanvasModel(
         gridSize: 16,
@@ -564,6 +599,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
     _autoRunTimer?.cancel();
     _saveTimer?.cancel();
     _hasPendingSave = false;
+    _clearReferenceBmpCache();
     super.dispose();
   }
 
