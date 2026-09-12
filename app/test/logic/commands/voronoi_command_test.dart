@@ -93,5 +93,26 @@ void main() {
         returnsNormally,
       );
     });
+
+    test('deterministic cell rendering and correct color assignment', () {
+      final grid1 = List.generate(16, (_) => List.filled(16, -1));
+      final grid2 = List.generate(16, (_) => List.filled(16, -1));
+
+      VoronoiCommand(0, 0, 15, 15, 6, 789).execute(grid1, 5, 16);
+      VoronoiCommand(0, 0, 15, 15, 6, 789).execute(grid2, 5, 16);
+
+      // Verify identical results across identical runs
+      for (int y = 0; y < 16; y++) {
+        for (int x = 0; x < 16; x++) {
+          expect(grid1[y][x], equals(grid2[y][x]));
+          // Each pixel should either be assigned the active color (5) or background (0)
+          expect(grid1[y][x] == 5 || grid1[y][x] == 0, isTrue);
+        }
+      }
+
+      // Verify both even and odd cell colors were assigned across the grid
+      final allValues = grid1.expand((row) => row).toSet();
+      expect(allValues, containsAll([0, 5]));
+    });
   });
 }
