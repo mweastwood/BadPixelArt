@@ -134,6 +134,73 @@ void main() {
       expect(container.read(canvasStateProvider).grid[10][10], equals(1));
     });
 
+    test(
+      'refineCanvas pushes pre-refinement grid to undo stack and allows undo/redo',
+      () async {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.selectColor(1);
+        notifier.drawPixel(5, 5);
+
+        // Pre-refinement canvas has pixel at (5, 5) and (8, 8) is empty (0)
+        expect(container.read(canvasStateProvider).grid[5][5], equals(1));
+        expect(container.read(canvasStateProvider).grid[8][8], equals(0));
+
+        // Mock AI to draw a pixel at (8, 8) then finish
+        mockAiService.responses = [
+          '{"thought": "add highlight", "tool": "pixel", "params": [8, 8], "colorIndex": 2}',
+          '{"thought": "done", "tool": "done"}',
+        ];
+
+        await notifier.refineCanvas('add highlight');
+
+        // Verify post-refinement state
+        expect(container.read(canvasStateProvider).grid[8][8], equals(2));
+        expect(container.read(canvasStateProvider).grid[5][5], equals(1));
+
+        // Undo should restore pre-refinement state (pixel at (8, 8) reverts to 0)
+        notifier.undo();
+        expect(container.read(canvasStateProvider).grid[8][8], equals(0));
+        expect(container.read(canvasStateProvider).grid[5][5], equals(1));
+
+        // Redo should restore post-refinement state
+        notifier.redo();
+        expect(container.read(canvasStateProvider).grid[8][8], equals(2));
+        expect(container.read(canvasStateProvider).grid[5][5], equals(1));
+      },
+    );
+
+    test(
+      'refineCanvas pushes pre-refinement grid to undo stack even if refinement throws',
+      () async {
+        final notifier = container.read(canvasStateProvider.notifier);
+        notifier.selectColor(1);
+        notifier.drawPixel(2, 2);
+
+        expect(container.read(canvasStateProvider).grid[2][2], equals(1));
+        final initialUndoDepth = container
+            .read(canvasStateProvider)
+            .undoStack
+            .length;
+
+        // Mock AI to throw an error
+        mockAiService.shouldThrow = true;
+        mockAiService.exceptionMessage = 'Refinement agent failed';
+
+        await notifier.refineCanvas('broken refinement');
+
+        // Verify undo stack grew by 1 because pre-refinement grid was saved
+        expect(
+          container.read(canvasStateProvider).undoStack.length,
+          equals(initialUndoDepth + 1),
+        );
+        expect(container.read(canvasStateProvider).isGenerating, isFalse);
+
+        // Undo successfully restores the state prior to refineCanvas
+        notifier.undo();
+        expect(container.read(canvasStateProvider).grid[2][2], equals(1));
+      },
+    );
+
     test('applyLine draws line on grid', () {
       final notifier = container.read(canvasStateProvider.notifier);
       notifier.selectColor(3);
