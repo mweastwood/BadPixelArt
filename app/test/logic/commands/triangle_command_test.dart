@@ -66,5 +66,18 @@ void main() {
         returnsNormally,
       );
     });
+
+    test('draws identically regardless of vertex winding order', () {
+      final gridCw = List.generate(6, (_) => List.filled(6, 0));
+      final gridCcw = List.generate(6, (_) => List.filled(6, 0));
+      TriangleCommand(0, 0, 4, 0, 0, 4).execute(gridCw, 3, 6);
+      TriangleCommand(0, 0, 0, 4, 4, 0).execute(gridCcw, 3, 6);
+
+      for (int y = 0; y < 6; y++) {
+        for (int x = 0; x < 6; x++) {
+          expect(gridCw[y][x], equals(gridCcw[y][x]));
+        }
+      }
+    });
   });
 }
