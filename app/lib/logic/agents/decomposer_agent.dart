@@ -136,16 +136,15 @@ class DecomposerAgent implements PixelArtAgent {
           final bbox =
               item['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
 
-          final left = (bbox['left'] as num? ?? 0.0).toDouble();
-          final top = (bbox['top'] as num? ?? 0.0).toDouble();
-          final width = (bbox['width'] as num? ?? 1.0).toDouble().clamp(
+          final left = (parseNumValue(bbox['left']) ?? 0.0).toDouble();
+          final top = (parseNumValue(bbox['top']) ?? 0.0).toDouble();
+          final width = (parseNumValue(bbox['width']) ?? 1.0).toDouble().clamp(
             0.01,
             1.0,
           );
-          final height = (bbox['height'] as num? ?? 1.0).toDouble().clamp(
-            0.01,
-            1.0,
-          );
+          final height = (parseNumValue(bbox['height']) ?? 1.0)
+              .toDouble()
+              .clamp(0.01, 1.0);
 
           // Parse shapes
           final List<FundamentalShape> parsedShapes = [];
@@ -156,16 +155,14 @@ class DecomposerAgent implements PixelArtAgent {
               final desc = s['description'] as String? ?? '';
               final sBbox =
                   s['relativeBoundingBox'] as Map<String, dynamic>? ?? {};
-              final sLeft = (sBbox['left'] as num? ?? 0.0).toDouble();
-              final sTop = (sBbox['top'] as num? ?? 0.0).toDouble();
-              final sWidth = (sBbox['width'] as num? ?? 1.0).toDouble().clamp(
-                0.0,
-                1.0,
-              );
-              final sHeight = (sBbox['height'] as num? ?? 1.0).toDouble().clamp(
-                0.0,
-                1.0,
-              );
+              final sLeft = (parseNumValue(sBbox['left']) ?? 0.0).toDouble();
+              final sTop = (parseNumValue(sBbox['top']) ?? 0.0).toDouble();
+              final sWidth = (parseNumValue(sBbox['width']) ?? 1.0)
+                  .toDouble()
+                  .clamp(0.0, 1.0);
+              final sHeight = (parseNumValue(sBbox['height']) ?? 1.0)
+                  .toDouble()
+                  .clamp(0.0, 1.0);
               parsedShapes.add(
                 FundamentalShape(
                   type: type,

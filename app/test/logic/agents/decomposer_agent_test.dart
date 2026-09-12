@@ -220,5 +220,99 @@ void main() {
       );
       expect(() => agent.decompose(mockAi, context), throwsA(isA<Exception>()));
     });
+
+    test(
+      'handles string-encoded numeric bounding box coordinates for components and shapes',
+      () async {
+        final agent = DecomposerAgent();
+        final mockAi = TestMockAiService(
+          responseToReturn: '''
+[
+  {
+    "name": "blade",
+    "description": "vertical sword blade",
+    "relativeBoundingBox": {
+      "left": "0.4",
+      "top": "0.1",
+      "width": "0.2",
+      "height": "0.6"
+    },
+    "shapes": [
+      {
+        "type": "rectangle",
+        "description": "blue blade body",
+        "relativeBoundingBox": {
+          "left": "0.0",
+          "top": "0.8",
+          "width": "1.0",
+          "height": "0.2"
+        }
+      }
+    ]
+  }
+]
+''',
+        );
+
+        final result = await agent.decompose(mockAi, context);
+
+        expect(result.components, hasLength(1));
+        final comp = result.components[0];
+        expect(comp.name, equals('blade'));
+        expect(comp.shapes, hasLength(1));
+        expect(comp.shapes[0].type, equals('rectangle'));
+        expect(comp.shapes[0].description, equals('blue blade body'));
+        expect(
+          comp.shapes[0].relativeBoundingBox,
+          equals(const Rect.fromLTWH(0.0, 0.8, 1.0, 0.2)),
+        );
+      },
+    );
+
+    test(
+      'falls back gracefully to default coordinate values on invalid unparseable strings',
+      () async {
+        final agent = DecomposerAgent();
+        final mockAi = TestMockAiService(
+          responseToReturn: '''
+[
+  {
+    "name": "blade",
+    "description": "vertical sword blade",
+    "relativeBoundingBox": {
+      "left": "invalid_left",
+      "top": "invalid_top",
+      "width": "invalid_width",
+      "height": "invalid_height"
+    },
+    "shapes": [
+      {
+        "type": "rectangle",
+        "description": "fallback body",
+        "relativeBoundingBox": {
+          "left": "bad",
+          "top": "bad",
+          "width": "bad",
+          "height": "bad"
+        }
+      }
+    ]
+  }
+]
+''',
+        );
+
+        final result = await agent.decompose(mockAi, context);
+
+        expect(result.components, hasLength(1));
+        final comp = result.components[0];
+        expect(comp.name, equals('blade'));
+        expect(comp.shapes, hasLength(1));
+        expect(
+          comp.shapes[0].relativeBoundingBox,
+          equals(const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0)),
+        );
+      },
+    );
   });
 }
