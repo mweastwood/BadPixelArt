@@ -1329,6 +1329,8 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
 
   Future<void> refineCanvas(String refinementPrompt) async {
     if (!mounted || state.isGenerating) return;
+    final preRefineGrid = state.grid;
+    _pushToUndo(preRefineGrid);
     state = state.copyWith(isGenerating: true);
 
     try {
@@ -1359,7 +1361,6 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       );
 
       if (!mounted) return;
-      _pushToUndo(state.grid);
       final willStop = state.isPausing;
       state = state.copyWith(
         grid: result,
