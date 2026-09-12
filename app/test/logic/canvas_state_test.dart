@@ -1000,6 +1000,145 @@ void main() {
         },
       );
     });
+
+    group('generateCombinedVisualInput Memoization Tests', () {
+      late Uint8List sampleRefBmp;
+
+      setUp(() {
+        final sampleGrid = List.generate(
+          16,
+          (y) => List.generate(
+            16,
+            (x) => ((x + y) % CanvasNotifier.primaryPalette.length) + 1,
+          ),
+        );
+        sampleRefBmp = generateBmp(sampleGrid, CanvasNotifier.primaryPalette);
+      });
+
+      test(
+        'reuses cached quantized reference BMP across repeated calls with identical parameters',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+
+          expect(notifier.cachedQuantizedReferenceBmp, isNull);
+
+          final firstCombined = notifier.generateCombinedVisualInput(
+            sampleRefBmp,
+            null,
+          );
+          final firstCached = notifier.cachedQuantizedReferenceBmp;
+          expect(firstCached, isNotNull);
+
+          final secondCombined = notifier.generateCombinedVisualInput(
+            sampleRefBmp,
+            null,
+          );
+          final secondCached = notifier.cachedQuantizedReferenceBmp;
+
+          expect(identical(firstCached, secondCached), isTrue);
+          expect(secondCombined, equals(firstCombined));
+        },
+      );
+
+      test('invalidates and recomputes cache when palette changes', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        notifier.generateCombinedVisualInput(sampleRefBmp, null);
+        final initialCached = notifier.cachedQuantizedReferenceBmp;
+        expect(initialCached, isNotNull);
+
+        // Change palette to nesPalette
+        notifier.setPalette('nes', CanvasNotifier.nesPalette);
+
+        notifier.generateCombinedVisualInput(sampleRefBmp, null);
+        final newCached = notifier.cachedQuantizedReferenceBmp;
+
+        expect(newCached, isNotNull);
+        expect(identical(newCached, initialCached), isFalse);
+      });
+
+      test('invalidates and recomputes cache when gridSize changes', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        notifier.generateCombinedVisualInput(sampleRefBmp, null);
+        final initialCached = notifier.cachedQuantizedReferenceBmp;
+        expect(initialCached, isNotNull);
+
+        // Change resolution to 8x8
+        notifier.changeResolution(8);
+
+        notifier.generateCombinedVisualInput(sampleRefBmp, null);
+        final newCached = notifier.cachedQuantizedReferenceBmp;
+
+        expect(newCached, isNotNull);
+        expect(identical(newCached, initialCached), isFalse);
+      });
+
+      test(
+        'invalidates and recomputes cache when referenceBmp buffer changes',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+
+          notifier.generateCombinedVisualInput(sampleRefBmp, null);
+          final initialCached = notifier.cachedQuantizedReferenceBmp;
+          expect(initialCached, isNotNull);
+
+          // New distinct BMP buffer
+          final alternateGrid = List.generate(16, (y) => List.filled(16, 2));
+          final alternateRefBmp = generateBmp(
+            alternateGrid,
+            CanvasNotifier.primaryPalette,
+          );
+
+          notifier.generateCombinedVisualInput(alternateRefBmp, null);
+          final newCached = notifier.cachedQuantizedReferenceBmp;
+
+          expect(newCached, isNotNull);
+          expect(identical(newCached, initialCached), isFalse);
+        },
+      );
+
+      test('bypasses reference BMP caching when referenceBmp is null', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        final combined = notifier.generateCombinedVisualInput(null, null);
+
+        expect(combined, isNotNull);
+        expect(combined.isNotEmpty, isTrue);
+        expect(notifier.cachedQuantizedReferenceBmp, isNull);
+      });
+
+      test('handles invalid reference BMP gracefully without throwing', () {
+        final notifier = container.read(canvasStateProvider.notifier);
+
+        final invalidBmp = Uint8List.fromList([1, 2, 3, 4]);
+        final combined = notifier.generateCombinedVisualInput(invalidBmp, null);
+
+        expect(combined, isNotNull);
+        expect(combined.isNotEmpty, isTrue);
+        expect(notifier.cachedQuantizedReferenceBmp, isNull);
+      });
+
+      test(
+        'resets cached quantized reference BMP on startNewCanvas and dispose',
+        () async {
+          final notifier = container.read(canvasStateProvider.notifier);
+
+          notifier.generateCombinedVisualInput(sampleRefBmp, null);
+          expect(notifier.cachedQuantizedReferenceBmp, isNotNull);
+
+          await notifier.startNewCanvas();
+          expect(notifier.cachedQuantizedReferenceBmp, isNull);
+
+          final standaloneNotifier = CanvasNotifier(TestMockAiService());
+          standaloneNotifier.generateCombinedVisualInput(sampleRefBmp, null);
+          expect(standaloneNotifier.cachedQuantizedReferenceBmp, isNotNull);
+
+          standaloneNotifier.dispose();
+          expect(standaloneNotifier.cachedQuantizedReferenceBmp, isNull);
+        },
+      );
+    });
   });
 }
 
