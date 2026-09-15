@@ -1,8 +1,14 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_async/fake_async.dart';
+import 'package:flutter_agent_core/flutter_agent_core.dart';
+import 'package:bad_pixel_art/logic/models/sprite_template.dart';
 import 'package:bad_pixel_art/logic/prompts.dart';
+
+import '../test_helper.dart';
 
 void main() {
   group('AI Service Shared Prompt Formatting Helpers', () {
@@ -341,6 +347,855 @@ void main() {
         expect(prompt, contains(multilineRef));
         expect(prompt, contains('Start\nState'));
         expect(prompt, contains(multilineCand));
+      });
+    });
+  });
+
+  group('PixelArtAiServiceExtension', () {
+    final dummyCanvasImage = Uint8List.fromList([1, 2, 3, 4]);
+
+    group('describeCanvas', () {
+      test(
+        'successfully parses model response and returns map with prompt and response',
+        () async {
+          final mockAi = TestMockAiService(
+            response: 'A red circle in the center of the canvas.',
+          );
+          final result = await mockAi.describeCanvas(
+            canvasImage: dummyCanvasImage,
+          );
+
+          expect(result, isNotNull);
+          expect(
+            result!['prompt'],
+            contains(formatDescriberSystemInstruction()),
+          );
+          expect(result['prompt'], contains(formatDescriberUserPrompt()));
+          expect(
+            result['response'],
+            equals('A red circle in the center of the canvas.'),
+          );
+          expect(mockAi.capturedImageBytes.first, equals(dummyCanvasImage));
+        },
+      );
+
+      test('returns null when underlying service returns null', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(response: null);
+          Map<String, String>? result;
+          bool completed = false;
+
+          mockAi.describeCanvas(canvasImage: dummyCanvasImage).then((val) {
+            result = val;
+            completed = true;
+          });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNull);
+        });
+      });
+
+      test('returns null when underlying service throws an exception', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(shouldThrow: true);
+          Map<String, String>? result;
+          bool completed = false;
+
+          mockAi.describeCanvas(canvasImage: dummyCanvasImage).then((val) {
+            result = val;
+            completed = true;
+          });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNull);
+        });
+      });
+    });
+
+    group('getNextStroke', () {
+      test('parses clean JSON response into Map<String, dynamic>', () async {
+        const jsonResponse =
+            '{"tool": "circle", "color": 2, "params": {"cx": 8, "cy": 8, "r": 3}}';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.getNextStroke(
+          canvasImage: dummyCanvasImage,
+          prompt: 'draw a circle',
+          temperature: 0.2,
+        );
+
+        expect(result, isNotNull);
+        expect(result!['tool'], equals('circle'));
+        expect(result['color'], equals(2));
+        expect(result['params'], equals({'cx': 8, 'cy': 8, 'r': 3}));
+        expect(mockAi.capturedImageBytes.first, equals(dummyCanvasImage));
+        expect(mockAi.capturedPrompts.first, equals('draw a circle'));
+      });
+
+      test('strips markdown code blocks via cleanJsonString', () async {
+        const jsonResponse =
+            '```json\n{"tool": "line", "color": 1, "params": {"x1": 0, "y1": 0, "x2": 5, "y2": 5}}\n```';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.getNextStroke(
+          canvasImage: dummyCanvasImage,
+          prompt: 'draw a line',
+          temperature: 0.1,
+        );
+
+        expect(result, isNotNull);
+        expect(result!['tool'], equals('line'));
+        expect(result['color'], equals(1));
+      });
+
+      test('returns error map when response contains error object', () async {
+        const jsonResponse = '{\n  "error" : "model overloaded"\n}';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.getNextStroke(
+          canvasImage: dummyCanvasImage,
+          prompt: 'draw a star',
+          temperature: 0.1,
+        );
+
+        expect(result, isNotNull);
+        expect(result!['error'], equals('model overloaded'));
+        expect(result['rawResponse'], equals(jsonResponse));
+      });
+
+      test(
+        'catches JSON decoding errors and returns formatted error map with rawResponse N/A',
+        () async {
+          const malformedResponse = '{not_valid_json: true}';
+          final mockAi = TestMockAiService(response: malformedResponse);
+
+          final result = await mockAi.getNextStroke(
+            canvasImage: dummyCanvasImage,
+            prompt: 'draw a star',
+            temperature: 0.1,
+          );
+
+          expect(result, isNotNull);
+          expect(result!['error'], contains('FormatException'));
+          expect(result['rawResponse'], equals('N/A'));
+        },
+      );
+
+      test('returns null when parsed JSON is not a Map', () async {
+        const arrayResponse = '["tool", "circle"]';
+        final mockAi = TestMockAiService(response: arrayResponse);
+
+        final result = await mockAi.getNextStroke(
+          canvasImage: dummyCanvasImage,
+          prompt: 'draw a circle',
+          temperature: 0.1,
+        );
+
+        expect(result, isNull);
+      });
+
+      test('returns null when underlying service returns null', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(response: null);
+          Map<String, dynamic>? result;
+          bool completed = false;
+
+          mockAi
+              .getNextStroke(
+                canvasImage: dummyCanvasImage,
+                prompt: 'draw a circle',
+                temperature: 0.1,
+              )
+              .then((val) {
+                result = val;
+                completed = true;
+              });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNull);
+        });
+      });
+    });
+
+    group('suggestPalette & suggestPaletteForTemplate', () {
+      test(
+        'suggestPalette parses palette colors when model returns valid hex strings',
+        () async {
+          const hexList =
+              '["#112233", "#445566", "#778899", "#aabbcc", "#ddeeff", "#123456", "#789abc", "#fedcba"]';
+          final mockAi = TestMockAiService(response: hexList);
+
+          final result = await mockAi.suggestPalette(dummyCanvasImage);
+
+          expect(result, isNotNull);
+          expect(result!.length, equals(8));
+          expect(result[0], equals(const Color(0xFF112233)));
+          expect(result[1], equals(const Color(0xFF445566)));
+          expect(mockAi.capturedImageBytes.first, equals(dummyCanvasImage));
+          expect(mockAi.capturedPrompts.first, equals(formatPalettePrompt()));
+        },
+      );
+
+      test('suggestPalette returns null when model returns null', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(response: null);
+          List<Color>? result;
+          bool completed = false;
+
+          mockAi.suggestPalette(dummyCanvasImage).then((val) {
+            result = val;
+            completed = true;
+          });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNull);
+        });
+      });
+
+      test('suggestPalette returns null when model throws an exception', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(shouldThrow: true);
+          List<Color>? result;
+          bool completed = false;
+
+          mockAi.suggestPalette(dummyCanvasImage).then((val) {
+            result = val;
+            completed = true;
+          });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNull);
+        });
+      });
+
+      test(
+        'suggestPaletteForTemplate parses palette colors for template with imageBytes null',
+        () async {
+          const hexList =
+              '["#111111", "#222222", "#333333", "#444444", "#555555", "#666666", "#777777", "#888888"]';
+          final mockAi = TestMockAiService(response: hexList);
+
+          const template = SpriteTemplate(
+            id: 'sword',
+            name: 'Sword',
+            description: 'A pixel art sword',
+            width: 16,
+            height: 16,
+            rawTemplate: '0000\n0110\n0110\n0000',
+          );
+
+          final result = await mockAi.suggestPaletteForTemplate(
+            prompt: 'iron sword',
+            template: template,
+          );
+
+          expect(result, isNotNull);
+          expect(result!.length, equals(8));
+          expect(result[0], equals(const Color(0xFF111111)));
+          expect(mockAi.capturedImageBytes.first, isNull);
+          expect(mockAi.capturedPrompts.first, contains('iron sword'));
+          expect(mockAi.capturedPrompts.first, contains('Sword'));
+        },
+      );
+
+      test(
+        'suggestPaletteForTemplate works with null template and returns parsed colors',
+        () async {
+          const hexList =
+              '["#111111", "#222222", "#333333", "#444444", "#555555", "#666666", "#777777", "#888888"]';
+          final mockAi = TestMockAiService(response: hexList);
+
+          final result = await mockAi.suggestPaletteForTemplate(
+            prompt: 'blank sprite',
+            template: null,
+          );
+
+          expect(result, isNotNull);
+          expect(result!.length, equals(8));
+          expect(mockAi.capturedImageBytes.first, isNull);
+          expect(mockAi.capturedPrompts.first, contains('blank sprite'));
+        },
+      );
+
+      test(
+        'suggestPaletteForTemplate returns null when model returns null',
+        () {
+          fakeAsync((async) {
+            final mockAi = TestMockAiService(response: null);
+            List<Color>? result;
+            bool completed = false;
+
+            mockAi.suggestPaletteForTemplate(prompt: 'potion').then((val) {
+              result = val;
+              completed = true;
+            });
+
+            async.elapse(const Duration(seconds: 10));
+
+            expect(completed, isTrue);
+            expect(result, isNull);
+          });
+        },
+      );
+
+      test(
+        'suggestPaletteForTemplate returns null when model throws an exception',
+        () {
+          fakeAsync((async) {
+            final mockAi = TestMockAiService(shouldThrow: true);
+            List<Color>? result;
+            bool completed = false;
+
+            mockAi.suggestPaletteForTemplate(prompt: 'potion').then((val) {
+              result = val;
+              completed = true;
+            });
+
+            async.elapse(const Duration(seconds: 10));
+
+            expect(completed, isTrue);
+            expect(result, isNull);
+          });
+        },
+      );
+    });
+
+    group('evaluateStroke', () {
+      test('parses valid critic evaluation JSON', () async {
+        const jsonResponse =
+            '{"action": "keep", "reasoning": "Stroke accurately shapes outline"}';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateStroke(
+          canvasImage: dummyCanvasImage,
+        );
+
+        expect(result, isNotNull);
+        expect(result!['action'], equals('keep'));
+        expect(result['reasoning'], equals('Stroke accurately shapes outline'));
+        expect(mockAi.capturedImageBytes.first, equals(dummyCanvasImage));
+        expect(
+          mockAi.capturedPrompts.first,
+          contains(formatCriticSystemInstruction()),
+        );
+        expect(
+          mockAi.capturedPrompts.first,
+          contains(formatCriticUserPrompt()),
+        );
+      });
+
+      test('strips markdown code blocks from critic response', () async {
+        const jsonResponse =
+            '```json\n{"action": "undo", "reasoning": "Wrong position"}\n```';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateStroke(
+          canvasImage: dummyCanvasImage,
+        );
+
+        expect(result, isNotNull);
+        expect(result!['action'], equals('undo'));
+        expect(result['reasoning'], equals('Wrong position'));
+      });
+
+      test('returns error map when response contains error payload', () async {
+        const jsonResponse = '{\n  "error" : "service overloaded"\n}';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateStroke(
+          canvasImage: dummyCanvasImage,
+        );
+
+        expect(result, isNotNull);
+        expect(result!['error'], equals('service overloaded'));
+        expect(result['rawResponse'], equals(jsonResponse));
+      });
+
+      test(
+        'catches malformed JSON and returns formatted error map with rawResponse N/A',
+        () async {
+          const jsonResponse = 'not valid JSON.';
+          final mockAi = TestMockAiService(response: jsonResponse);
+
+          final result = await mockAi.evaluateStroke(
+            canvasImage: dummyCanvasImage,
+          );
+
+          expect(result, isNotNull);
+          expect(result!['error'], contains('FormatException'));
+          expect(result['rawResponse'], equals('N/A'));
+        },
+      );
+
+      test('returns null when parsed JSON is not a Map', () async {
+        const jsonResponse = '["keep", "good"]';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateStroke(
+          canvasImage: dummyCanvasImage,
+        );
+
+        expect(result, isNull);
+      });
+
+      test('returns null when underlying call returns null', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(response: null);
+          Map<String, dynamic>? result;
+          bool completed = false;
+
+          mockAi.evaluateStroke(canvasImage: dummyCanvasImage).then((val) {
+            result = val;
+            completed = true;
+          });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNull);
+        });
+      });
+
+      test(
+        'catches thrown exception from underlying call and returns error map',
+        () {
+          fakeAsync((async) {
+            final mockAi = TestMockAiService(
+              shouldThrow: true,
+              exceptionMessage: 'Connection failed',
+            );
+            Map<String, dynamic>? result;
+            bool completed = false;
+
+            mockAi.evaluateStroke(canvasImage: dummyCanvasImage).then((val) {
+              result = val;
+              completed = true;
+            });
+
+            async.elapse(const Duration(seconds: 10));
+
+            expect(completed, isTrue);
+            expect(result, isNotNull);
+            expect(result!['error'], contains('Connection failed'));
+            expect(result!['rawResponse'], equals('N/A'));
+          });
+        },
+      );
+    });
+
+    group('evaluateCandidates', () {
+      test('passes text-only prompt and parses valid evaluation JSON', () async {
+        const jsonResponse =
+            '{"choice": 2, "reasoning": "better colors", "nextFocus": "outline"}';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateCandidates(
+          userPrompt: 'Draw a dragon',
+          referenceDescription: 'Red dragon',
+          startingCanvasDescription: 'Empty',
+          candidate1Description: 'Candidate 1',
+          candidate2Description: 'Candidate 2',
+          candidate3Description: 'Candidate 3',
+        );
+
+        expect(result, isNotNull);
+        expect(result!['choice'], equals(2));
+        expect(result['reasoning'], equals('better colors'));
+        expect(result['nextFocus'], equals('outline'));
+        expect(mockAi.capturedImageBytes.first, isNull);
+        expect(mockAi.capturedPrompts.first, contains('Draw a dragon'));
+        expect(mockAi.capturedPrompts.first, contains('Red dragon'));
+      });
+
+      test('strips markdown code blocks in evaluateCandidates', () async {
+        const jsonResponse =
+            '```json\n{"choice": 1, "reasoning": "accurate", "nextFocus": "shading"}\n```';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateCandidates(
+          userPrompt: 'Draw a dragon',
+          referenceDescription: 'Red dragon',
+          startingCanvasDescription: 'Empty',
+          candidate1Description: 'Candidate 1',
+          candidate2Description: 'Candidate 2',
+          candidate3Description: 'Candidate 3',
+        );
+
+        expect(result, isNotNull);
+        expect(result!['choice'], equals(1));
+        expect(result['reasoning'], equals('accurate'));
+      });
+
+      test('returns error map when response contains error payload', () async {
+        const jsonResponse = '{\n  "error" : "model quota reached"\n}';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateCandidates(
+          userPrompt: 'test',
+          referenceDescription: 'ref',
+          startingCanvasDescription: 'start',
+          candidate1Description: 'c1',
+          candidate2Description: 'c2',
+          candidate3Description: 'c3',
+        );
+
+        expect(result, isNotNull);
+        expect(result!['error'], equals('model quota reached'));
+        expect(result['rawResponse'], equals(jsonResponse));
+      });
+
+      test(
+        'catches malformed JSON and returns formatted error map with rawResponse N/A',
+        () async {
+          const jsonResponse = '{invalid_json: 123}';
+          final mockAi = TestMockAiService(response: jsonResponse);
+
+          final result = await mockAi.evaluateCandidates(
+            userPrompt: 'test',
+            referenceDescription: 'ref',
+            startingCanvasDescription: 'start',
+            candidate1Description: 'c1',
+            candidate2Description: 'c2',
+            candidate3Description: 'c3',
+          );
+
+          expect(result, isNotNull);
+          expect(result!['error'], contains('FormatException'));
+          expect(result['rawResponse'], equals('N/A'));
+        },
+      );
+
+      test('returns null when parsed JSON is not a Map', () async {
+        const jsonResponse = '[1, 2, 3]';
+        final mockAi = TestMockAiService(response: jsonResponse);
+
+        final result = await mockAi.evaluateCandidates(
+          userPrompt: 'test',
+          referenceDescription: 'ref',
+          startingCanvasDescription: 'start',
+          candidate1Description: 'c1',
+          candidate2Description: 'c2',
+          candidate3Description: 'c3',
+        );
+
+        expect(result, isNull);
+      });
+
+      test('returns null when underlying call returns null', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(response: null);
+          Map<String, dynamic>? result;
+          bool completed = false;
+
+          mockAi
+              .evaluateCandidates(
+                userPrompt: 'test',
+                referenceDescription: 'ref',
+                startingCanvasDescription: 'start',
+                candidate1Description: 'c1',
+                candidate2Description: 'c2',
+                candidate3Description: 'c3',
+              )
+              .then((val) {
+                result = val;
+                completed = true;
+              });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNull);
+        });
+      });
+
+      test('catches thrown exception and returns error map', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(
+            shouldThrow: true,
+            exceptionMessage: 'Timeout',
+          );
+          Map<String, dynamic>? result;
+          bool completed = false;
+
+          mockAi
+              .evaluateCandidates(
+                userPrompt: 'test',
+                referenceDescription: 'ref',
+                startingCanvasDescription: 'start',
+                candidate1Description: 'c1',
+                candidate2Description: 'c2',
+                candidate3Description: 'c3',
+              )
+              .then((val) {
+                result = val;
+                completed = true;
+              });
+
+          async.elapse(const Duration(seconds: 10));
+
+          expect(completed, isTrue);
+          expect(result, isNotNull);
+          expect(result!['error'], contains('Timeout'));
+          expect(result!['rawResponse'], equals('N/A'));
+        });
+      });
+    });
+
+    group('generateContentWithRetry', () {
+      test(
+        'returns response immediately on first successful attempt',
+        () async {
+          final mockAi = TestMockAiService(response: 'instant success.');
+
+          final result = await mockAi.generateContentWithRetry(
+            prompt: 'test prompt',
+            imageBytes: dummyCanvasImage,
+            temperature: 0.1,
+          );
+
+          expect(result, equals('instant success.'));
+          expect(mockAi.callCount, equals(1));
+        },
+      );
+
+      test('retries on error payload and succeeds on next attempt', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(
+            responses: [
+              '{"error": "rate limit exceeded"}',
+              'Success after retry.',
+            ],
+          );
+
+          String? result;
+          bool completed = false;
+
+          mockAi
+              .generateContentWithRetry(
+                prompt: 'test',
+                imageBytes: null,
+                temperature: 0.1,
+              )
+              .then((val) {
+                result = val;
+                completed = true;
+              });
+
+          // Attempt 1 fails immediately, then waits 1000ms.
+          expect(mockAi.callCount, equals(1));
+          expect(completed, isFalse);
+
+          async.elapse(const Duration(milliseconds: 1000));
+
+          expect(completed, isTrue);
+          expect(result, equals('Success after retry.'));
+          expect(mockAi.callCount, equals(2));
+        });
+      });
+
+      test('retries when underlying service throws exception and recovers', () {
+        fakeAsync((async) {
+          int call = 0;
+          final mockAi = TestMockAiService(
+            onGenerateContentRaw:
+                ({
+                  required String prompt,
+                  Uint8List? imageBytes,
+                  double? temperature,
+                  int? maxOutputTokens,
+                }) {
+                  call++;
+                  if (call == 1) throw Exception('Temporary network glitch');
+                  return AiResponse(text: 'Glitch recovered.');
+                },
+          );
+
+          String? result;
+          bool completed = false;
+
+          mockAi
+              .generateContentWithRetry(
+                prompt: 'test',
+                imageBytes: null,
+                temperature: 0.1,
+              )
+              .then((val) {
+                result = val;
+                completed = true;
+              });
+
+          expect(mockAi.callCount, equals(1));
+          expect(completed, isFalse);
+
+          async.elapse(const Duration(milliseconds: 1000));
+
+          expect(completed, isTrue);
+          expect(result, equals('Glitch recovered.'));
+          expect(mockAi.callCount, equals(2));
+        });
+      });
+
+      test('rethrows exception when max retries exceeded on error blocks', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(
+            responses: [
+              '{"error": "fail 1"}',
+              '{"error": "fail 2"}',
+              '{"error": "fail 3"}',
+            ],
+          );
+
+          Object? caughtError;
+          bool completed = false;
+
+          mockAi
+              .generateContentWithRetry(
+                prompt: 'test',
+                imageBytes: null,
+                temperature: 0.1,
+                maxRetries: 3,
+              )
+              .catchError((e) {
+                caughtError = e;
+                completed = true;
+                return null;
+              });
+
+          // Attempt 1: immediate. Wait 1000ms.
+          async.elapse(const Duration(milliseconds: 1000));
+          // Attempt 2: at 1000ms. Wait 2000ms.
+          async.elapse(const Duration(milliseconds: 2000));
+
+          expect(completed, isTrue);
+          expect(caughtError, isA<Exception>());
+          expect(caughtError.toString(), contains('fail 3'));
+          expect(mockAi.callCount, equals(3));
+        });
+      });
+
+      test(
+        'rethrows exception when max retries exceeded on service exceptions',
+        () {
+          fakeAsync((async) {
+            final mockAi = TestMockAiService(
+              shouldThrow: true,
+              exceptionMessage: 'Fatal API error',
+            );
+
+            Object? caughtError;
+            bool completed = false;
+
+            mockAi
+                .generateContentWithRetry(
+                  prompt: 'test',
+                  imageBytes: null,
+                  temperature: 0.1,
+                  maxRetries: 3,
+                )
+                .catchError((e) {
+                  caughtError = e;
+                  completed = true;
+                  return null;
+                });
+
+            // Attempt 1 (0ms) -> delay 1000ms -> Attempt 2 (1000ms) -> delay 2000ms -> Attempt 3 (3000ms)
+            async.elapse(const Duration(milliseconds: 3000));
+
+            expect(completed, isTrue);
+            expect(caughtError, isA<Exception>());
+            expect(caughtError.toString(), contains('Fatal API error'));
+            expect(mockAi.callCount, equals(3));
+          });
+        },
+      );
+
+      test(
+        'returns null when model returns null on all attempts without throwing',
+        () {
+          fakeAsync((async) {
+            final mockAi = TestMockAiService(response: null);
+
+            String? result;
+            bool completed = false;
+
+            mockAi
+                .generateContentWithRetry(
+                  prompt: 'test',
+                  imageBytes: null,
+                  temperature: 0.1,
+                  maxRetries: 3,
+                )
+                .then((val) {
+                  result = val;
+                  completed = true;
+                });
+
+            // Attempt 1 (0ms) -> delay 1000ms -> Attempt 2 (1000ms) -> delay 2000ms -> Attempt 3 (3000ms) -> delay 4000ms -> finish (7000ms)
+            async.elapse(const Duration(milliseconds: 7000));
+
+            expect(completed, isTrue);
+            expect(result, isNull);
+            expect(mockAi.callCount, equals(3));
+          });
+        },
+      );
+
+      test('verifies exponential backoff timing increments', () {
+        fakeAsync((async) {
+          final mockAi = TestMockAiService(
+            responses: [
+              '{"error": "delay test 1"}',
+              '{"error": "delay test 2"}',
+              'Final success.',
+            ],
+          );
+
+          String? result;
+          bool completed = false;
+
+          mockAi
+              .generateContentWithRetry(
+                prompt: 'test',
+                imageBytes: null,
+                temperature: 0.1,
+                maxRetries: 3,
+              )
+              .then((val) {
+                result = val;
+                completed = true;
+              });
+
+          // Attempt 1 at t=0ms
+          expect(mockAi.callCount, equals(1));
+
+          // At t=500ms, attempt 2 should not have run yet (delay is 1000ms)
+          async.elapse(const Duration(milliseconds: 500));
+          expect(mockAi.callCount, equals(1));
+
+          // At t=1000ms, attempt 2 executes
+          async.elapse(const Duration(milliseconds: 500));
+          expect(mockAi.callCount, equals(2));
+
+          // Attempt 2 fails, delay is now 2000ms. At t=2000ms (1000ms after attempt 2), attempt 3 should not have run yet
+          async.elapse(const Duration(milliseconds: 1000));
+          expect(mockAi.callCount, equals(2));
+
+          // At t=3000ms (2000ms after attempt 2), attempt 3 executes and succeeds
+          async.elapse(const Duration(milliseconds: 1000));
+          expect(mockAi.callCount, equals(3));
+          expect(completed, isTrue);
+          expect(result, equals('Final success.'));
+        });
       });
     });
   });

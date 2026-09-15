@@ -221,7 +221,8 @@ List<Color> parsePaletteColors(String responseText) {
 }
 
 extension PixelArtAiServiceExtension on AiService {
-  Future<String?> _generateContentWithRetry({
+  @visibleForTesting
+  Future<String?> generateContentWithRetry({
     required String prompt,
     required Uint8List? imageBytes,
     required double temperature,
@@ -256,6 +257,18 @@ extension PixelArtAiServiceExtension on AiService {
     }
     return null;
   }
+
+  Future<String?> _generateContentWithRetry({
+    required String prompt,
+    required Uint8List? imageBytes,
+    required double temperature,
+    int maxRetries = 3,
+  }) => generateContentWithRetry(
+    prompt: prompt,
+    imageBytes: imageBytes,
+    temperature: temperature,
+    maxRetries: maxRetries,
+  );
 
   Future<Map<String, String>?> describeCanvas({
     required Uint8List canvasImage,
