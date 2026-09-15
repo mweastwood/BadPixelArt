@@ -119,6 +119,7 @@ class ZhipuCloudAiService extends CloudAiService {
     required super.apiKey,
     required super.modelName,
     super.throttlePercentage,
+    super.httpClient,
   });
 
   @override
