@@ -255,5 +255,217 @@ void main() {
       );
       expect(comp1, isNot(equals(comp1.copyWith(isSculpted: false))));
     });
+
+    test(
+      'Single-pass projection calculation across angles and empty grids',
+      () {
+        final grid = [
+          [0, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1],
+        ];
+        // Pixels at (px=1, py=1) and (px=2, py=2)
+
+        // 0 degrees: cos=1, sin=0 => p = px
+        final comp0 = PixelArtComponent(
+          name: 'test',
+          description: 'test',
+          relativeBoundingBox: Rect.zero,
+          grid: grid,
+          gradientAngle: 0.0,
+        );
+        expect(comp0.minP, closeTo(1.0, 1e-6));
+        expect(comp0.maxP, closeTo(2.0, 1e-6));
+
+        // 90 degrees: cos=0, sin=1 => p = py
+        final comp90 = PixelArtComponent(
+          name: 'test',
+          description: 'test',
+          relativeBoundingBox: Rect.zero,
+          grid: grid,
+          gradientAngle: 90.0,
+        );
+        expect(comp90.minP, closeTo(1.0, 1e-6));
+        expect(comp90.maxP, closeTo(2.0, 1e-6));
+
+        // 180 degrees: cos=-1, sin=0 => p = -px => (1,1)-> -1, (2,2)-> -2
+        final comp180 = PixelArtComponent(
+          name: 'test',
+          description: 'test',
+          relativeBoundingBox: Rect.zero,
+          grid: grid,
+          gradientAngle: 180.0,
+        );
+        expect(comp180.minP, closeTo(-2.0, 1e-6));
+        expect(comp180.maxP, closeTo(-1.0, 1e-6));
+
+        // 45 degrees: cos = sin ~ 0.7071 => (1,1)-> 2*cos, (2,2)-> 4*cos
+        final comp45 = PixelArtComponent(
+          name: 'test',
+          description: 'test',
+          relativeBoundingBox: Rect.zero,
+          grid: grid,
+          gradientAngle: 45.0,
+        );
+        expect(comp45.minP, closeTo(2.0 * comp45.cosA, 1e-6));
+        expect(comp45.maxP, closeTo(4.0 * comp45.cosA, 1e-6));
+
+        // Null grid has infinity range
+        final compNull = PixelArtComponent(
+          name: 'null_grid',
+          description: 'test',
+          relativeBoundingBox: Rect.zero,
+          grid: null,
+        );
+        expect(compNull.minP, equals(double.infinity));
+        expect(compNull.maxP, equals(-double.infinity));
+
+        // Empty grid (all 0s) has infinity range
+        final compEmpty = PixelArtComponent(
+          name: 'empty_grid',
+          description: 'test',
+          relativeBoundingBox: Rect.zero,
+          grid: [
+            [0, 0],
+            [0, 0],
+          ],
+        );
+        expect(compEmpty.minP, equals(double.infinity));
+        expect(compEmpty.maxP, equals(-double.infinity));
+      },
+    );
+
+    test('Precomputed parameters forwarding', () {
+      final customOutline = [
+        [1, 0],
+        [0, 1],
+      ];
+      final comp = PixelArtComponent(
+        name: 'custom',
+        description: 'custom precomputed',
+        relativeBoundingBox: Rect.zero,
+        grid: [
+          [1, 1],
+          [1, 1],
+        ],
+        hasInterior: true,
+        minP: 12.5,
+        maxP: 42.0,
+        outlineGrid: customOutline,
+        cosA: 0.5,
+        sinA: 0.866,
+      );
+
+      expect(comp.hasInterior, isTrue);
+      expect(comp.minP, equals(12.5));
+      expect(comp.maxP, equals(42.0));
+      expect(identical(comp.outlineGrid, customOutline), isTrue);
+      expect(comp.cosA, equals(0.5));
+      expect(comp.sinA, equals(0.866));
+    });
+
+    test('Grid & angle invalidation in copyWith', () {
+      final initialGrid = [
+        [0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0],
+      ];
+      final comp = PixelArtComponent(
+        name: 'orig',
+        description: 'orig',
+        relativeBoundingBox: Rect.zero,
+        grid: initialGrid,
+        gradientAngle: 0.0,
+      );
+
+      expect(comp.minP, closeTo(1.0, 1e-6));
+      expect(comp.maxP, closeTo(1.0, 1e-6));
+      expect(comp.cosA, closeTo(1.0, 1e-6));
+      expect(comp.sinA, closeTo(0.0, 1e-6));
+
+      // Invalidate angle: cosA, sinA, minP, maxP recomputed; outlineGrid preserved
+      final rotated = comp.copyWith(gradientAngle: 90.0);
+      expect(rotated.cosA, closeTo(0.0, 1e-6));
+      expect(rotated.sinA, closeTo(1.0, 1e-6));
+      expect(identical(rotated.outlineGrid, comp.outlineGrid), isTrue);
+      expect(rotated.hasInterior, equals(comp.hasInterior));
+
+      // Invalidate grid: hasInterior, outlineGrid, minP, maxP recomputed; cosA, sinA preserved
+      final newGrid = [
+        [1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1],
+      ];
+      final reGridded = comp.copyWith(grid: newGrid);
+      expect(identical(reGridded.outlineGrid, comp.outlineGrid), isFalse);
+      expect(reGridded.cosA, equals(comp.cosA));
+      expect(reGridded.sinA, equals(comp.sinA));
+      expect(reGridded.minP, closeTo(0.0, 1e-6));
+      expect(reGridded.maxP, closeTo(2.0, 1e-6));
+      expect(reGridded.hasInterior, isTrue);
+
+      // Explicit overrides in copyWith take precedence
+      final overridden = comp.copyWith(minP: 99.0, maxP: 100.0);
+      expect(overridden.minP, equals(99.0));
+      expect(overridden.maxP, equals(100.0));
+    });
+
+    test('Zero-allocation grid hashing consistency and efficiency', () {
+      final gridA = [
+        [1, 0, 1],
+        [0, 1, 0],
+      ];
+      final gridB = [
+        [1, 0, 1],
+        [0, 1, 0],
+      ];
+      final gridC = [
+        [1, 0, 0],
+        [0, 1, 0],
+      ];
+
+      final compA = PixelArtComponent(
+        name: 'test',
+        description: 'desc',
+        relativeBoundingBox: Rect.zero,
+        grid: gridA,
+      );
+      final compB = PixelArtComponent(
+        name: 'test',
+        description: 'desc',
+        relativeBoundingBox: Rect.zero,
+        grid: gridB,
+      );
+      final compC = PixelArtComponent(
+        name: 'test',
+        description: 'desc',
+        relativeBoundingBox: Rect.zero,
+        grid: gridC,
+      );
+
+      // Identical grids with different list identities produce identical hashCode and equality
+      expect(compA, equals(compB));
+      expect(compA.hashCode, equals(compB.hashCode));
+
+      // Modified grid produces different hashCode and not equals
+      expect(compA, isNot(equals(compC)));
+      expect(compA.hashCode, isNot(equals(compC.hashCode)));
+
+      // Null grid hashes safely
+      final compNull1 = PixelArtComponent(
+        name: 'null',
+        description: 'null',
+        relativeBoundingBox: Rect.zero,
+        grid: null,
+      );
+      final compNull2 = PixelArtComponent(
+        name: 'null',
+        description: 'null',
+        relativeBoundingBox: Rect.zero,
+        grid: null,
+      );
+      expect(compNull1.hashCode, equals(compNull2.hashCode));
+      expect(compNull1, equals(compNull2));
+    });
   });
 }
