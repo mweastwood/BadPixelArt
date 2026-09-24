@@ -88,6 +88,37 @@ void main() {
         expect(stepPartial.feedback, equals(''));
       },
     );
+
+    test(
+      'fromJson() safely handles floating-point, string-encoded, and malformed colorIndex values',
+      () {
+        // Floating point (double)
+        final stepDouble = PixelArtStepResult.fromJson({'colorIndex': 1.0});
+        expect(stepDouble.colorIndex, equals(1));
+
+        final stepFloat = PixelArtStepResult.fromJson({'colorIndex': 3.7});
+        expect(stepFloat.colorIndex, equals(3));
+
+        // String-encoded integer
+        final stepString = PixelArtStepResult.fromJson({'colorIndex': '2'});
+        expect(stepString.colorIndex, equals(2));
+
+        // Malformed / invalid string
+        final stepInvalid = PixelArtStepResult.fromJson({
+          'colorIndex': 'invalid',
+        });
+        expect(stepInvalid.colorIndex, equals(0));
+
+        // Non-numeric types (e.g. bool, list)
+        final stepBool = PixelArtStepResult.fromJson({'colorIndex': true});
+        expect(stepBool.colorIndex, equals(0));
+
+        final stepList = PixelArtStepResult.fromJson({
+          'colorIndex': [1],
+        });
+        expect(stepList.colorIndex, equals(0));
+      },
+    );
   });
 
   group('Sketch Agents Metadata and System Instruction Unit Tests', () {
