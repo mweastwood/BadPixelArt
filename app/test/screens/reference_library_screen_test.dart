@@ -781,6 +781,53 @@ void main() {
       );
 
       testWidgets(
+        'submitting edit with empty or whitespace-only prompt normalizes prompt to null',
+        (tester) async {
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Initial Title',
+            prompt: 'Initial Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final textFields = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          );
+
+          await tester.enterText(textFields.at(0), '   Trimmed Title   ');
+          await tester.enterText(textFields.at(1), '     ');
+
+          await tester.tap(find.widgetWithText(ElevatedButton, 'Save'));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          expect(find.text('Trimmed Title'), findsOneWidget);
+
+          final fromDb = await db.getReferenceImageById(item.id);
+          expect(fromDb?.title, equals('Trimmed Title'));
+          expect(fromDb?.prompt, isNull);
+        },
+      );
+
+      testWidgets(
         'dismissing edit dialog by tapping barrier disposes controllers',
         (tester) async {
           final item = await repository.addReferenceImage(
@@ -885,6 +932,57 @@ void main() {
             tester.widget<TextButton>(cancelButtonFinder).onPressed,
             isNull,
           );
+
+          // Complete save
+          completer.complete();
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          testRepo.onUpdateDetails = null;
+        },
+      );
+
+      testWidgets(
+        'PopScope prevents dismissing edit dialog via barrier tap while saving is in progress',
+        (tester) async {
+          final completer = Completer<void>();
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) => completer.future;
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Barrier Saving Title',
+            prompt: 'Barrier Saving Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final saveButtonFinder = find.widgetWithText(ElevatedButton, 'Save');
+          await tester.tap(saveButtonFinder);
+          await tester.pump();
+
+          // Try to dismiss dialog by tapping modal barrier while save is in flight
+          await tester.tapAt(const Offset(10, 10));
+          await tester.pumpAndSettle();
+
+          // Dialog remains open because PopScope has canPop: false
+          expect(find.byType(AlertDialog), findsOneWidget);
 
           // Complete save
           completer.complete();

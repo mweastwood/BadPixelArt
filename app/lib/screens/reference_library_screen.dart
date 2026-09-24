@@ -690,10 +690,11 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
     setState(() => _isSaving = true);
 
     try {
+      final promptText = _promptController.text.trim();
       await widget.repository.updateReferenceImageDetails(
         id: widget.item.id,
-        title: _titleController.text,
-        prompt: _promptController.text,
+        title: _titleController.text.trim(),
+        prompt: promptText.isEmpty ? null : promptText,
       );
       if (!mounted) return;
       widget.onSaved();
@@ -709,39 +710,44 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Reference Details'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: 'Title',
-              border: OutlineInputBorder(),
-            ),
+    return PopScope(
+      canPop: !_isSaving,
+      child: AlertDialog(
+        title: const Text('Edit Reference Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _promptController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Prompt / Description',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _promptController,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Prompt / Description',
-              border: OutlineInputBorder(),
-            ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: _isSaving ? null : _handleSave,
+            child: const Text('Save'),
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _isSaving ? null : _handleSave,
-          child: const Text('Save'),
-        ),
-      ],
     );
   }
 }
