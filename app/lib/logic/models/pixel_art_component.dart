@@ -90,7 +90,62 @@ class PixelArtComponent {
   final double cosA;
   final double sinA;
 
-  PixelArtComponent({
+  factory PixelArtComponent({
+    required String name,
+    required String description,
+    required Rect relativeBoundingBox,
+    List<List<int>>? grid,
+    List<FundamentalShape> shapes = const [],
+    Color? fillColor,
+    Color? fillColor2,
+    double gradientAngle = 90.0,
+    Color? outlineColor,
+    bool isSculpted = false,
+    bool? hasInterior,
+    double? minP,
+    double? maxP,
+    List<List<int>>? outlineGrid,
+    double? cosA,
+    double? sinA,
+  }) {
+    final double computedCosA =
+        cosA ?? math.cos(gradientAngle * (math.pi / 180.0));
+    final double computedSinA =
+        sinA ?? math.sin(gradientAngle * (math.pi / 180.0));
+    final (
+      double computedMinP,
+      double computedMaxP,
+    ) = (minP != null && maxP != null)
+        ? (minP, maxP)
+        : _calculateProjectionRange(
+            grid,
+            computedCosA,
+            computedSinA,
+            explicitMinP: minP,
+            explicitMaxP: maxP,
+          );
+
+    return PixelArtComponent._(
+      name: name,
+      description: description,
+      relativeBoundingBox: relativeBoundingBox,
+      grid: grid,
+      shapes: shapes,
+      fillColor: fillColor,
+      fillColor2: fillColor2,
+      gradientAngle: gradientAngle,
+      outlineColor: outlineColor,
+      isSculpted: isSculpted,
+      hasInterior: hasInterior ?? _calculateHasInterior(grid),
+      minP: computedMinP,
+      maxP: computedMaxP,
+      outlineGrid: outlineGrid ?? _calculateOutlineGrid(grid),
+      cosA: computedCosA,
+      sinA: computedSinA,
+    );
+  }
+
+  const PixelArtComponent._({
     required this.name,
     required this.description,
     required this.relativeBoundingBox,
@@ -101,30 +156,13 @@ class PixelArtComponent {
     this.gradientAngle = 90.0,
     this.outlineColor,
     this.isSculpted = false,
-    bool? hasInterior,
-    double? minP,
-    double? maxP,
-    List<List<int>>? outlineGrid,
-    double? cosA,
-    double? sinA,
-  }) : hasInterior = hasInterior ?? _calculateHasInterior(grid),
-       cosA = cosA ?? math.cos(gradientAngle * (math.pi / 180.0)),
-       sinA = sinA ?? math.sin(gradientAngle * (math.pi / 180.0)),
-       minP =
-           minP ??
-           _calculateMinP(
-             grid,
-             cosA ?? math.cos(gradientAngle * (math.pi / 180.0)),
-             sinA ?? math.sin(gradientAngle * (math.pi / 180.0)),
-           ),
-       maxP =
-           maxP ??
-           _calculateMaxP(
-             grid,
-             cosA ?? math.cos(gradientAngle * (math.pi / 180.0)),
-             sinA ?? math.sin(gradientAngle * (math.pi / 180.0)),
-           ),
-       outlineGrid = outlineGrid ?? _calculateOutlineGrid(grid);
+    required this.hasInterior,
+    required this.minP,
+    required this.maxP,
+    this.outlineGrid,
+    required this.cosA,
+    required this.sinA,
+  });
 
   /// Returns integer pixel grid bounds for this component for a given [gridSize].
   ///
@@ -169,44 +207,51 @@ class PixelArtComponent {
     return false;
   }
 
-  static double _calculateMinP(
+  static (double, double) _calculateProjectionRange(
     List<List<int>>? grid,
     double cosA,
-    double sinA,
-  ) {
-    if (grid == null) return double.infinity;
+    double sinA, {
+    double? explicitMinP,
+    double? explicitMaxP,
+  }) {
+    if (grid == null) {
+      return (
+        explicitMinP ?? double.infinity,
+        explicitMaxP ?? -double.infinity,
+      );
+    }
     final size = grid.length;
+    double minP = explicitMinP ?? double.infinity;
+    double maxP = explicitMaxP ?? -double.infinity;
 
-    double minP = double.infinity;
     for (int py = 0; py < size; py++) {
+      final row = grid[py];
+      final double pySin = py * sinA;
       for (int px = 0; px < size; px++) {
-        if (grid[py][px] > 0) {
-          final p = px * cosA + py * sinA;
-          if (p < minP) minP = p;
+        if (row[px] > 0) {
+          final double p = px * cosA + pySin;
+          if (explicitMinP == null && p < minP) minP = p;
+          if (explicitMaxP == null && p > maxP) maxP = p;
         }
       }
     }
-    return minP;
+    return (minP, maxP);
   }
 
-  static double _calculateMaxP(
-    List<List<int>>? grid,
-    double cosA,
-    double sinA,
-  ) {
-    if (grid == null) return -double.infinity;
+  static int _hashGrid(List<List<int>>? grid) {
+    if (grid == null) return 0;
+    int hash = 1;
     final size = grid.length;
-
-    double maxP = -double.infinity;
-    for (int py = 0; py < size; py++) {
-      for (int px = 0; px < size; px++) {
-        if (grid[py][px] > 0) {
-          final p = px * cosA + py * sinA;
-          if (p > maxP) maxP = p;
-        }
+    for (int y = 0; y < size; y++) {
+      final row = grid[y];
+      int rowHash = 1;
+      final rowLen = row.length;
+      for (int x = 0; x < rowLen; x++) {
+        rowHash = 0x1fffffff & (rowHash * 31 + row[x]);
       }
+      hash = 0x1fffffff & (hash * 31 + rowHash);
     }
-    return maxP;
+    return hash;
   }
 
   static const List<List<double>> bayerMatrix4x4 = [
@@ -402,7 +447,7 @@ class PixelArtComponent {
       name,
       description,
       relativeBoundingBox,
-      grid != null ? Object.hashAll(grid!.map(Object.hashAll)) : null,
+      _hashGrid(grid),
       Object.hashAll(shapes),
       fillColor,
       fillColor2,
@@ -410,16 +455,7 @@ class PixelArtComponent {
       outlineColor,
       isSculpted,
     ),
-    Object.hash(
-      hasInterior,
-      minP,
-      maxP,
-      outlineGrid != null
-          ? Object.hashAll(outlineGrid!.map(Object.hashAll))
-          : null,
-      cosA,
-      sinA,
-    ),
+    Object.hash(hasInterior, minP, maxP, _hashGrid(outlineGrid), cosA, sinA),
   );
 }
 
