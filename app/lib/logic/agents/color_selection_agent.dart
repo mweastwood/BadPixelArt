@@ -145,9 +145,17 @@ Please select color assignments for each component.
           cleanHex = cleanHex.substring(2).trim();
         }
 
-        if (hasPrefix && (cleanHex.length == 3 || cleanHex.length == 4)) {
+        if (hasPrefix && cleanHex.length == 3) {
           cleanHex = cleanHex.split('').map((ch) => '$ch$ch').join();
+        } else if (hasPrefix && cleanHex.length == 4) {
+          final r = cleanHex[0];
+          final g = cleanHex[1];
+          final b = cleanHex[2];
+          final a = cleanHex[3];
+          cleanHex = '$a$a$r$r$g$g$b$b';
         }
+
+        if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(cleanHex)) return null;
 
         final int? val;
         if (cleanHex.length == 6) {

@@ -629,6 +629,11 @@ void main() {
       "name": "comp2",
       "fillColorHex": "0xF00",
       "fillColor2Hex": "#FFF"
+    },
+    {
+      "name": "comp3",
+      "fillColorHex": "#00FF",
+      "outlineColorHex": "0xF00F"
     }
   ]
 }
@@ -647,6 +652,11 @@ void main() {
             description: 'comp 2',
             relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
             grid: List.generate(16, (y) => List.generate(16, (x) => 1)),
+          ),
+          PixelArtComponent(
+            name: 'comp3',
+            description: 'comp 3',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
           ),
         ];
 
@@ -678,6 +688,66 @@ void main() {
           result.updatedComponents[1].fillColor2?.toARGB32(),
           equals(white.toARGB32()),
         );
+        expect(
+          result.updatedComponents[2].fillColor?.toARGB32(),
+          equals(blue.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[2].outlineColor?.toARGB32(),
+          equals(red.toARGB32()),
+        );
+      },
+    );
+
+    test(
+      'suggestColors returns null color for malformed or signed hex strings',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Malformed hex tests",
+  "componentColors": [
+    {
+      "name": "comp1",
+      "fillColorHex": "#GGGGGG",
+      "outlineColorHex": "-1234567"
+    },
+    {
+      "name": "comp2",
+      "fillColorHex": "+123456",
+      "fillColor2Hex": "#ZZZZ"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'comp1',
+            description: 'comp 1',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp2',
+            description: 'comp 2',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            grid: List.generate(16, (y) => List.generate(16, (x) => 1)),
+          ),
+        ];
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [Color(0xFF0000FF), Color(0xFFFF0000)],
+        );
+
+        expect(result, isNotNull);
+        expect(result!.updatedComponents[0].fillColor, isNull);
+        expect(result.updatedComponents[0].outlineColor, isNull);
+        expect(result.updatedComponents[1].fillColor, isNull);
+        expect(result.updatedComponents[1].fillColor2, isNull);
       },
     );
 
