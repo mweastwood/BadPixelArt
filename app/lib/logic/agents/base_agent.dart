@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../models/pixel_art_component.dart';
+import '../utils/json_utils.dart';
 
 export '../models/pixel_art_component.dart';
 
@@ -83,7 +84,7 @@ class PixelArtStepResult {
         );
         return const <num>[];
       }).toList(),
-      colorIndex: json['colorIndex'] as int? ?? 0,
+      colorIndex: parseCoordinateValue(json['colorIndex']) ?? 0,
       feedback: json['feedback'] as String? ?? '',
     );
   }
