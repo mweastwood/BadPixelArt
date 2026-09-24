@@ -139,5 +139,51 @@ void main() {
       expect(grid[4][8], equals(0));
       expect(grid[12][8], equals(0));
     });
+
+    test(
+      'does not drop integer boundary extrema due to floating-point truncation (Pythagorean triple)',
+      () {
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        // cx = -2, cy = -2, rx = 5, ry = 5
+        // At (2, 1): (2 - (-2))^2 + (1 - (-2))^2 = 4^2 + 3^2 = 25 <= 25
+        // At (1, 2): (1 - (-2))^2 + (2 - (-2))^2 = 3^2 + 4^2 = 25 <= 25
+        EllipseFilledCommand(-2, -2, 5, 5).execute(grid, 4, 8);
+
+        expect(
+          grid[1][2],
+          equals(4),
+          reason: 'Boundary pixel (2, 1) should be filled',
+        );
+        expect(
+          grid[2][1],
+          equals(4),
+          reason: 'Boundary pixel (1, 2) should be filled',
+        );
+
+        // Outside boundary points
+        expect(
+          grid[1][3],
+          equals(0),
+          reason: 'Point (3, 1) has dist^2 = 5^2 + 3^2 = 34 > 25',
+        );
+        expect(
+          grid[2][2],
+          equals(0),
+          reason: 'Point (2, 2) has dist^2 = 4^2 + 4^2 = 32 > 25',
+        );
+      },
+    );
+
+    test('fills boundary pole pixels when |y - cy| == ry', () {
+      final grid = List.generate(7, (_) => List.filled(7, 0));
+      EllipseFilledCommand(3, 3, 3, 2).execute(grid, 5, 7);
+
+      expect(grid[1][3], equals(5), reason: 'Top pole (3, 1) must be filled');
+      expect(
+        grid[5][3],
+        equals(5),
+        reason: 'Bottom pole (3, 5) must be filled',
+      );
+    });
   });
 }
