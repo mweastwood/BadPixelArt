@@ -670,16 +670,25 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _promptController;
   bool _isSaving = false;
+  String? _titleError;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.item.title);
     _promptController = TextEditingController(text: widget.item.prompt ?? '');
+    _titleController.addListener(_onTitleChanged);
+  }
+
+  void _onTitleChanged() {
+    if (_titleError != null && _titleController.text.trim().isNotEmpty) {
+      setState(() => _titleError = null);
+    }
   }
 
   @override
   void dispose() {
+    _titleController.removeListener(_onTitleChanged);
     _titleController.dispose();
     _promptController.dispose();
     super.dispose();
@@ -687,13 +696,25 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
 
   Future<void> _handleSave() async {
     if (_isSaving) return;
-    setState(() => _isSaving = true);
+
+    final trimmedTitle = _titleController.text.trim();
+    if (trimmedTitle.isEmpty) {
+      setState(() {
+        _titleError = 'Title cannot be empty';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _titleError = null;
+    });
 
     try {
       final promptText = _promptController.text.trim();
       await widget.repository.updateReferenceImageDetails(
         id: widget.item.id,
-        title: _titleController.text.trim(),
+        title: trimmedTitle,
         prompt: promptText.isEmpty ? null : promptText,
       );
       if (!mounted) return;
@@ -719,15 +740,20 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                key: const ValueKey('edit_reference_title_field'),
                 controller: _titleController,
-                decoration: const InputDecoration(
+                enabled: !_isSaving,
+                decoration: InputDecoration(
                   labelText: 'Title',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
+                  errorText: _titleError,
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
+                key: const ValueKey('edit_reference_prompt_field'),
                 controller: _promptController,
+                enabled: !_isSaving,
                 maxLines: 3,
                 decoration: const InputDecoration(
                   labelText: 'Prompt / Description',
@@ -739,10 +765,12 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
         ),
         actions: [
           TextButton(
+            key: const ValueKey('edit_reference_cancel_button'),
             onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
+            key: const ValueKey('edit_reference_save_button'),
             onPressed: _isSaving ? null : _handleSave,
             child: const Text('Save'),
           ),
