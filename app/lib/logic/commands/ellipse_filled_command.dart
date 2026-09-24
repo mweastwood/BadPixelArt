@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'base_command.dart';
 
 /// Command to draw a filled ellipse.
@@ -17,20 +19,22 @@ class EllipseFilledCommand implements DrawingCommand {
 
     final double rxVal = rx < 0.5 ? 0.5 : rx.toDouble();
     final double ryVal = ry < 0.5 ? 0.5 : ry.toDouble();
+    final double invRy = 1.0 / ryVal;
 
-    final int minX = (cx - rxVal).floor().clamp(0, gridSize - 1);
-    final int maxX = (cx + rxVal).ceil().clamp(0, gridSize - 1);
     final int minY = (cy - ryVal).floor().clamp(0, gridSize - 1);
     final int maxY = (cy + ryVal).ceil().clamp(0, gridSize - 1);
 
     for (int y = minY; y <= maxY; y++) {
-      for (int x = minX; x <= maxX; x++) {
-        final double dx = (x - cx) / rxVal;
-        final double dy = (y - cy) / ryVal;
-        final double dist = dx * dx + dy * dy;
-        if (dist <= 1.0) {
-          grid[y][x] = color;
-        }
+      final double normY = (y - cy) * invRy;
+      final double normYSq = normY * normY;
+      if (normYSq > 1.0) continue;
+
+      final double halfW = rxVal * math.sqrt(1.0 - normYSq);
+      final int rowMinX = (cx - halfW).ceil().clamp(0, gridSize - 1);
+      final int rowMaxX = (cx + halfW).floor().clamp(0, gridSize - 1);
+
+      if (rowMinX <= rowMaxX) {
+        grid[y].fillRange(rowMinX, rowMaxX + 1, color);
       }
     }
   }
