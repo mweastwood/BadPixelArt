@@ -171,6 +171,12 @@ void main() {
         final cleared = model.copyWith(clearUserPrompt: true);
         expect(cleared.userPrompt, equals(''));
 
+        final clearedWithOverride = model.copyWith(
+          userPrompt: 'temporary prompt',
+          clearUserPrompt: true,
+        );
+        expect(clearedWithOverride.userPrompt, equals(''));
+
         final overridden = model.copyWith(userPrompt: 'new prompt');
         expect(overridden.userPrompt, equals('new prompt'));
 
@@ -188,6 +194,10 @@ void main() {
       expect(model1 == model3, isFalse);
       expect(model1.hashCode == model2.hashCode, isFalse);
       expect(model1.hashCode == model3.hashCode, isFalse);
+
+      final emptyModel = createSampleModel(userPrompt: '');
+      expect(model3 == emptyModel, isTrue);
+      expect(model3.hashCode == emptyModel.hashCode, isTrue);
     });
 
     test(
