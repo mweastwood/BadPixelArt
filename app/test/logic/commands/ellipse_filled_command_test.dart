@@ -101,6 +101,27 @@ void main() {
       },
     );
 
+    test(
+      'handles ellipse completely outside grid horizontally without filling pixels',
+      () {
+        final gridRight = List.generate(8, (_) => List.filled(8, 0));
+        EllipseFilledCommand(20, 4, 3, 3).execute(gridRight, 7, 8);
+        for (final row in gridRight) {
+          for (final pixel in row) {
+            expect(pixel, equals(0));
+          }
+        }
+
+        final gridLeft = List.generate(8, (_) => List.filled(8, 0));
+        EllipseFilledCommand(-10, 4, 2, 2).execute(gridLeft, 7, 8);
+        for (final row in gridLeft) {
+          for (final pixel in row) {
+            expect(pixel, equals(0));
+          }
+        }
+      },
+    );
+
     test('correctly fills asymmetric ellipse on 16x16 grid', () {
       final grid = List.generate(16, (_) => List.filled(16, 0));
       EllipseFilledCommand(8, 8, 6, 3).execute(grid, 2, 16);

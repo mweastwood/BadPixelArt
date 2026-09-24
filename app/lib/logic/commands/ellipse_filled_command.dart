@@ -21,17 +21,21 @@ class EllipseFilledCommand implements DrawingCommand {
     final double ryVal = ry < 0.5 ? 0.5 : ry.toDouble();
     final double invRy = 1.0 / ryVal;
 
-    final int minY = (cy - ryVal).floor().clamp(0, gridSize - 1);
-    final int maxY = (cy + ryVal).ceil().clamp(0, gridSize - 1);
+    final int minY = (cy - ryVal).floor();
+    final int maxY = (cy + ryVal).ceil();
+    final int clampedMinY = math.max(0, minY);
+    final int clampedMaxY = math.min(gridSize - 1, maxY);
 
-    for (int y = minY; y <= maxY; y++) {
+    for (int y = clampedMinY; y <= clampedMaxY; y++) {
       final double normY = (y - cy) * invRy;
       final double normYSq = normY * normY;
       if (normYSq > 1.0) continue;
 
-      final double halfW = rxVal * math.sqrt(1.0 - normYSq);
-      final int rowMinX = (cx - halfW).ceil().clamp(0, gridSize - 1);
-      final int rowMaxX = (cx + halfW).floor().clamp(0, gridSize - 1);
+      final double halfW = rxVal * math.sqrt(math.max(0.0, 1.0 - normYSq));
+      final int left = (cx - halfW).ceil();
+      final int right = (cx + halfW).floor();
+      final int rowMinX = math.max(0, left);
+      final int rowMaxX = math.min(gridSize - 1, right);
 
       if (rowMinX <= rowMaxX) {
         grid[y].fillRange(rowMinX, rowMaxX + 1, color);
