@@ -17,7 +17,7 @@ class RotatedRectangleCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
-    if (gridSize <= 0) return;
+    if (gridSize <= 0 || w <= 0 || h <= 0) return;
 
     final double rad = angle * pi / 180.0;
     final double cosA = cos(rad);
@@ -25,22 +25,30 @@ class RotatedRectangleCommand implements DrawingCommand {
     final double hw = w / 2.0;
     final double hh = h / 2.0;
 
-    final int maxR = (sqrt(hw * hw + hh * hh)).ceil() + 1;
+    final int boundW = ((hw * cosA).abs() + (hh * sinA).abs()).ceil();
+    final int boundH = ((hw * sinA).abs() + (hh * cosA).abs()).ceil();
 
-    for (
-      int py = (cy - maxR).clamp(0, gridSize - 1);
-      py <= (cy + maxR).clamp(0, gridSize - 1);
-      py++
-    ) {
-      for (
-        int px = (cx - maxR).clamp(0, gridSize - 1);
-        px <= (cx + maxR).clamp(0, gridSize - 1);
-        px++
-      ) {
+    if (cx + boundW < 0 ||
+        cx - boundW >= gridSize ||
+        cy + boundH < 0 ||
+        cy - boundH >= gridSize) {
+      return;
+    }
+
+    final int minX = (cx - boundW).clamp(0, gridSize - 1);
+    final int maxX = (cx + boundW).clamp(0, gridSize - 1);
+    final int minY = (cy - boundH).clamp(0, gridSize - 1);
+    final int maxY = (cy + boundH).clamp(0, gridSize - 1);
+
+    for (int py = minY; py <= maxY; py++) {
+      final double dy = (py - cy).toDouble();
+      final double dySin = dy * sinA;
+      final double dyCos = dy * cosA;
+
+      for (int px = minX; px <= maxX; px++) {
         final double dx = (px - cx).toDouble();
-        final double dy = (py - cy).toDouble();
-        final double lx = dx * cosA + dy * sinA;
-        final double ly = -dx * sinA + dy * cosA;
+        final double lx = dx * cosA + dySin;
+        final double ly = -dx * sinA + dyCos;
         if (lx.abs() <= hw && ly.abs() <= hh) {
           grid[py][px] = color;
         }
