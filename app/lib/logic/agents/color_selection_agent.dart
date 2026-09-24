@@ -123,14 +123,18 @@ Please select color assignments for each component.
           final name = item['name']?.toString().trim();
           if (name != null && name.isNotEmpty) {
             assignmentMap[name] = item;
-            assignmentMapLower.putIfAbsent(name.toLowerCase(), () => item);
+            assignmentMapLower[name.toLowerCase()] = item;
           }
         }
       }
 
       Color? parseColorHex(String? hex) {
         if (hex == null || hex.trim().isEmpty) return null;
-        var cleanHex = hex.trim();
+        final trimmedHex = hex.trim();
+        final hasPrefix =
+            trimmedHex.startsWith('#') ||
+            trimmedHex.toLowerCase().startsWith('0x');
+        var cleanHex = trimmedHex;
         if (cleanHex.toLowerCase().startsWith('0x')) {
           cleanHex = cleanHex.substring(2).trim();
         }
@@ -139,6 +143,10 @@ Please select color assignments for each component.
         }
         if (cleanHex.toLowerCase().startsWith('0x')) {
           cleanHex = cleanHex.substring(2).trim();
+        }
+
+        if (hasPrefix && (cleanHex.length == 3 || cleanHex.length == 4)) {
+          cleanHex = cleanHex.split('').map((ch) => '$ch$ch').join();
         }
 
         final int? val;
@@ -154,7 +162,10 @@ Please select color assignments for each component.
         final targetColor = Color(val);
         // Find exact match in palette or fall back to the first palette color.
         return palette.firstWhere(
-          (c) => c.toARGB32() == targetColor.toARGB32(),
+          (c) =>
+              c.toARGB32() == targetColor.toARGB32() ||
+              (c.toARGB32() & 0x00FFFFFF) ==
+                  (targetColor.toARGB32() & 0x00FFFFFF),
           orElse: () => palette.first,
         );
       }

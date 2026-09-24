@@ -611,5 +611,183 @@ void main() {
         );
       },
     );
+
+    test(
+      'suggestColors parses shorthand 3-digit and 4-digit hex color strings',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Shorthand hex tests",
+  "componentColors": [
+    {
+      "name": "comp1",
+      "fillColorHex": "#00F",
+      "outlineColorHex": "#000"
+    },
+    {
+      "name": "comp2",
+      "fillColorHex": "0xF00",
+      "fillColor2Hex": "#FFF"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'comp1',
+            description: 'comp 1',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp2',
+            description: 'comp 2',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            grid: List.generate(16, (y) => List.generate(16, (x) => 1)),
+          ),
+        ];
+
+        const blue = Color(0xFF0000FF);
+        const red = Color(0xFFFF0000);
+        const black = Color(0xFF000000);
+        const white = Color(0xFFFFFFFF);
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [blue, red, black, white],
+        );
+
+        expect(result, isNotNull);
+        expect(
+          result!.updatedComponents[0].fillColor?.toARGB32(),
+          equals(blue.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[0].outlineColor?.toARGB32(),
+          equals(black.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[1].fillColor?.toARGB32(),
+          equals(red.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[1].fillColor2?.toARGB32(),
+          equals(white.toARGB32()),
+        );
+      },
+    );
+
+    test(
+      'suggestColors matches palette colors with non-opaque alpha channels by RGB',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Semi-transparent palette matching test",
+  "componentColors": [
+    {
+      "name": "comp1",
+      "fillColorHex": "#0000FF"
+    },
+    {
+      "name": "comp2",
+      "fillColorHex": "#F00"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'comp1',
+            description: 'comp 1',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp2',
+            description: 'comp 2',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        // Non-opaque palette colors (e.g. alpha = 0x80 or 0xAA)
+        const semiTransparentBlue = Color(0x800000FF);
+        const semiTransparentRed = Color(0xAAFF0000);
+        const fallbackColor = Color(0xFF112233);
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [
+            fallbackColor,
+            semiTransparentBlue,
+            semiTransparentRed,
+          ],
+        );
+
+        expect(result, isNotNull);
+        expect(
+          result!.updatedComponents[0].fillColor?.toARGB32(),
+          equals(semiTransparentBlue.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[1].fillColor?.toARGB32(),
+          equals(semiTransparentRed.toARGB32()),
+        );
+      },
+    );
+
+    test(
+      'suggestColors keeps duplicate component name overrides in sync for case-insensitive lookup',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Duplicate component override test",
+  "componentColors": [
+    {
+      "name": "blade",
+      "fillColorHex": "#0000FF"
+    },
+    {
+      "name": "blade",
+      "fillColorHex": "#FF0000"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'BLADE',
+            description: 'blade uppercase',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        const blue = Color(0xFF0000FF);
+        const red = Color(0xFFFF0000);
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [blue, red],
+        );
+
+        expect(result, isNotNull);
+        expect(
+          result!.updatedComponents[0].fillColor?.toARGB32(),
+          equals(red.toARGB32()),
+        );
+      },
+    );
   });
 }
