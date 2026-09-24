@@ -487,5 +487,129 @@ void main() {
         );
       },
     );
+
+    test(
+      'suggestColors performs case-insensitive component name matching',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Case-insensitive test",
+  "componentColors": [
+    {
+      "name": "Blade",
+      "fillColorHex": "#0000FF"
+    },
+    {
+      "name": "hilt",
+      "fillColorHex": "#FF0000"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'solid blade',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'HILT',
+            description: 'solid hilt',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        const blue = Color(0xFF0000FF);
+        const red = Color(0xFFFF0000);
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [blue, red],
+        );
+
+        expect(result, isNotNull);
+        expect(
+          result!.updatedComponents[0].fillColor?.toARGB32(),
+          equals(blue.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[1].fillColor?.toARGB32(),
+          equals(red.toARGB32()),
+        );
+      },
+    );
+
+    test(
+      'suggestColors parses 0x-prefixed and 8-digit ARGB hex color strings',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Hex prefix and ARGB tests",
+  "componentColors": [
+    {
+      "name": "comp1",
+      "fillColorHex": "0x0000FF",
+      "outlineColorHex": "0x000000"
+    },
+    {
+      "name": "comp2",
+      "fillColorHex": "#FF0000FF",
+      "fillColor2Hex": "0xFFFF0000"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'comp1',
+            description: 'comp 1',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp2',
+            description: 'comp 2',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            grid: List.generate(16, (y) => List.generate(16, (x) => 1)),
+          ),
+        ];
+
+        const blue = Color(0xFF0000FF);
+        const red = Color(0xFFFF0000);
+        const black = Color(0xFF000000);
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [blue, red, black],
+        );
+
+        expect(result, isNotNull);
+        expect(
+          result!.updatedComponents[0].fillColor?.toARGB32(),
+          equals(blue.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[0].outlineColor?.toARGB32(),
+          equals(black.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[1].fillColor?.toARGB32(),
+          equals(blue.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[1].fillColor2?.toARGB32(),
+          equals(red.toARGB32()),
+        );
+      },
+    );
   });
 }

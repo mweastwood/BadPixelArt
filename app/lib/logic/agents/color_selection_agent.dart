@@ -117,23 +117,42 @@ Please select color assignments for each component.
           : const [];
 
       final assignmentMap = <String, Map<dynamic, dynamic>>{};
+      final assignmentMapLower = <String, Map<dynamic, dynamic>>{};
       for (final item in colorAssignments) {
         if (item is Map) {
           final name = item['name']?.toString().trim();
           if (name != null && name.isNotEmpty) {
             assignmentMap[name] = item;
+            assignmentMapLower.putIfAbsent(name.toLowerCase(), () => item);
           }
         }
       }
 
       Color? parseColorHex(String? hex) {
         if (hex == null || hex.trim().isEmpty) return null;
-        final cleanHex = hex.trim().replaceAll('#', '');
-        if (cleanHex.length != 6) return null;
-        final val = int.tryParse('FF$cleanHex', radix: 16);
+        var cleanHex = hex.trim();
+        if (cleanHex.toLowerCase().startsWith('0x')) {
+          cleanHex = cleanHex.substring(2).trim();
+        }
+        if (cleanHex.startsWith('#')) {
+          cleanHex = cleanHex.substring(1).trim();
+        }
+        if (cleanHex.toLowerCase().startsWith('0x')) {
+          cleanHex = cleanHex.substring(2).trim();
+        }
+
+        final int? val;
+        if (cleanHex.length == 6) {
+          val = int.tryParse('FF$cleanHex', radix: 16);
+        } else if (cleanHex.length == 8) {
+          val = int.tryParse(cleanHex, radix: 16);
+        } else {
+          return null;
+        }
+
         if (val == null) return null;
         final targetColor = Color(val);
-        // Find closest color in palette
+        // Find exact match in palette or fall back to the first palette color.
         return palette.firstWhere(
           (c) => c.toARGB32() == targetColor.toARGB32(),
           orElse: () => palette.first,
@@ -141,8 +160,10 @@ Please select color assignments for each component.
       }
 
       final updatedComponents = components.map((comp) {
+        final trimmedName = comp.name.trim();
         final assign =
-            assignmentMap[comp.name.trim()] ?? assignmentMap[comp.name];
+            assignmentMap[trimmedName] ??
+            assignmentMapLower[trimmedName.toLowerCase()];
         if (assign == null) return comp;
 
         final fillHex = assign['fillColorHex']?.toString();
