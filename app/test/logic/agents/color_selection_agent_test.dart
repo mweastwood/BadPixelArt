@@ -371,5 +371,121 @@ void main() {
       expect(result!.reasoning, equals('Invalid componentColors shape'));
       expect(result.updatedComponents[0].name, equals('blade'));
     });
+
+    test(
+      'suggestColors defaults non-finite gradientAngle inputs (NaN, Infinity, -Infinity) to 90.0',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Non-finite angle tests",
+  "componentColors": [
+    {
+      "name": "comp_nan",
+      "fillColorHex": "#0000FF",
+      "gradientAngle": "NaN"
+    },
+    {
+      "name": "comp_inf",
+      "fillColorHex": "#0000FF",
+      "gradientAngle": "Infinity"
+    },
+    {
+      "name": "comp_neg_inf",
+      "fillColorHex": "#0000FF",
+      "gradientAngle": "-Infinity"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'comp_nan',
+            description: 'comp nan',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp_inf',
+            description: 'comp inf',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp_neg_inf',
+            description: 'comp neg inf',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [Color(0xFF0000FF)],
+        );
+
+        expect(result, isNotNull);
+        expect(result!.updatedComponents[0].gradientAngle, equals(90.0));
+        expect(result.updatedComponents[1].gradientAngle, equals(90.0));
+        expect(result.updatedComponents[2].gradientAngle, equals(90.0));
+      },
+    );
+
+    test(
+      'suggestColors correctly matches component names with whitespace',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Whitespace matching test",
+  "componentColors": [
+    {
+      "name": "  blade  ",
+      "fillColorHex": "#0000FF"
+    },
+    {
+      "name": "hilt",
+      "fillColorHex": "#FF0000"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'blade',
+            description: 'solid blade',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: '  hilt  ',
+            description: 'solid hilt',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        const blue = Color(0xFF0000FF);
+        const red = Color(0xFFFF0000);
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: const [blue, red],
+        );
+
+        expect(result, isNotNull);
+        expect(
+          result!.updatedComponents[0].fillColor?.toARGB32(),
+          equals(blue.toARGB32()),
+        );
+        expect(
+          result.updatedComponents[1].fillColor?.toARGB32(),
+          equals(red.toARGB32()),
+        );
+      },
+    );
   });
 }

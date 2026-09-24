@@ -119,7 +119,7 @@ Please select color assignments for each component.
       final assignmentMap = <String, Map<dynamic, dynamic>>{};
       for (final item in colorAssignments) {
         if (item is Map) {
-          final name = item['name']?.toString();
+          final name = item['name']?.toString().trim();
           if (name != null && name.isNotEmpty) {
             assignmentMap[name] = item;
           }
@@ -141,13 +141,16 @@ Please select color assignments for each component.
       }
 
       final updatedComponents = components.map((comp) {
-        final assign = assignmentMap[comp.name];
+        final assign =
+            assignmentMap[comp.name.trim()] ?? assignmentMap[comp.name];
         if (assign == null) return comp;
 
         final fillHex = assign['fillColorHex']?.toString();
         final fill2Hex = assign['fillColor2Hex']?.toString();
-        final angle = (parseNumValue(assign['gradientAngle']) ?? 90.0)
-            .toDouble();
+        final parsedAngle = parseNumValue(assign['gradientAngle'])?.toDouble();
+        final angle = (parsedAngle != null && parsedAngle.isFinite)
+            ? parsedAngle
+            : 90.0;
         final outlineHex = assign['outlineColorHex']?.toString();
 
         final fillColor = parseColorHex(fillHex);
