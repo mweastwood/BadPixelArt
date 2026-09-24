@@ -108,10 +108,9 @@ class PixelArtComponent {
     double? cosA,
     double? sinA,
   }) {
-    final double computedCosA =
-        cosA ?? math.cos(gradientAngle * (math.pi / 180.0));
-    final double computedSinA =
-        sinA ?? math.sin(gradientAngle * (math.pi / 180.0));
+    final double rad = gradientAngle * (math.pi / 180.0);
+    final double computedCosA = cosA ?? math.cos(rad);
+    final double computedSinA = sinA ?? math.sin(rad);
     final (
       double computedMinP,
       double computedMaxP,
@@ -188,16 +187,18 @@ class PixelArtComponent {
   }
 
   static bool _calculateHasInterior(List<List<int>>? grid) {
-    if (grid == null) return false;
-    final size = grid.length;
-    for (int y = 0; y < size; y++) {
-      for (int x = 0; x < size; x++) {
-        if (grid[y][x] > 0) {
-          if (y > 0 && y < size - 1 && x > 0 && x < size - 1) {
+    if (grid == null || grid.isEmpty) return false;
+    final height = grid.length;
+    for (int y = 0; y < height; y++) {
+      final row = grid[y];
+      final width = row.length;
+      for (int x = 0; x < width; x++) {
+        if (row[x] > 0) {
+          if (y > 0 && y < height - 1 && x > 0 && x < width - 1) {
             if (grid[y - 1][x] > 0 &&
                 grid[y + 1][x] > 0 &&
-                grid[y][x - 1] > 0 &&
-                grid[y][x + 1] > 0) {
+                row[x - 1] > 0 &&
+                row[x + 1] > 0) {
               return true;
             }
           }
@@ -227,7 +228,8 @@ class PixelArtComponent {
     for (int py = 0; py < size; py++) {
       final row = grid[py];
       final double pySin = py * sinA;
-      for (int px = 0; px < size; px++) {
+      final int rowLen = row.length;
+      for (int px = 0; px < rowLen; px++) {
         if (row[px] > 0) {
           final double p = px * cosA + pySin;
           if (explicitMinP == null && p < minP) minP = p;
@@ -292,19 +294,25 @@ class PixelArtComponent {
 
   static List<List<int>>? _calculateOutlineGrid(List<List<int>>? grid) {
     if (grid == null) return null;
-    final size = grid.length;
-    final outline = List.generate(size, (_) => List.filled(size, 0));
-    for (int y = 0; y < size; y++) {
-      for (int x = 0; x < size; x++) {
-        if (grid[y][x] > 0) {
+    final height = grid.length;
+    if (height == 0) return [];
+    final outline = List.generate(
+      height,
+      (y) => List.filled(grid[y].length, 0),
+    );
+    for (int y = 0; y < height; y++) {
+      final row = grid[y];
+      final width = row.length;
+      for (int x = 0; x < width; x++) {
+        if (row[x] > 0) {
           bool hasBackgroundNeighbor = false;
-          if (y == 0 || y == size - 1 || x == 0 || x == size - 1) {
+          if (y == 0 || y == height - 1 || x == 0 || x == width - 1) {
             hasBackgroundNeighbor = true;
           } else {
             if (grid[y - 1][x] == 0 ||
                 grid[y + 1][x] == 0 ||
-                grid[y][x - 1] == 0 ||
-                grid[y][x + 1] == 0) {
+                row[x - 1] == 0 ||
+                row[x + 1] == 0) {
               hasBackgroundNeighbor = true;
             }
           }

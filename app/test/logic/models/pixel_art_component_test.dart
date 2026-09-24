@@ -335,6 +335,39 @@ void main() {
       },
     );
 
+    test('Projection calculation with rectangular / non-square grids', () {
+      // Tall grid (height > width, 3x2): verify it constructs without throwing RangeError
+      final tallGrid = [
+        [1, 0],
+        [0, 1],
+        [1, 1],
+      ];
+      final tallComp = PixelArtComponent(
+        name: 'tall',
+        description: 'tall grid test',
+        relativeBoundingBox: Rect.zero,
+        grid: tallGrid,
+        gradientAngle: 0.0,
+      );
+      expect(tallComp.minP, closeTo(0.0, 1e-6));
+      expect(tallComp.maxP, closeTo(1.0, 1e-6));
+
+      // Wide grid (width > height, 2x4): verify columns beyond grid.length are included at angle 0°
+      final wideGrid = [
+        [1, 0, 0, 1],
+        [0, 1, 0, 0],
+      ];
+      final wideComp = PixelArtComponent(
+        name: 'wide',
+        description: 'wide grid test',
+        relativeBoundingBox: Rect.zero,
+        grid: wideGrid,
+        gradientAngle: 0.0,
+      );
+      expect(wideComp.minP, closeTo(0.0, 1e-6));
+      expect(wideComp.maxP, closeTo(3.0, 1e-6));
+    });
+
     test('Precomputed parameters forwarding', () {
       final customOutline = [
         [1, 0],
