@@ -606,7 +606,7 @@ class _ReferenceLibraryScreenState
   ) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => _EditReferenceDialog(
+      builder: (_) => _EditReferenceDialog(
         item: item,
         repository: repository,
         onSaved: _refreshList,
@@ -669,6 +669,7 @@ class _EditReferenceDialog extends StatefulWidget {
 class _EditReferenceDialogState extends State<_EditReferenceDialog> {
   late final TextEditingController _titleController;
   late final TextEditingController _promptController;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -682,6 +683,28 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
     _titleController.dispose();
     _promptController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
+
+    try {
+      await widget.repository.updateReferenceImageDetails(
+        id: widget.item.id,
+        title: _titleController.text,
+        prompt: _promptController.text,
+      );
+      if (!mounted) return;
+      widget.onSaved();
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update reference details: $e')),
+      );
+    }
   }
 
   @override
@@ -711,21 +734,11 @@ class _EditReferenceDialogState extends State<_EditReferenceDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: () async {
-            await widget.repository.updateReferenceImageDetails(
-              id: widget.item.id,
-              title: _titleController.text,
-              prompt: _promptController.text,
-            );
-            widget.onSaved();
-            if (context.mounted) {
-              Navigator.of(context).pop();
-            }
-          },
+          onPressed: _isSaving ? null : _handleSave,
           child: const Text('Save'),
         ),
       ],

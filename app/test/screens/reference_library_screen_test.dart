@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -88,6 +89,25 @@ class TrackingCanvasNotifier extends CanvasNotifier {
 
 class TestReferenceLibraryRepository extends ReferenceLibraryRepository {
   TestReferenceLibraryRepository({required super.dbGetter});
+
+  Future<void> Function(int id, String title, String? prompt)? onUpdateDetails;
+
+  @override
+  Future<void> updateReferenceImageDetails({
+    required int id,
+    required String title,
+    String? prompt,
+  }) async {
+    if (onUpdateDetails != null) {
+      await onUpdateDetails!(id, title, prompt);
+      return;
+    }
+    await super.updateReferenceImageDetails(
+      id: id,
+      title: title,
+      prompt: prompt,
+    );
+  }
 
   @override
   Future<ReferenceImage> addReferenceImage({
@@ -805,6 +825,179 @@ void main() {
           expect(find.byType(AlertDialog), findsNothing);
           expect(() => titleController.addListener(() {}), throwsFlutterError);
           expect(() => promptController.addListener(() {}), throwsFlutterError);
+        },
+      );
+
+      testWidgets(
+        'disables Save and Cancel buttons while saving is in progress',
+        (tester) async {
+          final completer = Completer<void>();
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) => completer.future;
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'In Flight Title',
+            prompt: 'In Flight Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final saveButtonFinder = find.widgetWithText(ElevatedButton, 'Save');
+          final cancelButtonFinder = find.widgetWithText(TextButton, 'Cancel');
+
+          // Verify buttons initially enabled
+          expect(
+            tester.widget<ElevatedButton>(saveButtonFinder).onPressed,
+            isNotNull,
+          );
+          expect(
+            tester.widget<TextButton>(cancelButtonFinder).onPressed,
+            isNotNull,
+          );
+
+          // Tap Save button to initiate saving
+          await tester.tap(saveButtonFinder);
+          await tester.pump();
+
+          // While async call is in flight, buttons must be disabled
+          expect(
+            tester.widget<ElevatedButton>(saveButtonFinder).onPressed,
+            isNull,
+          );
+          expect(
+            tester.widget<TextButton>(cancelButtonFinder).onPressed,
+            isNull,
+          );
+
+          // Complete save
+          completer.complete();
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          testRepo.onUpdateDetails = null;
+        },
+      );
+
+      testWidgets(
+        'shows error SnackBar and re-enables buttons when saving fails',
+        (tester) async {
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) async {
+            throw Exception('Disk write failed');
+          };
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Error Title',
+            prompt: 'Error Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final saveButtonFinder = find.widgetWithText(ElevatedButton, 'Save');
+          await tester.tap(saveButtonFinder);
+          await tester.pumpAndSettle();
+
+          // Dialog remains open, SnackBar is shown
+          expect(find.byType(AlertDialog), findsOneWidget);
+          expect(
+            find.text(
+              'Failed to update reference details: Exception: Disk write failed',
+            ),
+            findsOneWidget,
+          );
+          // Save button is re-enabled
+          expect(
+            tester.widget<ElevatedButton>(saveButtonFinder).onPressed,
+            isNotNull,
+          );
+
+          // Cancel to close dialog
+          await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+          await tester.pumpAndSettle();
+          expect(find.byType(AlertDialog), findsNothing);
+          testRepo.onUpdateDetails = null;
+        },
+      );
+
+      testWidgets(
+        'does not call onSaved or pop if dialog unmounts while save is in flight',
+        (tester) async {
+          final completer = Completer<void>();
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) => completer.future;
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Unmount Title',
+            prompt: 'Unmount Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.widgetWithText(ElevatedButton, 'Save'));
+          await tester.pump();
+
+          // Force dismiss dialog while save is still awaiting
+          Navigator.of(tester.element(find.byType(AlertDialog))).pop();
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+
+          // Now complete the save - mounted check should prevent errors
+          completer.complete();
+          await tester.pumpAndSettle();
+
+          testRepo.onUpdateDetails = null;
         },
       );
     });
