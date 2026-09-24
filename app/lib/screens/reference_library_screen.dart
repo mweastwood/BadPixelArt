@@ -604,54 +604,12 @@ class _ReferenceLibraryScreenState
     ReferenceImage item,
     ReferenceLibraryRepository repository,
   ) {
-    final titleController = TextEditingController(text: item.title);
-    final promptController = TextEditingController(text: item.prompt ?? '');
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Reference Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: promptController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Prompt / Description',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await repository.updateReferenceImageDetails(
-                id: item.id,
-                title: titleController.text,
-                prompt: promptController.text,
-              );
-              _refreshList();
-              if (dialogContext.mounted) {
-                Navigator.of(dialogContext).pop();
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (dialogContext) => _EditReferenceDialog(
+        item: item,
+        repository: repository,
+        onSaved: _refreshList,
       ),
     );
   }
@@ -689,6 +647,88 @@ class _ReferenceLibraryScreenState
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EditReferenceDialog extends StatefulWidget {
+  final ReferenceImage item;
+  final ReferenceLibraryRepository repository;
+  final VoidCallback onSaved;
+
+  const _EditReferenceDialog({
+    required this.item,
+    required this.repository,
+    required this.onSaved,
+  });
+
+  @override
+  State<_EditReferenceDialog> createState() => _EditReferenceDialogState();
+}
+
+class _EditReferenceDialogState extends State<_EditReferenceDialog> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _promptController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.item.title);
+    _promptController = TextEditingController(text: widget.item.prompt ?? '');
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _promptController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Reference Details'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(
+              labelText: 'Title',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _promptController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Prompt / Description',
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            await widget.repository.updateReferenceImageDetails(
+              id: widget.item.id,
+              title: _titleController.text,
+              prompt: _promptController.text,
+            );
+            widget.onSaved();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

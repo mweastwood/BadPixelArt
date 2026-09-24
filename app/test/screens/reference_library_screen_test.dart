@@ -678,6 +678,13 @@ void main() {
             of: find.byType(AlertDialog),
             matching: find.byType(TextField),
           );
+          final titleController = tester
+              .widget<TextField>(textFields.at(0))
+              .controller!;
+          final promptController = tester
+              .widget<TextField>(textFields.at(1))
+              .controller!;
+
           await tester.enterText(textFields.at(0), 'Discarded Title');
           await tester.enterText(textFields.at(1), 'Discarded Prompt');
 
@@ -686,6 +693,9 @@ void main() {
 
           expect(find.byType(AlertDialog), findsNothing);
           expect(find.text('Untouched Title'), findsOneWidget);
+
+          expect(() => titleController.addListener(() {}), throwsFlutterError);
+          expect(() => promptController.addListener(() {}), throwsFlutterError);
 
           final fromDb = await db.getReferenceImageById(item.id);
           expect(fromDb?.title, equals('Untouched Title'));
@@ -724,6 +734,13 @@ void main() {
             of: find.byType(AlertDialog),
             matching: find.byType(TextField),
           );
+          final titleController = tester
+              .widget<TextField>(textFields.at(0))
+              .controller!;
+          final promptController = tester
+              .widget<TextField>(textFields.at(1))
+              .controller!;
+
           await tester.enterText(textFields.at(0), 'Saved Title');
           await tester.enterText(textFields.at(1), 'Saved Prompt');
 
@@ -734,9 +751,60 @@ void main() {
           expect(find.text('Saved Title'), findsOneWidget);
           expect(find.text('Initial Title'), findsNothing);
 
+          expect(() => titleController.addListener(() {}), throwsFlutterError);
+          expect(() => promptController.addListener(() {}), throwsFlutterError);
+
           final fromDb = await db.getReferenceImageById(item.id);
           expect(fromDb?.title, equals('Saved Title'));
           expect(fromDb?.prompt, equals('Saved Prompt'));
+        },
+      );
+
+      testWidgets(
+        'dismissing edit dialog by tapping barrier disposes controllers',
+        (tester) async {
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Barrier Title',
+            prompt: 'Barrier Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final textFields = find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(TextField),
+          );
+          final titleController = tester
+              .widget<TextField>(textFields.at(0))
+              .controller!;
+          final promptController = tester
+              .widget<TextField>(textFields.at(1))
+              .controller!;
+
+          // Tap outside the dialog on the modal barrier
+          await tester.tapAt(const Offset(10, 10));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          expect(() => titleController.addListener(() {}), throwsFlutterError);
+          expect(() => promptController.addListener(() {}), throwsFlutterError);
         },
       );
     });
