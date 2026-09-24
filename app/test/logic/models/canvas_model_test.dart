@@ -154,10 +154,50 @@ void main() {
       final updated = model.copyWith(
         title: 'Updated Star',
         clearCreationId: true,
+        clearUserPrompt: true,
       );
 
       expect(updated.title, equals('Updated Star'));
       expect(updated.creationId, isNull);
+      expect(updated.userPrompt, equals(''));
+    });
+
+    test(
+      'CanvasModel copyWith clears userPrompt when clearUserPrompt is true',
+      () {
+        final model = createSampleModel(userPrompt: 'vintage retro spaceship');
+        expect(model.userPrompt, equals('vintage retro spaceship'));
+
+        final cleared = model.copyWith(clearUserPrompt: true);
+        expect(cleared.userPrompt, equals(''));
+
+        final clearedWithOverride = model.copyWith(
+          userPrompt: 'temporary prompt',
+          clearUserPrompt: true,
+        );
+        expect(clearedWithOverride.userPrompt, equals(''));
+
+        final overridden = model.copyWith(userPrompt: 'new prompt');
+        expect(overridden.userPrompt, equals('new prompt'));
+
+        final preserved = model.copyWith();
+        expect(preserved.userPrompt, equals('vintage retro spaceship'));
+      },
+    );
+
+    test('Modifying userPrompt evaluates as unequal', () {
+      final model1 = createSampleModel(userPrompt: 'Prompt A');
+      final model2 = createSampleModel(userPrompt: 'Prompt B');
+      final model3 = model1.copyWith(clearUserPrompt: true);
+
+      expect(model1 == model2, isFalse);
+      expect(model1 == model3, isFalse);
+      expect(model1.hashCode == model2.hashCode, isFalse);
+      expect(model1.hashCode == model3.hashCode, isFalse);
+
+      final emptyModel = createSampleModel(userPrompt: '');
+      expect(model3 == emptyModel, isTrue);
+      expect(model3.hashCode == emptyModel.hashCode, isTrue);
     });
 
     test(
