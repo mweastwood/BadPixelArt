@@ -159,5 +159,217 @@ void main() {
         expect(result, isNull);
       },
     );
+
+    test('suggestColors parses string-typed gradientAngle correctly', () async {
+      final mockAi = TestMockAiService(
+        response: '''
+{
+  "reasoning": "Selected palette with string-typed angle",
+  "componentColors": [
+    {
+      "name": "blade",
+      "fillColorHex": "#0000FF",
+      "fillColor2Hex": "#FF0000",
+      "gradientAngle": "45.0",
+      "outlineColorHex": "#000000"
+    }
+  ]
+}
+''',
+      );
+      final agent = ColorSelectionAgent(mockAi);
+
+      final solidGrid = List.generate(
+        16,
+        (y) => List.generate(
+          16,
+          (x) => (x >= 1 && x <= 5 && y >= 1 && y <= 5) ? 1 : 0,
+        ),
+      );
+
+      final components = [
+        PixelArtComponent(
+          name: 'blade',
+          description: 'solid blade',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: solidGrid,
+        ),
+      ];
+
+      const blue = Color(0xFF0000FF);
+      const red = Color(0xFFFF0000);
+      const black = Color(0xFF000000);
+      final palette = [black, blue, red];
+
+      final result = await agent.suggestColors(
+        userPrompt: 'magic sword',
+        components: components,
+        palette: palette,
+      );
+
+      expect(result, isNotNull);
+      expect(
+        result!.reasoning,
+        equals('Selected palette with string-typed angle'),
+      );
+      final blade = result.updatedComponents[0];
+      expect(blade.fillColor?.toARGB32(), equals(blue.toARGB32()));
+      expect(blade.fillColor2?.toARGB32(), equals(red.toARGB32()));
+      expect(blade.gradientAngle, equals(45.0));
+    });
+
+    test(
+      'suggestColors defaults missing or unparseable gradientAngle to 90.0 and supports integer strings',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": "Angle tests",
+  "componentColors": [
+    {
+      "name": "comp1",
+      "fillColorHex": "#0000FF",
+      "gradientAngle": "invalid_angle"
+    },
+    {
+      "name": "comp2",
+      "fillColorHex": "#0000FF"
+    },
+    {
+      "name": "comp3",
+      "fillColorHex": "#0000FF",
+      "gradientAngle": "180"
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: 'comp1',
+            description: 'comp 1',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp2',
+            description: 'comp 2',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'comp3',
+            description: 'comp 3',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        const blue = Color(0xFF0000FF);
+        final palette = [blue];
+
+        final result = await agent.suggestColors(
+          userPrompt: 'test',
+          components: components,
+          palette: palette,
+        );
+
+        expect(result, isNotNull);
+        expect(result!.updatedComponents[0].gradientAngle, equals(90.0));
+        expect(result.updatedComponents[1].gradientAngle, equals(90.0));
+        expect(result.updatedComponents[2].gradientAngle, equals(180.0));
+      },
+    );
+
+    test(
+      'suggestColors gracefully handles non-string or numeric fields without throwing TypeError',
+      () async {
+        final mockAi = TestMockAiService(
+          response: '''
+{
+  "reasoning": 12345,
+  "componentColors": [
+    {
+      "name": 1,
+      "fillColorHex": 123,
+      "gradientAngle": "90",
+      "outlineColorHex": 456
+    },
+    {
+      "name": "blade",
+      "fillColorHex": 12345,
+      "fillColor2Hex": 8888,
+      "gradientAngle": null,
+      "outlineColorHex": false
+    }
+  ]
+}
+''',
+        );
+        final agent = ColorSelectionAgent(mockAi);
+
+        final components = [
+          PixelArtComponent(
+            name: '1',
+            description: 'numbered component',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+          PixelArtComponent(
+            name: 'blade',
+            description: 'solid blade',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          ),
+        ];
+
+        final result = await agent.suggestColors(
+          userPrompt: 'magic sword',
+          components: components,
+          palette: const [Color(0xFF000000)],
+        );
+
+        expect(result, isNotNull);
+        expect(result!.reasoning, equals('12345'));
+
+        final numberedComp = result.updatedComponents[0];
+        expect(numberedComp.name, equals('1'));
+        expect(numberedComp.gradientAngle, equals(90.0));
+        expect(numberedComp.fillColor, isNull);
+
+        final blade = result.updatedComponents[1];
+        expect(blade.fillColor, isNull);
+        expect(blade.fillColor2, isNull);
+        expect(blade.outlineColor, isNull);
+        expect(blade.gradientAngle, equals(90.0));
+      },
+    );
+
+    test('suggestColors safely handles non-list componentColors', () async {
+      final mockAi = TestMockAiService(
+        response: '''
+{
+  "reasoning": "Invalid componentColors shape",
+  "componentColors": "not_a_list"
+}
+''',
+      );
+      final agent = ColorSelectionAgent(mockAi);
+
+      final components = [
+        PixelArtComponent(
+          name: 'blade',
+          description: 'solid blade',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+        ),
+      ];
+
+      final result = await agent.suggestColors(
+        userPrompt: 'magic sword',
+        components: components,
+        palette: const [Color(0xFF000000)],
+      );
+
+      expect(result, isNotNull);
+      expect(result!.reasoning, equals('Invalid componentColors shape'));
+      expect(result.updatedComponents[0].name, equals('blade'));
+    });
   });
 }

@@ -110,14 +110,19 @@ Please select color assignments for each component.
       }
 
       final reasoning =
-          decoded['reasoning'] as String? ??
+          decoded['reasoning']?.toString() ??
           'Suggested colors based on active palette.';
-      final colorAssignments = decoded['componentColors'] as List? ?? [];
+      final colorAssignments = decoded['componentColors'] is List
+          ? (decoded['componentColors'] as List)
+          : const [];
 
-      final assignmentMap = <String, Map<String, dynamic>>{};
+      final assignmentMap = <String, Map<dynamic, dynamic>>{};
       for (final item in colorAssignments) {
-        if (item is Map<String, dynamic> && item['name'] != null) {
-          assignmentMap[item['name'] as String] = item;
+        if (item is Map) {
+          final name = item['name']?.toString();
+          if (name != null && name.isNotEmpty) {
+            assignmentMap[name] = item;
+          }
         }
       }
 
@@ -139,10 +144,11 @@ Please select color assignments for each component.
         final assign = assignmentMap[comp.name];
         if (assign == null) return comp;
 
-        final fillHex = assign['fillColorHex'] as String?;
-        final fill2Hex = assign['fillColor2Hex'] as String?;
-        final angle = (assign['gradientAngle'] as num?)?.toDouble() ?? 90.0;
-        final outlineHex = assign['outlineColorHex'] as String?;
+        final fillHex = assign['fillColorHex']?.toString();
+        final fill2Hex = assign['fillColor2Hex']?.toString();
+        final angle = (parseNumValue(assign['gradientAngle']) ?? 90.0)
+            .toDouble();
+        final outlineHex = assign['outlineColorHex']?.toString();
 
         final fillColor = parseColorHex(fillHex);
         final fillColor2 = comp.hasInterior ? parseColorHex(fill2Hex) : null;
