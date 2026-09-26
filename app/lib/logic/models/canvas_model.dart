@@ -129,7 +129,7 @@ class CanvasModel {
       originalReferenceImage: clearReference
           ? null
           : (originalReferenceImage ?? this.originalReferenceImage),
-      userPrompt: userPrompt ?? this.userPrompt,
+      userPrompt: clearUserPrompt ? '' : (userPrompt ?? this.userPrompt),
       aiStatus: aiStatus ?? this.aiStatus,
       isGenerating: isGenerating ?? this.isGenerating,
       autoRun: autoRun ?? this.autoRun,
