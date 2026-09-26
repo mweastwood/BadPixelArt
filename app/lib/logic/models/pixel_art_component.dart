@@ -279,6 +279,7 @@ class PixelArtComponent {
     String? description,
     Rect? relativeBoundingBox,
     List<List<int>>? grid,
+    bool clearGrid = false,
     List<FundamentalShape>? shapes,
     Color? Function()? fillColor,
     Color? Function()? fillColor2,
@@ -292,9 +293,9 @@ class PixelArtComponent {
     double? cosA,
     double? sinA,
   }) {
-    final newGrid = grid ?? this.grid;
+    final newGrid = clearGrid ? null : (grid ?? this.grid);
     final newGradientAngle = gradientAngle ?? this.gradientAngle;
-    final gridChanged = grid != null && grid != this.grid;
+    final gridChanged = clearGrid || (grid != null && grid != this.grid);
     final angleChanged =
         gradientAngle != null && gradientAngle != this.gradientAngle;
 

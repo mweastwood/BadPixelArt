@@ -1015,7 +1015,10 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   void resetComponentGrid(int index) {
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
-      updated[index] = updated[index].copyWith(grid: null, isSculpted: false);
+      updated[index] = updated[index].copyWith(
+        clearGrid: true,
+        isSculpted: false,
+      );
       state = state.copyWith(decomposedComponents: updated);
     }
   }

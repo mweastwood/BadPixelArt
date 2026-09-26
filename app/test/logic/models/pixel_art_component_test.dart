@@ -255,5 +255,28 @@ void main() {
       );
       expect(comp1, isNot(equals(comp1.copyWith(isSculpted: false))));
     });
+
+    test(
+      'copyWith with clearGrid: true resets grid to null and recalculates metrics',
+      () {
+        final comp = PixelArtComponent(
+          name: 'test',
+          description: 'desc',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: [
+            [1, 1],
+            [1, 1],
+          ],
+          isSculpted: true,
+        );
+
+        expect(comp.grid, isNotNull);
+        final cleared = comp.copyWith(clearGrid: true, isSculpted: false);
+        expect(cleared.grid, isNull);
+        expect(cleared.isSculpted, isFalse);
+        expect(cleared.hasInterior, isFalse);
+        expect(cleared.outlineGrid, isNull);
+      },
+    );
   });
 }
