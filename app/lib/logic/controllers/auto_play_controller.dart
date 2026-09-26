@@ -20,46 +20,45 @@ class AutoPlayWizardController {
 
     notifier.setAutoRunState(autoRun: true, isPausing: false);
 
-    while (notifier.model.autoRun) {
-      if (notifier.model.isPausing) {
-        notifier.setAutoRunState(autoRun: false, isPausing: false);
-        break;
+    try {
+      while (notifier.model.autoRun) {
+        if (notifier.model.isPausing) {
+          break;
+        }
+
+        final wizard = wizardNotifier.wizard;
+        final currentStepDef = wizardNotifier.currentStepDefinition;
+
+        bool success = false;
+        try {
+          success = await currentStepDef.executeAutoPlay(notifier);
+        } catch (e) {
+          break;
+        }
+
+        if (!success || !notifier.model.autoRun || notifier.model.isPausing) {
+          break;
+        }
+
+        final currentIndex = wizard.indexOfStep(currentStepDef.step);
+        if (currentIndex >= wizard.steps.length - 1) {
+          return;
+        }
+
+        if (stepDelay > Duration.zero) {
+          await Future.delayed(stepDelay);
+        }
+        if (!notifier.model.autoRun || notifier.model.isPausing) break;
+
+        final nextStepDef = wizard.steps[currentIndex + 1];
+        wizardNotifier.autoAdvance(nextStepDef.step);
+
+        if (notifier.model.isPausing) {
+          break;
+        }
       }
-
-      final wizard = wizardNotifier.wizard;
-      final currentStepDef = wizardNotifier.currentStepDefinition;
-
-      bool success = false;
-      try {
-        success = await currentStepDef.executeAutoPlay(notifier);
-      } catch (e) {
-        notifier.setAutoRunState(autoRun: false, isPausing: false);
-        break;
-      }
-
-      if (!success || !notifier.model.autoRun || notifier.model.isPausing) {
-        notifier.setAutoRunState(autoRun: false, isPausing: false);
-        break;
-      }
-
-      final currentIndex = wizard.indexOfStep(currentStepDef.step);
-      if (currentIndex >= wizard.steps.length - 1) {
-        notifier.setAutoRunState(autoRun: false, isPausing: false);
-        return;
-      }
-
-      if (stepDelay > Duration.zero) {
-        await Future.delayed(stepDelay);
-      }
-      if (!notifier.model.autoRun || notifier.model.isPausing) break;
-
-      final nextStepDef = wizard.steps[currentIndex + 1];
-      wizardNotifier.autoAdvance(nextStepDef.step);
-
-      if (notifier.model.isPausing) {
-        notifier.setAutoRunState(autoRun: false, isPausing: false);
-        break;
-      }
+    } finally {
+      notifier.setAutoRunState(autoRun: false, isPausing: false);
     }
   }
 }

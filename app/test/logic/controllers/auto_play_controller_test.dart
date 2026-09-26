@@ -101,6 +101,69 @@ void main() {
     });
 
     test(
+      'startAutoPlay resets isPausing and autoRun when paused during stepDelay',
+      () async {
+        controller = const AutoPlayWizardController(
+          stepDelay: Duration(milliseconds: 50),
+        );
+        wizardNotifier.setStep(WizardStep.selectGridSize);
+        canvasNotifier.state = canvasNotifier.state.copyWith(
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+        );
+
+        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
+
+        // Allow selectGridSize executeAutoPlay to complete and enter stepDelay
+        await Future.delayed(const Duration(milliseconds: 10));
+        expect(canvasNotifier.state.autoRun, isTrue);
+
+        // Pause while stepDelay is active
+        canvasNotifier.setAutoRunState(autoRun: true, isPausing: true);
+
+        await future;
+
+        expect(canvasNotifier.state.isPausing, isFalse);
+        expect(canvasNotifier.state.autoRun, isFalse);
+        expect(
+          wizardNotifier.state.currentStep,
+          equals(WizardStep.selectGridSize),
+        );
+      },
+    );
+
+    test(
+      'can resume AutoPlay after pause during stepDelay without being blocked by stale autoRun',
+      () async {
+        controller = const AutoPlayWizardController(
+          stepDelay: Duration(milliseconds: 50),
+        );
+        wizardNotifier.setStep(WizardStep.selectGridSize);
+        canvasNotifier.state = canvasNotifier.state.copyWith(
+          referenceImage: Uint8List.fromList([1, 2, 3]),
+        );
+
+        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
+        await Future.delayed(const Duration(milliseconds: 10));
+
+        // Trigger pause during stepDelay
+        canvasNotifier.setAutoRunState(autoRun: true, isPausing: true);
+        await future;
+
+        expect(canvasNotifier.state.autoRun, isFalse);
+        expect(canvasNotifier.state.isPausing, isFalse);
+
+        // Resume AutoPlay with zero delay to verify it's not locked out
+        controller = const AutoPlayWizardController(stepDelay: Duration.zero);
+        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
+
+        expect(
+          wizardNotifier.state.currentStep,
+          isNot(equals(WizardStep.selectGridSize)),
+        );
+      },
+    );
+
+    test(
       'startAutoPlay finishes when reaching WizardStep.refinement',
       () async {
         wizardNotifier.setStep(WizardStep.refinement);
