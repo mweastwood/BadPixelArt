@@ -267,10 +267,65 @@ void main() {
     test(
       'migration onUpgrade does not recreate tables when from version is >= 2',
       () async {
+        // Seed initial data across tables
+        final now = DateTime.now();
+        final creationId = await db.createCreation(
+          CreationsCompanion(
+            title: const drift.Value('Pre-migration Creation'),
+            gridSize: const drift.Value(16),
+            gridData: const drift.Value('[[1]]'),
+            paletteName: const drift.Value('primary'),
+            paletteColors: const drift.Value('["#FFFF0000"]'),
+            decomposedComponents: const drift.Value('[]'),
+            aiHistoryLogs: const drift.Value('[]'),
+            createdAt: drift.Value(now),
+            updatedAt: drift.Value(now),
+          ),
+        );
+        expect(creationId, isPositive);
+
+        final refId = await db.createReferenceImage(
+          ReferenceImagesCompanion(
+            title: const drift.Value('Pre-migration Ref'),
+            imageData: drift.Value(Uint8List.fromList([1, 2, 3])),
+            createdAt: drift.Value(now),
+            updatedAt: drift.Value(now),
+          ),
+        );
+        expect(refId, isPositive);
+
+        await db.saveSession(
+          WorkspaceSessionsCompanion(
+            id: const drift.Value(1),
+            activeCreationId: drift.Value(creationId),
+            selectedColorIndex: const drift.Value(2),
+            selectedTool: const drift.Value('pencil'),
+            userPrompt: const drift.Value('test prompt'),
+            lastSavedAt: drift.Value(now),
+          ),
+        );
+
         final migrator = db.createMigrator();
         // Calling onUpgrade with from >= 2 should evaluate from < 2 to false and be a no-op
-        await db.migration.onUpgrade(migrator, 2, 2);
-        await db.migration.onUpgrade(migrator, 2, 3);
+        await expectLater(db.migration.onUpgrade(migrator, 2, 2), completes);
+        await expectLater(db.migration.onUpgrade(migrator, 2, 3), completes);
+
+        // Verify existing data across all tables was preserved
+        final creations = await db.getAllCreations();
+        expect(creations, hasLength(1));
+        expect(creations.first.id, equals(creationId));
+        expect(creations.first.title, equals('Pre-migration Creation'));
+
+        final refImages = await db.getAllReferenceImages();
+        expect(refImages, hasLength(1));
+        expect(refImages.first.id, equals(refId));
+        expect(refImages.first.title, equals('Pre-migration Ref'));
+
+        final session = await db.getSession();
+        expect(session, isNotNull);
+        expect(session!.activeCreationId, equals(creationId));
+        expect(session.selectedTool, equals('pencil'));
+        expect(session.userPrompt, equals('test prompt'));
       },
     );
   });
