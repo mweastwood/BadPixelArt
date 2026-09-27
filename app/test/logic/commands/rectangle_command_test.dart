@@ -53,6 +53,15 @@ void main() {
       expect(grid[3], equals([0, 0, 0, 0]));
     });
 
+    test('clips rectangle extending beyond upper grid boundary safely', () {
+      final grid = List.generate(4, (_) => List.filled(4, 0));
+      RectangleCommand(2, 2, 5, 5).execute(grid, 3, 4);
+      expect(grid[0], equals([0, 0, 0, 0]));
+      expect(grid[1], equals([0, 0, 0, 0]));
+      expect(grid[2], equals([0, 0, 3, 3]));
+      expect(grid[3], equals([0, 0, 3, 0]));
+    });
+
     test(
       'leaves grid unaltered when rectangle is completely out of bounds',
       () {

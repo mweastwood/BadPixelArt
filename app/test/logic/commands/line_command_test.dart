@@ -38,6 +38,15 @@ void main() {
       expect(grid[3][1], equals(8));
     });
 
+    test('draws a shallow diagonal line where dx > dy', () {
+      final grid = List.generate(4, (_) => List.filled(4, 0));
+      LineCommand(0, 0, 3, 1).execute(grid, 8, 4);
+      expect(grid[0][0], equals(8));
+      expect(grid[0][1], equals(8));
+      expect(grid[1][2], equals(8));
+      expect(grid[1][3], equals(8));
+    });
+
     test('direction reversibility produces identical rasterization', () {
       final forwardHorizontal = List.generate(4, (_) => List.filled(4, 0));
       final reverseHorizontal = List.generate(4, (_) => List.filled(4, 0));

@@ -55,6 +55,18 @@ void main() {
     );
 
     test(
+      'clips filled rectangle extending beyond upper grid boundary safely',
+      () {
+        final grid = List.generate(4, (_) => List.filled(4, 0));
+        RectangleFilledCommand(2, 2, 5, 5).execute(grid, 5, 4);
+        expect(grid[0], equals([0, 0, 0, 0]));
+        expect(grid[1], equals([0, 0, 0, 0]));
+        expect(grid[2], equals([0, 0, 5, 5]));
+        expect(grid[3], equals([0, 0, 5, 5]));
+      },
+    );
+
+    test(
       'leaves grid unaltered when filled rectangle is completely out of bounds',
       () {
         final grid = List.generate(4, (_) => List.filled(4, 0));

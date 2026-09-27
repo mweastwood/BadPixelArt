@@ -57,6 +57,18 @@ void main() {
     );
 
     test(
+      'clips hatched rectangle extending beyond upper grid boundary safely',
+      () {
+        final grid = List.generate(4, (_) => List.filled(4, 0));
+        RectangleHatchedCommand(2, 2, 5, 5).execute(grid, 8, 4);
+        expect(grid[0], equals([0, 0, 0, 0]));
+        expect(grid[1], equals([0, 0, 0, 0]));
+        expect(grid[2], equals([0, 0, 8, 0]));
+        expect(grid[3], equals([0, 0, 0, 8]));
+      },
+    );
+
+    test(
       'leaves grid unaltered when hatched rectangle is completely out of bounds',
       () {
         final grid = List.generate(4, (_) => List.filled(4, 0));
