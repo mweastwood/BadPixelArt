@@ -604,54 +604,12 @@ class _ReferenceLibraryScreenState
     ReferenceImage item,
     ReferenceLibraryRepository repository,
   ) {
-    final titleController = TextEditingController(text: item.title);
-    final promptController = TextEditingController(text: item.prompt ?? '');
-
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Edit Reference Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: 'Title',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: promptController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Prompt / Description',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              await repository.updateReferenceImageDetails(
-                id: item.id,
-                title: titleController.text,
-                prompt: promptController.text,
-              );
-              _refreshList();
-              if (dialogContext.mounted) {
-                Navigator.of(dialogContext).pop();
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
+      builder: (_) => _EditReferenceDialog(
+        item: item,
+        repository: repository,
+        onSaved: _refreshList,
       ),
     );
   }
@@ -686,6 +644,135 @@ class _ReferenceLibraryScreenState
               }
             },
             child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditReferenceDialog extends StatefulWidget {
+  final ReferenceImage item;
+  final ReferenceLibraryRepository repository;
+  final VoidCallback onSaved;
+
+  const _EditReferenceDialog({
+    required this.item,
+    required this.repository,
+    required this.onSaved,
+  });
+
+  @override
+  State<_EditReferenceDialog> createState() => _EditReferenceDialogState();
+}
+
+class _EditReferenceDialogState extends State<_EditReferenceDialog> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _promptController;
+  bool _isSaving = false;
+  String? _titleError;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.item.title);
+    _promptController = TextEditingController(text: widget.item.prompt ?? '');
+    _titleController.addListener(_onTitleChanged);
+  }
+
+  void _onTitleChanged() {
+    if (_titleError != null && _titleController.text.trim().isNotEmpty) {
+      setState(() => _titleError = null);
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.removeListener(_onTitleChanged);
+    _titleController.dispose();
+    _promptController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSave() async {
+    if (_isSaving) return;
+
+    final trimmedTitle = _titleController.text.trim();
+    if (trimmedTitle.isEmpty) {
+      setState(() {
+        _titleError = 'Title cannot be empty';
+      });
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _titleError = null;
+    });
+
+    try {
+      final promptText = _promptController.text.trim();
+      await widget.repository.updateReferenceImageDetails(
+        id: widget.item.id,
+        title: trimmedTitle,
+        prompt: promptText.isEmpty ? null : promptText,
+      );
+      if (!mounted) return;
+      widget.onSaved();
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update reference details: $e')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isSaving,
+      child: AlertDialog(
+        title: const Text('Edit Reference Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                key: const ValueKey('edit_reference_title_field'),
+                controller: _titleController,
+                enabled: !_isSaving,
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  border: const OutlineInputBorder(),
+                  errorText: _titleError,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('edit_reference_prompt_field'),
+                controller: _promptController,
+                enabled: !_isSaving,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Prompt / Description',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            key: const ValueKey('edit_reference_cancel_button'),
+            onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            key: const ValueKey('edit_reference_save_button'),
+            onPressed: _isSaving ? null : _handleSave,
+            child: const Text('Save'),
           ),
         ],
       ),

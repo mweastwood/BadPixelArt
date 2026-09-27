@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
@@ -88,6 +89,25 @@ class TrackingCanvasNotifier extends CanvasNotifier {
 
 class TestReferenceLibraryRepository extends ReferenceLibraryRepository {
   TestReferenceLibraryRepository({required super.dbGetter});
+
+  Future<void> Function(int id, String title, String? prompt)? onUpdateDetails;
+
+  @override
+  Future<void> updateReferenceImageDetails({
+    required int id,
+    required String title,
+    String? prompt,
+  }) async {
+    if (onUpdateDetails != null) {
+      await onUpdateDetails!(id, title, prompt);
+      return;
+    }
+    await super.updateReferenceImageDetails(
+      id: id,
+      title: title,
+      prompt: prompt,
+    );
+  }
 
   @override
   Future<ReferenceImage> addReferenceImage({
@@ -633,17 +653,26 @@ void main() {
         expect(find.byType(AlertDialog), findsOneWidget);
         expect(find.text('Edit Reference Details'), findsOneWidget);
 
-        final textFields = find.descendant(
-          of: find.byType(AlertDialog),
-          matching: find.byType(TextField),
+        final titleFinder = find.byKey(
+          const ValueKey('edit_reference_title_field'),
         );
-        expect(textFields, findsNWidgets(2));
-        final titleField = tester.widget<TextField>(textFields.at(0));
-        expect(titleField.controller?.text, equals('Original Title'));
-        final promptField = tester.widget<TextField>(textFields.at(1));
-        expect(promptField.controller?.text, equals('Original Prompt'));
+        final promptFinder = find.byKey(
+          const ValueKey('edit_reference_prompt_field'),
+        );
+        expect(titleFinder, findsOneWidget);
+        expect(promptFinder, findsOneWidget);
 
-        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        final titleField = tester.widget<TextField>(titleFinder);
+        expect(titleField.controller?.text, equals('Original Title'));
+        expect(titleField.enabled, isTrue);
+
+        final promptField = tester.widget<TextField>(promptFinder);
+        expect(promptField.controller?.text, equals('Original Prompt'));
+        expect(promptField.enabled, isTrue);
+
+        await tester.tap(
+          find.byKey(const ValueKey('edit_reference_cancel_button')),
+        );
         await tester.pumpAndSettle();
       });
 
@@ -674,18 +703,32 @@ void main() {
           await tester.tap(find.text('Edit Title & Prompt'));
           await tester.pumpAndSettle();
 
-          final textFields = find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.byType(TextField),
+          final titleFinder = find.byKey(
+            const ValueKey('edit_reference_title_field'),
           );
-          await tester.enterText(textFields.at(0), 'Discarded Title');
-          await tester.enterText(textFields.at(1), 'Discarded Prompt');
+          final promptFinder = find.byKey(
+            const ValueKey('edit_reference_prompt_field'),
+          );
+          final titleController = tester
+              .widget<TextField>(titleFinder)
+              .controller!;
+          final promptController = tester
+              .widget<TextField>(promptFinder)
+              .controller!;
 
-          await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+          await tester.enterText(titleFinder, 'Discarded Title');
+          await tester.enterText(promptFinder, 'Discarded Prompt');
+
+          await tester.tap(
+            find.byKey(const ValueKey('edit_reference_cancel_button')),
+          );
           await tester.pumpAndSettle();
 
           expect(find.byType(AlertDialog), findsNothing);
           expect(find.text('Untouched Title'), findsOneWidget);
+
+          expect(() => titleController.addListener(() {}), throwsFlutterError);
+          expect(() => promptController.addListener(() {}), throwsFlutterError);
 
           final fromDb = await db.getReferenceImageById(item.id);
           expect(fromDb?.title, equals('Untouched Title'));
@@ -720,23 +763,466 @@ void main() {
           await tester.tap(find.text('Edit Title & Prompt'));
           await tester.pumpAndSettle();
 
-          final textFields = find.descendant(
-            of: find.byType(AlertDialog),
-            matching: find.byType(TextField),
+          final titleFinder = find.byKey(
+            const ValueKey('edit_reference_title_field'),
           );
-          await tester.enterText(textFields.at(0), 'Saved Title');
-          await tester.enterText(textFields.at(1), 'Saved Prompt');
+          final promptFinder = find.byKey(
+            const ValueKey('edit_reference_prompt_field'),
+          );
+          final titleController = tester
+              .widget<TextField>(titleFinder)
+              .controller!;
+          final promptController = tester
+              .widget<TextField>(promptFinder)
+              .controller!;
 
-          await tester.tap(find.widgetWithText(ElevatedButton, 'Save'));
+          await tester.enterText(titleFinder, 'Saved Title');
+          await tester.enterText(promptFinder, 'Saved Prompt');
+
+          await tester.tap(
+            find.byKey(const ValueKey('edit_reference_save_button')),
+          );
           await tester.pumpAndSettle();
 
           expect(find.byType(AlertDialog), findsNothing);
           expect(find.text('Saved Title'), findsOneWidget);
           expect(find.text('Initial Title'), findsNothing);
 
+          expect(() => titleController.addListener(() {}), throwsFlutterError);
+          expect(() => promptController.addListener(() {}), throwsFlutterError);
+
           final fromDb = await db.getReferenceImageById(item.id);
           expect(fromDb?.title, equals('Saved Title'));
           expect(fromDb?.prompt, equals('Saved Prompt'));
+        },
+      );
+
+      testWidgets(
+        'submitting edit with empty or whitespace-only prompt normalizes prompt to null',
+        (tester) async {
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Initial Title',
+            prompt: 'Initial Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final titleFinder = find.byKey(
+            const ValueKey('edit_reference_title_field'),
+          );
+          final promptFinder = find.byKey(
+            const ValueKey('edit_reference_prompt_field'),
+          );
+
+          await tester.enterText(titleFinder, '   Trimmed Title   ');
+          await tester.enterText(promptFinder, '     ');
+
+          await tester.tap(
+            find.byKey(const ValueKey('edit_reference_save_button')),
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          expect(find.text('Trimmed Title'), findsOneWidget);
+
+          final fromDb = await db.getReferenceImageById(item.id);
+          expect(fromDb?.title, equals('Trimmed Title'));
+          expect(fromDb?.prompt, isNull);
+        },
+      );
+
+      testWidgets(
+        'validates non-empty title, displays error message, and prevents saving when title is empty or whitespace-only',
+        (tester) async {
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Initial Title',
+            prompt: 'Initial Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final titleFinder = find.byKey(
+            const ValueKey('edit_reference_title_field'),
+          );
+          final saveButtonFinder = find.byKey(
+            const ValueKey('edit_reference_save_button'),
+          );
+
+          // Clear title text (empty string)
+          await tester.enterText(titleFinder, '');
+          await tester.tap(saveButtonFinder);
+          await tester.pumpAndSettle();
+
+          // Dialog remains open and displays validation error message
+          expect(find.byType(AlertDialog), findsOneWidget);
+          expect(find.text('Title cannot be empty'), findsOneWidget);
+
+          // Test whitespace-only string
+          await tester.enterText(titleFinder, '    ');
+          await tester.tap(saveButtonFinder);
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsOneWidget);
+          expect(find.text('Title cannot be empty'), findsOneWidget);
+
+          // Verify database was untouched
+          final fromDb = await db.getReferenceImageById(item.id);
+          expect(fromDb?.title, equals('Initial Title'));
+
+          // Entering valid text clears error message
+          await tester.enterText(titleFinder, 'Valid New Title');
+          await tester.pumpAndSettle();
+          expect(find.text('Title cannot be empty'), findsNothing);
+
+          // Now save succeeds
+          await tester.tap(saveButtonFinder);
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          final updatedDb = await db.getReferenceImageById(item.id);
+          expect(updatedDb?.title, equals('Valid New Title'));
+        },
+      );
+
+      testWidgets(
+        'dismissing edit dialog by tapping barrier disposes controllers',
+        (tester) async {
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Barrier Title',
+            prompt: 'Barrier Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final titleFinder = find.byKey(
+            const ValueKey('edit_reference_title_field'),
+          );
+          final promptFinder = find.byKey(
+            const ValueKey('edit_reference_prompt_field'),
+          );
+          final titleController = tester
+              .widget<TextField>(titleFinder)
+              .controller!;
+          final promptController = tester
+              .widget<TextField>(promptFinder)
+              .controller!;
+
+          // Tap outside the dialog on the modal barrier
+          await tester.tapAt(const Offset(10, 10));
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          expect(() => titleController.addListener(() {}), throwsFlutterError);
+          expect(() => promptController.addListener(() {}), throwsFlutterError);
+        },
+      );
+
+      testWidgets(
+        'disables TextField inputs, Save, and Cancel buttons while saving is in progress',
+        (tester) async {
+          final completer = Completer<void>();
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) => completer.future;
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'In Flight Title',
+            prompt: 'In Flight Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final titleFinder = find.byKey(
+            const ValueKey('edit_reference_title_field'),
+          );
+          final promptFinder = find.byKey(
+            const ValueKey('edit_reference_prompt_field'),
+          );
+          final saveButtonFinder = find.byKey(
+            const ValueKey('edit_reference_save_button'),
+          );
+          final cancelButtonFinder = find.byKey(
+            const ValueKey('edit_reference_cancel_button'),
+          );
+
+          // Verify inputs and buttons initially enabled
+          expect(tester.widget<TextField>(titleFinder).enabled, isTrue);
+          expect(tester.widget<TextField>(promptFinder).enabled, isTrue);
+          expect(
+            tester.widget<ElevatedButton>(saveButtonFinder).onPressed,
+            isNotNull,
+          );
+          expect(
+            tester.widget<TextButton>(cancelButtonFinder).onPressed,
+            isNotNull,
+          );
+
+          // Tap Save button to initiate saving
+          await tester.tap(saveButtonFinder);
+          await tester.pump();
+
+          // While async call is in flight, inputs and buttons must be disabled
+          expect(tester.widget<TextField>(titleFinder).enabled, isFalse);
+          expect(tester.widget<TextField>(promptFinder).enabled, isFalse);
+          expect(
+            tester.widget<ElevatedButton>(saveButtonFinder).onPressed,
+            isNull,
+          );
+          expect(
+            tester.widget<TextButton>(cancelButtonFinder).onPressed,
+            isNull,
+          );
+
+          // Complete save
+          completer.complete();
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          testRepo.onUpdateDetails = null;
+        },
+      );
+
+      testWidgets(
+        'PopScope prevents dismissing edit dialog via barrier tap while saving is in progress',
+        (tester) async {
+          final completer = Completer<void>();
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) => completer.future;
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Barrier Saving Title',
+            prompt: 'Barrier Saving Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final saveButtonFinder = find.byKey(
+            const ValueKey('edit_reference_save_button'),
+          );
+          await tester.tap(saveButtonFinder);
+          await tester.pump();
+
+          // Try to dismiss dialog by tapping modal barrier while save is in flight
+          await tester.tapAt(const Offset(10, 10));
+          await tester.pumpAndSettle();
+
+          // Dialog remains open because PopScope has canPop: false
+          expect(find.byType(AlertDialog), findsOneWidget);
+
+          // Complete save
+          completer.complete();
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+          testRepo.onUpdateDetails = null;
+        },
+      );
+
+      testWidgets(
+        'shows error SnackBar and re-enables inputs and buttons when saving fails',
+        (tester) async {
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) async {
+            throw Exception('Disk write failed');
+          };
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Error Title',
+            prompt: 'Error Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          final titleFinder = find.byKey(
+            const ValueKey('edit_reference_title_field'),
+          );
+          final promptFinder = find.byKey(
+            const ValueKey('edit_reference_prompt_field'),
+          );
+          final saveButtonFinder = find.byKey(
+            const ValueKey('edit_reference_save_button'),
+          );
+
+          expect(tester.widget<TextField>(titleFinder).enabled, isTrue);
+          expect(tester.widget<TextField>(promptFinder).enabled, isTrue);
+
+          await tester.tap(saveButtonFinder);
+          await tester.pumpAndSettle();
+
+          // Dialog remains open, SnackBar is shown
+          expect(find.byType(AlertDialog), findsOneWidget);
+          expect(
+            find.text(
+              'Failed to update reference details: Exception: Disk write failed',
+            ),
+            findsOneWidget,
+          );
+          // Inputs and Save button are re-enabled
+          expect(tester.widget<TextField>(titleFinder).enabled, isTrue);
+          expect(tester.widget<TextField>(promptFinder).enabled, isTrue);
+          expect(
+            tester.widget<ElevatedButton>(saveButtonFinder).onPressed,
+            isNotNull,
+          );
+
+          // Cancel to close dialog
+          await tester.tap(
+            find.byKey(const ValueKey('edit_reference_cancel_button')),
+          );
+          await tester.pumpAndSettle();
+          expect(find.byType(AlertDialog), findsNothing);
+          testRepo.onUpdateDetails = null;
+        },
+      );
+
+      testWidgets(
+        'does not call onSaved or pop if dialog unmounts while save is in flight',
+        (tester) async {
+          final completer = Completer<void>();
+          final testRepo = repository as TestReferenceLibraryRepository;
+          testRepo.onUpdateDetails = (id, title, prompt) => completer.future;
+
+          final item = await repository.addReferenceImage(
+            imageBytes: sampleBmp,
+            title: 'Unmount Title',
+            prompt: 'Unmount Prompt',
+          );
+
+          await tester.pumpWidget(
+            buildTestableWidget(
+              overrides: [
+                referenceLibraryRepositoryProvider.overrideWithValue(
+                  repository,
+                ),
+              ],
+              child: const ReferenceLibraryScreen(),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.byKey(ValueKey('reference_menu_${item.id}')));
+          await tester.pumpAndSettle();
+
+          await tester.tap(find.text('Edit Title & Prompt'));
+          await tester.pumpAndSettle();
+
+          await tester.tap(
+            find.byKey(const ValueKey('edit_reference_save_button')),
+          );
+          await tester.pump();
+
+          // Force dismiss dialog while save is still awaiting
+          Navigator.of(tester.element(find.byType(AlertDialog))).pop();
+          await tester.pumpAndSettle();
+
+          expect(find.byType(AlertDialog), findsNothing);
+
+          // Now complete the save - mounted check should prevent errors
+          completer.complete();
+          await tester.pumpAndSettle();
+
+          testRepo.onUpdateDetails = null;
         },
       );
     });
