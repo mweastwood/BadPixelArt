@@ -110,39 +110,88 @@ Please select color assignments for each component.
       }
 
       final reasoning =
-          decoded['reasoning'] as String? ??
+          decoded['reasoning']?.toString() ??
           'Suggested colors based on active palette.';
-      final colorAssignments = decoded['componentColors'] as List? ?? [];
+      final colorAssignments = decoded['componentColors'] is List
+          ? (decoded['componentColors'] as List)
+          : const [];
 
-      final assignmentMap = <String, Map<String, dynamic>>{};
+      final assignmentMap = <String, Map<dynamic, dynamic>>{};
+      final assignmentMapLower = <String, Map<dynamic, dynamic>>{};
       for (final item in colorAssignments) {
-        if (item is Map<String, dynamic> && item['name'] != null) {
-          assignmentMap[item['name'] as String] = item;
+        if (item is Map) {
+          final name = item['name']?.toString().trim();
+          if (name != null && name.isNotEmpty) {
+            assignmentMap[name] = item;
+            assignmentMapLower[name.toLowerCase()] = item;
+          }
         }
       }
 
       Color? parseColorHex(String? hex) {
         if (hex == null || hex.trim().isEmpty) return null;
-        final cleanHex = hex.trim().replaceAll('#', '');
-        if (cleanHex.length != 6) return null;
-        final val = int.tryParse('FF$cleanHex', radix: 16);
+        final trimmedHex = hex.trim();
+        final hasPrefix =
+            trimmedHex.startsWith('#') ||
+            trimmedHex.toLowerCase().startsWith('0x');
+        var cleanHex = trimmedHex;
+        if (cleanHex.toLowerCase().startsWith('0x')) {
+          cleanHex = cleanHex.substring(2).trim();
+        }
+        if (cleanHex.startsWith('#')) {
+          cleanHex = cleanHex.substring(1).trim();
+        }
+        if (cleanHex.toLowerCase().startsWith('0x')) {
+          cleanHex = cleanHex.substring(2).trim();
+        }
+
+        if (hasPrefix && cleanHex.length == 3) {
+          cleanHex = cleanHex.split('').map((ch) => '$ch$ch').join();
+        } else if (hasPrefix && cleanHex.length == 4) {
+          final r = cleanHex[0];
+          final g = cleanHex[1];
+          final b = cleanHex[2];
+          final a = cleanHex[3];
+          cleanHex = '$a$a$r$r$g$g$b$b';
+        }
+
+        if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(cleanHex)) return null;
+
+        final int? val;
+        if (cleanHex.length == 6) {
+          val = int.tryParse('FF$cleanHex', radix: 16);
+        } else if (cleanHex.length == 8) {
+          val = int.tryParse(cleanHex, radix: 16);
+        } else {
+          return null;
+        }
+
         if (val == null) return null;
         final targetColor = Color(val);
-        // Find closest color in palette
+        // Find exact match in palette or fall back to the first palette color.
         return palette.firstWhere(
-          (c) => c.toARGB32() == targetColor.toARGB32(),
+          (c) =>
+              c.toARGB32() == targetColor.toARGB32() ||
+              (c.toARGB32() & 0x00FFFFFF) ==
+                  (targetColor.toARGB32() & 0x00FFFFFF),
           orElse: () => palette.first,
         );
       }
 
       final updatedComponents = components.map((comp) {
-        final assign = assignmentMap[comp.name];
+        final trimmedName = comp.name.trim();
+        final assign =
+            assignmentMap[trimmedName] ??
+            assignmentMapLower[trimmedName.toLowerCase()];
         if (assign == null) return comp;
 
-        final fillHex = assign['fillColorHex'] as String?;
-        final fill2Hex = assign['fillColor2Hex'] as String?;
-        final angle = (assign['gradientAngle'] as num?)?.toDouble() ?? 90.0;
-        final outlineHex = assign['outlineColorHex'] as String?;
+        final fillHex = assign['fillColorHex']?.toString();
+        final fill2Hex = assign['fillColor2Hex']?.toString();
+        final parsedAngle = parseNumValue(assign['gradientAngle'])?.toDouble();
+        final angle = (parsedAngle != null && parsedAngle.isFinite)
+            ? parsedAngle
+            : 90.0;
+        final outlineHex = assign['outlineColorHex']?.toString();
 
         final fillColor = parseColorHex(fillHex);
         final fillColor2 = comp.hasInterior ? parseColorHex(fill2Hex) : null;
