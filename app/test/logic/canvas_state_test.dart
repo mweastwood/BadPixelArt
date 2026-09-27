@@ -1263,7 +1263,7 @@ void main() {
 
       group('deleteComponent', () {
         test(
-          'removes middle component and preserves activeComponentIndex when within bounds',
+          'removes component at index 0 and preserves activeComponentIndex when within bounds',
           () {
             final notifier = container.read(canvasStateProvider.notifier);
             final compA = PixelArtComponent(
@@ -1287,12 +1287,48 @@ void main() {
               activeComponentIndex: 1,
             );
 
-            // Delete component at index 0 (middle active component is now at index 1 in the 2-element list)
+            // Deleting component at index 0 (compA) shifts compB to index 0 and leaves activeComponentIndex at 1 pointing to compC
             notifier.deleteComponent(0);
 
             final state = container.read(canvasStateProvider);
             expect(state.decomposedComponents.length, equals(2));
             expect(state.decomposedComponents[0].name, equals('B'));
+            expect(state.decomposedComponents[1].name, equals('C'));
+            expect(state.activeComponentIndex, equals(1));
+          },
+        );
+
+        test(
+          'removes middle component (index 1) and preserves activeComponentIndex when within bounds',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compA = PixelArtComponent(
+              name: 'A',
+              description: 'Part A',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+            );
+            final compB = PixelArtComponent(
+              name: 'B',
+              description: 'Part B',
+              relativeBoundingBox: const Rect.fromLTWH(0.5, 0, 0.5, 0.5),
+            );
+            final compC = PixelArtComponent(
+              name: 'C',
+              description: 'Part C',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0.5, 0.5, 0.5),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compA, compB, compC],
+              activeComponentIndex: 1,
+            );
+
+            // Delete middle component at index 1: remaining components are [compA, compC] and activeComponentIndex remains 1 pointing to compC
+            notifier.deleteComponent(1);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents.length, equals(2));
+            expect(state.decomposedComponents[0].name, equals('A'));
             expect(state.decomposedComponents[1].name, equals('C'));
             expect(state.activeComponentIndex, equals(1));
           },

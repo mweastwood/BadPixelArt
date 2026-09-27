@@ -174,7 +174,7 @@ class PixelArtComponent {
     double cosA,
     double sinA,
   ) {
-    if (grid == null) return double.infinity;
+    if (grid == null) return 0.0;
     final size = grid.length;
 
     double minP = double.infinity;
@@ -194,7 +194,7 @@ class PixelArtComponent {
     double cosA,
     double sinA,
   ) {
-    if (grid == null) return -double.infinity;
+    if (grid == null) return 0.0;
     final size = grid.length;
 
     double maxP = -double.infinity;
@@ -293,6 +293,10 @@ class PixelArtComponent {
     double? cosA,
     double? sinA,
   }) {
+    assert(
+      !clearGrid || grid == null,
+      'Cannot specify both clearGrid: true and a new grid',
+    );
     final newGrid = clearGrid ? null : (grid ?? this.grid);
     final newGradientAngle = gradientAngle ?? this.gradientAngle;
     final gridChanged = clearGrid || (grid != null && grid != this.grid);
