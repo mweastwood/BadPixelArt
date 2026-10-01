@@ -22,16 +22,24 @@ class EllipseCommand implements DrawingCommand {
     final double invRx = 1.0 / rxVal;
     final double invRy = 1.0 / ryVal;
 
-    final int minX = math.max(0, (cx - rxVal - 1).floor());
-    final int maxX = math.min(gridSize - 1, (cx + rxVal + 1).ceil());
-    final int minY = math.max(0, (cy - ryVal - 1).floor());
-    final int maxY = math.min(gridSize - 1, (cy + ryVal + 1).ceil());
+    // Threshold 0.35 allows dist up to 1.35. The maximum extent along either
+    // axis is sqrt(1.35) * radius. An epsilon guard prevents float truncation.
+    const double maxScale = 1.161895003862225; // math.sqrt(1.35)
+    const double eps = 1e-10;
+    final double maxRx = rxVal * maxScale + eps;
+    final double maxRy = ryVal * maxScale + eps;
+
+    final int minX = math.max(0, (cx - maxRx).floor());
+    final int maxX = math.min(gridSize - 1, (cx + maxRx).ceil());
+    final int minY = math.max(0, (cy - maxRy).floor());
+    final int maxY = math.min(gridSize - 1, (cy + maxRy).ceil());
 
     if (minX > maxX || minY > maxY) return;
 
     for (int y = minY; y <= maxY; y++) {
       final double dy = (y - cy) * invRy;
       final double dySq = dy * dy;
+      if (dySq > 1.35) continue;
 
       for (int x = minX; x <= maxX; x++) {
         final double dx = (x - cx) * invRx;

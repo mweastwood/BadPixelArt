@@ -152,5 +152,45 @@ void main() {
         }
       },
     );
+
+    test(
+      'preserves cardinal pole pixels for radii >= 7 without bounding box clipping',
+      () {
+        final grid = List.generate(32, (_) => List.filled(32, 0));
+        EllipseCommand(15, 15, 13, 13).execute(grid, 5, 32);
+
+        // Cardinal poles at distance 15 from center (15, 15):
+        // Left pole (x = 0, y = 14..16)
+        expect(grid[14][0], equals(5));
+        expect(grid[15][0], equals(5));
+        expect(grid[16][0], equals(5));
+
+        // Right pole (x = 30, y = 14..16)
+        expect(grid[14][30], equals(5));
+        expect(grid[15][30], equals(5));
+        expect(grid[16][30], equals(5));
+
+        // Top pole (y = 0, x = 14..16)
+        expect(grid[0][14], equals(5));
+        expect(grid[0][15], equals(5));
+        expect(grid[0][16], equals(5));
+
+        // Bottom pole (y = 30, x = 14..16)
+        expect(grid[30][14], equals(5));
+        expect(grid[30][15], equals(5));
+        expect(grid[30][16], equals(5));
+      },
+    );
+
+    test(
+      'renders boundary intersection for ellipse centered outside canvas without premature early return',
+      () {
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        // Center is at (-15, 0), rx=13, ry=13. Pixel (0, 0) satisfies dist = (15/13)^2 ≈ 1.331 <= 1.35
+        EllipseCommand(-15, 0, 13, 13).execute(grid, 4, 8);
+
+        expect(grid[0][0], equals(4));
+      },
+    );
   });
 }
