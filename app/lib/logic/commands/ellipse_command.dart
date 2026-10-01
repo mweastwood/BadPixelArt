@@ -46,4 +46,3 @@ class EllipseCommand implements DrawingCommand {
     }
   }
 }
-

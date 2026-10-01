@@ -67,16 +67,16 @@ void main() {
     });
 
     test('handles radii smaller than 0.5 by clamping to 0.5', () {
-      final grid = List.generate(5, (_) => List.filled(5, 0));
-      EllipseCommand(2, 2, 0.1, 0.2).execute(grid, 9, 5);
+      final gridSubHalf = List.generate(5, (_) => List.filled(5, 0));
+      final gridHalf = List.generate(5, (_) => List.filled(5, 0));
 
-      // Center (2, 2) has dist = 0, so |0 - 1| = 1 > 0.35, not drawn
-      expect(grid[2][2], equals(0));
-      // Cardinal points at radius 0.5: dy = 1.0 or dx = 1.0 -> dist = 1.0, drawn
-      expect(grid[2][1], equals(9));
-      expect(grid[2][3], equals(9));
-      expect(grid[1][2], equals(9));
-      expect(grid[3][2], equals(9));
+      expect(
+        () => EllipseCommand(2, 2, 0.1, 0.2).execute(gridSubHalf, 9, 5),
+        returnsNormally,
+      );
+      EllipseCommand(2, 2, 0.5, 0.5).execute(gridHalf, 9, 5);
+
+      expect(gridSubHalf, equals(gridHalf));
     });
 
     test('handles ellipse partially outside grid boundaries', () {
@@ -154,4 +154,3 @@ void main() {
     );
   });
 }
-
