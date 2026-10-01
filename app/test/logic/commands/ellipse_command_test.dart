@@ -65,5 +65,93 @@ void main() {
         returnsNormally,
       );
     });
+
+    test('handles radii smaller than 0.5 by clamping to 0.5', () {
+      final grid = List.generate(5, (_) => List.filled(5, 0));
+      EllipseCommand(2, 2, 0.1, 0.2).execute(grid, 9, 5);
+
+      // Center (2, 2) has dist = 0, so |0 - 1| = 1 > 0.35, not drawn
+      expect(grid[2][2], equals(0));
+      // Cardinal points at radius 0.5: dy = 1.0 or dx = 1.0 -> dist = 1.0, drawn
+      expect(grid[2][1], equals(9));
+      expect(grid[2][3], equals(9));
+      expect(grid[1][2], equals(9));
+      expect(grid[3][2], equals(9));
+    });
+
+    test('handles ellipse partially outside grid boundaries', () {
+      final grid = List.generate(8, (_) => List.filled(8, 0));
+      expect(
+        () => EllipseCommand(-1, -1, 4, 4).execute(grid, 3, 8),
+        returnsNormally,
+      );
+      // Ensure in-bounds pixels of the outline got drawn
+      bool hasDrawnPixel = false;
+      for (final row in grid) {
+        if (row.contains(3)) {
+          hasDrawnPixel = true;
+          break;
+        }
+      }
+      expect(hasDrawnPixel, isTrue);
+    });
+
+    test(
+      'handles ellipse completely outside grid boundaries without error or modification',
+      () {
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        expect(
+          () => EllipseCommand(25, 25, 3, 3).execute(grid, 7, 8),
+          returnsNormally,
+        );
+        for (final row in grid) {
+          for (final pixel in row) {
+            expect(pixel, equals(0));
+          }
+        }
+      },
+    );
+
+    test(
+      'handles ellipse completely outside grid horizontally or vertically without drawing pixels',
+      () {
+        // Far right
+        final gridRight = List.generate(8, (_) => List.filled(8, 0));
+        EllipseCommand(20, 4, 3, 3).execute(gridRight, 7, 8);
+        for (final row in gridRight) {
+          for (final pixel in row) {
+            expect(pixel, equals(0));
+          }
+        }
+
+        // Far left
+        final gridLeft = List.generate(8, (_) => List.filled(8, 0));
+        EllipseCommand(-15, 4, 3, 3).execute(gridLeft, 7, 8);
+        for (final row in gridLeft) {
+          for (final pixel in row) {
+            expect(pixel, equals(0));
+          }
+        }
+
+        // Far top
+        final gridTop = List.generate(8, (_) => List.filled(8, 0));
+        EllipseCommand(4, -15, 3, 3).execute(gridTop, 7, 8);
+        for (final row in gridTop) {
+          for (final pixel in row) {
+            expect(pixel, equals(0));
+          }
+        }
+
+        // Far bottom
+        final gridBottom = List.generate(8, (_) => List.filled(8, 0));
+        EllipseCommand(4, 25, 3, 3).execute(gridBottom, 7, 8);
+        for (final row in gridBottom) {
+          for (final pixel in row) {
+            expect(pixel, equals(0));
+          }
+        }
+      },
+    );
   });
 }
+
