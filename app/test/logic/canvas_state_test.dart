@@ -1263,7 +1263,7 @@ void main() {
 
       group('deleteComponent', () {
         test(
-          'removes component at index 0 and preserves activeComponentIndex when within bounds',
+          'removes component at index 0 and decrements activeComponentIndex to preserve active selection',
           () {
             final notifier = container.read(canvasStateProvider.notifier);
             final compA = PixelArtComponent(
@@ -1287,14 +1287,14 @@ void main() {
               activeComponentIndex: 1,
             );
 
-            // Deleting component at index 0 (compA) shifts compB to index 0 and leaves activeComponentIndex at 1 pointing to compC
+            // Deleting component at index 0 (compA) shifts compB to index 0 and decrements activeComponentIndex to 0 to keep compB active
             notifier.deleteComponent(0);
 
             final state = container.read(canvasStateProvider);
             expect(state.decomposedComponents.length, equals(2));
             expect(state.decomposedComponents[0].name, equals('B'));
             expect(state.decomposedComponents[1].name, equals('C'));
-            expect(state.activeComponentIndex, equals(1));
+            expect(state.activeComponentIndex, equals(0));
           },
         );
 
@@ -1620,6 +1620,33 @@ void main() {
         );
 
         test(
+          'resetComponentGrid does nothing when state.isGenerating is true',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final comp = PixelArtComponent(
+              name: 'SculptedPart',
+              description: 'Has sketch grid',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: List.generate(16, (_) => List.filled(16, 1)),
+              isSculpted: true,
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [comp],
+              isGenerating: true,
+            );
+
+            notifier.resetComponentGrid(0);
+
+            final currentComp = container
+                .read(canvasStateProvider)
+                .decomposedComponents[0];
+            expect(currentComp.grid, isNotNull);
+            expect(currentComp.isSculpted, isTrue);
+          },
+        );
+
+        test(
           'toggleComponentPixel updates pixel at (x, y) and sets isSculpted to true',
           () {
             final notifier = container.read(canvasStateProvider.notifier);
@@ -1673,7 +1700,7 @@ void main() {
         );
 
         test(
-          'toggleComponentPixel safely handles null grid or invalid indices without throwing',
+          'toggleComponentPixel safely handles null grid, invalid indices, or out-of-bounds coordinates without throwing',
           () {
             final notifier = container.read(canvasStateProvider.notifier);
             final compWithoutGrid = PixelArtComponent(
@@ -1682,9 +1709,15 @@ void main() {
               relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
               grid: null,
             );
+            final compWithGrid = PixelArtComponent(
+              name: 'GridPart',
+              description: 'Grid is 16x16',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+            );
 
             notifier.state = notifier.state.copyWith(
-              decomposedComponents: [compWithoutGrid],
+              decomposedComponents: [compWithoutGrid, compWithGrid],
             );
 
             // Component with null grid
@@ -1706,6 +1739,35 @@ void main() {
               () => notifier.toggleComponentPixel(99, 0, 0, 1),
               returnsNormally,
             );
+
+            // Out-of-bounds coordinates
+            expect(
+              () => notifier.toggleComponentPixel(1, -1, 0, 1),
+              returnsNormally,
+            );
+            expect(
+              () => notifier.toggleComponentPixel(1, 99, 0, 1),
+              returnsNormally,
+            );
+            expect(
+              () => notifier.toggleComponentPixel(1, 0, -1, 1),
+              returnsNormally,
+            );
+            expect(
+              () => notifier.toggleComponentPixel(1, 0, 99, 1),
+              returnsNormally,
+            );
+
+            // Verify grid unaltered
+            final intactGrid = container
+                .read(canvasStateProvider)
+                .decomposedComponents[1]
+                .grid!;
+            for (final row in intactGrid) {
+              for (final val in row) {
+                expect(val, equals(0));
+              }
+            }
           },
         );
       });

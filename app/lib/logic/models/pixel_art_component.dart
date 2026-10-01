@@ -186,7 +186,7 @@ class PixelArtComponent {
         }
       }
     }
-    return minP;
+    return minP == double.infinity ? 0.0 : minP;
   }
 
   static double _calculateMaxP(
@@ -206,7 +206,7 @@ class PixelArtComponent {
         }
       }
     }
-    return maxP;
+    return maxP == -double.infinity ? 0.0 : maxP;
   }
 
   static const List<List<double>> bayerMatrix4x4 = [

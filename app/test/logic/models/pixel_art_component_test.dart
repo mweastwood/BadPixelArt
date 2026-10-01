@@ -301,5 +301,20 @@ void main() {
         );
       },
     );
+
+    test(
+      'initializes minP and maxP to 0.0 when grid contains only zero pixels',
+      () {
+        final comp = PixelArtComponent(
+          name: 'zero-grid',
+          description: 'desc',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: List.generate(16, (_) => List.filled(16, 0)),
+        );
+
+        expect(comp.minP, equals(0.0));
+        expect(comp.maxP, equals(0.0));
+      },
+    );
   });
 }
