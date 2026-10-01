@@ -454,6 +454,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void updateComponentBoundingBox(int index, Rect newBoundingBox) {
+    if (state.isGenerating) return;
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
       updated[index] = updated[index].copyWith(
@@ -531,16 +532,20 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void deleteComponent(int index) {
+    if (state.isGenerating) return;
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
       updated.removeAt(index);
       int newActiveIndex = state.activeComponentIndex;
       if (updated.isEmpty) {
         newActiveIndex = 0;
-      } else if (index < newActiveIndex) {
-        newActiveIndex--;
-      } else if (newActiveIndex >= updated.length) {
-        newActiveIndex = updated.length - 1;
+      } else {
+        if (index < newActiveIndex) {
+          newActiveIndex--;
+        }
+        if (newActiveIndex >= updated.length) {
+          newActiveIndex = updated.length - 1;
+        }
       }
       state = state.copyWith(
         decomposedComponents: updated,

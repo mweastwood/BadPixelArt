@@ -1261,6 +1261,36 @@ void main() {
         },
       );
 
+      test(
+        'updateComponentBoundingBox does nothing when state.isGenerating is true',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final comp = PixelArtComponent(
+            name: 'Part',
+            description: 'Part',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [comp],
+            isGenerating: true,
+          );
+
+          notifier.updateComponentBoundingBox(
+            0,
+            const Rect.fromLTWH(0.2, 0.2, 0.5, 0.5),
+          );
+
+          final currentComp = container
+              .read(canvasStateProvider)
+              .decomposedComponents[0];
+          expect(
+            currentComp.relativeBoundingBox,
+            equals(const Rect.fromLTWH(0, 0, 1, 1)),
+          );
+        },
+      );
+
       group('deleteComponent', () {
         test(
           'removes component at index 0 and decrements activeComponentIndex to preserve active selection',
@@ -1416,6 +1446,31 @@ void main() {
             final state = container.read(canvasStateProvider);
             expect(state.decomposedComponents.length, equals(1));
             expect(state.decomposedComponents[0].name, equals('A'));
+            expect(state.activeComponentIndex, equals(0));
+          },
+        );
+
+        test(
+          'does nothing when state.isGenerating is true',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compA = PixelArtComponent(
+              name: 'A',
+              description: 'Part A',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compA],
+              activeComponentIndex: 0,
+              isGenerating: true,
+            );
+
+            notifier.deleteComponent(0);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents.length, equals(1));
+            expect(state.decomposedComponents.first.name, equals('A'));
             expect(state.activeComponentIndex, equals(0));
           },
         );
