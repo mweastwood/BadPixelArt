@@ -104,5 +104,127 @@ void main() {
         },
       );
     });
+
+    group('Edge cases and boundary clipping', () {
+      test('gridSize <= 0 does not throw and executes safely', () {
+        final emptyGrid = <List<int>>[];
+        expect(
+          () => CircleFilledCommand(5, 5, 3).execute(emptyGrid, 1, 0),
+          returnsNormally,
+        );
+        expect(
+          () => CircleFilledCommand(5.5, 5.5, 3.5).execute(emptyGrid, 1, -1),
+          returnsNormally,
+        );
+      });
+
+      test('r <= 0 draws single center point if inside bounds', () {
+        final grid = List.generate(5, (_) => List.filled(5, 0));
+        CircleFilledCommand(2, 2, 0).execute(grid, 7, 5);
+        expect(grid[2][2], equals(7));
+
+        // Center outside bounds with r <= 0
+        CircleFilledCommand(-1, -1, 0).execute(grid, 7, 5);
+        CircleFilledCommand(10, 10, -2).execute(grid, 7, 5);
+        expect(grid[0][0], equals(0));
+      });
+
+      test('integer circle clipped outside grid boundaries', () {
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        // Circle center outside top-left
+        expect(
+          () => CircleFilledCommand(-2, -2, 4).execute(grid, 1, 8),
+          returnsNormally,
+        );
+        expect(grid[0][0], equals(1));
+
+        // Circle center outside bottom-right
+        expect(
+          () => CircleFilledCommand(9, 9, 4).execute(grid, 2, 8),
+          returnsNormally,
+        );
+        expect(grid[7][7], equals(2));
+
+        // Circle completely outside grid
+        expect(
+          () => CircleFilledCommand(-20, -20, 5).execute(grid, 3, 8),
+          returnsNormally,
+        );
+      });
+
+      test('fractional circle clipped outside grid boundaries', () {
+        final grid = List.generate(8, (_) => List.filled(8, 0));
+        // Circle center outside top-left
+        expect(
+          () => CircleFilledCommand(-1.5, -1.5, 3.5).execute(grid, 1, 8),
+          returnsNormally,
+        );
+        expect(grid[0][0], equals(1));
+
+        // Circle center outside bottom-right
+        expect(
+          () => CircleFilledCommand(8.5, 8.5, 3.5).execute(grid, 2, 8),
+          returnsNormally,
+        );
+        expect(grid[7][7], equals(2));
+
+        // Circle completely outside grid
+        expect(
+          () => CircleFilledCommand(30.5, 30.5, 2.5).execute(grid, 3, 8),
+          returnsNormally,
+        );
+      });
+    });
+
+    group('Analytical fractional rasterization parity', () {
+      test('matches brute-force point-in-circle check across configurations', () {
+        final testCases = [
+          (xc: 7.5, yc: 7.5, r: 5.5, size: 16),
+          (xc: 5.0, yc: 5.0, r: 4.2, size: 12),
+          (xc: 3.2, yc: 4.7, r: 3.8, size: 10),
+          (xc: 0.5, yc: 0.5, r: 2.5, size: 8),
+          (xc: 7.2, yc: 2.1, r: 4.3, size: 10),
+        ];
+
+        for (final tc in testCases) {
+          final actualGrid = List.generate(
+            tc.size,
+            (_) => List.filled(tc.size, 0),
+          );
+          CircleFilledCommand(
+            tc.xc,
+            tc.yc,
+            tc.r,
+          ).execute(actualGrid, 1, tc.size);
+
+          // Expected grid using point-in-circle definition
+          final expectedGrid = List.generate(
+            tc.size,
+            (_) => List.filled(tc.size, 0),
+          );
+          final rSq = (tc.r * tc.r).toDouble();
+          for (int y = 0; y < tc.size; y++) {
+            final dy = y - tc.yc.toDouble();
+            for (int x = 0; x < tc.size; x++) {
+              final dx = x - tc.xc.toDouble();
+              if (dx * dx + dy * dy <= rSq) {
+                expectedGrid[y][x] = 1;
+              }
+            }
+          }
+
+          for (int y = 0; y < tc.size; y++) {
+            for (int x = 0; x < tc.size; x++) {
+              expect(
+                actualGrid[y][x],
+                equals(expectedGrid[y][x]),
+                reason:
+                    'Mismatch for circle (${tc.xc}, ${tc.yc}, r=${tc.r}) at ($x, $y)',
+              );
+            }
+          }
+        }
+      });
+    });
   });
 }
