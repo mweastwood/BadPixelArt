@@ -163,7 +163,7 @@ void main() {
 
         // Circle center outside bottom-right
         expect(
-          () => CircleFilledCommand(9.5, 9.5, 3.5).execute(grid, 2, 8),
+          () => CircleFilledCommand(8.5, 8.5, 3.5).execute(grid, 2, 8),
           returnsNormally,
         );
         expect(grid[7][7], equals(2));
@@ -187,13 +187,21 @@ void main() {
         ];
 
         for (final tc in testCases) {
-          final actualGrid =
-              List.generate(tc.size, (_) => List.filled(tc.size, 0));
-          CircleFilledCommand(tc.xc, tc.yc, tc.r).execute(actualGrid, 1, tc.size);
+          final actualGrid = List.generate(
+            tc.size,
+            (_) => List.filled(tc.size, 0),
+          );
+          CircleFilledCommand(
+            tc.xc,
+            tc.yc,
+            tc.r,
+          ).execute(actualGrid, 1, tc.size);
 
           // Expected grid using point-in-circle definition
-          final expectedGrid =
-              List.generate(tc.size, (_) => List.filled(tc.size, 0));
+          final expectedGrid = List.generate(
+            tc.size,
+            (_) => List.filled(tc.size, 0),
+          );
           final rSq = (tc.r * tc.r).toDouble();
           for (int y = 0; y < tc.size; y++) {
             final dy = y - tc.yc.toDouble();

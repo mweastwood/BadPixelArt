@@ -2,7 +2,8 @@ import 'dart:math' as math;
 
 import 'base_command.dart';
 
-/// Command to draw a filled circle supporting both integer and fractional centers.
+/// Command to draw a filled circle supporting both integer and fractional
+/// centers.
 class CircleFilledCommand implements DrawingCommand {
   static const String usage = 'params [centerX, centerY, radius]';
 
@@ -81,7 +82,7 @@ class CircleFilledCommand implements DrawingCommand {
       for (int y = minY; y <= maxY; y++) {
         final double dy = y - yc.toDouble();
         final double dySq = dy * dy;
-        if (dySq > rSq + eps) continue;
+        if (dySq > rSq) continue;
 
         final double halfW = math.sqrt(math.max(0.0, rSq - dySq));
         final int left = (xc - halfW - eps).ceil();
