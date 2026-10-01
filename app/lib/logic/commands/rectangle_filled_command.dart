@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'base_command.dart';
 
 /// Command to draw a filled rectangle.
@@ -13,16 +15,24 @@ class RectangleFilledCommand implements DrawingCommand {
 
   @override
   void execute(List<List<int>> grid, int color, int gridSize) {
-    int startX = x1 < x2 ? x1 : x2;
-    int endX = x1 < x2 ? x2 : x1;
-    int startY = y1 < y2 ? y1 : y2;
-    int endY = y1 < y2 ? y2 : y1;
-    for (int y = startY; y <= endY; y++) {
-      for (int x = startX; x <= endX; x++) {
-        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-          grid[y][x] = color;
-        }
-      }
+    if (gridSize <= 0) return;
+
+    final int startX = math.min(x1, x2);
+    final int endX = math.max(x1, x2);
+    final int startY = math.min(y1, y2);
+    final int endY = math.max(y1, y2);
+
+    final int clampedMinY = math.max(0, startY);
+    final int clampedMaxY = math.min(gridSize - 1, endY);
+    final int clampedMinX = math.max(0, startX);
+    final int clampedMaxX = math.min(gridSize - 1, endX);
+
+    if (clampedMinY > clampedMaxY || clampedMinX > clampedMaxX) {
+      return;
+    }
+
+    for (int y = clampedMinY; y <= clampedMaxY; y++) {
+      grid[y].fillRange(clampedMinX, clampedMaxX + 1, color);
     }
   }
 }
