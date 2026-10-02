@@ -105,15 +105,18 @@ Future<Uint8List> generatePngBytes(
   }
 
   final picture = recorder.endRecording();
-  final image = await picture.toImage(outWidth, outHeight);
-  final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-  image.dispose();
-  picture.dispose();
-
-  if (byteData == null) {
-    return Uint8List(0);
+  ui.Image? image;
+  try {
+    image = await picture.toImage(outWidth, outHeight);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) {
+      return Uint8List(0);
+    }
+    return byteData.buffer.asUint8List();
+  } finally {
+    image?.dispose();
+    picture.dispose();
   }
-  return byteData.buffer.asUint8List();
 }
 
 /// Generates an SVG vector string representation of the pixel art [grid] and [palette].
