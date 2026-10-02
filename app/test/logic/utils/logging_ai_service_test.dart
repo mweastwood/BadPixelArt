@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
@@ -376,7 +377,7 @@ void main() {
 
         fakeService.completer!.complete(
           AiResponse(
-            text: 'Refinement completed',
+            text: 'Refinement completed.',
             inputTokens: 15,
             outputTokens: 25,
             totalTokens: 40,
@@ -388,86 +389,80 @@ void main() {
         expect(notifier.state.aiHistory.length, equals(1));
         expect(
           notifier.state.aiHistory.first.response,
-          equals('Refinement completed'),
+          equals('Refinement completed.'),
         );
         expect(notifier.state.aiHistory.first.isError, isFalse);
       },
     );
 
-    test(
-      'logs each turn during multi-turn continuation',
-      () async {
-        int callIndex = 0;
-        final fakeService = TestMockAiService(
-          onGenerateContentRaw: ({
-            required String prompt,
-            Uint8List? imageBytes,
-            double? temperature,
-            int? maxOutputTokens,
-          }) {
-            callIndex++;
-            if (callIndex == 1) {
-              return AiResponse(
-                text: '[{"name": "blade", "shapes": [',
-                isTruncated: true,
-                inputTokens: 20,
-                outputTokens: 30,
-              );
-            } else {
-              return AiResponse(
-                text: '{"type": "rect"}]}]',
-                isTruncated: false,
-                inputTokens: 40,
-                outputTokens: 20,
-              );
-            }
-          },
-        );
-        final loggingService = LoggingAiService(
-          fakeService,
-          modelName: 'multi-turn-model',
-        );
+    test('logs each turn during multi-turn continuation', () async {
+      int callIndex = 0;
+      final fakeService = TestMockAiService(
+        onGenerateContentRaw:
+            ({
+              required String prompt,
+              Uint8List? imageBytes,
+              double? temperature,
+              int? maxOutputTokens,
+            }) {
+              callIndex++;
+              if (callIndex == 1) {
+                return AiResponse(
+                  text: '[{"name": "blade", "shapes": [',
+                  isTruncated: true,
+                  inputTokens: 20,
+                  outputTokens: 30,
+                );
+              } else {
+                return AiResponse(
+                  text: '{"type": "rect"}]}]',
+                  isTruncated: false,
+                  inputTokens: 40,
+                  outputTokens: 20,
+                );
+              }
+            },
+      );
+      final loggingService = LoggingAiService(
+        fakeService,
+        modelName: 'multi-turn-model',
+      );
 
-        final loggedEntries = <AgentHistoryEntry>[];
-        final updatedEntries = <Map<String, AgentHistoryEntry>>[];
+      final loggedEntries = <AgentHistoryEntry>[];
+      final updatedEntries = <Map<String, AgentHistoryEntry>>[];
 
-        loggingService.onLog = (entry) => loggedEntries.add(entry);
-        loggingService.onLogUpdate = (oldEntry, newEntry) {
-          updatedEntries.add({'old': oldEntry, 'new': newEntry});
-        };
+      loggingService.onLog = (entry) => loggedEntries.add(entry);
+      loggingService.onLogUpdate = (oldEntry, newEntry) {
+        updatedEntries.add({'old': oldEntry, 'new': newEntry});
+      };
 
-        final result = await loggingService.generateContentWithContinuation(
-          prompt: 'Multi-turn decomposition',
-          autoContinueLimit: 2,
-        );
+      final result = await loggingService.generateContentWithContinuation(
+        prompt: 'Multi-turn decomposition',
+        autoContinueLimit: 2,
+      );
 
-        expect(result, isNotNull);
-        expect(fakeService.callCount, equals(2));
-        expect(loggedEntries.length, equals(2));
-        expect(updatedEntries.length, equals(2));
+      expect(result, isNotNull);
+      expect(fakeService.callCount, equals(2));
+      expect(loggedEntries.length, equals(2));
+      expect(updatedEntries.length, equals(2));
 
-        // First turn
-        expect(loggedEntries[0].prompt, equals('Multi-turn decomposition'));
-        expect(
-          updatedEntries[0]['new']!.response,
-          equals('[{"name": "blade", "shapes": ['),
-        );
+      // First turn
+      expect(loggedEntries[0].prompt, equals('Multi-turn decomposition'));
+      expect(
+        updatedEntries[0]['new']!.response,
+        equals('[{"name": "blade", "shapes": ['),
+      );
 
-        // Second turn (continuation turn)
-        expect(
-          loggedEntries[1].prompt,
-          contains('[Assistant (Partial Response)]:'),
-        );
-        expect(
-          loggedEntries[1].prompt,
-          contains('Continue generating the response from where you left off'),
-        );
-        expect(
-          updatedEntries[1]['new']!.response,
-          equals('{"type": "rect"}]}]'),
-        );
-      },
-    );
+      // Second turn (continuation turn)
+      expect(
+        loggedEntries[1].prompt,
+        contains('[Assistant (Partial Response)]:'),
+      );
+      expect(
+        loggedEntries[1].prompt,
+        contains('Continue generating the response from where you left off'),
+      );
+      expect(updatedEntries[1]['new']!.response, equals('{"type": "rect"}]}]'));
+    });
   });
 }
-
