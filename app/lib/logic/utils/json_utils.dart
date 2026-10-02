@@ -53,9 +53,13 @@ String repairTruncatedJson(String jsonStr) {
     final char = sub[i];
 
     if (char == '"') {
-      if (i > 0 && sub[i - 1] == '\\') {
-        // Escaped quote
-      } else {
+      int backslashCount = 0;
+      int j = i - 1;
+      while (j >= 0 && sub[j] == '\\') {
+        backslashCount++;
+        j--;
+      }
+      if (backslashCount % 2 == 0) {
         inString = !inString;
       }
       continue;

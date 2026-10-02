@@ -73,6 +73,44 @@ Let me know if you need anything else!
     });
   });
 
+  group('json_utils - repairTruncatedJson tests', () {
+    test('correctly handles strings containing escaped quotes', () {
+      final input = r'{"desc": "a \"quoted\" word", "items": [{"id": 1';
+      expect(
+        repairTruncatedJson(input),
+        equals(r'{"desc": "a \"quoted\" word", "items": [{"id": 1}]}'),
+      );
+    });
+
+    test('correctly handles string ending with double-escaped backslash before quote', () {
+      final input = r'{"path": "C:\\", "items": [{"x": 1';
+      expect(
+        repairTruncatedJson(input),
+        equals(r'{"path": "C:\\", "items": [{"x": 1}]}'),
+      );
+    });
+
+    test('correctly handles string with triple backslashes before quote (escaped backslash + escaped quote)', () {
+      final input = r'{"path": "C:\\\"escaped", "items": [{"x": 1';
+      expect(
+        repairTruncatedJson(input),
+        equals(r'{"path": "C:\\\"escaped", "items": [{"x": 1}]}'),
+      );
+    });
+
+    test('repairs truncated JSON following double-escaped backslash in cleanJsonString', () {
+      final input = r'''
+```json
+{"path": "folder\\", "list": [{"val": 42}, {"val":
+```
+''';
+      expect(
+        cleanJsonString(input),
+        equals(r'{"path": "folder\\", "list": [{"val": 42}]}'),
+      );
+    });
+  });
+
   group('json_utils - parseCoordinateValue tests', () {
     test('parses int and num values', () {
       expect(parseCoordinateValue(0), equals(0));
