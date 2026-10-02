@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'steps/default_wizard_steps.dart';
 import 'steps/template_wizard_steps.dart';
 import 'wizard_definition.dart';
@@ -53,11 +55,14 @@ class WizardRegistry {
 
   static const defaultPixelArtWizard = structuredPixelArtWizard;
 
-  static final Map<String, WizardDefinition> _registeredWizards = {
+  static const Map<String, WizardDefinition> _defaultWizards = {
     structuredPixelArtWizard.id: structuredPixelArtWizard,
     directPixelArtWizard.id: directPixelArtWizard,
     templateSpriteWizard.id: templateSpriteWizard,
   };
+
+  static final Map<String, WizardDefinition> _registeredWizards =
+      Map.of(_defaultWizards);
 
   /// Returns all registered wizard pipelines.
   static List<WizardDefinition> get allWizards =>
@@ -72,5 +77,13 @@ class WizardRegistry {
   /// Register a new custom wizard pipeline.
   static void register(WizardDefinition wizard) {
     _registeredWizards[wizard.id] = wizard;
+  }
+
+  /// Resets registered wizard pipelines back to the default predefined pipelines.
+  @visibleForTesting
+  static void reset() {
+    _registeredWizards
+      ..clear()
+      ..addAll(_defaultWizards);
   }
 }
