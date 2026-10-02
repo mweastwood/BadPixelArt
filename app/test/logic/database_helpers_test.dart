@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:bad_pixel_art/logic/models/pixel_art_component.dart';
 import 'package:bad_pixel_art/logic/utils/database_helpers.dart';
@@ -30,34 +29,44 @@ void main() {
       expect(deserializeGrid('invalid json'), isEmpty);
       expect(deserializeGrid('{"not": "a list"}'), isEmpty);
     });
+
+    test('recovers gracefully when array contains 1D primitive integers instead of 2D rows', () {
+      expect(deserializeGrid('[1, 2, 3]'), isEmpty);
+    });
   });
 
   group('Palette Serialization & ARGB Fidelity (serializePalette / deserializePalette)', () {
-    test('generates valid JSON array of 8-character hex strings prefixed with #', () {
-      final colors = [
-        const Color(0xFFFF0000), // opaque red -> #ffff0000
-        const Color(0x80FF0000), // semi-transparent red -> #80ff0000
-        const Color(0x00000000), // transparent black -> #00000000
-      ];
-      final jsonStr = serializePalette(colors);
-      final decoded = jsonDecode(jsonStr);
-      expect(decoded, isA<List<dynamic>>());
-      expect(decoded, ['#ffff0000', '#80ff0000', '#00000000']);
-    });
+    test(
+      'generates valid JSON array of 8-character hex strings prefixed with #',
+      () {
+        final colors = [
+          const Color(0xFFFF0000), // opaque red -> #ffff0000
+          const Color(0x80FF0000), // semi-transparent red -> #80ff0000
+          const Color(0x00000000), // transparent black -> #00000000
+        ];
+        final jsonStr = serializePalette(colors);
+        final decoded = jsonDecode(jsonStr);
+        expect(decoded, isA<List<dynamic>>());
+        expect(decoded, ['#ffff0000', '#80ff0000', '#00000000']);
+      },
+    );
 
-    test('exact ARGB roundtrip preserves alpha channel and 32-bit color values', () {
-      final colors = [
-        const Color(0xFF112233),
-        const Color(0x80FF0000),
-        const Color(0x00AABBCC),
-        const Color(0x33445566),
-      ];
-      final roundtripped = deserializePalette(serializePalette(colors));
-      expect(roundtripped.length, colors.length);
-      for (int i = 0; i < colors.length; i++) {
-        expect(roundtripped[i].toARGB32(), equals(colors[i].toARGB32()));
-      }
-    });
+    test(
+      'exact ARGB roundtrip preserves alpha channel and 32-bit color values',
+      () {
+        final colors = [
+          const Color(0xFF112233),
+          const Color(0x80FF0000),
+          const Color(0x00AABBCC),
+          const Color(0x33445566),
+        ];
+        final roundtripped = deserializePalette(serializePalette(colors));
+        expect(roundtripped.length, colors.length);
+        for (int i = 0; i < colors.length; i++) {
+          expect(roundtripped[i].toARGB32(), equals(colors[i].toARGB32()));
+        }
+      },
+    );
 
     test('handles empty list roundtrip', () {
       expect(deserializePalette(serializePalette([])), isEmpty);
@@ -67,6 +76,10 @@ void main() {
       expect(deserializePalette(''), isEmpty);
       expect(deserializePalette('invalid json'), isEmpty);
       expect(deserializePalette('{"not": "a list"}'), isEmpty);
+    });
+
+    test('recovers gracefully when palette contains invalid hex strings', () {
+      expect(deserializePalette(jsonEncode(['#xyz123'])), isEmpty);
     });
   });
 
@@ -128,17 +141,44 @@ void main() {
       for (int i = 0; i < originalComponents.length; i++) {
         expect(deserialized[i], equals(originalComponents[i]));
         expect(deserialized[i].name, equals(originalComponents[i].name));
-        expect(deserialized[i].description, equals(originalComponents[i].description));
-        expect(deserialized[i].relativeBoundingBox, equals(originalComponents[i].relativeBoundingBox));
+        expect(
+          deserialized[i].description,
+          equals(originalComponents[i].description),
+        );
+        expect(
+          deserialized[i].relativeBoundingBox,
+          equals(originalComponents[i].relativeBoundingBox),
+        );
         expect(deserialized[i].grid, equals(originalComponents[i].grid));
         expect(deserialized[i].shapes, equals(originalComponents[i].shapes));
-        expect(deserialized[i].fillColor?.toARGB32(), equals(originalComponents[i].fillColor?.toARGB32()));
-        expect(deserialized[i].fillColor2?.toARGB32(), equals(originalComponents[i].fillColor2?.toARGB32()));
-        expect(deserialized[i].gradientAngle, equals(originalComponents[i].gradientAngle));
-        expect(deserialized[i].outlineColor?.toARGB32(), equals(originalComponents[i].outlineColor?.toARGB32()));
-        expect(deserialized[i].isSculpted, equals(originalComponents[i].isSculpted));
-        expect(deserialized[i].hasInterior, equals(originalComponents[i].hasInterior));
-        expect(deserialized[i].outlineGrid, equals(originalComponents[i].outlineGrid));
+        expect(
+          deserialized[i].fillColor?.toARGB32(),
+          equals(originalComponents[i].fillColor?.toARGB32()),
+        );
+        expect(
+          deserialized[i].fillColor2?.toARGB32(),
+          equals(originalComponents[i].fillColor2?.toARGB32()),
+        );
+        expect(
+          deserialized[i].gradientAngle,
+          equals(originalComponents[i].gradientAngle),
+        );
+        expect(
+          deserialized[i].outlineColor?.toARGB32(),
+          equals(originalComponents[i].outlineColor?.toARGB32()),
+        );
+        expect(
+          deserialized[i].isSculpted,
+          equals(originalComponents[i].isSculpted),
+        );
+        expect(
+          deserialized[i].hasInterior,
+          equals(originalComponents[i].hasInterior),
+        );
+        expect(
+          deserialized[i].outlineGrid,
+          equals(originalComponents[i].outlineGrid),
+        );
       }
     });
 
@@ -174,6 +214,10 @@ void main() {
       expect(deserializeComponents(''), isEmpty);
       expect(deserializeComponents('not a json array'), isEmpty);
       expect(deserializeComponents('{"key": "value"}'), isEmpty);
+    });
+
+    test('recovers gracefully when array contains non-map elements', () {
+      expect(deserializeComponents(jsonEncode(['not_a_map'])), isEmpty);
     });
   });
 
