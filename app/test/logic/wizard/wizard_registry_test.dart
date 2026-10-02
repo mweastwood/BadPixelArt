@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('WizardRegistry Tests', () {
+    tearDown(() => WizardRegistry.reset());
+
     test('defaultWizard contains all standard 8 steps', () {
       final defaultWizard = WizardRegistry.defaultWizard;
       expect(defaultWizard.id, equals('default_pixel_art'));
@@ -53,6 +55,31 @@ void main() {
         equals(customWizard),
       );
       expect(WizardRegistry.allWizards, contains(customWizard));
+    });
+
+    test('reset restores default predefined wizard pipelines', () {
+      const customWizard = WizardDefinition(
+        id: 'sprite_anim_wizard',
+        title: 'Sprite Animation Wizard',
+        steps: [SelectGridSizeStepDefinition(), RefinementStepDefinition()],
+      );
+
+      WizardRegistry.register(customWizard);
+      expect(
+        WizardRegistry.getById('sprite_anim_wizard'),
+        equals(customWizard),
+      );
+      expect(WizardRegistry.allWizards, contains(customWizard));
+
+      WizardRegistry.reset();
+
+      expect(WizardRegistry.getById('sprite_anim_wizard'), isNull);
+      expect(WizardRegistry.allWizards, isNot(contains(customWizard)));
+      expect(WizardRegistry.allWizards, [
+        WizardRegistry.structuredPixelArtWizard,
+        WizardRegistry.directPixelArtWizard,
+        WizardRegistry.templateSpriteWizard,
+      ]);
     });
   });
 }
