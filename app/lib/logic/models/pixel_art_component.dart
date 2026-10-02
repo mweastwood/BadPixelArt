@@ -174,7 +174,7 @@ class PixelArtComponent {
     double cosA,
     double sinA,
   ) {
-    if (grid == null) return double.infinity;
+    if (grid == null) return 0.0;
     final size = grid.length;
 
     double minP = double.infinity;
@@ -186,7 +186,7 @@ class PixelArtComponent {
         }
       }
     }
-    return minP;
+    return minP == double.infinity ? 0.0 : minP;
   }
 
   static double _calculateMaxP(
@@ -194,7 +194,7 @@ class PixelArtComponent {
     double cosA,
     double sinA,
   ) {
-    if (grid == null) return -double.infinity;
+    if (grid == null) return 0.0;
     final size = grid.length;
 
     double maxP = -double.infinity;
@@ -206,7 +206,7 @@ class PixelArtComponent {
         }
       }
     }
-    return maxP;
+    return maxP == -double.infinity ? 0.0 : maxP;
   }
 
   static const List<List<double>> bayerMatrix4x4 = [
@@ -279,6 +279,7 @@ class PixelArtComponent {
     String? description,
     Rect? relativeBoundingBox,
     List<List<int>>? grid,
+    bool clearGrid = false,
     List<FundamentalShape>? shapes,
     Color? Function()? fillColor,
     Color? Function()? fillColor2,
@@ -292,9 +293,13 @@ class PixelArtComponent {
     double? cosA,
     double? sinA,
   }) {
-    final newGrid = grid ?? this.grid;
+    assert(
+      !clearGrid || grid == null,
+      'Cannot specify both clearGrid: true and a new grid',
+    );
+    final newGrid = clearGrid ? null : (grid ?? this.grid);
     final newGradientAngle = gradientAngle ?? this.gradientAngle;
-    final gridChanged = grid != null && grid != this.grid;
+    final gridChanged = clearGrid || (grid != null && grid != this.grid);
     final angleChanged =
         gradientAngle != null && gradientAngle != this.gradientAngle;
 

@@ -1206,6 +1206,624 @@ void main() {
         },
       );
     });
+
+    group('CanvasNotifier Component Manipulation & Canvas Reset Unit Tests', () {
+      test(
+        'updateComponentBoundingBox updates target component bounding box without affecting others and ignores invalid indices',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final comp1 = PixelArtComponent(
+            name: 'Head',
+            description: 'Character head',
+            relativeBoundingBox: const Rect.fromLTWH(0.2, 0.2, 0.6, 0.6),
+          );
+          final comp2 = PixelArtComponent(
+            name: 'Body',
+            description: 'Character body',
+            relativeBoundingBox: const Rect.fromLTWH(0.3, 0.5, 0.4, 0.4),
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [comp1, comp2],
+          );
+
+          // Valid index update
+          const newBox = Rect.fromLTWH(0.1, 0.2, 0.3, 0.4);
+          notifier.updateComponentBoundingBox(1, newBox);
+
+          var components = container
+              .read(canvasStateProvider)
+              .decomposedComponents;
+          expect(components.length, equals(2));
+          expect(components[1].relativeBoundingBox, equals(newBox));
+          expect(
+            components[0].relativeBoundingBox,
+            equals(comp1.relativeBoundingBox),
+          );
+
+          // Index boundary safety: invalid negative index and out of bounds
+          notifier.updateComponentBoundingBox(
+            -1,
+            const Rect.fromLTWH(0, 0, 1, 1),
+          );
+          notifier.updateComponentBoundingBox(
+            99,
+            const Rect.fromLTWH(0, 0, 1, 1),
+          );
+
+          components = container.read(canvasStateProvider).decomposedComponents;
+          expect(components.length, equals(2));
+          expect(components[1].relativeBoundingBox, equals(newBox));
+          expect(
+            components[0].relativeBoundingBox,
+            equals(comp1.relativeBoundingBox),
+          );
+        },
+      );
+
+      test(
+        'updateComponentBoundingBox does nothing when state.isGenerating is true',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final comp = PixelArtComponent(
+            name: 'Part',
+            description: 'Part',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [comp],
+            isGenerating: true,
+          );
+
+          notifier.updateComponentBoundingBox(
+            0,
+            const Rect.fromLTWH(0.2, 0.2, 0.5, 0.5),
+          );
+
+          final currentComp = container
+              .read(canvasStateProvider)
+              .decomposedComponents[0];
+          expect(
+            currentComp.relativeBoundingBox,
+            equals(const Rect.fromLTWH(0, 0, 1, 1)),
+          );
+        },
+      );
+
+      group('deleteComponent', () {
+        test(
+          'removes component at index 0 and decrements activeComponentIndex to preserve active selection',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compA = PixelArtComponent(
+              name: 'A',
+              description: 'Part A',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+            );
+            final compB = PixelArtComponent(
+              name: 'B',
+              description: 'Part B',
+              relativeBoundingBox: const Rect.fromLTWH(0.5, 0, 0.5, 0.5),
+            );
+            final compC = PixelArtComponent(
+              name: 'C',
+              description: 'Part C',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0.5, 0.5, 0.5),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compA, compB, compC],
+              activeComponentIndex: 1,
+            );
+
+            // Deleting component at index 0 (compA) shifts compB to index 0 and decrements activeComponentIndex to 0 to keep compB active
+            notifier.deleteComponent(0);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents.length, equals(2));
+            expect(state.decomposedComponents[0].name, equals('B'));
+            expect(state.decomposedComponents[1].name, equals('C'));
+            expect(state.activeComponentIndex, equals(0));
+          },
+        );
+
+        test(
+          'removes middle component (index 1) and preserves activeComponentIndex when within bounds',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compA = PixelArtComponent(
+              name: 'A',
+              description: 'Part A',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+            );
+            final compB = PixelArtComponent(
+              name: 'B',
+              description: 'Part B',
+              relativeBoundingBox: const Rect.fromLTWH(0.5, 0, 0.5, 0.5),
+            );
+            final compC = PixelArtComponent(
+              name: 'C',
+              description: 'Part C',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0.5, 0.5, 0.5),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compA, compB, compC],
+              activeComponentIndex: 1,
+            );
+
+            // Delete middle component at index 1: remaining components are [compA, compC] and activeComponentIndex remains 1 pointing to compC
+            notifier.deleteComponent(1);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents.length, equals(2));
+            expect(state.decomposedComponents[0].name, equals('A'));
+            expect(state.decomposedComponents[1].name, equals('C'));
+            expect(state.activeComponentIndex, equals(1));
+          },
+        );
+
+        test(
+          'removes trailing active component and clamps activeComponentIndex to length - 1',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compA = PixelArtComponent(
+              name: 'A',
+              description: 'Part A',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+            );
+            final compB = PixelArtComponent(
+              name: 'B',
+              description: 'Part B',
+              relativeBoundingBox: const Rect.fromLTWH(0.5, 0, 0.5, 0.5),
+            );
+            final compC = PixelArtComponent(
+              name: 'C',
+              description: 'Part C',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0.5, 0.5, 0.5),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compA, compB, compC],
+              activeComponentIndex: 2,
+            );
+
+            notifier.deleteComponent(2);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents.length, equals(2));
+            expect(state.decomposedComponents[0].name, equals('A'));
+            expect(state.decomposedComponents[1].name, equals('B'));
+            expect(
+              state.activeComponentIndex,
+              equals(1),
+            ); // clamped to 2 - 1 = 1
+          },
+        );
+
+        test(
+          'removes sole remaining component and resets activeComponentIndex to 0 with empty list',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compA = PixelArtComponent(
+              name: 'A',
+              description: 'Part A',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compA],
+              activeComponentIndex: 0,
+            );
+
+            notifier.deleteComponent(0);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents, isEmpty);
+            expect(state.activeComponentIndex, equals(0));
+          },
+        );
+
+        test(
+          'ignores out-of-bounds indices without modifying components list',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compA = PixelArtComponent(
+              name: 'A',
+              description: 'Part A',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compA],
+              activeComponentIndex: 0,
+            );
+
+            notifier.deleteComponent(-1);
+            notifier.deleteComponent(5);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents.length, equals(1));
+            expect(state.decomposedComponents[0].name, equals('A'));
+            expect(state.activeComponentIndex, equals(0));
+          },
+        );
+
+        test('does nothing when state.isGenerating is true', () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final compA = PixelArtComponent(
+            name: 'A',
+            description: 'Part A',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [compA],
+            activeComponentIndex: 0,
+            isGenerating: true,
+          );
+
+          notifier.deleteComponent(0);
+
+          final state = container.read(canvasStateProvider);
+          expect(state.decomposedComponents.length, equals(1));
+          expect(state.decomposedComponents.first.name, equals('A'));
+          expect(state.activeComponentIndex, equals(0));
+        });
+      });
+
+      group('applyDecompositionOption and clearPendingDecompositionOptions', () {
+        test(
+          'applyDecompositionOption selects candidate list, clears pending options, and resets active index',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final option0 = [
+              PixelArtComponent(
+                name: 'Candidate 0',
+                description: 'Option 0',
+                relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              ),
+            ];
+            final option1 = [
+              PixelArtComponent(
+                name: 'Candidate 1A',
+                description: 'Option 1 Part A',
+                relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 1),
+              ),
+              PixelArtComponent(
+                name: 'Candidate 1B',
+                description: 'Option 1 Part B',
+                relativeBoundingBox: const Rect.fromLTWH(0.5, 0, 0.5, 1),
+              ),
+            ];
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [],
+              pendingDecompositionOptions: [option0, option1],
+              activeComponentIndex: 3,
+            );
+
+            notifier.applyDecompositionOption(1);
+
+            final state = container.read(canvasStateProvider);
+            expect(state.decomposedComponents.length, equals(2));
+            expect(state.decomposedComponents[0].name, equals('Candidate 1A'));
+            expect(state.decomposedComponents[1].name, equals('Candidate 1B'));
+            expect(state.pendingDecompositionOptions, isEmpty);
+            expect(state.activeComponentIndex, equals(0));
+          },
+        );
+
+        test('applyDecompositionOption ignores out-of-bounds indices', () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final option0 = [
+            PixelArtComponent(
+              name: 'Candidate 0',
+              description: 'Option 0',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            ),
+          ];
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [],
+            pendingDecompositionOptions: [option0],
+            activeComponentIndex: 0,
+          );
+
+          notifier.applyDecompositionOption(-1);
+          notifier.applyDecompositionOption(10);
+
+          final state = container.read(canvasStateProvider);
+          expect(state.decomposedComponents, isEmpty);
+          expect(state.pendingDecompositionOptions.length, equals(1));
+        });
+
+        test(
+          'clearPendingDecompositionOptions clears candidate options while preserving existing components',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final existingComp = PixelArtComponent(
+              name: 'Existing',
+              description: 'Existing Component',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+            );
+            final candidate = [
+              PixelArtComponent(
+                name: 'Candidate',
+                description: 'Candidate Component',
+                relativeBoundingBox: const Rect.fromLTWH(0.1, 0.1, 0.8, 0.8),
+              ),
+            ];
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [existingComp],
+              pendingDecompositionOptions: [candidate],
+            );
+
+            notifier.clearPendingDecompositionOptions();
+
+            final state = container.read(canvasStateProvider);
+            expect(state.pendingDecompositionOptions, isEmpty);
+            expect(state.decomposedComponents.length, equals(1));
+            expect(state.decomposedComponents.first.name, equals('Existing'));
+          },
+        );
+      });
+
+      test(
+        'clearDecomposedComponents resets decomposedComponents, pendingDecompositionOptions, and activeComponentIndex',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final comp = PixelArtComponent(
+            name: 'Part',
+            description: 'Part',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          );
+
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [comp, comp],
+            pendingDecompositionOptions: [
+              [comp],
+            ],
+            activeComponentIndex: 1,
+          );
+
+          notifier.clearDecomposedComponents();
+
+          final state = container.read(canvasStateProvider);
+          expect(state.decomposedComponents, isEmpty);
+          expect(state.pendingDecompositionOptions, isEmpty);
+          expect(state.activeComponentIndex, equals(0));
+        },
+      );
+
+      test(
+        'resetCanvas creates blank zero grid of size gridSize and clears undo and redo stacks',
+        () {
+          final notifier = container.read(canvasStateProvider.notifier);
+
+          // Populate canvas with non-zero pixels and push history entries
+          notifier.selectColor(2);
+          notifier.drawPixel(2, 3);
+          notifier.drawPixel(4, 5);
+
+          expect(container.read(canvasStateProvider).grid[3][2], equals(2));
+          expect(container.read(canvasStateProvider).undoStack, isNotEmpty);
+
+          // Trigger undo to populate redo stack
+          notifier.undo();
+          expect(container.read(canvasStateProvider).redoStack, isNotEmpty);
+
+          // Call resetCanvas
+          notifier.resetCanvas();
+
+          final state = container.read(canvasStateProvider);
+          expect(state.grid.length, equals(state.gridSize));
+          for (final row in state.grid) {
+            expect(row.length, equals(state.gridSize));
+            expect(row.every((cell) => cell == 0), isTrue);
+          }
+          expect(state.undoStack, isEmpty);
+          expect(state.redoStack, isEmpty);
+        },
+      );
+
+      group('resetComponentGrid and toggleComponentPixel', () {
+        test(
+          'resetComponentGrid sets grid to null and isSculpted to false, ignoring out-of-bounds indices',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final comp = PixelArtComponent(
+              name: 'SculptedPart',
+              description: 'Has sketch grid',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: List.generate(16, (_) => List.filled(16, 1)),
+              isSculpted: true,
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [comp],
+            );
+
+            // Out-of-bounds index should be safe and do nothing
+            notifier.resetComponentGrid(-1);
+            notifier.resetComponentGrid(99);
+            expect(
+              container.read(canvasStateProvider).decomposedComponents[0].grid,
+              isNotNull,
+            );
+            expect(
+              container
+                  .read(canvasStateProvider)
+                  .decomposedComponents[0]
+                  .isSculpted,
+              isTrue,
+            );
+
+            // Valid index
+            notifier.resetComponentGrid(0);
+            final updatedComp = container
+                .read(canvasStateProvider)
+                .decomposedComponents[0];
+            expect(updatedComp.grid, isNull);
+            expect(updatedComp.isSculpted, isFalse);
+          },
+        );
+
+        test(
+          'resetComponentGrid does nothing when state.isGenerating is true',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final comp = PixelArtComponent(
+              name: 'SculptedPart',
+              description: 'Has sketch grid',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: List.generate(16, (_) => List.filled(16, 1)),
+              isSculpted: true,
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [comp],
+              isGenerating: true,
+            );
+
+            notifier.resetComponentGrid(0);
+
+            final currentComp = container
+                .read(canvasStateProvider)
+                .decomposedComponents[0];
+            expect(currentComp.grid, isNotNull);
+            expect(currentComp.isSculpted, isTrue);
+          },
+        );
+
+        test(
+          'toggleComponentPixel updates pixel at (x, y) and sets isSculpted to true',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final comp = PixelArtComponent(
+              name: 'TogglePart',
+              description: 'To be toggled',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+              isSculpted: false,
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [comp],
+            );
+
+            notifier.toggleComponentPixel(0, 3, 4, 1);
+
+            final updatedComp = container
+                .read(canvasStateProvider)
+                .decomposedComponents[0];
+            expect(updatedComp.grid![4][3], equals(1));
+            expect(updatedComp.isSculpted, isTrue);
+          },
+        );
+
+        test(
+          'toggleComponentPixel does nothing when state.isGenerating is true',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final comp = PixelArtComponent(
+              name: 'TogglePart',
+              description: 'To be toggled',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+              isSculpted: false,
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [comp],
+              isGenerating: true,
+            );
+
+            notifier.toggleComponentPixel(0, 3, 4, 1);
+
+            final currentComp = container
+                .read(canvasStateProvider)
+                .decomposedComponents[0];
+            expect(currentComp.grid![4][3], equals(0));
+            expect(currentComp.isSculpted, isFalse);
+          },
+        );
+
+        test(
+          'toggleComponentPixel safely handles null grid, invalid indices, or out-of-bounds coordinates without throwing',
+          () {
+            final notifier = container.read(canvasStateProvider.notifier);
+            final compWithoutGrid = PixelArtComponent(
+              name: 'NoGridPart',
+              description: 'Grid is null',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: null,
+            );
+            final compWithGrid = PixelArtComponent(
+              name: 'GridPart',
+              description: 'Grid is 16x16',
+              relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+              grid: List.generate(16, (_) => List.filled(16, 0)),
+            );
+
+            notifier.state = notifier.state.copyWith(
+              decomposedComponents: [compWithoutGrid, compWithGrid],
+            );
+
+            // Component with null grid
+            expect(
+              () => notifier.toggleComponentPixel(0, 3, 4, 1),
+              returnsNormally,
+            );
+            expect(
+              container.read(canvasStateProvider).decomposedComponents[0].grid,
+              isNull,
+            );
+
+            // Invalid index
+            expect(
+              () => notifier.toggleComponentPixel(-1, 0, 0, 1),
+              returnsNormally,
+            );
+            expect(
+              () => notifier.toggleComponentPixel(99, 0, 0, 1),
+              returnsNormally,
+            );
+
+            // Out-of-bounds coordinates
+            expect(
+              () => notifier.toggleComponentPixel(1, -1, 0, 1),
+              returnsNormally,
+            );
+            expect(
+              () => notifier.toggleComponentPixel(1, 99, 0, 1),
+              returnsNormally,
+            );
+            expect(
+              () => notifier.toggleComponentPixel(1, 0, -1, 1),
+              returnsNormally,
+            );
+            expect(
+              () => notifier.toggleComponentPixel(1, 0, 99, 1),
+              returnsNormally,
+            );
+
+            // Verify grid unaltered
+            final intactGrid = container
+                .read(canvasStateProvider)
+                .decomposedComponents[1]
+                .grid!;
+            for (final row in intactGrid) {
+              for (final val in row) {
+                expect(val, equals(0));
+              }
+            }
+          },
+        );
+      });
+    });
   });
 }
 

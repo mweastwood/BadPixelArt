@@ -454,6 +454,7 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void updateComponentBoundingBox(int index, Rect newBoundingBox) {
+    if (state.isGenerating) return;
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
       updated[index] = updated[index].copyWith(
@@ -531,14 +532,20 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void deleteComponent(int index) {
+    if (state.isGenerating) return;
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
       updated.removeAt(index);
       int newActiveIndex = state.activeComponentIndex;
       if (updated.isEmpty) {
         newActiveIndex = 0;
-      } else if (newActiveIndex >= updated.length) {
-        newActiveIndex = updated.length - 1;
+      } else {
+        if (index < newActiveIndex) {
+          newActiveIndex--;
+        }
+        if (newActiveIndex >= updated.length) {
+          newActiveIndex = updated.length - 1;
+        }
       }
       state = state.copyWith(
         decomposedComponents: updated,
@@ -1013,9 +1020,13 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
   }
 
   void resetComponentGrid(int index) {
+    if (state.isGenerating) return;
     if (index >= 0 && index < state.decomposedComponents.length) {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
-      updated[index] = updated[index].copyWith(grid: null, isSculpted: false);
+      updated[index] = updated[index].copyWith(
+        clearGrid: true,
+        isSculpted: false,
+      );
       state = state.copyWith(decomposedComponents: updated);
     }
   }
@@ -1026,6 +1037,12 @@ class CanvasNotifier extends StateNotifier<CanvasModel> implements AgentCanvas {
       final updated = List<PixelArtComponent>.from(state.decomposedComponents);
       final comp = updated[compIndex];
       if (comp.grid != null) {
+        if (y < 0 ||
+            y >= comp.grid!.length ||
+            x < 0 ||
+            x >= comp.grid![y].length) {
+          return;
+        }
         final newGrid = List<List<int>>.from(
           comp.grid!.map((row) => List<int>.from(row)),
         );

@@ -255,5 +255,66 @@ void main() {
       );
       expect(comp1, isNot(equals(comp1.copyWith(isSculpted: false))));
     });
+
+    test(
+      'copyWith with clearGrid: true resets grid to null and recalculates metrics',
+      () {
+        final comp = PixelArtComponent(
+          name: 'test',
+          description: 'desc',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: [
+            [1, 1],
+            [1, 1],
+          ],
+          isSculpted: true,
+        );
+
+        expect(comp.grid, isNotNull);
+        final cleared = comp.copyWith(clearGrid: true, isSculpted: false);
+        expect(cleared.grid, isNull);
+        expect(cleared.isSculpted, isFalse);
+        expect(cleared.hasInterior, isFalse);
+        expect(cleared.outlineGrid, isNull);
+        expect(cleared.minP, equals(0.0));
+        expect(cleared.maxP, equals(0.0));
+      },
+    );
+
+    test(
+      'copyWith throws AssertionError when both clearGrid: true and a new grid are provided',
+      () {
+        final comp = PixelArtComponent(
+          name: 'test',
+          description: 'desc',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+        );
+
+        expect(
+          () => comp.copyWith(
+            clearGrid: true,
+            grid: [
+              [1],
+            ],
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+      },
+    );
+
+    test(
+      'initializes minP and maxP to 0.0 when grid contains only zero pixels',
+      () {
+        final comp = PixelArtComponent(
+          name: 'zero-grid',
+          description: 'desc',
+          relativeBoundingBox: const Rect.fromLTWH(0, 0, 1, 1),
+          grid: List.generate(16, (_) => List.filled(16, 0)),
+        );
+
+        expect(comp.minP, equals(0.0));
+        expect(comp.maxP, equals(0.0));
+      },
+    );
   });
 }
