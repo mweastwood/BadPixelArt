@@ -195,7 +195,9 @@ class PixelArtComponent {
       for (int x = 0; x < width; x++) {
         if (row[x] > 0) {
           if (y > 0 && y < height - 1 && x > 0 && x < width - 1) {
-            if (grid[y - 1][x] > 0 &&
+            if (grid[y - 1].length > x &&
+                grid[y + 1].length > x &&
+                grid[y - 1][x] > 0 &&
                 grid[y + 1][x] > 0 &&
                 row[x - 1] > 0 &&
                 row[x + 1] > 0) {
@@ -216,10 +218,7 @@ class PixelArtComponent {
     double? explicitMaxP,
   }) {
     if (grid == null) {
-      return (
-        explicitMinP ?? 0.0,
-        explicitMaxP ?? 0.0,
-      );
+      return (explicitMinP ?? 0.0, explicitMaxP ?? 0.0);
     }
     final size = grid.length;
     double minP = explicitMinP ?? double.infinity;
@@ -312,7 +311,9 @@ class PixelArtComponent {
           if (y == 0 || y == height - 1 || x == 0 || x == width - 1) {
             hasBackgroundNeighbor = true;
           } else {
-            if (grid[y - 1][x] == 0 ||
+            if (grid[y - 1].length <= x ||
+                grid[y - 1][x] == 0 ||
+                grid[y + 1].length <= x ||
                 grid[y + 1][x] == 0 ||
                 row[x - 1] == 0 ||
                 row[x + 1] == 0) {
