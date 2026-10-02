@@ -256,8 +256,7 @@ void main() {
       );
       expect(fromLibraryButton, findsOneWidget);
       await tester.tap(fromLibraryButton);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(find.text('Select Reference Image'), findsOneWidget);
     });
@@ -278,8 +277,7 @@ void main() {
       );
       expect(activeLibButton, findsOneWidget);
       await tester.tap(activeLibButton);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
 
       expect(find.text('Select Reference Image'), findsOneWidget);
     });
