@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('WizardRegistry Tests', () {
-    tearDown(() => WizardRegistry.reset());
+    setUp(WizardRegistry.reset);
+    tearDown(WizardRegistry.reset);
 
     test('defaultWizard contains all standard 8 steps', () {
       final defaultWizard = WizardRegistry.defaultWizard;
@@ -63,18 +64,34 @@ void main() {
         title: 'Sprite Animation Wizard',
         steps: [SelectGridSizeStepDefinition(), RefinementStepDefinition()],
       );
+      const overriddenDefaultWizard = WizardDefinition(
+        id: 'default_pixel_art',
+        title: 'Overridden Pixel Art Generator',
+        steps: [RefinementStepDefinition()],
+      );
 
       WizardRegistry.register(customWizard);
+      WizardRegistry.register(overriddenDefaultWizard);
+
       expect(
         WizardRegistry.getById('sprite_anim_wizard'),
         equals(customWizard),
       );
+      expect(
+        WizardRegistry.getById('default_pixel_art'),
+        equals(overriddenDefaultWizard),
+      );
       expect(WizardRegistry.allWizards, contains(customWizard));
+      expect(WizardRegistry.allWizards, contains(overriddenDefaultWizard));
 
       WizardRegistry.reset();
 
       expect(WizardRegistry.getById('sprite_anim_wizard'), isNull);
       expect(WizardRegistry.allWizards, isNot(contains(customWizard)));
+      expect(
+        WizardRegistry.getById('default_pixel_art'),
+        equals(WizardRegistry.structuredPixelArtWizard),
+      );
       expect(WizardRegistry.allWizards, [
         WizardRegistry.structuredPixelArtWizard,
         WizardRegistry.directPixelArtWizard,

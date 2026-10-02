@@ -55,11 +55,14 @@ class WizardRegistry {
 
   static const defaultPixelArtWizard = structuredPixelArtWizard;
 
-  static final Map<String, WizardDefinition> _registeredWizards = {
+  static const Map<String, WizardDefinition> _defaultWizards = {
     structuredPixelArtWizard.id: structuredPixelArtWizard,
     directPixelArtWizard.id: directPixelArtWizard,
     templateSpriteWizard.id: templateSpriteWizard,
   };
+
+  static final Map<String, WizardDefinition> _registeredWizards =
+      Map.of(_defaultWizards);
 
   /// Returns all registered wizard pipelines.
   static List<WizardDefinition> get allWizards =>
@@ -81,10 +84,6 @@ class WizardRegistry {
   static void reset() {
     _registeredWizards
       ..clear()
-      ..addAll({
-        structuredPixelArtWizard.id: structuredPixelArtWizard,
-        directPixelArtWizard.id: directPixelArtWizard,
-        templateSpriteWizard.id: templateSpriteWizard,
-      });
+      ..addAll(_defaultWizards);
   }
 }
