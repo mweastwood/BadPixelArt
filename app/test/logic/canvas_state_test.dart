@@ -1450,30 +1450,27 @@ void main() {
           },
         );
 
-        test(
-          'does nothing when state.isGenerating is true',
-          () {
-            final notifier = container.read(canvasStateProvider.notifier);
-            final compA = PixelArtComponent(
-              name: 'A',
-              description: 'Part A',
-              relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
-            );
+        test('does nothing when state.isGenerating is true', () {
+          final notifier = container.read(canvasStateProvider.notifier);
+          final compA = PixelArtComponent(
+            name: 'A',
+            description: 'Part A',
+            relativeBoundingBox: const Rect.fromLTWH(0, 0, 0.5, 0.5),
+          );
 
-            notifier.state = notifier.state.copyWith(
-              decomposedComponents: [compA],
-              activeComponentIndex: 0,
-              isGenerating: true,
-            );
+          notifier.state = notifier.state.copyWith(
+            decomposedComponents: [compA],
+            activeComponentIndex: 0,
+            isGenerating: true,
+          );
 
-            notifier.deleteComponent(0);
+          notifier.deleteComponent(0);
 
-            final state = container.read(canvasStateProvider);
-            expect(state.decomposedComponents.length, equals(1));
-            expect(state.decomposedComponents.first.name, equals('A'));
-            expect(state.activeComponentIndex, equals(0));
-          },
-        );
+          final state = container.read(canvasStateProvider);
+          expect(state.decomposedComponents.length, equals(1));
+          expect(state.decomposedComponents.first.name, equals('A'));
+          expect(state.activeComponentIndex, equals(0));
+        });
       });
 
       group('applyDecompositionOption and clearPendingDecompositionOptions', () {
