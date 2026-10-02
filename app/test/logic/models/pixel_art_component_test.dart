@@ -429,6 +429,80 @@ void main() {
       expect(wideComp.maxP, closeTo(3.0, 1e-6));
     });
 
+    test(
+      'Ragged / non-uniform grids calculate hasInterior, outlineGrid, and projection ranges safely',
+      () {
+        // Ragged grid where rows have different lengths and interior is false:
+        // Row 0 (len 2): [0, 1]
+        // Row 1 (len 4): [1, 1, 1, 0]  -- x=1 neighbor y+1 (row 2) has len 1 <= 1, so not interior
+        // Row 2 (len 1): [1]
+        // Row 3 (len 3): [0, 1, 1]
+        final raggedGridNoInterior = [
+          [0, 1],
+          [1, 1, 1, 0],
+          [1],
+          [0, 1, 1],
+        ];
+
+        final compNoInterior = PixelArtComponent(
+          name: 'ragged_no_interior',
+          description: 'ragged grid without interior',
+          relativeBoundingBox: Rect.zero,
+          grid: raggedGridNoInterior,
+          gradientAngle: 0.0,
+        );
+
+        expect(compNoInterior.hasInterior, isFalse);
+        expect(compNoInterior.outlineGrid, isNotNull);
+        expect(compNoInterior.outlineGrid!.length, equals(4));
+        expect(compNoInterior.outlineGrid![0].length, equals(2));
+        expect(compNoInterior.outlineGrid![1].length, equals(4));
+        expect(compNoInterior.outlineGrid![2].length, equals(1));
+        expect(compNoInterior.outlineGrid![3].length, equals(3));
+        // All set pixels in compNoInterior are on the outline (since hasInterior is false and background neighbors exist)
+        expect(compNoInterior.outlineGrid![0], equals([0, 1]));
+        expect(compNoInterior.outlineGrid![1], equals([1, 1, 1, 0]));
+        expect(compNoInterior.outlineGrid![2], equals([1]));
+        expect(compNoInterior.outlineGrid![3], equals([0, 1, 1]));
+        expect(compNoInterior.minP, closeTo(0.0, 1e-6));
+        expect(compNoInterior.maxP, closeTo(2.0, 1e-6));
+
+        // Ragged grid that contains an interior pixel:
+        // Row 0 (len 3): [0, 1, 0]
+        // Row 1 (len 5): [1, 1, 1, 1, 0] -> at (x=1, y=1): top=1, bottom=1, left=1, right=1 => interior
+        // Row 2 (len 4): [0, 1, 0, 0]
+        final raggedGridWithInterior = [
+          [0, 1, 0],
+          [1, 1, 1, 1, 0],
+          [0, 1, 0, 0],
+        ];
+
+        final compWithInterior = PixelArtComponent(
+          name: 'ragged_with_interior',
+          description: 'ragged grid with interior',
+          relativeBoundingBox: Rect.zero,
+          grid: raggedGridWithInterior,
+          gradientAngle: 0.0,
+        );
+
+        expect(compWithInterior.hasInterior, isTrue);
+        expect(compWithInterior.outlineGrid, isNotNull);
+        // (1, 1) has no background neighbors, so outlineGrid[1][1] is 0
+        expect(compWithInterior.outlineGrid![1][1], equals(0));
+        // (2, 1) has neighbor above (row 0 has len 3, row 0[2] == 0) and below (row 2 has len 4, row 2[2] == 0) -> outline
+        expect(compWithInterior.outlineGrid![1][2], equals(1));
+        // (3, 1) row 0 has len 3 <= 3, missing above neighbor -> treated as background -> outline
+        expect(compWithInterior.outlineGrid![1][3], equals(1));
+        // Projection ranges work across different gradient angles
+        expect(compWithInterior.minP, closeTo(0.0, 1e-6));
+        expect(compWithInterior.maxP, closeTo(3.0, 1e-6));
+
+        final compRotated = compWithInterior.copyWith(gradientAngle: 90.0);
+        expect(compRotated.minP, closeTo(0.0, 1e-6));
+        expect(compRotated.maxP, closeTo(2.0, 1e-6));
+      },
+    );
+
     test('Precomputed parameters forwarding', () {
       final customOutline = [
         [1, 0],
