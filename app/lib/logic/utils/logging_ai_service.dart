@@ -10,10 +10,14 @@ import 'settings_provider.dart';
 /// An [AiService] wrapper that logs all AI interactions to the AI history dock.
 ///
 /// Note: Methods such as `generateContentWithContinuation` are provided via
-/// [AiServiceContinuationExtension] on [AiService]. Because the extension executes
+/// [AiServiceContinuationExtension] on [AiService]. Declaring
+/// `generateContentWithContinuation` directly on [LoggingAiService] with `@override`
+/// produces a Dart compiler error (`The method doesn't override an inherited method`)
+/// because extension methods cannot be overridden. Because the extension executes
 /// each continuation turn by calling [generateContentRaw], all agent and orchestrator
 /// continuation calls dynamically dispatch through [LoggingAiService.generateContentRaw]
-/// and are logged without requiring a separate override.
+/// and are logged without requiring a separate override, while callers bound to
+/// [AiService] statically dispatch to the extension.
 class LoggingAiService implements AiService {
   final AiService _delegate;
   final String? modelName;
