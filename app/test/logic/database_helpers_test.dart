@@ -83,9 +83,13 @@ void main() {
         expect(deserializePalette('{"not": "a list"}'), isEmpty);
       });
 
-      test('recovers gracefully when palette contains invalid hex strings', () {
-        expect(deserializePalette(jsonEncode(['#xyz123'])), isEmpty);
-      });
+      test(
+        'recovers gracefully when palette contains invalid hex strings or null elements',
+        () {
+          expect(deserializePalette(jsonEncode(['#xyz123'])), isEmpty);
+          expect(deserializePalette(jsonEncode([null])), isEmpty);
+        },
+      );
     },
   );
 
@@ -319,6 +323,12 @@ void main() {
         expect(deserializeHistory(''), isEmpty);
         expect(deserializeHistory('{corrupted: json}'), isEmpty);
         expect(deserializeHistory('not json at all'), isEmpty);
+        expect(deserializeHistory('{"not": "a list"}'), isEmpty);
+      });
+
+      test('recovers gracefully when array contains non-map elements', () {
+        expect(deserializeHistory(jsonEncode(['not_a_map'])), isEmpty);
+        expect(deserializeHistory(jsonEncode([123])), isEmpty);
       });
     },
   );
