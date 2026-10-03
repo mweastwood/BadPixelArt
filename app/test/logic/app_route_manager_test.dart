@@ -20,8 +20,7 @@ class _TrackingTabController extends TabController {
 
 class _TestTabContainer extends StatefulWidget {
   final Uri? mockUri;
-  final int initialIndex;
-  const _TestTabContainer({this.mockUri, this.initialIndex = 1});
+  const _TestTabContainer({this.mockUri});
 
   @override
   State<_TestTabContainer> createState() => _TestTabContainerState();
@@ -37,7 +36,7 @@ class _TestTabContainerState extends State<_TestTabContainer>
     super.initState();
     tabController = TabController(
       length: 3,
-      initialIndex: widget.initialIndex,
+      initialIndex: 1,
       vsync: this,
     );
     routeManager = AppRouteManager(mockUri: widget.mockUri);
