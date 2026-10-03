@@ -152,10 +152,7 @@ Let me know if you need anything else!
 
     test('reconstructs nested mixed tokens and stack reversal correctly', () {
       final input1 = '[{"items": [{"val": 1}, {"val": 2';
-      expect(
-        repairTruncatedJson(input1),
-        equals('[{"items": [{"val": 1}]}]'),
-      );
+      expect(repairTruncatedJson(input1), equals('[{"items": [{"val": 1}]}]'));
 
       final input2 = '{"data": [{"item": {"x": 10, "y": 20}}';
       expect(
@@ -164,10 +161,7 @@ Let me know if you need anything else!
       );
 
       final input3 = '{"a": {"b": [1, 2]';
-      expect(
-        repairTruncatedJson(input3),
-        equals('{"a": {"b": [1, 2]}}'),
-      );
+      expect(repairTruncatedJson(input3), equals('{"a": {"b": [1, 2]}}'));
 
       final input4 = '{"records": [{"tags": ["dart", "flutter"]';
       expect(
@@ -185,10 +179,7 @@ Let me know if you need anything else!
         repairTruncatedJson('[{"a": 1}, {"b": 2}]'),
         equals('[{"a": 1}, {"b": 2}]'),
       );
-      expect(
-        repairTruncatedJson('  {"a": 1}  '),
-        equals('{"a": 1}'),
-      );
+      expect(repairTruncatedJson('  {"a": 1}  '), equals('{"a": 1}'));
     });
   });
 
@@ -212,17 +203,20 @@ Let me know if you need anything else!
       expect(parseNumValue('2.5e-2'), equals(0.025));
     });
 
-    test('returns null for null, non-numeric strings, or incompatible types', () {
-      expect(parseNumValue(null), isNull);
-      expect(parseNumValue(''), isNull);
-      expect(parseNumValue('   '), isNull);
-      expect(parseNumValue('abc'), isNull);
-      expect(parseNumValue('12abc'), isNull);
-      expect(parseNumValue('--1'), isNull);
-      expect(parseNumValue(true), isNull);
-      expect(parseNumValue(false), isNull);
-      expect(parseNumValue([1, 2]), isNull);
-      expect(parseNumValue({'x': 1}), isNull);
-    });
+    test(
+      'returns null for null, non-numeric strings, or incompatible types',
+      () {
+        expect(parseNumValue(null), isNull);
+        expect(parseNumValue(''), isNull);
+        expect(parseNumValue('   '), isNull);
+        expect(parseNumValue('abc'), isNull);
+        expect(parseNumValue('12abc'), isNull);
+        expect(parseNumValue('--1'), isNull);
+        expect(parseNumValue(true), isNull);
+        expect(parseNumValue(false), isNull);
+        expect(parseNumValue([1, 2]), isNull);
+        expect(parseNumValue({'x': 1}), isNull);
+      },
+    );
   });
 }
