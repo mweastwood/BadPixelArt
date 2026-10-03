@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
@@ -249,5 +250,331 @@ void main() {
         expect(notifier.state.aiHistory.first.isError, isFalse);
       },
     );
+  });
+
+  group('LoggingAiService generateContentWithContinuation Tests', () {
+    test(
+      'emits pending entry immediately and updates when continuation completes',
+      () async {
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+
+        final loggedEntries = <AgentHistoryEntry>[];
+        final updatedEntries = <Map<String, AgentHistoryEntry>>[];
+
+        loggingService.onLog = (entry) => loggedEntries.add(entry);
+        loggingService.onLogUpdate = (oldEntry, newEntry) {
+          updatedEntries.add({'old': oldEntry, 'new': newEntry});
+        };
+
+        // Launch continuation query in background
+        final future = loggingService.generateContentWithContinuation(
+          prompt: 'Decompose sprite',
+          autoContinueLimit: 1,
+        );
+
+        // Assert pending entry was emitted immediately before AI response completes
+        expect(loggedEntries.length, equals(1));
+        expect(loggedEntries.first.prompt, equals('Decompose sprite'));
+        expect(loggedEntries.first.response, equals('Generating response...'));
+        expect(loggedEntries.first.modelName, equals('test-model'));
+        expect(updatedEntries, isEmpty);
+
+        // Complete AI call
+        fakeService.completer!.complete(
+          AiResponse(
+            text: '{"name": "blade"}',
+            inputTokens: 12,
+            outputTokens: 8,
+            totalTokens: 20,
+            estimatedCostUsd: 0.002,
+          ),
+        );
+
+        final result = await future;
+        expect(result, equals('{"name": "blade"}'));
+
+        // Assert entry was updated with completed result and metrics
+        expect(updatedEntries.length, equals(1));
+        expect(updatedEntries.first['old'], equals(loggedEntries.first));
+        expect(
+          updatedEntries.first['new']!.response,
+          equals('{"name": "blade"}'),
+        );
+        expect(updatedEntries.first['new']!.isError, isFalse);
+        expect(updatedEntries.first['new']!.inputTokens, equals(12));
+        expect(updatedEntries.first['new']!.outputTokens, equals(8));
+        expect(updatedEntries.first['new']!.totalTokens, equals(20));
+      },
+    );
+
+    test(
+      'updates entry with isError: true when continuation call throws exception',
+      () async {
+        final fakeService = TestMockAiService(shouldThrow: true);
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+
+        final loggedEntries = <AgentHistoryEntry>[];
+        final updatedEntries = <Map<String, AgentHistoryEntry>>[];
+
+        loggingService.onLog = (entry) => loggedEntries.add(entry);
+        loggingService.onLogUpdate = (oldEntry, newEntry) {
+          updatedEntries.add({'old': oldEntry, 'new': newEntry});
+        };
+
+        // Launch failing query
+        await expectLater(
+          loggingService.generateContentWithContinuation(
+            prompt: 'Failing continuation call',
+            autoContinueLimit: 1,
+          ),
+          throwsA(isA<Exception>()),
+        );
+
+        expect(loggedEntries.length, equals(1));
+        expect(loggedEntries.first.prompt, equals('Failing continuation call'));
+        expect(loggedEntries.first.response, equals('Generating response...'));
+
+        expect(updatedEntries.length, equals(1));
+        expect(updatedEntries.first['new']!.isError, isTrue);
+        expect(
+          updatedEntries.first['new']!.response,
+          contains('API quota exceeded'),
+        );
+      },
+    );
+
+    test(
+      'CanvasNotifier updates aiHistory state via generateContentWithContinuation',
+      () async {
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+        final notifier = CanvasNotifier(loggingService);
+
+        final future = loggingService.generateContentWithContinuation(
+          prompt: 'Refine layer details',
+          autoContinueLimit: 1,
+        );
+
+        expect(notifier.state.aiHistory.length, equals(1));
+        expect(
+          notifier.state.aiHistory.first.response,
+          equals('Generating response...'),
+        );
+
+        fakeService.completer!.complete(
+          AiResponse(
+            text: 'Refinement completed.',
+            inputTokens: 15,
+            outputTokens: 25,
+            totalTokens: 40,
+          ),
+        );
+
+        await future;
+
+        expect(notifier.state.aiHistory.length, equals(1));
+        expect(
+          notifier.state.aiHistory.first.response,
+          equals('Refinement completed.'),
+        );
+        expect(notifier.state.aiHistory.first.isError, isFalse);
+      },
+    );
+
+    test('logs each turn during multi-turn continuation', () async {
+      int callIndex = 0;
+      final fakeService = TestMockAiService(
+        onGenerateContentRaw:
+            ({
+              required String prompt,
+              Uint8List? imageBytes,
+              double? temperature,
+              int? maxOutputTokens,
+            }) {
+              callIndex++;
+              if (callIndex == 1) {
+                return AiResponse(
+                  text: '[{"name": "blade", "shapes": [',
+                  isTruncated: true,
+                  inputTokens: 20,
+                  outputTokens: 30,
+                );
+              } else {
+                return AiResponse(
+                  text: '{"type": "rect"}]}]',
+                  isTruncated: false,
+                  inputTokens: 40,
+                  outputTokens: 20,
+                );
+              }
+            },
+      );
+      final loggingService = LoggingAiService(
+        fakeService,
+        modelName: 'multi-turn-model',
+      );
+
+      final loggedEntries = <AgentHistoryEntry>[];
+      final updatedEntries = <Map<String, AgentHistoryEntry>>[];
+
+      loggingService.onLog = (entry) => loggedEntries.add(entry);
+      loggingService.onLogUpdate = (oldEntry, newEntry) {
+        updatedEntries.add({'old': oldEntry, 'new': newEntry});
+      };
+
+      final result = await loggingService.generateContentWithContinuation(
+        prompt: 'Multi-turn decomposition',
+        autoContinueLimit: 2,
+      );
+
+      expect(
+        result,
+        equals('[{"name": "blade", "shapes": [{"type": "rect"}]}]'),
+      );
+      expect(fakeService.callCount, equals(2));
+      expect(loggedEntries.length, equals(2));
+      expect(updatedEntries.length, equals(2));
+
+      // First turn
+      expect(loggedEntries[0].prompt, equals('Multi-turn decomposition'));
+      expect(
+        updatedEntries[0]['new']!.response,
+        equals('[{"name": "blade", "shapes": ['),
+      );
+      expect(updatedEntries[0]['new']!.inputTokens, equals(20));
+      expect(updatedEntries[0]['new']!.outputTokens, equals(30));
+
+      // Second turn (continuation turn)
+      expect(
+        loggedEntries[1].prompt,
+        contains('[Assistant (Partial Response)]:'),
+      );
+      expect(
+        loggedEntries[1].prompt,
+        contains('Continue generating the response from where you left off'),
+      );
+      expect(updatedEntries[1]['new']!.response, equals('{"type": "rect"}]}]'));
+      expect(updatedEntries[1]['new']!.inputTokens, equals(40));
+      expect(updatedEntries[1]['new']!.outputTokens, equals(20));
+    });
+
+    test(
+      'forwards imageBytes and logs them in AgentHistoryEntry during continuation',
+      () async {
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+
+        final loggedEntries = <AgentHistoryEntry>[];
+        final updatedEntries = <Map<String, AgentHistoryEntry>>[];
+
+        loggingService.onLog = (entry) => loggedEntries.add(entry);
+        loggingService.onLogUpdate = (oldEntry, newEntry) {
+          updatedEntries.add({'old': oldEntry, 'new': newEntry});
+        };
+
+        final testImageBytes = Uint8List.fromList([10, 20, 30, 40]);
+        final future = loggingService.generateContentWithContinuation(
+          prompt: 'Inspect reference image',
+          imageBytes: testImageBytes,
+          autoContinueLimit: 1,
+        );
+
+        expect(loggedEntries.length, equals(1));
+        expect(loggedEntries.first.imageBytes, equals(testImageBytes));
+
+        fakeService.completer!.complete(
+          AiResponse(text: 'Visual elements identified'),
+        );
+        await future;
+
+        expect(updatedEntries.length, equals(1));
+        expect(updatedEntries.first['new']!.imageBytes, equals(testImageBytes));
+      },
+    );
+
+    test(
+      'updates entry with isError: true when continuation response contains error JSON',
+      () async {
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
+        final loggingService = LoggingAiService(
+          fakeService,
+          modelName: 'test-model',
+        );
+
+        final loggedEntries = <AgentHistoryEntry>[];
+        final updatedEntries = <Map<String, AgentHistoryEntry>>[];
+
+        loggingService.onLog = (entry) => loggedEntries.add(entry);
+        loggingService.onLogUpdate = (oldEntry, newEntry) {
+          updatedEntries.add({'old': oldEntry, 'new': newEntry});
+        };
+
+        final future = loggingService.generateContentWithContinuation(
+          prompt: 'Continuation with API error response',
+          autoContinueLimit: 1,
+        );
+
+        fakeService.completer!.complete(
+          AiResponse(text: '{"error": "Rate limit exceeded"}'),
+        );
+        await future;
+
+        expect(updatedEntries.length, equals(1));
+        expect(updatedEntries.first['new']!.isError, isTrue);
+        expect(
+          updatedEntries.first['new']!.response,
+          equals('{"error": "Rate limit exceeded"}'),
+        );
+      },
+    );
+
+    test('falls back to onLog when onLogUpdate is null in continuation', () async {
+      final fakeService = TestMockAiService(
+        completer: Completer<AiResponse?>(),
+      );
+      final loggingService = LoggingAiService(fakeService);
+
+      final loggedEntries = <AgentHistoryEntry>[];
+      loggingService.onLog = (entry) => loggedEntries.add(entry);
+
+      final future = loggingService.generateContentWithContinuation(
+        prompt: 'Fallback continuation test',
+        autoContinueLimit: 1,
+      );
+      expect(loggedEntries.length, equals(1));
+      expect(loggedEntries.first.response, equals('Generating response...'));
+
+      fakeService.completer!.complete(
+        AiResponse(text: 'Completed fallback continuation'),
+      );
+      await future;
+
+      expect(loggedEntries.length, equals(2));
+      expect(
+        loggedEntries.last.response,
+        equals('Completed fallback continuation'),
+      );
+    });
   });
 }
