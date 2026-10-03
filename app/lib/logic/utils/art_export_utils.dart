@@ -112,7 +112,13 @@ Future<Uint8List> generatePngBytes(
     if (byteData == null) {
       return Uint8List(0);
     }
-    return byteData.buffer.asUint8List();
+    return byteData.buffer.asUint8List(
+      byteData.offsetInBytes,
+      byteData.lengthInBytes,
+    );
+  } catch (e) {
+    debugPrint('Error generating PNG bytes: $e');
+    return Uint8List(0);
   } finally {
     image?.dispose();
     picture.dispose();

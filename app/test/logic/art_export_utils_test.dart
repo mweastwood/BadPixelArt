@@ -134,6 +134,31 @@ void main() {
       );
     });
 
+    test(
+      'generatePngBytes handles resource disposal cleanly and returns valid buffer',
+      () async {
+        final grid = [
+          [1, 2],
+          [3, 4],
+        ];
+        final palette = [
+          const Color(0xFFFF0000),
+          const Color(0xFF00FF00),
+          const Color(0xFF0000FF),
+          const Color(0xFFFFFF00),
+        ];
+
+        final pngBytes = await generatePngBytes(grid, palette, scale: 2);
+        expect(pngBytes, isNotEmpty);
+        expect(
+          pngBytes.sublist(0, 8),
+          equals(
+            Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+          ),
+        );
+      },
+    );
+
     test('generateSvgString returns fallback for empty grid or scale <= 0', () {
       final svg1 = generateSvgString([], [Colors.red]);
       expect(svg1, contains('<svg'));
