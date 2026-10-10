@@ -17,8 +17,20 @@ String serializeGrid(List<List<int>> grid) {
 
 /// Returns [index] if it is a valid index into a palette of [paletteLength]
 /// colors, otherwise 0 (or 0 when the palette is empty).
+///
+/// This is for 0-based palette indices such as `selectedColorIndex`. For grid
+/// cell values (1-based) use [clampCellValue].
 int clampColorIndex(int index, int paletteLength) {
   return (index >= 0 && index < paletteLength) ? index : 0;
+}
+
+/// Returns [value] if it is a valid grid cell value for a palette of
+/// [paletteLength] colors, otherwise 0.
+///
+/// Grid cells are 1-based: 0 means empty and `n` means `palette[n - 1]`, so
+/// the valid range is `0..paletteLength` inclusive.
+int clampCellValue(int value, int paletteLength) {
+  return (value >= 0 && value <= paletteLength) ? value : 0;
 }
 
 /// Strictly deserializes a grid from JSON, returning null when the data is
@@ -26,7 +38,7 @@ int clampColorIndex(int index, int paletteLength) {
 ///
 /// When [gridSize] is provided the grid must be [gridSize] x [gridSize];
 /// otherwise it must be a non-empty rectangular grid. When [paletteLength] is
-/// provided, cell values outside `[0, paletteLength)` are reset to 0 so
+/// provided, cell values outside `[0, paletteLength]` are reset to 0 so
 /// rendering can never index past the palette. [logContext] (e.g. the creation
 /// id) is included in the log message when the data is invalid.
 List<List<int>>? tryDeserializeGrid(
@@ -55,7 +67,7 @@ List<List<int>>? tryDeserializeGrid(
       };
       return paletteLength == null
           ? value
-          : clampColorIndex(value, paletteLength);
+          : clampCellValue(value, paletteLength);
     }
 
     final parsedGrid = <List<int>>[];

@@ -56,6 +56,19 @@ void main() {
         [0, 0],
         [0, 1],
       ]);
+      // Cells are 1-based, so a value equal to paletteLength (the last palette
+      // color) must be preserved.
+      expect(deserializeGrid('[[2, 3], [1, 0]]', paletteLength: 2), [
+        [2, 0],
+        [1, 0],
+      ]);
+      expect(
+        tryDeserializeGrid('[[2, 2], [2, 2]]', gridSize: 2, paletteLength: 2),
+        [
+          [2, 2],
+          [2, 2],
+        ],
+      );
       expect(deserializeGrid('[[1, 2]]'), [
         [1, 2],
       ]);
@@ -66,6 +79,14 @@ void main() {
         equals(createBlankGrid(2)),
       );
       expect(deserializeGrid('[[1, 1], [1]]'), isEmpty);
+    });
+
+    test('clampCellValue accepts 0..paletteLength inclusive', () {
+      expect(clampCellValue(0, 2), 0);
+      expect(clampCellValue(2, 2), 2);
+      expect(clampCellValue(3, 2), 0);
+      expect(clampCellValue(-1, 2), 0);
+      expect(clampCellValue(1, 0), 0);
     });
 
     test('clampColorIndex bounds indices to the palette', () {

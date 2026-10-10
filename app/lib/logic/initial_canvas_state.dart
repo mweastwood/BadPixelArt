@@ -64,7 +64,7 @@ Future<CanvasModel> loadInitialCanvasState(AppDatabase db) async {
   }
   return CanvasModel(
     gridSize: 16,
-    grid: List.generate(16, (_) => List.filled(16, 0)),
+    grid: createBlankGrid(16),
     selectedColorIndex: 1,
     selectedTool: CanvasTool.line,
     paletteName: 'primary',

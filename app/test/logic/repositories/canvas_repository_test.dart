@@ -267,7 +267,9 @@ void main() {
             gridSize: const Value(4),
             gridData: const Value(corrupt),
             paletteName: const Value('primary'),
-            paletteColors: Value(serializePalette([Colors.black, Colors.white])),
+            paletteColors: Value(
+              serializePalette([Colors.black, Colors.white]),
+            ),
             decomposedComponents: const Value('[]'),
             aiHistoryLogs: const Value('[]'),
             createdAt: Value(now),
@@ -314,7 +316,10 @@ void main() {
         expect(edited.isGridRecovered, isFalse);
         await repository.saveCanvas(edited);
         expect(
-          deserializeGrid((await db.getCreationById(id))!.gridData, gridSize: 4),
+          deserializeGrid(
+            (await db.getCreationById(id))!.gridData,
+            gridSize: 4,
+          ),
           equals(edited.grid),
         );
       },
@@ -353,7 +358,7 @@ void main() {
           CreationsCompanion(
             title: const Value('Bad Indices'),
             gridSize: const Value(2),
-            gridData: const Value('[[0, 5], [-1, 1]]'),
+            gridData: const Value('[[0, 5], [2, 1]]'),
             paletteName: const Value('custom'),
             paletteColors: const Value('["#ff000000", "#ffffffff"]'),
             decomposedComponents: const Value('[]'),
@@ -376,14 +381,14 @@ void main() {
         final initial = await loadInitialCanvasState(db);
         expect(initial.grid, [
           [0, 0],
-          [0, 1],
+          [2, 1],
         ]);
         expect(initial.selectedColorIndex, equals(0));
 
         final loaded = await repository.loadCanvas(id, initial);
         expect(loaded!.grid, [
           [0, 0],
-          [0, 1],
+          [2, 1],
         ]);
         expect(loaded.selectedColorIndex, equals(0));
 
