@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
@@ -24,9 +25,17 @@ class CanvasRepository {
   Future<CanvasModel> saveCanvas(CanvasModel state) async {
     final now = DateTime.now();
 
-    final gridToSave =
-        (state.grid.length == state.gridSize &&
-            state.grid.every((row) => row.length == state.gridSize))
+    final isGridValid =
+        state.grid.length == state.gridSize &&
+        state.grid.every((row) => row.length == state.gridSize);
+    if (!isGridValid) {
+      debugPrint(
+        'saveCanvas: grid dimensions do not match gridSize '
+        '(${state.gridSize} x ${state.gridSize}); saving a blank grid instead. '
+        'This may indicate an in-memory state bug.',
+      );
+    }
+    final gridToSave = isGridValid
         ? state.grid
         : createBlankGrid(state.gridSize);
 

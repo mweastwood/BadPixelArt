@@ -6,12 +6,10 @@ import 'package:flutter_agent_core/flutter_agent_core.dart';
 import '../models/color_palette.dart';
 import '../models/pixel_art_component.dart';
 
-List<List<int>> _blankGrid(int gridSize) {
+/// Helper function to create a blank [gridSize] x [gridSize] grid.
+List<List<int>> createBlankGrid(int gridSize) {
   return List.generate(gridSize, (_) => List.filled(gridSize, 0));
 }
-
-/// Helper function to create a blank [gridSize] x [gridSize] grid.
-List<List<int>> createBlankGrid(int gridSize) => _blankGrid(gridSize);
 
 String serializeGrid(List<List<int>> grid) {
   return jsonEncode(grid);
@@ -21,14 +19,14 @@ List<List<int>> deserializeGrid(String data, {int? gridSize}) {
   try {
     if (data.isEmpty) {
       if (gridSize != null && gridSize > 0) {
-        return _blankGrid(gridSize);
+        return createBlankGrid(gridSize);
       }
       return [];
     }
     final dynamic decoded = jsonDecode(data);
     if (decoded is! List) {
       if (gridSize != null && gridSize > 0) {
-        return _blankGrid(gridSize);
+        return createBlankGrid(gridSize);
       }
       return [];
     }
@@ -60,7 +58,7 @@ List<List<int>> deserializeGrid(String data, {int? gridSize}) {
         debugPrint(
           'Deserialized grid dimensions do not match expected gridSize ($gridSize x $gridSize). Rebuilding blank grid.',
         );
-        return _blankGrid(gridSize);
+        return createBlankGrid(gridSize);
       }
       return parsedGrid;
     }
@@ -75,7 +73,7 @@ List<List<int>> deserializeGrid(String data, {int? gridSize}) {
   } catch (e) {
     debugPrint('Error deserializing grid data: $e');
     if (gridSize != null && gridSize > 0) {
-      return _blankGrid(gridSize);
+      return createBlankGrid(gridSize);
     }
     return [];
   }
@@ -123,6 +121,11 @@ List<Color> deserializePalette(String data, {List<Color>? fallback}) {
 
 /// Deserializes palette colors from JSON, falling back to [fallback] (or [PaletteRegistry.primaryPalette]
 /// if [fallback] is null or empty) when the parsed palette is empty.
+///
+/// Callers that have no current canvas state (e.g. app startup and the
+/// creations drawer/thumbnails) intentionally omit [fallback] and get the
+/// primary palette. `CanvasRepository` passes `currentState.palette` instead so
+/// an in-progress session keeps its own palette when stored colors are corrupt.
 List<Color> resolvePalette(String data, {List<Color>? fallback}) {
   final effectiveFallback = (fallback != null && fallback.isNotEmpty)
       ? fallback
