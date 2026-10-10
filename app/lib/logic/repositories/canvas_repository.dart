@@ -30,18 +30,27 @@ class CanvasRepository {
     if (!isGridValid) {
       debugPrint(
         'saveCanvas: grid dimensions do not match gridSize '
-        '(${state.gridSize} x ${state.gridSize}); saving a blank grid instead. '
+        '(${state.gridSize} x ${state.gridSize}); not persisting the grid. '
         'This may indicate an in-memory state bug.',
       );
     }
-    final gridToSave = isGridValid
-        ? state.grid
-        : createBlankGrid(state.gridSize);
+    // An invalid grid must never overwrite saved art: existing creations keep
+    // their stored gridData. A brand-new creation has nothing to overwrite, so
+    // it starts from a blank grid.
+    final drift.Value<String> gridDataValue = isGridValid
+        ? drift.Value(serializeGrid(state.grid))
+        : (state.creationId == null
+              ? drift.Value(serializeGrid(createBlankGrid(state.gridSize)))
+              : const drift.Value.absent());
+    final selectedColorIndex = clampColorIndex(
+      state.selectedColorIndex,
+      state.palette.length,
+    );
 
     final creationsCompanion = CreationsCompanion(
       title: drift.Value(state.title),
       gridSize: drift.Value(state.gridSize),
-      gridData: drift.Value(serializeGrid(gridToSave)),
+      gridData: gridDataValue,
       paletteName: drift.Value(state.paletteName),
       paletteColors: drift.Value(serializePalette(state.palette)),
       decomposedComponents: drift.Value(
@@ -66,7 +75,10 @@ class CanvasRepository {
       await _db.updateCreation(updateCompanion);
     }
 
-    final updatedState = state.copyWith(creationId: creationId);
+    final updatedState = state.copyWith(
+      creationId: creationId,
+      selectedColorIndex: selectedColorIndex,
+    );
 
     final sessionCompanion = WorkspaceSessionsCompanion(
       id: const drift.Value(1),
@@ -87,13 +99,14 @@ class CanvasRepository {
     final creation = await _db.getCreationById(id);
     if (creation == null) return null;
 
-    final grid = deserializeGrid(
-      creation.gridData,
-      gridSize: creation.gridSize,
-    );
     final palette = resolvePalette(
       creation.paletteColors,
       fallback: currentState.palette,
+    );
+    final grid = deserializeGrid(
+      creation.gridData,
+      gridSize: creation.gridSize,
+      paletteLength: palette.length,
     );
     final components = deserializeComponents(creation.decomposedComponents);
     final history = deserializeHistory(creation.aiHistoryLogs);
@@ -109,6 +122,10 @@ class CanvasRepository {
       aiHistory: history,
       referenceImage: creation.referenceImage,
       originalReferenceImage: creation.originalReferenceImage,
+      selectedColorIndex: clampColorIndex(
+        currentState.selectedColorIndex,
+        palette.length,
+      ),
       undoStack: const [],
       redoStack: const [],
       autoRun: false,
@@ -135,13 +152,14 @@ class CanvasRepository {
     if (session != null && session.activeCreationId != null) {
       final creation = await _db.getCreationById(session.activeCreationId!);
       if (creation != null) {
-        final grid = deserializeGrid(
-          creation.gridData,
-          gridSize: creation.gridSize,
-        );
         final palette = resolvePalette(
           creation.paletteColors,
           fallback: currentState.palette,
+        );
+        final grid = deserializeGrid(
+          creation.gridData,
+          gridSize: creation.gridSize,
+          paletteLength: palette.length,
         );
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
@@ -162,7 +180,10 @@ class CanvasRepository {
           aiHistory: history,
           referenceImage: creation.referenceImage,
           originalReferenceImage: creation.originalReferenceImage,
-          selectedColorIndex: session.selectedColorIndex,
+          selectedColorIndex: clampColorIndex(
+            session.selectedColorIndex,
+            palette.length,
+          ),
           selectedTool: tool,
           userPrompt: session.userPrompt,
           undoStack: const [],

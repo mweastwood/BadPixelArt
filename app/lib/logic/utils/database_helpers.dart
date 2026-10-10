@@ -15,67 +15,69 @@ String serializeGrid(List<List<int>> grid) {
   return jsonEncode(grid);
 }
 
-List<List<int>> deserializeGrid(String data, {int? gridSize}) {
+/// Returns [index] if it is a valid index into a palette of [paletteLength]
+/// colors, otherwise 0 (or 0 when the palette is empty).
+int clampColorIndex(int index, int paletteLength) {
+  return (index >= 0 && index < paletteLength) ? index : 0;
+}
+
+/// Deserializes a grid from JSON.
+///
+/// When [gridSize] is provided, any invalid or mismatched data yields a blank
+/// [gridSize] x [gridSize] grid; otherwise an empty grid is returned. When
+/// [paletteLength] is provided, cell values outside `[0, paletteLength)` are
+/// reset to 0 so rendering can never index past the palette.
+List<List<int>> deserializeGrid(
+  String data, {
+  int? gridSize,
+  int? paletteLength,
+}) {
+  List<List<int>> fallbackGrid(String reason) {
+    debugPrint('Deserialized grid is invalid ($reason).');
+    return (gridSize != null && gridSize > 0)
+        ? createBlankGrid(gridSize)
+        : <List<int>>[];
+  }
+
   try {
-    if (data.isEmpty) {
-      if (gridSize != null && gridSize > 0) {
-        return createBlankGrid(gridSize);
-      }
-      return [];
-    }
+    if (data.isEmpty) return fallbackGrid('empty data');
     final dynamic decoded = jsonDecode(data);
-    if (decoded is! List) {
-      if (gridSize != null && gridSize > 0) {
-        return createBlankGrid(gridSize);
-      }
-      return [];
+    if (decoded is! List) return fallbackGrid('not a list');
+
+    int parseCell(dynamic cell) {
+      final int value = switch (cell) {
+        int c => c,
+        num c => c.toInt(),
+        String c => int.tryParse(c) ?? 0,
+        _ => 0,
+      };
+      return paletteLength == null
+          ? value
+          : clampColorIndex(value, paletteLength);
     }
 
     final parsedGrid = <List<int>>[];
     for (final row in decoded) {
-      if (row is List) {
-        final parsedRow = <int>[];
-        for (final cell in row) {
-          if (cell is int) {
-            parsedRow.add(cell);
-          } else if (cell is num) {
-            parsedRow.add(cell.toInt());
-          } else if (cell is String) {
-            parsedRow.add(int.tryParse(cell) ?? 0);
-          } else {
-            parsedRow.add(0);
-          }
-        }
-        parsedGrid.add(parsedRow);
-      }
+      if (row is! List) return fallbackGrid('non-list row');
+      parsedGrid.add(row.map(parseCell).toList());
     }
 
     if (gridSize != null && gridSize > 0) {
-      final bool isDimensionsValid =
+      final isDimensionsValid =
           parsedGrid.length == gridSize &&
           parsedGrid.every((row) => row.length == gridSize);
-      if (!isDimensionsValid) {
-        debugPrint(
-          'Deserialized grid dimensions do not match expected gridSize ($gridSize x $gridSize). Rebuilding blank grid.',
-        );
-        return createBlankGrid(gridSize);
-      }
-      return parsedGrid;
+      return isDimensionsValid
+          ? parsedGrid
+          : fallbackGrid('dimensions do not match $gridSize x $gridSize');
     }
 
-    if (parsedGrid.isNotEmpty) {
-      final firstRowLen = parsedGrid.first.length;
-      if (firstRowLen > 0 && parsedGrid.every((r) => r.length == firstRowLen)) {
-        return parsedGrid;
-      }
+    final firstRowLen = parsedGrid.isEmpty ? 0 : parsedGrid.first.length;
+    if (firstRowLen > 0 && parsedGrid.every((r) => r.length == firstRowLen)) {
+      return parsedGrid;
     }
-    return [];
+    return fallbackGrid('ragged or empty grid');
   } catch (e) {
-    debugPrint('Error deserializing grid data: $e');
-    if (gridSize != null && gridSize > 0) {
-      return createBlankGrid(gridSize);
-    }
-    return [];
+    return fallbackGrid('error: $e');
   }
 }
 
@@ -87,8 +89,7 @@ String serializePalette(List<Color> palette) {
 }
 
 List<Color> deserializePalette(String data, {List<Color>? fallback}) {
-  List<Color> fallbackOrEmpty() =>
-      (fallback != null && fallback.isNotEmpty) ? fallback : [];
+  List<Color> fallbackOrEmpty() => fallback ?? [];
   try {
     if (data.isEmpty) {
       return fallbackOrEmpty();
@@ -123,10 +124,12 @@ List<Color> deserializePalette(String data, {List<Color>? fallback}) {
 /// primary palette. `CanvasRepository` passes `currentState.palette` instead so
 /// an in-progress session keeps its own palette when stored colors are corrupt.
 List<Color> resolvePalette(String data, {List<Color>? fallback}) {
-  final effectiveFallback = (fallback != null && fallback.isNotEmpty)
-      ? fallback
-      : PaletteRegistry.primaryPalette;
-  return deserializePalette(data, fallback: effectiveFallback);
+  return deserializePalette(
+    data,
+    fallback: (fallback == null || fallback.isEmpty)
+        ? PaletteRegistry.primaryPalette
+        : fallback,
+  );
 }
 
 String serializeComponents(List<PixelArtComponent> components) {

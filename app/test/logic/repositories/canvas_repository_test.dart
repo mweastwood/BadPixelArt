@@ -9,7 +9,7 @@ import 'package:bad_pixel_art/logic/repositories/canvas_repository.dart';
 import 'package:bad_pixel_art/logic/models/canvas_model.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
 import 'package:bad_pixel_art/logic/utils/database_helpers.dart';
-import 'package:bad_pixel_art/main.dart';
+import 'package:bad_pixel_art/logic/initial_canvas_state.dart';
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -209,33 +209,122 @@ void main() {
     );
 
     test(
-      'saveCanvas replaces a grid with mismatched dimensions with a blank grid',
+      'saveCanvas keeps existing gridData when grid dimensions mismatch',
       () async {
-        final model = CanvasModel(
+        CanvasModel build({required List<List<int>> grid, int? id}) =>
+            CanvasModel(
+              creationId: id,
+              gridSize: 16,
+              grid: grid,
+              selectedColorIndex: 1,
+              selectedTool: CanvasTool.line,
+              paletteName: 'primary',
+              palette: [Colors.black, Colors.white],
+              userPrompt: '',
+              aiStatus: AiCoreStatus.available,
+              isGenerating: false,
+              autoRun: false,
+              autoRunSpeed: 1.5,
+              undoStack: const [],
+              redoStack: const [],
+              aiHistory: const [],
+            );
+
+        final goodGrid = List.generate(16, (_) => List.filled(16, 1));
+        final first = await repository.saveCanvas(build(grid: goodGrid));
+        final before = await db.getCreationById(first.creationId!);
+
+        await repository.saveCanvas(
+          build(
+            grid: List.generate(8, (_) => List.filled(8, 1)),
+            id: first.creationId,
+          ),
+        );
+        final after = await db.getCreationById(first.creationId!);
+        expect(after!.gridData, equals(before!.gridData));
+        expect(deserializeGrid(after.gridData, gridSize: 16), goodGrid);
+
+        // A brand-new creation with an invalid grid starts blank.
+        final fresh = await repository.saveCanvas(
+          build(grid: List.generate(8, (_) => List.filled(8, 1))),
+        );
+        final stored = deserializeGrid(
+          (await db.getCreationById(fresh.creationId!))!.gridData,
           gridSize: 16,
-          grid: List.generate(8, (_) => List.filled(8, 1)),
-          selectedColorIndex: 1,
-          selectedTool: CanvasTool.line,
-          paletteName: 'primary',
-          palette: [Colors.black, Colors.white],
-          userPrompt: '',
-          aiStatus: AiCoreStatus.available,
-          isGenerating: false,
-          autoRun: false,
-          autoRunSpeed: 1.5,
-          undoStack: const [],
-          redoStack: const [],
-          aiHistory: const [],
+        );
+        expect(stored.every((row) => row.every((c) => c == 0)), isTrue);
+      },
+    );
+
+    test('saveCanvas clamps out-of-range selectedColorIndex', () async {
+      final model = CanvasModel(
+        gridSize: 2,
+        grid: [
+          [0, 1],
+          [1, 0],
+        ],
+        selectedColorIndex: 7,
+        selectedTool: CanvasTool.line,
+        paletteName: 'primary',
+        palette: [Colors.black, Colors.white],
+        userPrompt: '',
+        aiStatus: AiCoreStatus.available,
+        isGenerating: false,
+        autoRun: false,
+        autoRunSpeed: 1.5,
+        undoStack: const [],
+        redoStack: const [],
+        aiHistory: const [],
+      );
+      final saved = await repository.saveCanvas(model);
+      expect(saved.selectedColorIndex, equals(0));
+      expect((await db.getSession())!.selectedColorIndex, equals(0));
+    });
+
+    test(
+      'loadCanvas and loadInitialCanvasState sanitize out-of-range indices',
+      () async {
+        final now = DateTime.now();
+        final id = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Bad Indices'),
+            gridSize: const Value(2),
+            gridData: const Value('[[0, 5], [-1, 1]]'),
+            paletteName: const Value('custom'),
+            paletteColors: const Value('["#ff000000", "#ffffffff"]'),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+        await db.saveSession(
+          WorkspaceSessionsCompanion(
+            id: const Value(1),
+            activeCreationId: Value(id),
+            selectedColorIndex: const Value(9),
+            selectedTool: const Value('line'),
+            userPrompt: const Value(''),
+            lastSavedAt: Value(now),
+          ),
         );
 
-        final saved = await repository.saveCanvas(model);
-        final creation = await db.getCreationById(saved.creationId!);
-        expect(creation, isNotNull);
+        final initial = await loadInitialCanvasState(db);
+        expect(initial.grid, [
+          [0, 0],
+          [0, 1],
+        ]);
+        expect(initial.selectedColorIndex, equals(0));
 
-        final stored = deserializeGrid(creation!.gridData, gridSize: 16);
-        expect(stored.length, equals(16));
-        expect(stored.every((row) => row.length == 16), isTrue);
-        expect(stored.every((row) => row.every((cell) => cell == 0)), isTrue);
+        final loaded = await repository.loadCanvas(id, initial);
+        expect(loaded!.grid, [
+          [0, 0],
+          [0, 1],
+        ]);
+        expect(loaded.selectedColorIndex, equals(0));
+
+        final session = await repository.loadLastSession(initial);
+        expect(session!.selectedColorIndex, equals(0));
       },
     );
 
@@ -279,7 +368,7 @@ void main() {
         expect(loaded!.gridSize, equals(32));
         expect(loaded.grid.length, equals(32));
         expect(loaded.grid.every((row) => row.length == 32), isTrue);
-        expect(loaded.palette, isNotEmpty);
+        expect(loaded.palette, equals(initialModel.palette));
       },
     );
 

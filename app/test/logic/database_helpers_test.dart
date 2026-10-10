@@ -51,6 +51,30 @@ void main() {
       );
     });
 
+    test('deserializeGrid clamps out-of-range cells and logs bad rows', () {
+      expect(deserializeGrid('[[0, 5], [-1, 1]]', paletteLength: 2), [
+        [0, 0],
+        [0, 1],
+      ]);
+      expect(deserializeGrid('[[1, 2]]'), [
+        [1, 2],
+      ]);
+      // Non-list rows invalidate the grid instead of being silently dropped.
+      expect(deserializeGrid('[[1, 1], 5, [1, 1]]'), isEmpty);
+      expect(
+        deserializeGrid('[[1, 1], "x"]', gridSize: 2),
+        equals(createBlankGrid(2)),
+      );
+      expect(deserializeGrid('[[1, 1], [1]]'), isEmpty);
+    });
+
+    test('clampColorIndex bounds indices to the palette', () {
+      expect(clampColorIndex(1, 2), 1);
+      expect(clampColorIndex(2, 2), 0);
+      expect(clampColorIndex(-1, 2), 0);
+      expect(clampColorIndex(3, 0), 0);
+    });
+
     test(
       'deserializePalette handles valid and corrupted inputs gracefully',
       () {
