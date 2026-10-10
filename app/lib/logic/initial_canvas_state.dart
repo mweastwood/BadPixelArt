@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
 import 'canvas_state.dart';
-import 'models/canvas_model.dart';
 import 'utils/database.dart';
 import 'utils/database_helpers.dart';
 
