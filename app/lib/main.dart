@@ -30,10 +30,7 @@ Future<CanvasModel> loadInitialCanvasState(AppDatabase db) async {
           creation.gridData,
           gridSize: creation.gridSize,
         );
-        final rawPalette = deserializePalette(creation.paletteColors);
-        final palette = rawPalette.isNotEmpty
-            ? rawPalette
-            : PaletteRegistry.primaryPalette;
+        final palette = resolvePalette(creation.paletteColors);
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
         final tool = CanvasTool.values.firstWhere(

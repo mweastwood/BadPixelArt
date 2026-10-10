@@ -164,9 +164,7 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                                 creation.gridData,
                                 gridSize: creation.gridSize,
                               ),
-                              palette: deserializePalette(
-                                creation.paletteColors,
-                              ),
+                              palette: resolvePalette(creation.paletteColors),
                               initialTitle: creation.title,
                             );
                           } else if (action == 'rename') {
@@ -314,7 +312,7 @@ class _CreationThumbnailState extends State<CreationThumbnail> {
 
   void _parseData() {
     _grid = deserializeGrid(widget.gridData, gridSize: widget.gridSize);
-    _palette = deserializePalette(widget.paletteColors);
+    _palette = resolvePalette(widget.paletteColors);
   }
 
   @override

@@ -3,7 +3,15 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
+import '../models/color_palette.dart';
 import '../models/pixel_art_component.dart';
+
+List<List<int>> _blankGrid(int gridSize) {
+  return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+}
+
+/// Helper function to create a blank [gridSize] x [gridSize] grid.
+List<List<int>> createBlankGrid(int gridSize) => _blankGrid(gridSize);
 
 String serializeGrid(List<List<int>> grid) {
   return jsonEncode(grid);
@@ -13,14 +21,14 @@ List<List<int>> deserializeGrid(String data, {int? gridSize}) {
   try {
     if (data.isEmpty) {
       if (gridSize != null && gridSize > 0) {
-        return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+        return _blankGrid(gridSize);
       }
       return [];
     }
     final dynamic decoded = jsonDecode(data);
     if (decoded is! List) {
       if (gridSize != null && gridSize > 0) {
-        return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+        return _blankGrid(gridSize);
       }
       return [];
     }
@@ -52,7 +60,7 @@ List<List<int>> deserializeGrid(String data, {int? gridSize}) {
         debugPrint(
           'Deserialized grid dimensions do not match expected gridSize ($gridSize x $gridSize). Rebuilding blank grid.',
         );
-        return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+        return _blankGrid(gridSize);
       }
       return parsedGrid;
     }
@@ -67,7 +75,7 @@ List<List<int>> deserializeGrid(String data, {int? gridSize}) {
   } catch (e) {
     debugPrint('Error deserializing grid data: $e');
     if (gridSize != null && gridSize > 0) {
-      return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+      return _blankGrid(gridSize);
     }
     return [];
   }
@@ -80,31 +88,46 @@ String serializePalette(List<Color> palette) {
   return jsonEncode(list);
 }
 
-List<Color> deserializePalette(String data) {
+List<Color> deserializePalette(String data, {List<Color>? fallback}) {
   try {
-    if (data.isEmpty) return [];
+    if (data.isEmpty) {
+      return (fallback != null && fallback.isNotEmpty) ? fallback : [];
+    }
     final dynamic decoded = jsonDecode(data);
-    if (decoded is! List) return [];
+    if (decoded is! List) {
+      return (fallback != null && fallback.isNotEmpty) ? fallback : [];
+    }
     final colors = <Color>[];
     for (final item in decoded) {
       if (item == null) continue;
-      try {
-        final hexClean = item.toString().replaceFirst('#', '');
-        final val = int.tryParse(hexClean, radix: 16);
-        if (val != null) {
-          colors.add(Color(val));
-        } else {
-          debugPrint('Skipping invalid palette hex entry: $item');
-        }
-      } catch (e) {
-        debugPrint('Error parsing palette color entry "$item": $e');
+      final hexClean = item.toString().replaceFirst('#', '');
+      final val = int.tryParse(hexClean, radix: 16);
+      if (val != null) {
+        colors.add(Color(val));
+      } else {
+        debugPrint('Skipping invalid palette hex entry: $item');
       }
+    }
+    if (colors.isEmpty && fallback != null && fallback.isNotEmpty) {
+      return fallback;
     }
     return colors;
   } catch (e) {
     debugPrint('Error deserializing palette data: $e');
+    if (fallback != null && fallback.isNotEmpty) {
+      return fallback;
+    }
     return [];
   }
+}
+
+/// Deserializes palette colors from JSON, falling back to [fallback] (or [PaletteRegistry.primaryPalette]
+/// if [fallback] is null or empty) when the parsed palette is empty.
+List<Color> resolvePalette(String data, {List<Color>? fallback}) {
+  final effectiveFallback = (fallback != null && fallback.isNotEmpty)
+      ? fallback
+      : PaletteRegistry.primaryPalette;
+  return deserializePalette(data, fallback: effectiveFallback);
 }
 
 String serializeComponents(List<PixelArtComponent> components) {

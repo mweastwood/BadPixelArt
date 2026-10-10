@@ -24,10 +24,16 @@ class CanvasRepository {
   Future<CanvasModel> saveCanvas(CanvasModel state) async {
     final now = DateTime.now();
 
+    final gridToSave =
+        (state.grid.length == state.gridSize &&
+            state.grid.every((row) => row.length == state.gridSize))
+        ? state.grid
+        : createBlankGrid(state.gridSize);
+
     final creationsCompanion = CreationsCompanion(
       title: drift.Value(state.title),
       gridSize: drift.Value(state.gridSize),
-      gridData: drift.Value(serializeGrid(state.grid)),
+      gridData: drift.Value(serializeGrid(gridToSave)),
       paletteName: drift.Value(state.paletteName),
       paletteColors: drift.Value(serializePalette(state.palette)),
       decomposedComponents: drift.Value(
@@ -77,12 +83,10 @@ class CanvasRepository {
       creation.gridData,
       gridSize: creation.gridSize,
     );
-    final rawPalette = deserializePalette(creation.paletteColors);
-    final palette = rawPalette.isNotEmpty
-        ? rawPalette
-        : (currentState.palette.isNotEmpty
-            ? currentState.palette
-            : PaletteRegistry.primaryPalette);
+    final palette = resolvePalette(
+      creation.paletteColors,
+      fallback: currentState.palette,
+    );
     final components = deserializeComponents(creation.decomposedComponents);
     final history = deserializeHistory(creation.aiHistoryLogs);
 
@@ -127,12 +131,10 @@ class CanvasRepository {
           creation.gridData,
           gridSize: creation.gridSize,
         );
-        final rawPalette = deserializePalette(creation.paletteColors);
-        final palette = rawPalette.isNotEmpty
-            ? rawPalette
-            : (currentState.palette.isNotEmpty
-                ? currentState.palette
-                : PaletteRegistry.primaryPalette);
+        final palette = resolvePalette(
+          creation.paletteColors,
+          fallback: currentState.palette,
+        );
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
 
