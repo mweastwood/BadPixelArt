@@ -7,7 +7,6 @@ import 'screens/pixel_art_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
-import 'logic/models/color_palette.dart';
 import 'logic/utils/settings_provider.dart';
 import 'logic/canvas_state.dart';
 import 'logic/utils/database.dart';

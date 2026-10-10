@@ -87,13 +87,15 @@ String serializePalette(List<Color> palette) {
 }
 
 List<Color> deserializePalette(String data, {List<Color>? fallback}) {
+  List<Color> fallbackOrEmpty() =>
+      (fallback != null && fallback.isNotEmpty) ? fallback : [];
   try {
     if (data.isEmpty) {
-      return (fallback != null && fallback.isNotEmpty) ? fallback : [];
+      return fallbackOrEmpty();
     }
     final dynamic decoded = jsonDecode(data);
     if (decoded is! List) {
-      return (fallback != null && fallback.isNotEmpty) ? fallback : [];
+      return fallbackOrEmpty();
     }
     final colors = <Color>[];
     for (final item in decoded) {
@@ -106,16 +108,10 @@ List<Color> deserializePalette(String data, {List<Color>? fallback}) {
         debugPrint('Skipping invalid palette hex entry: $item');
       }
     }
-    if (colors.isEmpty && fallback != null && fallback.isNotEmpty) {
-      return fallback;
-    }
-    return colors;
+    return colors.isEmpty ? fallbackOrEmpty() : colors;
   } catch (e) {
     debugPrint('Error deserializing palette data: $e');
-    if (fallback != null && fallback.isNotEmpty) {
-      return fallback;
-    }
-    return [];
+    return fallbackOrEmpty();
   }
 }
 

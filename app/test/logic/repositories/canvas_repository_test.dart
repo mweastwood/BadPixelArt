@@ -345,7 +345,7 @@ void main() {
             id: const Value(1),
             activeCreationId: Value(creationId),
             selectedColorIndex: const Value(2),
-            selectedTool: const Value('rectangle'),
+            selectedTool: const Value('circle'),
             userPrompt: const Value('A prompt from session'),
             lastSavedAt: Value(now),
           ),
@@ -355,7 +355,7 @@ void main() {
         expect(initial.creationId, equals(creationId));
         expect(initial.title, equals('Session Creation'));
         expect(initial.selectedColorIndex, equals(2));
-        expect(initial.selectedTool, equals(CanvasTool.rectangle));
+        expect(initial.selectedTool, equals(CanvasTool.circle));
         expect(initial.userPrompt, equals('A prompt from session'));
         expect(initial.gridSize, equals(16));
         expect(initial.grid.length, equals(16));
