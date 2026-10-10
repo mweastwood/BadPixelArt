@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:bad_pixel_art/logic/repositories/canvas_repository.dart';
 import 'package:bad_pixel_art/logic/models/canvas_model.dart';
 import 'package:bad_pixel_art/logic/utils/database.dart';
+import 'package:bad_pixel_art/logic/utils/database_helpers.dart';
+import 'package:bad_pixel_art/logic/initial_canvas_state.dart';
 
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -203,6 +205,332 @@ void main() {
         final sessionAfter = await db.getSession();
         expect(sessionAfter, isNotNull);
         expect(sessionAfter!.activeCreationId, isNull);
+      },
+    );
+
+    test(
+      'saveCanvas keeps existing gridData when grid dimensions mismatch',
+      () async {
+        CanvasModel build({required List<List<int>> grid, int? id}) =>
+            CanvasModel(
+              creationId: id,
+              gridSize: 16,
+              grid: grid,
+              selectedColorIndex: 1,
+              selectedTool: CanvasTool.line,
+              paletteName: 'primary',
+              palette: [Colors.black, Colors.white],
+              userPrompt: '',
+              aiStatus: AiCoreStatus.available,
+              isGenerating: false,
+              autoRun: false,
+              autoRunSpeed: 1.5,
+              undoStack: const [],
+              redoStack: const [],
+              aiHistory: const [],
+            );
+
+        final goodGrid = List.generate(16, (_) => List.filled(16, 1));
+        final first = await repository.saveCanvas(build(grid: goodGrid));
+        final before = await db.getCreationById(first.creationId!);
+
+        await repository.saveCanvas(
+          build(
+            grid: List.generate(8, (_) => List.filled(8, 1)),
+            id: first.creationId,
+          ),
+        );
+        final after = await db.getCreationById(first.creationId!);
+        expect(after!.gridData, equals(before!.gridData));
+        expect(deserializeGrid(after.gridData, gridSize: 16), goodGrid);
+
+        // A brand-new creation with an invalid grid starts blank.
+        final fresh = await repository.saveCanvas(
+          build(grid: List.generate(8, (_) => List.filled(8, 1))),
+        );
+        final stored = deserializeGrid(
+          (await db.getCreationById(fresh.creationId!))!.gridData,
+          gridSize: 16,
+        );
+        expect(stored.every((row) => row.every((c) => c == 0)), isTrue);
+      },
+    );
+
+    test(
+      'recovered blank grid is not persisted over corrupt gridData until edited',
+      () async {
+        final now = DateTime.now();
+        const corrupt = '{not valid json';
+        final id = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Corrupt'),
+            gridSize: const Value(4),
+            gridData: const Value(corrupt),
+            paletteName: const Value('primary'),
+            paletteColors: Value(
+              serializePalette([Colors.black, Colors.white]),
+            ),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+        final base = CanvasModel(
+          gridSize: 4,
+          grid: createBlankGrid(4),
+          selectedColorIndex: 1,
+          selectedTool: CanvasTool.line,
+          paletteName: 'primary',
+          palette: [Colors.black, Colors.white],
+          userPrompt: '',
+          aiStatus: AiCoreStatus.available,
+          isGenerating: false,
+          autoRun: false,
+          autoRunSpeed: 1.5,
+          undoStack: const [],
+          redoStack: const [],
+          aiHistory: const [],
+        );
+
+        final loaded = (await repository.loadCanvas(id, base))!;
+        expect(loaded.isGridRecovered, isTrue);
+
+        // Auto-save with no user edits keeps the corrupt original.
+        await repository.saveCanvas(loaded);
+        expect((await db.getCreationById(id))!.gridData, equals(corrupt));
+
+        // Non-grid changes still do not persist the placeholder.
+        await repository.saveCanvas(loaded.copyWith(title: 'Renamed'));
+        final renamed = (await db.getCreationById(id))!;
+        expect(renamed.title, equals('Renamed'));
+        expect(renamed.gridData, equals(corrupt));
+
+        // Once the user edits the grid, it is persisted normally.
+        final edited = loaded.copyWith(
+          grid: [
+            [1, 0, 0, 0],
+            ...createBlankGrid(4).skip(1),
+          ],
+        );
+        expect(edited.isGridRecovered, isFalse);
+        await repository.saveCanvas(edited);
+        expect(
+          deserializeGrid(
+            (await db.getCreationById(id))!.gridData,
+            gridSize: 4,
+          ),
+          equals(edited.grid),
+        );
+      },
+    );
+
+    test('saveCanvas clamps out-of-range selectedColorIndex', () async {
+      final model = CanvasModel(
+        gridSize: 2,
+        grid: [
+          [0, 1],
+          [1, 0],
+        ],
+        selectedColorIndex: 7,
+        selectedTool: CanvasTool.line,
+        paletteName: 'primary',
+        palette: [Colors.black, Colors.white],
+        userPrompt: '',
+        aiStatus: AiCoreStatus.available,
+        isGenerating: false,
+        autoRun: false,
+        autoRunSpeed: 1.5,
+        undoStack: const [],
+        redoStack: const [],
+        aiHistory: const [],
+      );
+      final saved = await repository.saveCanvas(model);
+      expect(saved.selectedColorIndex, equals(0));
+      expect((await db.getSession())!.selectedColorIndex, equals(0));
+    });
+
+    test(
+      'loadCanvas and loadInitialCanvasState sanitize out-of-range indices',
+      () async {
+        final now = DateTime.now();
+        final id = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Bad Indices'),
+            gridSize: const Value(2),
+            gridData: const Value('[[0, 5], [2, 1]]'),
+            paletteName: const Value('custom'),
+            paletteColors: const Value('["#ff000000", "#ffffffff"]'),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+        await db.saveSession(
+          WorkspaceSessionsCompanion(
+            id: const Value(1),
+            activeCreationId: Value(id),
+            selectedColorIndex: const Value(9),
+            selectedTool: const Value('line'),
+            userPrompt: const Value(''),
+            lastSavedAt: Value(now),
+          ),
+        );
+
+        final initial = await loadInitialCanvasState(db);
+        expect(initial.grid, [
+          [0, 0],
+          [2, 1],
+        ]);
+        expect(initial.selectedColorIndex, equals(0));
+
+        final loaded = await repository.loadCanvas(id, initial);
+        expect(loaded!.grid, [
+          [0, 0],
+          [2, 1],
+        ]);
+        expect(loaded.selectedColorIndex, equals(0));
+
+        final session = await repository.loadLastSession(initial);
+        expect(session!.selectedColorIndex, equals(0));
+      },
+    );
+
+    test(
+      'loadCanvas recovers corrupt gridData to valid gridSize x gridSize matrix',
+      () async {
+        final now = DateTime.now();
+        final corruptId = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Corrupt Canvas'),
+            gridSize: const Value(32),
+            gridData: const Value('not json'),
+            paletteName: const Value('primary'),
+            paletteColors: const Value('invalid-palette'),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+
+        final initialModel = CanvasModel(
+          gridSize: 32,
+          grid: List.generate(32, (_) => List.filled(32, 0)),
+          selectedColorIndex: 1,
+          selectedTool: CanvasTool.line,
+          paletteName: 'primary',
+          palette: [Colors.black, Colors.white],
+          userPrompt: '',
+          aiStatus: AiCoreStatus.available,
+          isGenerating: false,
+          autoRun: false,
+          autoRunSpeed: 1.5,
+          undoStack: const [],
+          redoStack: const [],
+          aiHistory: const [],
+        );
+
+        final loaded = await repository.loadCanvas(corruptId, initialModel);
+        expect(loaded, isNotNull);
+        expect(loaded!.gridSize, equals(32));
+        expect(loaded.grid.length, equals(32));
+        expect(loaded.grid.every((row) => row.length == 32), isTrue);
+        expect(loaded.palette, equals(initialModel.palette));
+      },
+    );
+
+    test(
+      'loadInitialCanvasState recovers gracefully from corrupt session creation',
+      () async {
+        final now = DateTime.now();
+        final corruptId = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Corrupt Session'),
+            gridSize: const Value(16),
+            gridData: const Value('bad json data'),
+            paletteName: const Value('primary'),
+            paletteColors: const Value('{}'),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+
+        await db.saveSession(
+          WorkspaceSessionsCompanion(
+            id: const Value(1),
+            activeCreationId: Value(corruptId),
+            selectedColorIndex: const Value(1),
+            selectedTool: const Value('line'),
+            userPrompt: const Value(''),
+            lastSavedAt: Value(now),
+          ),
+        );
+
+        final initial = await loadInitialCanvasState(db);
+        expect(initial.creationId, equals(corruptId));
+        expect(initial.title, equals('Corrupt Session'));
+        expect(initial.gridSize, equals(16));
+        expect(initial.grid.length, equals(16));
+        expect(initial.grid.every((row) => row.length == 16), isTrue);
+        expect(initial.palette, isNotEmpty);
+      },
+    );
+
+    test(
+      'loadInitialCanvasState restores state from active session and creation',
+      () async {
+        final now = DateTime.now();
+        final creationId = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Session Creation'),
+            gridSize: const Value(2),
+            gridData: const Value('[[1, 0], [0, 1]]'),
+            paletteName: const Value('primary'),
+            paletteColors: const Value('["#ff000000", "#ffffffff"]'),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+
+        await db.saveSession(
+          WorkspaceSessionsCompanion(
+            id: const Value(1),
+            activeCreationId: Value(creationId),
+            selectedColorIndex: const Value(1),
+            selectedTool: const Value('circle'),
+            userPrompt: const Value('A prompt from session'),
+            lastSavedAt: Value(now),
+          ),
+        );
+
+        final initial = await loadInitialCanvasState(db);
+        expect(initial.creationId, equals(creationId));
+        expect(initial.title, equals('Session Creation'));
+        expect(initial.selectedColorIndex, equals(1));
+        expect(initial.selectedTool, equals(CanvasTool.circle));
+        expect(initial.userPrompt, equals('A prompt from session'));
+        expect(initial.gridSize, equals(2));
+        expect(initial.grid.length, equals(2));
+        expect(initial.grid.every((row) => row.length == 2), isTrue);
+        expect(initial.palette.length, equals(2));
+      },
+    );
+
+    test(
+      'loadInitialCanvasState returns default model when no session exists',
+      () async {
+        final initial = await loadInitialCanvasState(db);
+        expect(initial.creationId, isNull);
+        expect(initial.gridSize, equals(16));
+        expect(initial.grid.length, equals(16));
+        expect(initial.grid.every((row) => row.length == 16), isTrue);
+        expect(initial.palette, isNotEmpty);
       },
     );
   });

@@ -40,6 +40,11 @@ class CanvasModel {
   final int? decomposingComponentIndex;
   final String? sculptingStatus;
 
+  /// True when [grid] is a blank placeholder substituted for corrupt stored
+  /// grid data. Such a grid must not be persisted over the original data until
+  /// the user edits it (any [copyWith] that supplies a new grid clears this).
+  final bool isGridRecovered;
+
   const CanvasModel({
     this.creationId,
     this.title = 'Untitled',
@@ -72,6 +77,7 @@ class CanvasModel {
     this.activeComponentIndex = 0,
     this.decomposingComponentIndex,
     this.sculptingStatus,
+    this.isGridRecovered = false,
   });
 
   CanvasModel copyWith({
@@ -113,6 +119,7 @@ class CanvasModel {
     bool clearDecomposingComponent = false,
     String? sculptingStatus,
     bool clearSculptingStatus = false,
+    bool? isGridRecovered,
   }) {
     return CanvasModel(
       creationId: clearCreationId ? null : (creationId ?? this.creationId),
@@ -159,6 +166,8 @@ class CanvasModel {
       sculptingStatus: clearSculptingStatus
           ? null
           : (sculptingStatus ?? this.sculptingStatus),
+      isGridRecovered:
+          isGridRecovered ?? (grid != null ? false : this.isGridRecovered),
     );
   }
 
@@ -190,6 +199,7 @@ class CanvasModel {
         activeComponentIndex == other.activeComponentIndex &&
         decomposingComponentIndex == other.decomposingComponentIndex &&
         sculptingStatus == other.sculptingStatus &&
+        isGridRecovered == other.isGridRecovered &&
         listEquals(palette, other.palette) &&
         listEquals(suggestedPalette, other.suggestedPalette) &&
         listEquals(referenceImage, other.referenceImage) &&
@@ -240,6 +250,7 @@ class CanvasModel {
       activeComponentIndex,
       decomposingComponentIndex,
       sculptingStatus,
+      isGridRecovered,
     ),
   );
 }

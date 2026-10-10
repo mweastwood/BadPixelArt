@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
@@ -23,10 +24,36 @@ class CanvasRepository {
   Future<CanvasModel> saveCanvas(CanvasModel state) async {
     final now = DateTime.now();
 
+    final isGridValid =
+        state.grid.length == state.gridSize &&
+        state.grid.every((row) => row.length == state.gridSize);
+    // A recovered grid is only a blank placeholder for corrupt stored data, so
+    // it must not overwrite the original until the user edits the canvas.
+    final isGridPersistable = isGridValid && !state.isGridRecovered;
+    if (!isGridValid) {
+      debugPrint(
+        'saveCanvas: grid dimensions do not match gridSize '
+        '(${state.gridSize} x ${state.gridSize}); not persisting the grid. '
+        'This may indicate an in-memory state bug.',
+      );
+    }
+    // An invalid grid must never overwrite saved art: existing creations keep
+    // their stored gridData. A brand-new creation has nothing to overwrite, so
+    // it starts from a blank grid.
+    final drift.Value<String> gridDataValue = isGridPersistable
+        ? drift.Value(serializeGrid(state.grid))
+        : (state.creationId == null
+              ? drift.Value(serializeGrid(createBlankGrid(state.gridSize)))
+              : const drift.Value.absent());
+    final selectedColorIndex = clampColorIndex(
+      state.selectedColorIndex,
+      state.palette.length,
+    );
+
     final creationsCompanion = CreationsCompanion(
       title: drift.Value(state.title),
       gridSize: drift.Value(state.gridSize),
-      gridData: drift.Value(serializeGrid(state.grid)),
+      gridData: gridDataValue,
       paletteName: drift.Value(state.paletteName),
       paletteColors: drift.Value(serializePalette(state.palette)),
       decomposedComponents: drift.Value(
@@ -51,7 +78,10 @@ class CanvasRepository {
       await _db.updateCreation(updateCompanion);
     }
 
-    final updatedState = state.copyWith(creationId: creationId);
+    final updatedState = state.copyWith(
+      creationId: creationId,
+      selectedColorIndex: selectedColorIndex,
+    );
 
     final sessionCompanion = WorkspaceSessionsCompanion(
       id: const drift.Value(1),
@@ -72,8 +102,18 @@ class CanvasRepository {
     final creation = await _db.getCreationById(id);
     if (creation == null) return null;
 
-    final grid = deserializeGrid(creation.gridData);
-    final palette = deserializePalette(creation.paletteColors);
+    final palette = resolvePalette(
+      creation.paletteColors,
+      fallback: currentState.palette,
+      logContext: 'creation ${creation.id}',
+    );
+    final recoveredGrid = tryDeserializeGrid(
+      creation.gridData,
+      gridSize: creation.gridSize,
+      paletteLength: palette.length,
+      logContext: 'creation ${creation.id}',
+    );
+    final grid = recoveredGrid ?? createBlankGrid(creation.gridSize);
     final components = deserializeComponents(creation.decomposedComponents);
     final history = deserializeHistory(creation.aiHistoryLogs);
 
@@ -82,12 +122,17 @@ class CanvasRepository {
       title: creation.title,
       gridSize: creation.gridSize,
       grid: grid,
+      isGridRecovered: recoveredGrid == null,
       paletteName: creation.paletteName,
       palette: palette,
       decomposedComponents: components,
       aiHistory: history,
       referenceImage: creation.referenceImage,
       originalReferenceImage: creation.originalReferenceImage,
+      selectedColorIndex: clampColorIndex(
+        currentState.selectedColorIndex,
+        palette.length,
+      ),
       undoStack: const [],
       redoStack: const [],
       autoRun: false,
@@ -114,8 +159,18 @@ class CanvasRepository {
     if (session != null && session.activeCreationId != null) {
       final creation = await _db.getCreationById(session.activeCreationId!);
       if (creation != null) {
-        final grid = deserializeGrid(creation.gridData);
-        final palette = deserializePalette(creation.paletteColors);
+        final palette = resolvePalette(
+          creation.paletteColors,
+          fallback: currentState.palette,
+          logContext: 'creation ${creation.id}',
+        );
+        final recoveredGrid = tryDeserializeGrid(
+          creation.gridData,
+          gridSize: creation.gridSize,
+          paletteLength: palette.length,
+          logContext: 'creation ${creation.id}',
+        );
+        final grid = recoveredGrid ?? createBlankGrid(creation.gridSize);
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
 
@@ -129,13 +184,17 @@ class CanvasRepository {
           title: creation.title,
           gridSize: creation.gridSize,
           grid: grid,
+          isGridRecovered: recoveredGrid == null,
           paletteName: creation.paletteName,
           palette: palette,
           decomposedComponents: components,
           aiHistory: history,
           referenceImage: creation.referenceImage,
           originalReferenceImage: creation.originalReferenceImage,
-          selectedColorIndex: session.selectedColorIndex,
+          selectedColorIndex: clampColorIndex(
+            session.selectedColorIndex,
+            palette.length,
+          ),
           selectedTool: tool,
           userPrompt: session.userPrompt,
           undoStack: const [],
