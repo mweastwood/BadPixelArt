@@ -487,7 +487,7 @@ void main() {
         final creationId = await db.createCreation(
           CreationsCompanion(
             title: const Value('Session Creation'),
-            gridSize: const Value(16),
+            gridSize: const Value(2),
             gridData: const Value('[[1, 0], [0, 1]]'),
             paletteName: const Value('primary'),
             paletteColors: const Value('["#ff000000", "#ffffffff"]'),
@@ -502,7 +502,7 @@ void main() {
           WorkspaceSessionsCompanion(
             id: const Value(1),
             activeCreationId: Value(creationId),
-            selectedColorIndex: const Value(2),
+            selectedColorIndex: const Value(1),
             selectedTool: const Value('circle'),
             userPrompt: const Value('A prompt from session'),
             lastSavedAt: Value(now),
@@ -512,12 +512,12 @@ void main() {
         final initial = await loadInitialCanvasState(db);
         expect(initial.creationId, equals(creationId));
         expect(initial.title, equals('Session Creation'));
-        expect(initial.selectedColorIndex, equals(2));
+        expect(initial.selectedColorIndex, equals(1));
         expect(initial.selectedTool, equals(CanvasTool.circle));
         expect(initial.userPrompt, equals('A prompt from session'));
-        expect(initial.gridSize, equals(16));
-        expect(initial.grid.length, equals(16));
-        expect(initial.grid.every((row) => row.length == 16), isTrue);
+        expect(initial.gridSize, equals(2));
+        expect(initial.grid.length, equals(2));
+        expect(initial.grid.every((row) => row.length == 2), isTrue);
         expect(initial.palette.length, equals(2));
       },
     );

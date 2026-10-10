@@ -117,10 +117,16 @@ void main() {
             '["#ffff0000", "not-a-hex-color", null, "#ff0000ff"]';
         final parsed = deserializePalette(partiallyCorrupt);
         expect(parsed.length, equals(4));
-        expect(parsed[0].toARGB32(), equals(Colors.red.toARGB32()));
+        expect(
+          parsed[0].toARGB32(),
+          equals(const Color(0xFFFF0000).toARGB32()),
+        );
         expect(parsed[1], equals(invalidPaletteEntryColor));
         expect(parsed[2], equals(invalidPaletteEntryColor));
-        expect(parsed[3].toARGB32(), equals(Colors.blue.toARGB32()));
+        expect(
+          parsed[3].toARGB32(),
+          equals(const Color(0xFF0000FF).toARGB32()),
+        );
 
         // All entries invalid falls back.
         expect(deserializePalette('["x", null]'), isEmpty);
