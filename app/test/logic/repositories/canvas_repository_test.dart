@@ -332,7 +332,7 @@ void main() {
             gridSize: const Value(16),
             gridData: const Value('[[1, 0], [0, 1]]'),
             paletteName: const Value('primary'),
-            paletteColors: const Value('[\"#ff000000\", \"#ffffffff\"]'),
+            paletteColors: const Value('["#ff000000", "#ffffffff"]'),
             decomposedComponents: const Value('[]'),
             aiHistoryLogs: const Value('[]'),
             createdAt: Value(now),
