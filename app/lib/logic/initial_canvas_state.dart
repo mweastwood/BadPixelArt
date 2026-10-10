@@ -13,12 +13,18 @@ Future<CanvasModel> loadInitialCanvasState(AppDatabase db) async {
     if (session != null && session.activeCreationId != null) {
       final creation = await db.getCreationById(session.activeCreationId!);
       if (creation != null) {
-        final palette = resolvePalette(creation.paletteColors);
-        final grid = deserializeGrid(
+        final logContext = 'creation ${creation.id}';
+        final palette = resolvePalette(
+          creation.paletteColors,
+          logContext: logContext,
+        );
+        final recoveredGrid = tryDeserializeGrid(
           creation.gridData,
           gridSize: creation.gridSize,
           paletteLength: palette.length,
+          logContext: logContext,
         );
+        final grid = recoveredGrid ?? createBlankGrid(creation.gridSize);
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
         final tool = CanvasTool.values.firstWhere(
@@ -31,6 +37,7 @@ Future<CanvasModel> loadInitialCanvasState(AppDatabase db) async {
           title: creation.title,
           gridSize: creation.gridSize,
           grid: grid,
+          isGridRecovered: recoveredGrid == null,
           paletteName: creation.paletteName,
           palette: palette,
           decomposedComponents: components,

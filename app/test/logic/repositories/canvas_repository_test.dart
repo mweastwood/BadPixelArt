@@ -256,6 +256,70 @@ void main() {
       },
     );
 
+    test(
+      'recovered blank grid is not persisted over corrupt gridData until edited',
+      () async {
+        final now = DateTime.now();
+        const corrupt = '{not valid json';
+        final id = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Corrupt'),
+            gridSize: const Value(4),
+            gridData: const Value(corrupt),
+            paletteName: const Value('primary'),
+            paletteColors: Value(serializePalette([Colors.black, Colors.white])),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+        final base = CanvasModel(
+          gridSize: 4,
+          grid: createBlankGrid(4),
+          selectedColorIndex: 1,
+          selectedTool: CanvasTool.line,
+          paletteName: 'primary',
+          palette: [Colors.black, Colors.white],
+          userPrompt: '',
+          aiStatus: AiCoreStatus.available,
+          isGenerating: false,
+          autoRun: false,
+          autoRunSpeed: 1.5,
+          undoStack: const [],
+          redoStack: const [],
+          aiHistory: const [],
+        );
+
+        final loaded = (await repository.loadCanvas(id, base))!;
+        expect(loaded.isGridRecovered, isTrue);
+
+        // Auto-save with no user edits keeps the corrupt original.
+        await repository.saveCanvas(loaded);
+        expect((await db.getCreationById(id))!.gridData, equals(corrupt));
+
+        // Non-grid changes still do not persist the placeholder.
+        await repository.saveCanvas(loaded.copyWith(title: 'Renamed'));
+        final renamed = (await db.getCreationById(id))!;
+        expect(renamed.title, equals('Renamed'));
+        expect(renamed.gridData, equals(corrupt));
+
+        // Once the user edits the grid, it is persisted normally.
+        final edited = loaded.copyWith(
+          grid: [
+            [1, 0, 0, 0],
+            ...createBlankGrid(4).skip(1),
+          ],
+        );
+        expect(edited.isGridRecovered, isFalse);
+        await repository.saveCanvas(edited);
+        expect(
+          deserializeGrid((await db.getCreationById(id))!.gridData, gridSize: 4),
+          equals(edited.grid),
+        );
+      },
+    );
+
     test('saveCanvas clamps out-of-range selectedColorIndex', () async {
       final model = CanvasModel(
         gridSize: 2,

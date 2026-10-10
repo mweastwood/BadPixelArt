@@ -130,6 +130,7 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                         gridData: creation.gridData,
                         paletteColors: creation.paletteColors,
                         gridSize: creation.gridSize,
+                        creationId: creation.id,
                       ),
                       title: Text(
                         creation.title,
@@ -163,8 +164,12 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                               grid: deserializeGrid(
                                 creation.gridData,
                                 gridSize: creation.gridSize,
+                                logContext: 'creation ${creation.id}',
                               ),
-                              palette: resolvePalette(creation.paletteColors),
+                              palette: resolvePalette(
+                                creation.paletteColors,
+                                logContext: 'creation ${creation.id}',
+                              ),
                               initialTitle: creation.title,
                             );
                           } else if (action == 'rename') {
@@ -288,9 +293,11 @@ class CreationThumbnail extends StatefulWidget {
   final String gridData;
   final String paletteColors;
   final int gridSize;
+  final int? creationId;
 
   const CreationThumbnail({
     super.key,
+    this.creationId,
     required this.gridData,
     required this.paletteColors,
     required this.gridSize,
@@ -311,8 +318,15 @@ class _CreationThumbnailState extends State<CreationThumbnail> {
   }
 
   void _parseData() {
-    _grid = deserializeGrid(widget.gridData, gridSize: widget.gridSize);
-    _palette = resolvePalette(widget.paletteColors);
+    final logContext = widget.creationId == null
+        ? null
+        : 'creation ${widget.creationId}';
+    _grid = deserializeGrid(
+      widget.gridData,
+      gridSize: widget.gridSize,
+      logContext: logContext,
+    );
+    _palette = resolvePalette(widget.paletteColors, logContext: logContext);
   }
 
   @override

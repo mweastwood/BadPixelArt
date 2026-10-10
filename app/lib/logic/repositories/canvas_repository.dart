@@ -27,6 +27,9 @@ class CanvasRepository {
     final isGridValid =
         state.grid.length == state.gridSize &&
         state.grid.every((row) => row.length == state.gridSize);
+    // A recovered grid is only a blank placeholder for corrupt stored data, so
+    // it must not overwrite the original until the user edits the canvas.
+    final isGridPersistable = isGridValid && !state.isGridRecovered;
     if (!isGridValid) {
       debugPrint(
         'saveCanvas: grid dimensions do not match gridSize '
@@ -37,7 +40,7 @@ class CanvasRepository {
     // An invalid grid must never overwrite saved art: existing creations keep
     // their stored gridData. A brand-new creation has nothing to overwrite, so
     // it starts from a blank grid.
-    final drift.Value<String> gridDataValue = isGridValid
+    final drift.Value<String> gridDataValue = isGridPersistable
         ? drift.Value(serializeGrid(state.grid))
         : (state.creationId == null
               ? drift.Value(serializeGrid(createBlankGrid(state.gridSize)))
@@ -102,12 +105,15 @@ class CanvasRepository {
     final palette = resolvePalette(
       creation.paletteColors,
       fallback: currentState.palette,
+      logContext: 'creation ${creation.id}',
     );
-    final grid = deserializeGrid(
+    final recoveredGrid = tryDeserializeGrid(
       creation.gridData,
       gridSize: creation.gridSize,
       paletteLength: palette.length,
+      logContext: 'creation ${creation.id}',
     );
+    final grid = recoveredGrid ?? createBlankGrid(creation.gridSize);
     final components = deserializeComponents(creation.decomposedComponents);
     final history = deserializeHistory(creation.aiHistoryLogs);
 
@@ -116,6 +122,7 @@ class CanvasRepository {
       title: creation.title,
       gridSize: creation.gridSize,
       grid: grid,
+      isGridRecovered: recoveredGrid == null,
       paletteName: creation.paletteName,
       palette: palette,
       decomposedComponents: components,
@@ -155,12 +162,15 @@ class CanvasRepository {
         final palette = resolvePalette(
           creation.paletteColors,
           fallback: currentState.palette,
+          logContext: 'creation ${creation.id}',
         );
-        final grid = deserializeGrid(
+        final recoveredGrid = tryDeserializeGrid(
           creation.gridData,
           gridSize: creation.gridSize,
           paletteLength: palette.length,
+          logContext: 'creation ${creation.id}',
         );
+        final grid = recoveredGrid ?? createBlankGrid(creation.gridSize);
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
 
@@ -174,6 +184,7 @@ class CanvasRepository {
           title: creation.title,
           gridSize: creation.gridSize,
           grid: grid,
+          isGridRecovered: recoveredGrid == null,
           paletteName: creation.paletteName,
           palette: palette,
           decomposedComponents: components,
