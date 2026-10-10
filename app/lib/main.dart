@@ -7,6 +7,7 @@ import 'screens/pixel_art_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 
+import 'logic/models/color_palette.dart';
 import 'logic/utils/settings_provider.dart';
 import 'logic/canvas_state.dart';
 import 'logic/utils/database.dart';
@@ -25,8 +26,14 @@ Future<CanvasModel> loadInitialCanvasState(AppDatabase db) async {
     if (session != null && session.activeCreationId != null) {
       final creation = await db.getCreationById(session.activeCreationId!);
       if (creation != null) {
-        final grid = deserializeGrid(creation.gridData);
-        final palette = deserializePalette(creation.paletteColors);
+        final grid = deserializeGrid(
+          creation.gridData,
+          gridSize: creation.gridSize,
+        );
+        final rawPalette = deserializePalette(creation.paletteColors);
+        final palette = rawPalette.isNotEmpty
+            ? rawPalette
+            : PaletteRegistry.primaryPalette;
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
         final tool = CanvasTool.values.firstWhere(

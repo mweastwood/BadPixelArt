@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as drift;
 
+import '../models/color_palette.dart';
 import '../models/canvas_model.dart';
 import '../utils/database.dart';
 import '../utils/database_helpers.dart';
@@ -72,8 +73,16 @@ class CanvasRepository {
     final creation = await _db.getCreationById(id);
     if (creation == null) return null;
 
-    final grid = deserializeGrid(creation.gridData);
-    final palette = deserializePalette(creation.paletteColors);
+    final grid = deserializeGrid(
+      creation.gridData,
+      gridSize: creation.gridSize,
+    );
+    final rawPalette = deserializePalette(creation.paletteColors);
+    final palette = rawPalette.isNotEmpty
+        ? rawPalette
+        : (currentState.palette.isNotEmpty
+            ? currentState.palette
+            : PaletteRegistry.primaryPalette);
     final components = deserializeComponents(creation.decomposedComponents);
     final history = deserializeHistory(creation.aiHistoryLogs);
 
@@ -114,8 +123,16 @@ class CanvasRepository {
     if (session != null && session.activeCreationId != null) {
       final creation = await _db.getCreationById(session.activeCreationId!);
       if (creation != null) {
-        final grid = deserializeGrid(creation.gridData);
-        final palette = deserializePalette(creation.paletteColors);
+        final grid = deserializeGrid(
+          creation.gridData,
+          gridSize: creation.gridSize,
+        );
+        final rawPalette = deserializePalette(creation.paletteColors);
+        final palette = rawPalette.isNotEmpty
+            ? rawPalette
+            : (currentState.palette.isNotEmpty
+                ? currentState.palette
+                : PaletteRegistry.primaryPalette);
         final components = deserializeComponents(creation.decomposedComponents);
         final history = deserializeHistory(creation.aiHistoryLogs);
 

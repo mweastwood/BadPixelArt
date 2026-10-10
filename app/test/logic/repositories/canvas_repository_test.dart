@@ -205,5 +205,49 @@ void main() {
         expect(sessionAfter!.activeCreationId, isNull);
       },
     );
+
+    test(
+      'loadCanvas recovers corrupt gridData to valid gridSize x gridSize matrix',
+      () async {
+        final now = DateTime.now();
+        final corruptId = await db.createCreation(
+          CreationsCompanion(
+            title: const Value('Corrupt Canvas'),
+            gridSize: const Value(32),
+            gridData: const Value('not json'),
+            paletteName: const Value('primary'),
+            paletteColors: const Value('invalid-palette'),
+            decomposedComponents: const Value('[]'),
+            aiHistoryLogs: const Value('[]'),
+            createdAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+
+        final initialModel = CanvasModel(
+          gridSize: 32,
+          grid: List.generate(32, (_) => List.filled(32, 0)),
+          selectedColorIndex: 1,
+          selectedTool: CanvasTool.line,
+          paletteName: 'primary',
+          palette: [Colors.black, Colors.white],
+          userPrompt: '',
+          aiStatus: AiCoreStatus.available,
+          isGenerating: false,
+          autoRun: false,
+          autoRunSpeed: 1.5,
+          undoStack: const [],
+          redoStack: const [],
+          aiHistory: const [],
+        );
+
+        final loadedModel = await repository.loadCanvas(corruptId, initialModel);
+        expect(loadedModel, isNotNull);
+        expect(loadedModel!.gridSize, equals(32));
+        expect(loadedModel.grid.length, equals(32));
+        expect(loadedModel.grid.every((row) => row.length == 32), isTrue);
+        expect(loadedModel.palette, isNotEmpty);
+      },
+    );
   });
 }

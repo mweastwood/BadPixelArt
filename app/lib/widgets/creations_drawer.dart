@@ -160,7 +160,10 @@ class _CreationsDrawerState extends ConsumerState<CreationsDrawer> {
                           if (action == 'export') {
                             showExportArtDialog(
                               context,
-                              grid: deserializeGrid(creation.gridData),
+                              grid: deserializeGrid(
+                                creation.gridData,
+                                gridSize: creation.gridSize,
+                              ),
                               palette: deserializePalette(
                                 creation.paletteColors,
                               ),
@@ -310,7 +313,7 @@ class _CreationThumbnailState extends State<CreationThumbnail> {
   }
 
   void _parseData() {
-    _grid = deserializeGrid(widget.gridData);
+    _grid = deserializeGrid(widget.gridData, gridSize: widget.gridSize);
     _palette = deserializePalette(widget.paletteColors);
   }
 

@@ -9,13 +9,66 @@ String serializeGrid(List<List<int>> grid) {
   return jsonEncode(grid);
 }
 
-List<List<int>> deserializeGrid(String data) {
+List<List<int>> deserializeGrid(String data, {int? gridSize}) {
   try {
-    if (data.isEmpty) return [];
-    final List<dynamic> list = jsonDecode(data);
-    return list.map((row) => List<int>.from(row as List)).toList();
+    if (data.isEmpty) {
+      if (gridSize != null && gridSize > 0) {
+        return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+      }
+      return [];
+    }
+    final dynamic decoded = jsonDecode(data);
+    if (decoded is! List) {
+      if (gridSize != null && gridSize > 0) {
+        return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+      }
+      return [];
+    }
+
+    final parsedGrid = <List<int>>[];
+    for (final row in decoded) {
+      if (row is List) {
+        final parsedRow = <int>[];
+        for (final cell in row) {
+          if (cell is int) {
+            parsedRow.add(cell);
+          } else if (cell is num) {
+            parsedRow.add(cell.toInt());
+          } else if (cell is String) {
+            parsedRow.add(int.tryParse(cell) ?? 0);
+          } else {
+            parsedRow.add(0);
+          }
+        }
+        parsedGrid.add(parsedRow);
+      }
+    }
+
+    if (gridSize != null && gridSize > 0) {
+      final bool isDimensionsValid =
+          parsedGrid.length == gridSize &&
+          parsedGrid.every((row) => row.length == gridSize);
+      if (!isDimensionsValid) {
+        debugPrint(
+          'Deserialized grid dimensions do not match expected gridSize ($gridSize x $gridSize). Rebuilding blank grid.',
+        );
+        return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+      }
+      return parsedGrid;
+    }
+
+    if (parsedGrid.isNotEmpty) {
+      final firstRowLen = parsedGrid.first.length;
+      if (firstRowLen > 0 && parsedGrid.every((r) => r.length == firstRowLen)) {
+        return parsedGrid;
+      }
+    }
+    return [];
   } catch (e) {
     debugPrint('Error deserializing grid data: $e');
+    if (gridSize != null && gridSize > 0) {
+      return List.generate(gridSize, (_) => List.filled(gridSize, 0));
+    }
     return [];
   }
 }
@@ -30,11 +83,24 @@ String serializePalette(List<Color> palette) {
 List<Color> deserializePalette(String data) {
   try {
     if (data.isEmpty) return [];
-    final List<dynamic> list = jsonDecode(data);
-    return list.map((hex) {
-      final hexClean = hex.toString().replaceFirst('#', '');
-      return Color(int.parse(hexClean, radix: 16));
-    }).toList();
+    final dynamic decoded = jsonDecode(data);
+    if (decoded is! List) return [];
+    final colors = <Color>[];
+    for (final item in decoded) {
+      if (item == null) continue;
+      try {
+        final hexClean = item.toString().replaceFirst('#', '');
+        final val = int.tryParse(hexClean, radix: 16);
+        if (val != null) {
+          colors.add(Color(val));
+        } else {
+          debugPrint('Skipping invalid palette hex entry: $item');
+        }
+      } catch (e) {
+        debugPrint('Error parsing palette color entry "$item": $e');
+      }
+    }
+    return colors;
   } catch (e) {
     debugPrint('Error deserializing palette data: $e');
     return [];
