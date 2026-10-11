@@ -55,7 +55,7 @@ class WizardRegistry {
 
   static const defaultPixelArtWizard = structuredPixelArtWizard;
 
-  static const Map<String, WizardDefinition> _defaultWizards = {
+  static final Map<String, WizardDefinition> _defaultWizards = {
     structuredPixelArtWizard.id: structuredPixelArtWizard,
     directPixelArtWizard.id: directPixelArtWizard,
     templateSpriteWizard.id: templateSpriteWizard,
