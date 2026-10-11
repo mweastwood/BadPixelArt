@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
@@ -102,64 +103,112 @@ void main() {
 
     test(
       'startAutoPlay resets isPausing and autoRun when paused during stepDelay',
-      () async {
-        controller = const AutoPlayWizardController(
-          stepDelay: Duration(milliseconds: 50),
-        );
-        wizardNotifier.setStep(WizardStep.selectGridSize);
-        canvasNotifier.state = canvasNotifier.state.copyWith(
-          referenceImage: Uint8List.fromList([1, 2, 3]),
-        );
+      () {
+        fakeAsync((async) {
+          controller = const AutoPlayWizardController(
+            stepDelay: Duration(milliseconds: 50),
+          );
+          wizardNotifier.setStep(WizardStep.selectGridSize);
+          canvasNotifier.state = canvasNotifier.state.copyWith(
+            referenceImage: Uint8List.fromList([1, 2, 3]),
+          );
 
-        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
+          bool completed = false;
+          controller
+              .startAutoPlay(canvasNotifier, wizardNotifier)
+              .then((_) => completed = true);
 
-        // Allow selectGridSize executeAutoPlay to complete and enter stepDelay
-        await Future.delayed(const Duration(milliseconds: 10));
-        expect(canvasNotifier.state.autoRun, isTrue);
+          // Allow selectGridSize executeAutoPlay to complete and enter stepDelay
+          async.flushMicrotasks();
+          expect(canvasNotifier.state.autoRun, isTrue);
+          expect(completed, isFalse);
+          expect(
+            wizardNotifier.state.currentStep,
+            equals(WizardStep.selectGridSize),
+          );
 
-        // Pause while stepDelay is active
-        canvasNotifier.setAutoRunState(autoRun: true, isPausing: true);
+          // Advance fake time into the delay window
+          async.elapse(const Duration(milliseconds: 10));
+          expect(completed, isFalse);
 
-        await future;
+          // Pause while stepDelay is active
+          canvasNotifier.setAutoRunState(autoRun: true, isPausing: true);
 
-        expect(canvasNotifier.state.isPausing, isFalse);
-        expect(canvasNotifier.state.autoRun, isFalse);
-        expect(
-          wizardNotifier.state.currentStep,
-          equals(WizardStep.selectGridSize),
-        );
+          // Advance the remaining fake time and flush microtasks to complete startAutoPlay
+          async.elapse(const Duration(milliseconds: 40));
+          async.flushMicrotasks();
+
+          expect(completed, isTrue);
+          expect(canvasNotifier.state.isPausing, isFalse);
+          expect(canvasNotifier.state.autoRun, isFalse);
+          expect(
+            wizardNotifier.state.currentStep,
+            equals(WizardStep.selectGridSize),
+          );
+        });
       },
     );
 
     test(
       'can resume AutoPlay after pause during stepDelay without being blocked by stale autoRun',
-      () async {
-        controller = const AutoPlayWizardController(
-          stepDelay: Duration(milliseconds: 50),
-        );
-        wizardNotifier.setStep(WizardStep.selectGridSize);
-        canvasNotifier.state = canvasNotifier.state.copyWith(
-          referenceImage: Uint8List.fromList([1, 2, 3]),
-        );
+      () {
+        fakeAsync((async) {
+          controller = const AutoPlayWizardController(
+            stepDelay: Duration(milliseconds: 50),
+          );
+          wizardNotifier.setStep(WizardStep.selectGridSize);
+          canvasNotifier.state = canvasNotifier.state.copyWith(
+            referenceImage: Uint8List.fromList([1, 2, 3]),
+          );
 
-        final future = controller.startAutoPlay(canvasNotifier, wizardNotifier);
-        await Future.delayed(const Duration(milliseconds: 10));
+          bool completed = false;
+          controller
+              .startAutoPlay(canvasNotifier, wizardNotifier)
+              .then((_) => completed = true);
 
-        // Trigger pause during stepDelay
-        canvasNotifier.setAutoRunState(autoRun: true, isPausing: true);
-        await future;
+          // Allow selectGridSize executeAutoPlay to complete and enter stepDelay
+          async.flushMicrotasks();
+          expect(canvasNotifier.state.autoRun, isTrue);
+          expect(completed, isFalse);
+          expect(
+            wizardNotifier.state.currentStep,
+            equals(WizardStep.selectGridSize),
+          );
 
-        expect(canvasNotifier.state.autoRun, isFalse);
-        expect(canvasNotifier.state.isPausing, isFalse);
+          // Advance fake time into the delay window
+          async.elapse(const Duration(milliseconds: 10));
+          expect(completed, isFalse);
 
-        // Resume AutoPlay with zero delay to verify it's not locked out
-        controller = const AutoPlayWizardController(stepDelay: Duration.zero);
-        await controller.startAutoPlay(canvasNotifier, wizardNotifier);
+          // Trigger pause during stepDelay
+          canvasNotifier.setAutoRunState(autoRun: true, isPausing: true);
 
-        expect(
-          wizardNotifier.state.currentStep,
-          isNot(equals(WizardStep.selectGridSize)),
-        );
+          // Advance remaining stepDelay and flush microtasks
+          async.elapse(const Duration(milliseconds: 40));
+          async.flushMicrotasks();
+
+          expect(completed, isTrue);
+          expect(canvasNotifier.state.autoRun, isFalse);
+          expect(canvasNotifier.state.isPausing, isFalse);
+          expect(
+            wizardNotifier.state.currentStep,
+            equals(WizardStep.selectGridSize),
+          );
+
+          // Resume AutoPlay with zero delay to verify it's not locked out
+          controller = const AutoPlayWizardController(stepDelay: Duration.zero);
+          bool resumedCompleted = false;
+          controller
+              .startAutoPlay(canvasNotifier, wizardNotifier)
+              .then((_) => resumedCompleted = true);
+          async.flushMicrotasks();
+
+          expect(resumedCompleted, isTrue);
+          expect(canvasNotifier.state.autoRun, isFalse);
+          expect(
+            wizardNotifier.state.currentStep,
+            isNot(equals(WizardStep.selectGridSize)),
+          );
+        });
       },
     );
 
