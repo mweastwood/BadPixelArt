@@ -549,32 +549,35 @@ void main() {
       },
     );
 
-    test('falls back to onLog when onLogUpdate is null in continuation', () async {
-      final fakeService = TestMockAiService(
-        completer: Completer<AiResponse?>(),
-      );
-      final loggingService = LoggingAiService(fakeService);
+    test(
+      'falls back to onLog when onLogUpdate is null in continuation',
+      () async {
+        final fakeService = TestMockAiService(
+          completer: Completer<AiResponse?>(),
+        );
+        final loggingService = LoggingAiService(fakeService);
 
-      final loggedEntries = <AgentHistoryEntry>[];
-      loggingService.onLog = (entry) => loggedEntries.add(entry);
+        final loggedEntries = <AgentHistoryEntry>[];
+        loggingService.onLog = (entry) => loggedEntries.add(entry);
 
-      final future = loggingService.generateContentWithContinuation(
-        prompt: 'Fallback continuation test',
-        autoContinueLimit: 1,
-      );
-      expect(loggedEntries.length, equals(1));
-      expect(loggedEntries.first.response, equals('Generating response...'));
+        final future = loggingService.generateContentWithContinuation(
+          prompt: 'Fallback continuation test',
+          autoContinueLimit: 1,
+        );
+        expect(loggedEntries.length, equals(1));
+        expect(loggedEntries.first.response, equals('Generating response...'));
 
-      fakeService.completer!.complete(
-        AiResponse(text: 'Completed fallback continuation'),
-      );
-      await future;
+        fakeService.completer!.complete(
+          AiResponse(text: 'Completed fallback continuation'),
+        );
+        await future;
 
-      expect(loggedEntries.length, equals(2));
-      expect(
-        loggedEntries.last.response,
-        equals('Completed fallback continuation'),
-      );
-    });
+        expect(loggedEntries.length, equals(2));
+        expect(
+          loggedEntries.last.response,
+          equals('Completed fallback continuation'),
+        );
+      },
+    );
   });
 }
