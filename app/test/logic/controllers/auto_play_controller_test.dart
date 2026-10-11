@@ -196,9 +196,14 @@ void main() {
 
           // Resume AutoPlay with zero delay to verify it's not locked out
           controller = const AutoPlayWizardController(stepDelay: Duration.zero);
-          controller.startAutoPlay(canvasNotifier, wizardNotifier);
+          bool resumedCompleted = false;
+          controller
+              .startAutoPlay(canvasNotifier, wizardNotifier)
+              .then((_) => resumedCompleted = true);
           async.flushMicrotasks();
 
+          expect(resumedCompleted, isTrue);
+          expect(canvasNotifier.state.autoRun, isFalse);
           expect(
             wizardNotifier.state.currentStep,
             isNot(equals(WizardStep.selectGridSize)),
