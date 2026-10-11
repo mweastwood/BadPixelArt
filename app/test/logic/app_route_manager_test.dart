@@ -141,6 +141,20 @@ void main() {
     );
 
     testWidgets(
+      'trailing slash on /canvas/ navigates to Canvas Screen (tab index 1)',
+      (tester) async {
+        await tester.pumpWidget(
+          _TestTabContainer(
+            mockUri: Uri.parse('http://localhost:8080/canvas/'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Canvas Screen'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'trailing slash on /logs/ navigates to Logs Screen (tab index 2)',
       (tester) async {
         await tester.pumpWidget(
@@ -157,9 +171,7 @@ void main() {
       (tester) async {
         await tester.pumpWidget(
           _TestTabContainer(
-            mockUri: Uri.parse(
-              'http://localhost:8080',
-            ).replace(path: 'creations'),
+            mockUri: Uri(path: 'creations'),
           ),
         );
         await tester.pumpAndSettle();
@@ -207,9 +219,9 @@ void main() {
       },
     );
 
-    test(
+    testWidgets(
       'does not redundantly call animateTo when tabController.index matches targetIndex',
-      () {
+      (tester) async {
         final controller = _TrackingTabController(
           length: 3,
           initialIndex: 1,
@@ -228,9 +240,9 @@ void main() {
       },
     );
 
-    test(
+    testWidgets(
       'calls animateTo when tabController.index does not match targetIndex',
-      () {
+      (tester) async {
         final controller = _TrackingTabController(
           length: 3,
           initialIndex: 0,
