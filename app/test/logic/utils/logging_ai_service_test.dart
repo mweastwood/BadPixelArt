@@ -502,7 +502,7 @@ void main() {
         expect(loggedEntries.first.imageBytes, equals(testImageBytes));
 
         fakeService.completer!.complete(
-          AiResponse(text: 'Visual elements identified'),
+          AiResponse(text: 'Visual elements identified.'),
         );
         await future;
 
@@ -568,14 +568,14 @@ void main() {
         expect(loggedEntries.first.response, equals('Generating response...'));
 
         fakeService.completer!.complete(
-          AiResponse(text: 'Completed fallback continuation'),
+          AiResponse(text: 'Completed fallback continuation.'),
         );
         await future;
 
         expect(loggedEntries.length, equals(2));
         expect(
           loggedEntries.last.response,
-          equals('Completed fallback continuation'),
+          equals('Completed fallback continuation.'),
         );
       },
     );
