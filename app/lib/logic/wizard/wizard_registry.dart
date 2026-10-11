@@ -61,8 +61,9 @@ class WizardRegistry {
     templateSpriteWizard.id: templateSpriteWizard,
   };
 
-  static final Map<String, WizardDefinition> _registeredWizards =
-      Map.of(_defaultWizards);
+  static final Map<String, WizardDefinition> _registeredWizards = Map.of(
+    _defaultWizards,
+  );
 
   /// Returns all registered wizard pipelines.
   static List<WizardDefinition> get allWizards =>
