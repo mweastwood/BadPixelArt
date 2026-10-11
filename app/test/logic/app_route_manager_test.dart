@@ -170,9 +170,7 @@ void main() {
       'path without leading slash correctly resolves to Creations Screen (tab index 0)',
       (tester) async {
         await tester.pumpWidget(
-          _TestTabContainer(
-            mockUri: Uri(path: 'creations'),
-          ),
+          _TestTabContainer(mockUri: Uri(path: 'creations')),
         );
         await tester.pumpAndSettle();
 
