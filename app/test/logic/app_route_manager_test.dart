@@ -34,11 +34,7 @@ class _TestTabContainerState extends State<_TestTabContainer>
   @override
   void initState() {
     super.initState();
-    tabController = TabController(
-      length: 3,
-      initialIndex: 1,
-      vsync: this,
-    );
+    tabController = TabController(length: 3, initialIndex: 1, vsync: this);
     routeManager = AppRouteManager(mockUri: widget.mockUri);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
