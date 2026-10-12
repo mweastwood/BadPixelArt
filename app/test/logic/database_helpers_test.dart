@@ -138,21 +138,6 @@ void main() {
       },
     );
 
-    test(
-      'deserializeComponents handles valid and corrupted inputs gracefully',
-      () {
-        expect(deserializeComponents(''), isEmpty);
-        expect(deserializeComponents('not a json array'), isEmpty);
-      },
-    );
-
-    test(
-      'deserializeHistory handles valid and corrupted inputs gracefully',
-      () {
-        expect(deserializeHistory(''), isEmpty);
-        expect(deserializeHistory('{corrupted: json}'), isEmpty);
-      },
-    );
   });
 
   group('Grid Serialization & Recovery (serializeGrid / deserializeGrid)', () {
@@ -181,6 +166,16 @@ void main() {
       'recovers gracefully when array contains 1D primitive integers instead of 2D rows',
       () {
         expect(deserializeGrid('[1, 2, 3]'), isEmpty);
+      },
+    );
+
+    test(
+      'tryDeserializeGrid returns null on empty string, invalid JSON, or mismatched dimensions',
+      () {
+        expect(tryDeserializeGrid(''), isNull);
+        expect(tryDeserializeGrid('invalid json'), isNull);
+        expect(tryDeserializeGrid('[[1, 2], [3]]'), isNull);
+        expect(tryDeserializeGrid('[[1, 2], [3, 4]]', gridSize: 3), isNull);
       },
     );
   });
@@ -237,6 +232,17 @@ void main() {
           expect(deserializePalette(jsonEncode([null])), isEmpty);
         },
       );
+
+      test('resolvePalette roundtrips valid serialized palette faithfully', () {
+        final colors = [
+          const Color(0xFF112233),
+          const Color(0x80FF0000),
+        ];
+        final resolved = resolvePalette(serializePalette(colors));
+        expect(resolved.length, 2);
+        expect(resolved[0].toARGB32(), equals(colors[0].toARGB32()));
+        expect(resolved[1].toARGB32(), equals(colors[1].toARGB32()));
+      });
     },
   );
 
@@ -415,6 +421,41 @@ void main() {
           expect(deserializeComponents(jsonEncode([{}])), isEmpty);
         },
       );
+
+      test(
+        'deserialization falls back isSculpted based on grid presence when key is absent',
+        () {
+          final legacyJson = jsonEncode([
+            {
+              'name': 'legacy_sculpted',
+              'description': 'component with grid',
+              'relativeBoundingBox': {
+                'left': 0.0,
+                'top': 0.0,
+                'width': 1.0,
+                'height': 1.0,
+              },
+              'grid': [
+                [1],
+              ],
+            },
+            {
+              'name': 'legacy_vector',
+              'description': 'component without grid',
+              'relativeBoundingBox': {
+                'left': 0.0,
+                'top': 0.0,
+                'width': 1.0,
+                'height': 1.0,
+              },
+            },
+          ]);
+          final deserialized = deserializeComponents(legacyJson);
+          expect(deserialized.length, 2);
+          expect(deserialized[0].isSculpted, isTrue);
+          expect(deserialized[1].isSculpted, isFalse);
+        },
+      );
     },
   );
 
@@ -501,10 +542,14 @@ void main() {
         expect(deserializeHistory('{"not": "a list"}'), isEmpty);
       });
 
-      test('recovers gracefully when array contains non-map elements', () {
-        expect(deserializeHistory(jsonEncode(['not_a_map'])), isEmpty);
-        expect(deserializeHistory(jsonEncode([123])), isEmpty);
-      });
+      test(
+        'recovers gracefully when array contains non-map or malformed elements',
+        () {
+          expect(deserializeHistory(jsonEncode(['not_a_map'])), isEmpty);
+          expect(deserializeHistory(jsonEncode([123])), isEmpty);
+          expect(deserializeHistory(jsonEncode([{}])), isEmpty);
+        },
+      );
     },
   );
 }
