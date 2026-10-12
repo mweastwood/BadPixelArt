@@ -290,15 +290,39 @@ void main() {
               outlineColor: const Color(0xFF000000),
               isSculpted: false,
             ),
+            PixelArtComponent(
+              name: 'accessory',
+              description: 'hat triangle',
+              relativeBoundingBox: const Rect.fromLTWH(0.25, 0.0, 0.5, 0.25),
+              grid: [
+                [1, 1, 1],
+                [1, 1, 1],
+                [1, 1, 1],
+              ],
+              shapes: [
+                FundamentalShape(
+                  type: 'triangle',
+                  relativeBoundingBox: const Rect.fromLTWH(0.0, 0.0, 1.0, 1.0),
+                  description: 'party hat',
+                ),
+              ],
+              fillColor: const Color(0xFFFFEB3B),
+              fillColor2: const Color(0xFFFF9800),
+              gradientAngle: 180.0,
+              outlineColor: const Color(0xFF3E2723),
+              isSculpted: true,
+            ),
           ];
 
           final jsonStr = serializeComponents(originalComponents);
           final decoded = jsonDecode(jsonStr);
           expect(decoded, isA<List<dynamic>>());
-          expect(decoded.length, 2);
+          expect(decoded.length, 3);
 
           final deserialized = deserializeComponents(jsonStr);
-          expect(deserialized.length, 2);
+          expect(deserialized.length, 3);
+          expect(originalComponents[2].hasInterior, isTrue);
+          expect(deserialized[2].hasInterior, isTrue);
           for (int i = 0; i < originalComponents.length; i++) {
             expect(deserialized[i], equals(originalComponents[i]));
             expect(deserialized[i].name, equals(originalComponents[i].name));
@@ -384,9 +408,13 @@ void main() {
         expect(deserializeComponents('{"key": "value"}'), isEmpty);
       });
 
-      test('recovers gracefully when array contains non-map elements', () {
-        expect(deserializeComponents(jsonEncode(['not_a_map'])), isEmpty);
-      });
+      test(
+        'recovers gracefully when array contains non-map or malformed elements',
+        () {
+          expect(deserializeComponents(jsonEncode(['not_a_map'])), isEmpty);
+          expect(deserializeComponents(jsonEncode([{}])), isEmpty);
+        },
+      );
     },
   );
 
@@ -415,7 +443,7 @@ void main() {
               prompt: 'Refine the outline',
               response: 'QuotaExceededException: 429',
               isError: true,
-              modelName: 'Gemini 2.5 Flash',
+              modelName: null,
               inputTokens: null,
               outputTokens: null,
               totalTokens: null,
