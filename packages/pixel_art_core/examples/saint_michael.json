@@ -1,0 +1,194 @@
+{
+  "title": "Saint Michael - Final",
+  "gridSize": 32,
+  "palette": {
+    "ink": "#181425",
+    "wing_hi": "#f5f9ff",
+    "wing_mid": "#c2d6f0",
+    "wing_dark": "#7c95bd",
+    "gold_hi": "#fff3a1",
+    "gold_mid": "#f0b537",
+    "gold_dark": "#a8651e",
+    "skin_hi": "#ffd2b3",
+    "skin_dark": "#d4906e",
+    "hair": "#8a4b2a",
+    "steel_hi": "#dbe5f2",
+    "steel_mid": "#8c9bb5",
+    "steel_dark": "#4c5873",
+    "crimson_hi": "#e63946",
+    "crimson_dark": "#8c1d35",
+    "flame_mid": "#ff8426"
+  },
+  "layers": [
+    {
+      "name": "feathered_angel_wings",
+      "rows": [
+        "...WWW....................WWW...",
+        "..WWWWW..................WWWWW..",
+        ".WWWWWWW................WWWWWWW.",
+        ".WWMWWWWM..............MWWWMWWW.",
+        "..WWWWWMMM............MMMWWWWW..",
+        ".WWMWWWMMMM..........MMMMWWWMWW.",
+        "..WWWWMMMMDD........DDMMMMWWWW..",
+        "...WWMMMMMDDD......DDDMMMMMWW...",
+        "..WWMWMMDDDD........DDDDMMWMWW..",
+        "...WWMMDDD............DDDMMWW...",
+        "....WMMDD..............DDMMW....",
+        ".....WDD................DDW.....",
+        "......D..................D......"
+      ],
+      "offsetX": 0,
+      "offsetY": 6,
+      "legend": {
+        "W": "wing_hi",
+        "M": "wing_mid",
+        "D": "wing_dark"
+      }
+    },
+    {
+      "name": "billowing_crimson_cloak",
+      "rows": [
+        "...........RRRRRRRRR............",
+        "..........RRRRRRRRRRR...........",
+        "..........RRRRRRRRRRR...........",
+        ".........RRrRRRRRRRrRR..........",
+        ".........RrRRRRRRRRRrR..........",
+        "........rrRRRRRRRRRRRrr.........",
+        "........rrRRRRRRRRRRRrr.........",
+        "........rRRRRRRRRRRRRrr.........",
+        ".........rrRRRrrrRRRrr..........",
+        "..........rrr.....rrr..........."
+      ],
+      "offsetX": 0,
+      "offsetY": 15,
+      "legend": {
+        "R": "crimson_hi",
+        "r": "crimson_dark"
+      }
+    },
+    {
+      "name": "head_and_flowing_hair",
+      "rows": [
+        ".............HHHHH..............",
+        "............HHHGHHH.............",
+        "...........HHSSSSSHH............",
+        "...........HHSKSKSHH............",
+        "...........HHSSSSSHH............",
+        "............HsSSSsH.............",
+        ".............KsssK.............."
+      ],
+      "offsetX": 0,
+      "offsetY": 5,
+      "legend": {
+        "H": "hair",
+        "G": "gold_hi",
+        "S": "skin_hi",
+        "s": "skin_dark",
+        "K": "ink"
+      }
+    },
+    {
+      "name": "armor_body_and_greaves",
+      "rows": [
+        "..........KHHLLLLLGGK...........",
+        ".........KHHKLLLGLLKGDK.........",
+        ".........KGGKMMLGLMKDDK.........",
+        "..........K.KSMMGMMsK.K.........",
+        "............KsMMMMMsK...........",
+        "............KdGGGGGdK...........",
+        "............KsMMdMMsK...........",
+        "...........KRRRRGRRRRK..........",
+        "...........KrRRRGRRRrK..........",
+        "............KLLM.MLLK...........",
+        "............KLMM.MMLK...........",
+        "............KGGs.sGGK...........",
+        "............KMMs.sMMK...........",
+        "............KsMs.sMsK...........",
+        "............Kdds.sddK...........",
+        "...........Kssdd.ddssK..........",
+        "...........Kdddd.ddddK.........."
+      ],
+      "offsetX": 0,
+      "offsetY": 12,
+      "legend": {
+        "K": "ink",
+        "H": "gold_hi",
+        "G": "gold_mid",
+        "D": "gold_dark",
+        "L": "steel_hi",
+        "M": "steel_mid",
+        "S": "steel_hi",
+        "s": "steel_dark",
+        "d": "steel_dark",
+        "R": "crimson_hi",
+        "r": "crimson_dark"
+      }
+    },
+    {
+      "name": "sword_arm_and_flaming_sword",
+      "rows": [
+        "......F.........................",
+        ".....FOF........................",
+        ".....FYOF.......................",
+        "....FOYOF.......................",
+        "....FOYLO.......................",
+        "....FRYLO.......................",
+        ".....RYLO.......................",
+        ".....FYLO.......................",
+        "....KFOYOK......................",
+        "....KHHGGK......................",
+        ".....KGLKKK.....................",
+        ".....KGDLLMK....................",
+        "......KKMMMK....................",
+        "........KKK....................."
+      ],
+      "offsetX": 0,
+      "offsetY": 3,
+      "legend": {
+        "K": "ink",
+        "F": "crimson_hi",
+        "O": "flame_mid",
+        "Y": "gold_hi",
+        "R": "crimson_hi",
+        "L": "steel_hi",
+        "M": "steel_mid",
+        "G": "gold_mid",
+        "H": "gold_hi",
+        "D": "gold_dark"
+      }
+    },
+    {
+      "name": "heraldic_cross_shield",
+      "rows": [
+        "..................KHHHHGGGK.....",
+        "..................KHRRHRRGK.....",
+        "..................KHRRHRRGK.....",
+        "..................KHHHHHGGK.....",
+        "..................KGRRGrRDK.....",
+        "...................KGrGrDK......",
+        "....................KGGDK.......",
+        ".....................KDK........"
+      ],
+      "offsetX": 0,
+      "offsetY": 15,
+      "legend": {
+        "K": "ink",
+        "H": "gold_hi",
+        "G": "gold_mid",
+        "D": "gold_dark",
+        "R": "crimson_hi",
+        "r": "crimson_dark"
+      }
+    }
+  ],
+  "postOps": [
+    { "tool": "pixel", "params": [21, 23], "color": 0 },
+    { "tool": "auto_outline", "params": [4], "color": "ink" },
+    { "tool": "pixels", "params": [13, 1, 14, 1, 15, 1, 16, 1, 17, 1], "color": "gold_hi" },
+    { "tool": "pixels", "params": [12, 2, 18, 2], "color": "gold_mid" },
+    { "tool": "pixels", "params": [13, 3, 17, 3], "color": "gold_mid" },
+    { "tool": "pixels", "params": [14, 3, 15, 3, 16, 3], "color": "gold_hi" },
+    { "tool": "pixels", "params": [9, 2, 21, 3, 4, 2], "color": "gold_hi" },
+    { "tool": "pixel", "params": [8, 4], "color": "flame_mid" }
+  ]
+}

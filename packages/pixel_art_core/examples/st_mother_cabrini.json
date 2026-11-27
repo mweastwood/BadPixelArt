@@ -1,0 +1,161 @@
+{
+  "title": "St. Mother Cabrini - Final",
+  "gridSize": 32,
+  "palette": {
+    "ink": "#12131f",
+    "habit_dark": "#222536",
+    "habit_mid": "#353a52",
+    "habit_hi": "#525a78",
+    "linen_hi": "#f6f8fd",
+    "linen_mid": "#cad4e8",
+    "skin_hi": "#ffd8be",
+    "skin_dark": "#d49879",
+    "cheek": "#f2a699",
+    "gold_hi": "#fff3a1",
+    "gold_mid": "#ebb038",
+    "gold_dark": "#9e621c",
+    "heart_hi": "#ff5c6c",
+    "heart_mid": "#c9243f",
+    "book_dark": "#6e2c26"
+  },
+  "layers": [
+    {
+      "name": "veil_and_habit_silhouette",
+      "rows": [
+        "............hHHHHd..............",
+        "..........hHHMMMMHHd............",
+        ".........hHMMMMMMMMHd...........",
+        ".........hM........Md...........",
+        ".........hM........Md...........",
+        ".........hM........Md...........",
+        ".........hM........Md...........",
+        "..........hM......Md............",
+        ".........hHHMMMMMMHHd...........",
+        "........hHHMMMMMMMMHHd..........",
+        ".......hHHMMMMMMMMMMHHd.........",
+        "......hHHMMMMMMMMMMMMHHd........",
+        "......hHMMMMMMMMMMMMMMHd........",
+        "......hHMdMMMMMMMMMMdMHd........",
+        ".......ddMdMMMMMMMMdMdd.........",
+        "........hMdMMMMMMMMdMd..........",
+        "........hMdMMdMMdMMdMd..........",
+        "........hMdMMdMMdMMdMd..........",
+        ".......hMMdMMdMMdMMdMMd.........",
+        ".......hMMdMMdMMdMMdMMd.........",
+        ".......hMMdMMdMMdMMdMMd.........",
+        "......hMMMdMMdMMdMMdMMMd........",
+        "......hMMMdMMdMMdMMdMMMd........",
+        "......dMMddMMdMMdMMddMMd........",
+        ".......dddddddddddddddd........."
+      ],
+      "offsetX": 0,
+      "offsetY": 5,
+      "legend": {
+        "h": "habit_hi",
+        "H": "habit_hi",
+        "M": "habit_mid",
+        "d": "habit_dark"
+      }
+    },
+    {
+      "name": "pleated_white_bonnet_face_and_collar",
+      "rows": [
+        "...........wWwWWwWw.............",
+        "..........WwSSSSSSwW............",
+        "..........wSSKSSKSSw............",
+        "..........WCSSSSSSCW............",
+        "...........wSSssSSw.............",
+        "............KwwwwK..............",
+        "...........wWWWWWWw............."
+      ],
+      "offsetX": 0,
+      "offsetY": 7,
+      "legend": {
+        "W": "linen_hi",
+        "w": "linen_mid",
+        "S": "skin_hi",
+        "s": "skin_dark",
+        "C": "cheek",
+        "K": "ink"
+      }
+    },
+    {
+      "name": "sacred_heart_on_habit",
+      "rows": [
+        "...............H................",
+        ".............hR.RR..............",
+        ".............hRRRR..............",
+        "..............RRR...............",
+        "...............R................"
+      ],
+      "offsetX": 0,
+      "offsetY": 15,
+      "legend": {
+        "H": "gold_hi",
+        "h": "heart_hi",
+        "R": "heart_mid"
+      }
+    },
+    {
+      "name": "missionary_cross_and_right_hand",
+      "rows": [
+        "......H.........................",
+        ".....HGH........................",
+        "......G.........................",
+        "......G.........................",
+        ".....SGD........................",
+        ".....sGD........................",
+        "......D........................."
+      ],
+      "offsetX": 0,
+      "offsetY": 12,
+      "legend": {
+        "H": "gold_hi",
+        "G": "gold_mid",
+        "D": "gold_dark",
+        "S": "skin_hi",
+        "s": "skin_dark"
+      }
+    },
+    {
+      "name": "gospel_book_and_left_hand",
+      "rows": [
+        "......................WWWWW.....",
+        ".....................KRRRRBW....",
+        "....................SSRGRRBW....",
+        "....................SsGGGRBW....",
+        ".....................KRGRRBW....",
+        ".....................KRRRRBW....",
+        ".....................KBBBBBW...."
+      ],
+      "offsetX": 0,
+      "offsetY": 15,
+      "legend": {
+        "K": "ink",
+        "W": "linen_hi",
+        "R": "heart_mid",
+        "B": "book_dark",
+        "G": "gold_hi",
+        "S": "skin_hi",
+        "s": "skin_dark"
+      }
+    },
+    {
+      "name": "delicate_rosary_on_habit",
+      "ops": [
+        { "tool": "pixels", "params": [12, 19, 11, 21, 10, 23], "color": "gold_mid" },
+        { "tool": "pixels", "params": [11, 20, 10, 22, 10, 24], "color": "habit_dark" },
+        { "tool": "pixels", "params": [10, 25, 10, 27, 9, 26, 11, 26], "color": "gold_dark" },
+        { "tool": "pixel", "params": [10, 26], "color": "gold_hi" }
+      ]
+    }
+  ],
+  "postOps": [
+    { "tool": "auto_outline", "params": [4], "color": "ink" },
+    { "tool": "pixels", "params": [13, 1, 14, 1, 15, 1, 16, 1, 17, 1], "color": "gold_hi" },
+    { "tool": "pixels", "params": [12, 2, 18, 2], "color": "gold_mid" },
+    { "tool": "pixels", "params": [13, 3, 17, 3], "color": "gold_mid" },
+    { "tool": "pixels", "params": [14, 3, 15, 3, 16, 3], "color": "gold_hi" },
+    { "tool": "pixels", "params": [9, 3, 21, 3], "color": "gold_hi" }
+  ]
+}
