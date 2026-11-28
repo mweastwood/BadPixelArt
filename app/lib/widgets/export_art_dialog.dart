@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../logic/utils/art_export_utils.dart';
 import 'canvas/scaled_canvas_preview.dart';

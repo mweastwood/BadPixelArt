@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -414,8 +414,10 @@ gt.WidgetWrapper testMaterialAppWrapper({
         }),
         ...overrides,
       ],
-      child: gt.materialAppWrapper(platform: platform, theme: ThemeData.dark())(
-        child,
+      child: MaterialApp(
+        theme: ThemeData.dark().copyWith(platform: platform),
+        debugShowCheckedModeBanner: false,
+        home: Material(child: child),
       ),
     );
   };

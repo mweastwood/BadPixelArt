@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Represents integer pixel grid bounds `[leftCol, topRow, rightCol, bottomRow]`,
 /// where `leftCol` and `topRow` are inclusive start indices, and `rightCol` and

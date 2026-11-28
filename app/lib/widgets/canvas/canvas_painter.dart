@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../logic/models/pixel_art_component.dart';
 import '../../logic/models/sculpting_candidates.dart';

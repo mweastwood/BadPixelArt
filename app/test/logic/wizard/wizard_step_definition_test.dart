@@ -1,7 +1,7 @@
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/logic/wizard/wizard_step_definition.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
