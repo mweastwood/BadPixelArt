@@ -1,0 +1,133 @@
+{
+  "title": "Red Mana Potion - Final",
+  "gridSize": 24,
+  "palette": {
+    "ink": "#1a1026",
+    "gold_dark": "#8c4b1e",
+    "gold_mid": "#dfa135",
+    "gold_hi": "#fff08a",
+    "glass_dark": "#435078",
+    "glass_mid": "#86a7cf",
+    "glass_hi": "#eef7ff",
+    "mana_deep": "#520d36",
+    "mana_dark": "#99153f",
+    "mana_mid": "#e3244c",
+    "mana_bright": "#ff616e",
+    "mana_glow": "#ffb8c6",
+    "sparkle": "#fff7d6"
+  },
+  "layers": [
+    {
+      "name": "ruby_crystal_stopper",
+      "rows": [
+        "...........SB...........",
+        "..........BMMd..........",
+        "..........MMdd..........",
+        "...........dd..........."
+      ],
+      "offsetX": 0,
+      "offsetY": 2,
+      "legend": {
+        "S": "sparkle",
+        "B": "mana_bright",
+        "M": "mana_mid",
+        "d": "mana_dark"
+      }
+    },
+    {
+      "name": "glass_flask_body",
+      "rows": [
+        ".........hhmmdd.........",
+        "..........hmmd..........",
+        ".........hhmmdd.........",
+        "........hhmmmmdd........",
+        ".......hhddddddmd.......",
+        "......hhmmmmmmmmdd......",
+        ".....hhmmmmmmmmmmdd.....",
+        "....hmmmmmmmmmmmmmdd....",
+        "....hmmmmmmmmmmmmmdd....",
+        "....hmmmmmmmmmmmmmdd....",
+        ".....mmmmmmmmmmmmdd.....",
+        "......mmmmmmmmmmdd......",
+        ".......mmmmmmmmdd.......",
+        "........dddddddd........"
+      ],
+      "offsetX": 0,
+      "offsetY": 6,
+      "legend": {
+        "h": "glass_hi",
+        "m": "glass_mid",
+        "d": "glass_dark"
+      }
+    },
+    {
+      "name": "ornate_gold_collar_and_pedestal",
+      "rows": [
+        ".......HHHmmmmDDD.......",
+        "........DDmBMmDD........",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........................",
+        "........HHmmmmDD........"
+      ],
+      "offsetX": 0,
+      "offsetY": 8,
+      "legend": {
+        "H": "gold_hi",
+        "m": "gold_mid",
+        "D": "gold_dark",
+        "B": "mana_bright",
+        "M": "mana_mid"
+      }
+    },
+    {
+      "name": "crimson_mana_liquid",
+      "rows": [
+        "......BBBBBBBBMMMd......",
+        ".....BBBBBBBBMMMMDd.....",
+        ".....BBMMMMMMMMMDDd.....",
+        "......MMMMMMMMMMDD......",
+        ".......MMMMMMMMDD.......",
+        "........DDDDDDDD........"
+      ],
+      "offsetX": 0,
+      "offsetY": 13,
+      "legend": {
+        "B": "mana_bright",
+        "M": "mana_mid",
+        "D": "mana_dark",
+        "d": "mana_deep"
+      }
+    },
+    {
+      "name": "arcane_core_glow_and_bevel",
+      "ops": [
+        { "tool": "pixels", "params": [8, 13, 9, 13, 10, 13, 11, 13, 12, 13, 13, 13], "color": "mana_glow" },
+        { "tool": "pixel", "params": [11, 15], "color": "sparkle" },
+        { "tool": "pixels", "params": [11, 14, 11, 16, 10, 15, 12, 15], "color": "mana_glow" },
+        { "tool": "pixels", "params": [10, 14, 12, 16, 9, 15, 13, 15], "color": "mana_bright" },
+        { "tool": "pixels", "params": [8, 12, 14, 14], "color": "mana_glow" },
+        { "tool": "pixels", "params": [5, 13, 5, 14], "color": "glass_hi" },
+        { "tool": "pixels", "params": [6, 12, 7, 11], "color": "glass_hi" },
+        { "tool": "pixels", "params": [5, 15, 5, 16], "color": "glass_mid" },
+        { "tool": "pixels", "params": [18, 15, 18, 16], "color": "glass_dark" },
+        { "tool": "pixels", "params": [8, 19, 9, 19, 10, 19, 11, 19, 12, 19, 13, 19, 14, 19, 15, 19], "color": "mana_deep" }
+      ]
+    }
+  ],
+  "postOps": [
+    { "tool": "auto_outline", "params": [4], "color": "ink" },
+    { "tool": "pixels", "params": [4, 4, 4, 6, 3, 5, 5, 5], "color": "mana_glow" },
+    { "tool": "pixel", "params": [4, 5], "color": "sparkle" },
+    { "tool": "pixels", "params": [19, 6, 20, 7, 19, 8, 18, 7], "color": "mana_bright" },
+    { "tool": "pixel", "params": [19, 7], "color": "sparkle" },
+    { "tool": "pixels", "params": [2, 10, 21, 11], "color": "mana_glow" }
+  ]
+}

@@ -35,3 +35,36 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+  test-pixel-art-core:
+    name: Core Engine & Skill Tests (Dart)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./packages/pixel_art_core
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Resolve package config
+        run: dart pub get
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze pixel_art_core
+        run: dart analyze
+
+      - name: Run pixel_art_core tests
+        run: dart run test/pixel_art_core_test.dart
+
+      - name: Analyze & smoke-test bundled bad-pixel-art skill script
+        run: |
+          dart analyze ../../skills/bad-pixel-art/scripts/pixel_art.dart
+          dart run ../../skills/bad-pixel-art/scripts/pixel_art.dart inspect examples/health_potion.json > /dev/null
+

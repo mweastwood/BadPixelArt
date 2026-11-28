@@ -1,0 +1,85 @@
+{
+  "title": "Health Potion",
+  "gridSize": 16,
+  "palette": {
+    "ink": "#1e1629",
+    "cork_dark": "#7a442d",
+    "cork_mid": "#b86f43",
+    "cork_hi": "#e6a96c",
+    "glass_dark": "#4f6d8c",
+    "glass_mid": "#8db8d9",
+    "glass_hi": "#eef8ff",
+    "red_dark": "#781739",
+    "red_mid": "#d9264b",
+    "red_hi": "#ff6670",
+    "bubble": "#ffd6e0"
+  },
+  "layers": [
+    {
+      "name": "cork",
+      "rows": [
+        "......hhmm......",
+        "......mmdd......"
+      ],
+      "offsetX": 0,
+      "offsetY": 1,
+      "legend": {
+        "h": "cork_hi",
+        "m": "cork_mid",
+        "d": "cork_dark"
+      }
+    },
+    {
+      "name": "flask_glass_silhouette",
+      "shapes": [
+        { "tool": "rectangle_filled", "params": [5, 3, 10, 3] },
+        { "tool": "rectangle_filled", "params": [6, 4, 9, 5] },
+        { "tool": "circle_filled", "params": [7.5, 9.8, 4.7] }
+      ],
+      "fill": "glass_mid"
+    },
+    {
+      "name": "flask_glass_shading",
+      "ops": [
+        { "tool": "pixels", "params": [9, 3, 10, 3, 9, 4, 9, 5, 10, 6, 11, 7], "color": "glass_dark" },
+        { "tool": "pixels", "params": [6, 4, 7, 4, 8, 4], "color": "glass_dark" },
+        { "tool": "pixels", "params": [5, 3, 6, 3, 6, 5, 5, 6], "color": "glass_hi" }
+      ]
+    },
+    {
+      "name": "ruby_liquid",
+      "rows": [
+        "....hBHHHHHMg...",
+        "...hBHHHHHHMd...",
+        "...hMMBMMMMMd...",
+        "...hMMmMMMMdd...",
+        "....dMMMMMddd...",
+        ".....ddddddd...."
+      ],
+      "offsetX": 0,
+      "offsetY": 8,
+      "legend": {
+        "H": "red_hi",
+        "h": "glass_hi",
+        "g": "glass_dark",
+        "M": "red_mid",
+        "m": "red_hi",
+        "d": "red_dark",
+        "B": "bubble"
+      }
+    },
+    {
+      "name": "glass_rim_and_specular",
+      "ops": [
+        { "tool": "pixels", "params": [4, 7, 4, 8, 3, 9, 3, 10, 3, 11], "color": "glass_hi" },
+        { "tool": "pixels", "params": [11, 7, 11, 8, 12, 9, 12, 10, 12, 11], "color": "glass_dark" },
+        { "tool": "pixels", "params": [4, 12, 11, 12], "color": "red_dark" },
+        { "tool": "pixels", "params": [6, 14, 7, 14, 8, 14, 9, 14], "color": "glass_dark" }
+      ]
+    }
+  ],
+  "postOps": [
+    { "tool": "pixels", "params": [12, 8, 12, 12, 11, 13], "color": 0 },
+    { "tool": "auto_outline", "params": [4], "color": "ink" }
+  ]
+}

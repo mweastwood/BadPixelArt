@@ -1,0 +1,127 @@
+{
+  "title": "Our Lady of Guadalupe - Final",
+  "gridSize": 32,
+  "palette": {
+    "ink": "#161224",
+    "teal_dark": "#0d4247",
+    "teal_mid": "#197370",
+    "teal_hi": "#3ca89e",
+    "rose_dark": "#9c4154",
+    "rose_mid": "#d97580",
+    "rose_hi": "#f7b4b0",
+    "gold_dark": "#b36a1e",
+    "gold_mid": "#f2b636",
+    "gold_hi": "#fff4a3",
+    "skin_hi": "#ebb68c",
+    "skin_dark": "#bd825c",
+    "hair": "#2e1f27",
+    "moon_mid": "#43496b",
+    "cloud_white": "#f2ece4"
+  },
+  "layers": [
+    {
+      "name": "turquoise_mantle_and_rose_tunic",
+      "rows": [
+        ".............HHHH...............",
+        "...........HHHTTTdd.............",
+        "..........HHTTTTTTdd............",
+        ".........HGT......TGd...........",
+        ".........HT........Td...........",
+        "........HHT........Tdd..........",
+        "........HTT........Tdd..........",
+        ".......HHTTGRRRRRRGTTdd.........",
+        ".......HTTTGRRRRRRGTTdd.........",
+        "......HHTSTGRRRRRRGTSTdd........",
+        "......HTTTTGRRRRRRGTTTdd........",
+        "......HTTTTGRRRRRRGTTTdd........",
+        ".....HHTTSTGhhhhhhGTTSTdd.......",
+        ".....HTTTTTGRRhhRRGTTTTdd.......",
+        ".....HTTTTTGRRhRRRGTTTTdd.......",
+        ".....HTTSTTGRPRRPRGTSTTdd.......",
+        ".....HTTTTTGRRRRRRGTTTTdd.......",
+        "......HTTTTGRRPRRRGTTTdd........",
+        "......HTTSTGRRRRRRGTSTdd........",
+        "......dTTTTGrRRRRrGTTTdd........",
+        ".......dTTTGGrrrrGGTTdd........."
+      ],
+      "offsetX": 0,
+      "offsetY": 5,
+      "legend": {
+        "H": "teal_hi",
+        "T": "teal_mid",
+        "d": "teal_dark",
+        "G": "gold_mid",
+        "S": "gold_hi",
+        "R": "rose_mid",
+        "P": "rose_hi",
+        "r": "rose_dark",
+        "h": "hair"
+      }
+    },
+    {
+      "name": "head_hair_face_brooch_and_praying_hands",
+      "rows": [
+        "............hhhhhh..............",
+        "...........hhSSSShh.............",
+        "...........hSSSSSSh.............",
+        "...........hShSShSh.............",
+        "...........hhSSSShh.............",
+        "............hWrrWh..............",
+        "............RRSSRR..............",
+        "............PWSsWP..............",
+        "............PrrrrP.............."
+      ],
+      "offsetX": 0,
+      "offsetY": 7,
+      "legend": {
+        "h": "hair",
+        "S": "skin_hi",
+        "s": "skin_dark",
+        "K": "ink",
+        "W": "cloud_white",
+        "G": "gold_mid",
+        "P": "rose_hi",
+        "R": "rose_mid",
+        "r": "rose_dark"
+      }
+    },
+    {
+      "name": "crescent_moon_and_supporting_cherub",
+      "rows": [
+        ".......mm............mm.........",
+        ".......mKKK........KKKm.........",
+        "........mKKKKKhhKKKKKm..........",
+        ".........WWmKKSSKKmWW...........",
+        "..........PWWrrrrWWP............"
+      ],
+      "offsetX": 0,
+      "offsetY": 24,
+      "legend": {
+        "m": "moon_mid",
+        "K": "ink",
+        "h": "hair",
+        "S": "skin_hi",
+        "W": "cloud_white",
+        "P": "rose_hi",
+        "r": "rose_mid"
+      }
+    }
+  ],
+  "postOps": [
+    { "tool": "auto_outline", "params": [4], "color": "ink" },
+    { "tool": "pixels", "params": [14, 1, 15, 1, 14, 2, 15, 2, 14, 3, 15, 3], "color": "gold_hi" },
+    { "tool": "pixels", "params": [11, 2, 12, 3, 17, 3, 18, 2], "color": "gold_mid" },
+    { "tool": "pixels", "params": [10, 1, 19, 1], "color": "gold_hi" },
+    { "tool": "pixels", "params": [8, 4, 9, 5, 20, 5, 21, 4], "color": "gold_mid" },
+    { "tool": "pixels", "params": [7, 3, 22, 3], "color": "gold_hi" },
+    { "tool": "pixels", "params": [5, 7, 6, 7, 23, 7, 24, 7], "color": "gold_hi" },
+    { "tool": "pixels", "params": [4, 10, 5, 10, 24, 10, 25, 10], "color": "gold_mid" },
+    { "tool": "pixels", "params": [3, 10, 26, 10], "color": "gold_hi" },
+    { "tool": "pixels", "params": [3, 13, 4, 13, 25, 13, 26, 13], "color": "gold_hi" },
+    { "tool": "pixels", "params": [2, 16, 3, 16, 26, 16, 27, 16], "color": "gold_mid" },
+    { "tool": "pixels", "params": [1, 16, 28, 16], "color": "gold_hi" },
+    { "tool": "pixels", "params": [2, 19, 3, 19, 26, 19, 27, 19], "color": "gold_hi" },
+    { "tool": "pixels", "params": [3, 22, 4, 22, 25, 22, 26, 22], "color": "gold_mid" },
+    { "tool": "pixels", "params": [4, 25, 5, 25, 24, 25, 25, 25], "color": "gold_hi" }
+  ]
+}

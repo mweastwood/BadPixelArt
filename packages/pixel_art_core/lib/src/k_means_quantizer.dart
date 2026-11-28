@@ -1,0 +1,117 @@
+import 'dart:typed_data';
+
+import 'types.dart';
+
+class _RgbPoint {
+  final int r;
+  final int g;
+  final int b;
+  final int weight;
+
+  const _RgbPoint({
+    required this.r,
+    required this.g,
+    required this.b,
+    required this.weight,
+  });
+}
+
+/// Extracted weighted K-Means color quantization algorithm.
+List<PixelColor> kMeansQuantize(List<List<PixelColor>> colorGrid, int k) {
+  if (k <= 0 || colorGrid.isEmpty) {
+    return const [];
+  }
+
+  // 1. Gather all pixel colors and count their frequency
+  final Map<int, int> colorCounts = {};
+  for (final row in colorGrid) {
+    for (final color in row) {
+      final argb = color.toARGB32();
+      colorCounts[argb] = (colorCounts[argb] ?? 0) + 1;
+    }
+  }
+
+  final List<int> uniqueColors = colorCounts.keys.toList();
+  if (uniqueColors.length <= k) {
+    final list = uniqueColors.map((argb) => PixelColor(argb)).toList();
+    while (list.length < k) {
+      list.add(list.length % 2 == 0 ? PixelColor.black : PixelColor.white);
+    }
+    return list;
+  }
+
+  // Pre-extract integer RGB channels and weights using bitwise operations
+  final List<_RgbPoint> points = [];
+  for (final argb in uniqueColors) {
+    points.add(
+      _RgbPoint(
+        r: (argb >> 16) & 0xFF,
+        g: (argb >> 8) & 0xFF,
+        b: argb & 0xFF,
+        weight: colorCounts[argb]!,
+      ),
+    );
+  }
+
+  // 2. Select initial centroids spread across the unique colors
+  final List<int> centroidR = List<int>.filled(k, 0);
+  final List<int> centroidG = List<int>.filled(k, 0);
+  final List<int> centroidB = List<int>.filled(k, 0);
+
+  final step = points.length ~/ k;
+  for (int i = 0; i < k; i++) {
+    final pt = points[(i * step).clamp(0, points.length - 1)];
+    centroidR[i] = pt.r;
+    centroidG[i] = pt.g;
+    centroidB[i] = pt.b;
+  }
+
+  // 3. Iteratively refine centroids
+  for (int iteration = 0; iteration < 5; iteration++) {
+    final Int64List sumR = Int64List(k);
+    final Int64List sumG = Int64List(k);
+    final Int64List sumB = Int64List(k);
+    final Int32List totalWeight = Int32List(k);
+
+    // Assign each unique color to the closest centroid
+    for (final pt in points) {
+      int minDistance = 0x7FFFFFFF;
+      int bestCentroidIndex = 0;
+      final pr = pt.r;
+      final pg = pt.g;
+      final pb = pt.b;
+
+      for (int c = 0; c < k; c++) {
+        final dr = pr - centroidR[c];
+        final dg = pg - centroidG[c];
+        final db = pb - centroidB[c];
+        final dist = dr * dr + dg * dg + db * db;
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestCentroidIndex = c;
+        }
+      }
+
+      final w = pt.weight;
+      sumR[bestCentroidIndex] += pr * w;
+      sumG[bestCentroidIndex] += pg * w;
+      sumB[bestCentroidIndex] += pb * w;
+      totalWeight[bestCentroidIndex] += w;
+    }
+
+    // Recompute centroids as weighted averages
+    for (int c = 0; c < k; c++) {
+      final tw = totalWeight[c];
+      if (tw > 0) {
+        centroidR[c] = (sumR[c] / tw).round().clamp(0, 255);
+        centroidG[c] = (sumG[c] / tw).round().clamp(0, 255);
+        centroidB[c] = (sumB[c] / tw).round().clamp(0, 255);
+      }
+    }
+  }
+
+  return List<PixelColor>.generate(
+    k,
+    (c) => PixelColor.fromARGB(255, centroidR[c], centroidG[c], centroidB[c]),
+  );
+}
