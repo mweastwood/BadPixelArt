@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/agents/shape_sculpter_agent.dart';
 import 'package:bad_pixel_art/logic/agents/base_agent.dart';

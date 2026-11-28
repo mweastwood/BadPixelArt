@@ -2,7 +2,7 @@ import 'package:bad_pixel_art/logic/models/canvas_model.dart';
 import 'package:bad_pixel_art/logic/models/pixel_art_component.dart';
 import 'package:bad_pixel_art/logic/wizard/steps/default_wizard_steps.dart';
 import 'package:bad_pixel_art/logic/wizard_state.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_agent_core/flutter_agent_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 

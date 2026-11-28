@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/logic/models/pixel_art_component.dart';
 import 'package:bad_pixel_art/logic/utils/coordinate_converter.dart';

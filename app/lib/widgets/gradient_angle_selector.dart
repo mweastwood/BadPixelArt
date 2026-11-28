@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Returns a human-readable direction description for a given gradient angle (0..360 degrees).
 String getGradientAngleDescription(double angle) {

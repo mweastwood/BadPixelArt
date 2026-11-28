@@ -1,6 +1,6 @@
 import 'package:bad_pixel_art/logic/canvas_state.dart';
 import 'package:bad_pixel_art/widgets/ai_color_confirmation_dialog.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

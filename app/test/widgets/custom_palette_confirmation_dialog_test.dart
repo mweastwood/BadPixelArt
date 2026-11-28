@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/widgets/custom_palette_confirmation_dialog.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';

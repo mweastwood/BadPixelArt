@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bad_pixel_art/screens/pixel_art_screen.dart';
 import 'package:bad_pixel_art/logic/canvas_state.dart';
